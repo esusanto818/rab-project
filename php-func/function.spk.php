@@ -54,15 +54,33 @@ function SpkMaterialQuota($projectId, $excludeSpkId = 0) {
                        AND (h.spk_id IS NULL OR s.status<>'Diterbitkan') AND (h.spk_id IS NULL OR h.spk_id<>$2)
                      GROUP BY i.material_id", array($projectId, $excludeSpkId)) as $r) { $oth[(int)$r['material_id']] = (float)$r['q']; }
 
+    // Stok fisik inventory: saldo IN - OUT pada seluruh gudang aktif.
+    // Batas qty SPK tidak boleh melampaui kuota pembayaran/RAB maupun stok fisik yang tersedia.
+    $stock = array();
+    foreach (WhRows("SELECT bal.item_id AS material_id, SUM(GREATEST(bal.onhand,0)) AS onhand
+                     FROM (SELECT sm.item_id, sm.warehouse_id,
+                                  SUM(CASE WHEN sm.movement_type='IN' THEN sm.qty ELSE -sm.qty END) AS onhand
+                           FROM stock_movements sm
+                           JOIN warehouses w ON w.id=sm.warehouse_id
+                           WHERE w.active=true
+                           GROUP BY sm.item_id, sm.warehouse_id) bal
+                     GROUP BY bal.item_id") as $sr) {
+        $stock[(int)$sr['material_id']] = max(0, (float)$sr['onhand']);
+    }
+
     $out = array();
     foreach ($rab as $r) {
         $mid = (int)$r['material_id']; $rq = (float)$r['rab_qty'];
         $cap = round($rq * $pay['allowed_pct'] / 100.0, 4);
         $a = isset($act[$mid]) ? $act[$mid] : 0.0; $o = isset($oth[$mid]) ? $oth[$mid] : 0.0;
+        $quotaAvailable = max(0, round($cap - $a - $o, 4));
+        $stockAvailable = isset($stock[$mid]) ? round($stock[$mid], 4) : 0.0;
         $out[$mid] = array('material_id' => $mid, 'material_code' => $r['material_code'], 'material_name' => $r['material_name'],
                            'unit' => $r['unit'], 'rab_qty' => round($rq, 4), 'cap_qty' => $cap,
                            'spk_active' => round($a, 4), 'issued_other' => round($o, 4),
-                           'available' => max(0, round($cap - $a - $o, 4)));
+                           'stock_available' => $stockAvailable,
+                           'quota_available' => $quotaAvailable,
+                           'available' => min($quotaAvailable, $stockAvailable));
     }
     return array('pay' => $pay, 'materials' => $out);
 }
@@ -74,4 +92,4 @@ function SpkRemaining($spkId, $materialId) {
                 WHERE h.spk_id=$1 AND i.material_id=$2 AND h.status='posted'", array((int)$spkId, (int)$materialId));
     return array('qty' => round((float)$q['q'], 4), 'used' => round((float)$u['q'], 4),
                  'remaining' => max(0, round((float)$q['q'] - (float)$u['q'], 4)));
-}
+}spk

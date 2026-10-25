@@ -6,13 +6,14 @@
                   = qty RAB x (% kontrak dibayar x 2), maks 100% (dihitung server). Warehouse Issuing proyek wajib memilih SPK.
                   Alur status: Draft -> Diterbitkan -> Selesai ; Dibatalkan dari Draft / Diterbitkan yang belum dipakai issue.
                   Pola mengikuti po.js / warehouse.issuing.js (template many-template-icn.php).
-  Backend       : /rab-project/dev/php-crud/spkCRD.php  (kuota: php-func/function.spk.php)
+  Backend       : /proyek/php-crud/spkCRD.php  (kuota: php-func/function.spk.php)
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "<em>SPK</em> - Surat Perintah Kerja";
-    var CRD = main_url + '/php-crud/spkCRD.php';
+
+    var CRD = '../php-crud/spkCRD.php';
     var ACCESS_EDIT = 2;      // buat / ubah Draft
     var ACCESS_ACTION = 3;    // terbitkan / tutup / batalkan / hapus
     var EPS = 0.00005;
@@ -291,21 +292,10 @@ Ext.onReady(function () {
             renderTo: 'spkMatBar', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:2px;',
             items: [
                 { columnWidth: 0.45, layout: 'form', border: false, hideLabels: true, bodyStyle: 'background:transparent;', items: [fMat] },
-                { width: 150, border: false, bodyStyle: 'background:transparent; padding-left:6px;', 
-                    items: [new Ext.Button({ 
-                        text: '<span style="color:#00bcd4 !important; font-weight:bold;">+ Tambah Material</span>',
-                        handler: addMaterial,
-                        style: {
-                            color: '##00bcd4',
-                            backgroundColor: '#ffffff00',
-                            border: '1.5px solid #00bcd4',
-                            padding: '8px 20px',
-                            borderRadius: '20px',
-                            fontWeight: 'bold'
-                        }
-                })] },
-                { columnWidth: 0.55, border: false, bodyStyle: 'background:transparent; padding:6px 0 0 8px; color:#9fc3d1; font-size:11px;',
-                  html: 'Kuota = qty RAB x (% kontrak dibayar x 2). Material tanpa kuota tersedia tidak dapat ditambahkan.' }
+                { width: 150, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '+ Tambah Material', handler: addMaterial })] },
+                { width: 210, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '+ Semua Material (Qty Maks)', handler: addAllMaterials })] },     // [DEFAULT-MAKS][NEW]
+                { columnWidth: 0.4, border: false, bodyStyle: 'background:transparent; padding:6px 0 0 8px; color:#9fc3d1; font-size:11px;',
+                  html: 'Qty SPK otomatis = kuota tersedia (maksimum), bisa dikurangi. Kuota = qty RAB x (% kontrak dibayar x 2).' }
             ]
         });
     }
@@ -340,6 +330,29 @@ Ext.onReady(function () {
             rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), available: rec.get('available'), qty: rec.get('available'), notes: ''
         }));
         fMat.clearValue();
+    }
+
+    // [DEFAULT-MAKS][NEW] Tambahkan SEMUA material RAB proyek yang masih punya kuota, Qty SPK = kuota tersedia (maksimum).
+    // Material yang sudah ada di daftar dilewati. Qty tiap baris tetap bisa dikurangi (tidak boleh melebihi tersedia).
+    function addAllMaterials() {
+        if (!fProject.getValue()) { showErr('Pilih proyek terlebih dahulu.'); return; }
+        ajax({ action: 'lookup_materials', project_id: fProject.getValue(), exclude_id: editingId }, function (res) {
+            if (!res.success) { showErr(res.message || 'Gagal memuat material.'); return; }
+            var added = 0, skippedNoQuota = 0;
+            Ext.each(res.data || [], function (m) {
+                var avail = parseFloat(m.available) || 0;
+                if (itemDs.findBy(function (r) { return String(r.get('material_id')) === String(m.material_id); }) >= 0) { return; }
+                if (avail <= 0) { skippedNoQuota++; return; }
+                itemDs.add(new itemDs.recordType({
+                    material_id: m.material_id, material_code: m.material_code, material_name: m.material_name, unit: m.unit,
+                    rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, available: avail, qty: avail, notes: ''
+                }));
+                added++;
+            });
+            if (!added) { showErr('Tidak ada material yang bisa ditambahkan' + (skippedNoQuota ? ' (' + skippedNoQuota + ' material tanpa kuota tersedia).' : '.')); return; }
+            Ext.Msg.alert('Material ditambahkan', added + ' material ditambahkan dengan qty maksimum.' +
+                          (skippedNoQuota ? ' ' + skippedNoQuota + ' material dilewati karena tidak ada kuota tersedia.' : ''));
+        });
     }
 
     function showEditor(title) {
