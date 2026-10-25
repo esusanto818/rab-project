@@ -1,29 +1,16 @@
 RewriteEngine On
-<<<<<<< Updated upstream
 RewriteBase /rab-project/dev/
 
-# 1. Jika ada request yang terlanjur minta /inv/router.php, alihkan (301) ke /inv/router (pretty URL)
+# 1. Jika ada request yang terlanjur minta /router.php, alihkan (301) ke /router (pretty URL)
 RewriteCond %{THE_REQUEST} \s/rab-project/dev/router\.php[?\s] [NC]
 RewriteRule ^router\.php$ /rab-project/dev/router [R=301,L,QSA]
-=======
-RewriteBase /rab-project/live/
 
-# 1. Jika ada request yang terlanjur minta /inv/router.php, alihkan (301) ke /inv/router (pretty URL)
-RewriteCond %{THE_REQUEST} \s/rab-project/live/router\.php[?\s] [NC]
-RewriteRule ^router\.php$ /rab-project/live/router [R=301,L,QSA]
->>>>>>> Stashed changes
-
-# 2. Pemetaan internal: mengarahkan /inv/router ke router.php secara transparan
+# 2. Pemetaan internal: mengarahkan /router ke router.php secara transparan
 RewriteRule ^router$ router.php [L,QSA]
 
-# 3. Jika request ditujukan langsung ke /inv/php/router.php, alihkan ke /inv/router
-<<<<<<< Updated upstream
+# 3. Jika request ditujukan langsung ke /php/router.php, alihkan ke /router
 RewriteCond %{REQUEST_URI} ^/rab-project/dev/php/router\.php [NC]
 RewriteRule ^php/router\.php$ /rab-project/dev/router [R=301,L,QSA]
-=======
-RewriteCond %{REQUEST_URI} ^/rab-project/live/php/router\.php [NC]
-RewriteRule ^php/router\.php$ /rab-project/live/router [R=301,L,QSA]
->>>>>>> Stashed changes
 
 # 4. Kecualikan file & folder fisik asli
 RewriteCond %{REQUEST_FILENAME} -f [OR]

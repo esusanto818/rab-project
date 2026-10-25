@@ -136,34 +136,15 @@ try {
         include $cleanFileName;
         $htmlOutput = ob_get_clean();
 
-        // A. Otomatis disisipkan <base href="/proyekgmn/"> agar semua path CSS/JS tidak broken
-        /*
-        if (stripos($htmlOutput, '<head>') !== false) {
-            $htmlOutput = preg_replace('/<head>/i', "<head>\n  <base href=\"/proyekgmn/\">", $htmlOutput, 1);
-        } else {
-            $htmlOutput = "<base href=\"/proyekgmn/\">\n" . $htmlOutput;
-        }
-        */
-        // B. AUTO-REPLACE STRING PATH RELATIF TANPA UpBAH DUSUN FILE DARI FRONTEND
+        // B. AUTO-REPLACE STRING PATH RELATIF TANPA UBAH SUSUNAN FILE DARI FRONTEND
         $patterns = [
-<<<<<<< Updated upstream
             '="../css/'      => '="/rab-project/dev/css/',
             '="../js/'       => '="/rab-project/dev/js/',
-            '="../js-ext/'   => '="/rab-project/js-ext/',
-            '="../pdf/'      => '="/rab-project/pdf/',
-            '="../tcpdf_new/'=> '="/rab-project/tcpdf_new/',
-            '="../js-func/'  => '="/rab-project/js-func/',
+            '="../js-ext/'   => '="/rab-project/dev/js-ext/',
+            '="../pdf/'      => '="/rab-project/dev/pdf/',
+            '="../tcpdf_new/'=> '="/rab-project/dev/tcpdf_new/',
+            '="../js-func/'  => '="/rab-project/dev/js-func/',
             '="../php-crud/' => '="/rab-project/dev/php-crud/',
-=======
-            '="../css/'      => '="/rab-project/live/css/',
-            '="../js/'       => '="/rab-project/live/js/',
-            '="../js-ext/'   => '="/rab-project/live/js-ext/',
-            '="../pdf/'      => '="/rab-project/live/pdf/',
-            '="../tcpdf_new/'=> '="/rab-project/live/tcpdf_new/',
-            '="../js-func/'  => '="/rab-project/live/js-func/',
-            '="../php-crud/' => '="/rab-project/live/php-crud/',
->>>>>>> Stashed changes
-
         ];
         $htmlOutput = strtr($htmlOutput, $patterns);
 
