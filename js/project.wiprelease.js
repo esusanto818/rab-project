@@ -7,7 +7,11 @@
                   Simpan memposting jurnal Dr HPP / Cr WIP (rule WIP_RELEASE).
                   Delete = reverse pelepasan TERAKHIR per proyek (jurnal dihapus). Edit tidak tersedia.
                   Pola mengikuti po.js (template many-template-icn.php).
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/project.wipreleaseCRD.php
+=======
+  Backend       : /rab-project/live/php-crud/project.wipreleaseCRD.php
+>>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {

@@ -1,6 +1,10 @@
 (function () {
 'use strict';
+<<<<<<< Updated upstream
 var endpoint = '/rab-project/dev/php-crud/m.proyekCRD.php';
+=======
+var endpoint = '/rab-project/live/php-crud/m.proyekCRD.php';
+>>>>>>> Stashed changes
 var mode = window.PROJECT_PRINT_MODE || 'projects';
 var projectId = parseInt(window.PROJECT_PRINT_ID, 10) || 0;
 var content = document.getElementById('content');

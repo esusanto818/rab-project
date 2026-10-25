@@ -48,8 +48,14 @@ tfoot td { font-weight: bold; }
 <div class="footer">Dokumen dihasilkan oleh RAB-Monitor</div>
 </main>
 <script>
+<<<<<<< Updated upstream
 window.PAYMENT_LIST_CRD_URL = '/rab-project/dev/php-crud/project.paymentCRD.php';
 </script>
 <script src="/rab-project/dev/js/project.payment.list.print.js"></script>
+=======
+window.PAYMENT_LIST_CRD_URL = '/rab-project/live/php-crud/project.paymentCRD.php';
+</script>
+<script src="/rab-project/live/js/project.payment.list.print.js"></script>
+>>>>>>> Stashed changes
 </body>
 </html>

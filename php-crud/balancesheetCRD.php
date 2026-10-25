@@ -1,7 +1,11 @@
 <?php
 /*
   Document      : Balance Sheet (Neraca) - CRUD & Report Handler
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/financial_balance_sheetCRD.php
+=======
+  Backend       : /rab-project/live/php-crud/financial_balance_sheetCRD.php
+>>>>>>> Stashed changes
 */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 

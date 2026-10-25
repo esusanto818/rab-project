@@ -43,7 +43,7 @@ Ext.onReady(function () {
         'payment-grid-editor-style'
     );
 
-    var CRD = '../php-crud/supplier.paymentCRD.php';
+    var CRD = '../live/php-crud/supplier.paymentCRD.php';
     var task = '';
     var dataRecord = null;
 

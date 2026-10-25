@@ -8,7 +8,11 @@
 var VERSION = 'prg-v2';      // [DIUBAH] v1 -> v2: halaman mobile kini memakai alur klaim modul desktop
 var SHELL = [
     '/rab-project/views/project.progress.m.php',
+<<<<<<< Updated upstream
     '/rab-project/dev/js/project.progress.m.js',
+=======
+    '/rab-project/live/js/project.progress.m.js',
+>>>>>>> Stashed changes
     '/rab-project/manifest.progress.json'
 ];
 

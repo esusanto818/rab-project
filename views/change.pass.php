@@ -11,8 +11,12 @@
 ?>
 </html>
 	<head>
-    <link rel="stylesheet" type="text/css" href="../css/header.black.css" />
-		<style>
+    <link rel="stylesheet" type="text/css" href="/rab-project/ext-3.4.1/resources/css/ext-all.css" />
+    <link rel="stylesheet" type="text/css" href="/rab-project/css/mainCSS.css" />
+    <link rel="stylesheet" type="text/css" href="/rab-project/css/header.black.css" />
+    <link rel="stylesheet" type="text/css" href="/rab-project/css/grddetail.css" />
+    <link rel="stylesheet" type="text/css" href="/rab-project/css/frm.css" />
+    <style>
 			#editorForm {top: 40%; width: 75%;}
 		</style>
 		<title id="page-title">Change Password</title>

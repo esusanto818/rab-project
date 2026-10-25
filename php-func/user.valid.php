@@ -2,7 +2,11 @@
 // Izinkan ngrok melewati halaman peringatan secara otomatis
 header('ngrok-skip-browser-warning: 1');
 
+<<<<<<< Updated upstream
 define('BASE_PATH', '/var/www/html/rab-project/dev');
+=======
+define('BASE_PATH', '/var/www/html/rab-project/live');
+>>>>>>> Stashed changes
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
 }

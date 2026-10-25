@@ -56,7 +56,7 @@ Ext.onReady(function() {
 
             task = 'update';
             Ext.getCmp('frmEditor').getForm().load({
-                url: '../php-crud/m.user.systemCRD.php',
+                url: '../live/php-crud/m.user.systemCRD.php',
                 params: { id: dataRecord.id, task: 'read_edit' },
                 success: function(form, action) {
                     // Pastikan hidden field employee_id dan combo name terisi presisi
@@ -231,7 +231,7 @@ Ext.onReady(function() {
     // 3. STORES & DATA STRUCTURES
     // ==========================================
     var myMask = new Ext.LoadMask(Ext.getBody(), { msg: "Please wait..." });
-    var deleteDs = new Ext.data.Store({ url: '../php-crud/m.user.systemCRD.php' });
+    var deleteDs = new Ext.data.Store({ url: '../live/php-crud/m.user.systemCRD.php' });
     
     var employeeFields = [
         { name: 'id', type: 'numeric' },
@@ -249,7 +249,7 @@ Ext.onReady(function() {
     ];
 
     var employeeDs = new Ext.data.Store({
-        url: '../php-crud/m.employeeCRD.php',
+        url: '../live/php-crud/m.employeeCRD.php',
         baseParams: { task: 'read', limit: 999999 },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalRecord', fields: employeeFields })
     });
@@ -268,7 +268,7 @@ Ext.onReady(function() {
     ];
 
     mainDs = new Ext.data.Store({
-        url: '../php-crud/m.user.systemCRD.php',
+        url: '../live/php-crud/m.user.systemCRD.php',
         idProperty: 'id',
         baseParams: { task: 'read', start: 0, limit: (typeof PageSize !== 'undefined' ? PageSize : 250) },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalRecord', fields: employeeFields })
@@ -304,7 +304,7 @@ Ext.onReady(function() {
     // 4. GRID EDITOR HAK AKSES FORM
     // ==========================================
     var gridEditorDs = new Ext.data.Store({
-        url: '../php-crud/m.user.systemCRD.php',
+        url: '../live/php-crud/m.user.systemCRD.php',
         idProperty: 'size',
         baseParams: { task: 'read_detail' },
         reader: new Ext.data.JsonReader({ root: 'data', fields: formField })
@@ -336,7 +336,7 @@ Ext.onReady(function() {
     // 5. FORM EDITOR MAIN (LAYOUT HORIZON SEJAJAR)
     // ==========================================
     var frmEditor = new stdForm({
-        url: '../php-crud/m.user.systemCRD.php',
+        url: '../live/php-crud/m.user.systemCRD.php',
         id: 'frmEditor',
         reader: new Ext.data.JsonReader({ root: 'data', fields: employeeFields }),
         renderTo: 'editorFormMain',

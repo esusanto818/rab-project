@@ -1,7 +1,11 @@
 /*
   Document      : m.fiscalperiod.js
   Description   : Fiscal Period - Grid + Add Form + Close/Reopen action
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/m.fiscalperiodCRD.php (tabel accounting_periods)
+=======
+  Backend       : /rab-project/live/php-crud/m.fiscalperiodCRD.php (tabel accounting_periods)
+>>>>>>> Stashed changes
   [FIX 2026-10-08]:
    - safeDecode(): respons non-JSON (mis. PHP fatal error) tidak lagi menampilkan "undefined".
    - Aksi close/reopen/delete memakai Ext.Ajax.request (cara lama via Store.load + operation.response

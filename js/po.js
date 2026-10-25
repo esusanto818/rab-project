@@ -11,7 +11,11 @@
                    Menerima draft dari Purchase Planning lewat sessionStorage 'po_draft_from_planning'.
                    Alur status: Draft -> Diajukan -> Disetujui -> Selesai (Dibatalkan dari Draft/Diajukan/Disetujui
                    selama belum ada GRN). Edit & Delete hanya untuk PO berstatus Draft.
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/poCRD.php
+=======
+  Backend       : /rab-project/live/php-crud/poCRD.php
+>>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {

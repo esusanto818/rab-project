@@ -5,7 +5,11 @@
                    mainDs di-assign POLOS (tanpa var/let) supaya search
                    box global di header (lihat many-template-icn.php)
                    bisa mengaksesnya.
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/clientsCRD.php
+=======
+  Backend       : /rab-project/live/php-crud/clientsCRD.php
+>>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {

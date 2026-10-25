@@ -7,7 +7,11 @@
                   [PERBAIKAN] Tombol "Proses Perbaikan Otomatis" memposting jurnal yang kurang untuk dokumen stok yang belum berjurnal.
                   [TAB BESAR] Tab dibuat sendiri (tombol 18px) agar terbaca; teks ringkasan memakai bahasa sehari-hari.
                   Pola mengikuti trialbalance.js (filter bar + summary + grid) dan po.js.
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/inventory.reconCRD.php  (logika: php-func/function.inventory.recon.php)
+=======
+  Backend       : /rab-project/live/php-crud/inventory.reconCRD.php  (logika: php-func/function.inventory.recon.php)
+>>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {

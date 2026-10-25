@@ -146,6 +146,7 @@ try {
         */
         // B. AUTO-REPLACE STRING PATH RELATIF TANPA UpBAH DUSUN FILE DARI FRONTEND
         $patterns = [
+<<<<<<< Updated upstream
             '="../css/'      => '="/rab-project/dev/css/',
             '="../js/'       => '="/rab-project/dev/js/',
             '="../js-ext/'   => '="/rab-project/js-ext/',
@@ -153,6 +154,15 @@ try {
             '="../tcpdf_new/'=> '="/rab-project/tcpdf_new/',
             '="../js-func/'  => '="/rab-project/js-func/',
             '="../php-crud/' => '="/rab-project/dev/php-crud/',
+=======
+            '="../css/'      => '="/rab-project/live/css/',
+            '="../js/'       => '="/rab-project/live/js/',
+            '="../js-ext/'   => '="/rab-project/live/js-ext/',
+            '="../pdf/'      => '="/rab-project/live/pdf/',
+            '="../tcpdf_new/'=> '="/rab-project/live/tcpdf_new/',
+            '="../js-func/'  => '="/rab-project/live/js-func/',
+            '="../php-crud/' => '="/rab-project/live/php-crud/',
+>>>>>>> Stashed changes
 
         ];
         $htmlOutput = strtr($htmlOutput, $patterns);

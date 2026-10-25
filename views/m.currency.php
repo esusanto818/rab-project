@@ -13,9 +13,19 @@
 
 </html>
     <head>
+<<<<<<< Updated upstream
       <link rel="stylesheet" type="text/css" href="../css/header.black.css" />
       <style>#editorForm {top: 30%; width: 60%;}</style>
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
+=======
+      <link rel="stylesheet" type="text/css" href="/rab-project/ext-3.4.1/resources/css/ext-all.css" />
+      <link rel="stylesheet" type="text/css" href="/rab-project/css/mainCSS.css" />
+      <link rel="stylesheet" type="text/css" href="/rab-project/css/header.black.css" />
+      <link rel="stylesheet" type="text/css" href="/rab-project/css/grddetail.css" />
+      <link rel="stylesheet" type="text/css" href="/rab-project/css/frm.css" />
+      <style>#editorForm {top: 30%; width: 60%;}</style>
+      <link rel="stylesheet" type="text/css" href="/rab-project/live/css/grddetail.css" />
+>>>>>>> Stashed changes
       <title id="page-title">Currency</title>
     </head>
     <script type="text/javascript" src="../js/m.currency.js"></script>

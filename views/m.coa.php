@@ -14,11 +14,19 @@
             #editorForm {top: 30%; width: 70%;}
         </style>
         <title id="page-title">COA</title>
+<<<<<<< Updated upstream
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />    </head>
+=======
+        <link rel="stylesheet" type="text/css" href="/rab-project/live/ext-3.4.1/resources/css/ext-all.css" />
+        <link rel="stylesheet" type="text/css" href="/rab-project/live/css/mainCSS.css" />
+        <link rel="stylesheet" type="text/css" href="/rab-project/live/css/header.black.css" />
+        <link rel="stylesheet" type="text/css" href="/rab-project/live/css/grddetail.css" />
+        <link rel="stylesheet" type="text/css" href="/rab-project/live/css/frm.css" />    </head>
+>>>>>>> Stashed changes
     <body>
     </body>
     <!-- 1. DEKLARASIKAN DAHULU VARIABEL SAKRAL DI WINDOW/GLOBAL -->

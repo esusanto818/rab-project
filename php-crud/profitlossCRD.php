@@ -1,7 +1,11 @@
 <?php
 /*
   Document      : Profit & Loss (Rugi Laba) - CRUD & Report Handler
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/financial_profit_lossCRD.php
+=======
+  Backend       : /rab-project/live/php-crud/financial_profit_lossCRD.php
+>>>>>>> Stashed changes
 */
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 

@@ -2,7 +2,11 @@
   Document      : m.trialbalance.js
   Description   : Trial Balance - Rekap saldo semua akun per periode,
                    dengan indikator total Debit = Kredit.
+<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/trialbalanceCRD.php
+=======
+  Backend       : /rab-project/live/php-crud/trialbalanceCRD.php
+>>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
