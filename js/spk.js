@@ -181,7 +181,8 @@ Ext.onReady(function () {
         listeners: { exception: storeError }
     });
     var itemField = ['material_id', 'material_code', 'material_name', 'unit',
-                     { name: 'rab_qty', type: 'float' }, { name: 'cap_qty', type: 'float' }, { name: 'available', type: 'float' },
+                     { name: 'rab_qty', type: 'float' }, { name: 'cap_qty', type: 'float' },
+                     { name: 'stock_available', type: 'float' }, { name: 'quota_available', type: 'float' }, { name: 'available', type: 'float' },
                      { name: 'qty', type: 'float' }, 'notes'];
     var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, itemField) });
 
@@ -347,7 +348,7 @@ Ext.onReady(function () {
             queryParam: 'query', minChars: 0, triggerAction: 'all', forceSelection: true, anchor: '98%', listWidth: 560,
             emptyText: 'Cari material dari RAB proyek...',
             tpl: '<tpl for="."><div class="x-combo-list-item">{material_code} - {material_name} ' +
-                 '<b>(RAB {rab_qty}, kuota {cap_qty}, tersedia {available} {unit})</b></div></tpl>',
+                 '<b>(RAB {rab_qty}, kuota {cap_qty}, stok inventory {stock_available}, maksimal SPK {available} {unit})</b></div></tpl>',
             listeners: {
                 beforequery: function () {
                     if (!fProject.getValue()) { showErr('Pilih proyek terlebih dahulu.'); return false; }
@@ -392,10 +393,10 @@ Ext.onReady(function () {
         var rec = fMat.findRecord('material_id', fMat.getValue());
         if (!rec) { showErr('Pilih material terlebih dahulu.'); return; }
         if (itemDs.findBy(function (r) { return String(r.get('material_id')) === String(rec.get('material_id')); }) >= 0) { showErr('Material sudah ada di daftar.'); return; }
-        if (rec.get('available') <= 0) { showErr('Tidak ada kuota tersedia untuk material ini (kuota habis / belum ada pembayaran / sudah dipakai SPK lain).'); return; }
+        if (rec.get('available') <= 0) { showErr('Qty tidak tersedia. Periksa stok fisik inventory dan kuota SPK yang diizinkan sistem.'); return; }
         itemDs.add(new itemDs.recordType({
             material_id: rec.get('material_id'), material_code: rec.get('material_code'), material_name: rec.get('material_name'), unit: rec.get('unit'),
-            rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), available: rec.get('available'), qty: rec.get('available'), notes: ''
+            rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), stock_available: rec.get('stock_available'), quota_available: rec.get('quota_available'), available: rec.get('available'), qty: rec.get('available'), notes: ''
         }));
         fMat.clearValue();
     }
@@ -447,7 +448,8 @@ Ext.onReady(function () {
                         var m = map[String(i.material_id)] || {};
                         itemDs.add(new itemDs.recordType({
                             material_id: i.material_id, material_code: i.material_code, material_name: i.material_name, unit: i.unit,
-                            rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, available: parseFloat(m.available) || 0,
+                            rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0,
+                            stock_available: parseFloat(m.stock_available) || 0, quota_available: parseFloat(m.quota_available) || 0, available: parseFloat(m.available) || 0,
                             qty: parseFloat(i.qty), notes: i.notes || ''
                         }));
                     });
