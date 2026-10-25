@@ -57,12 +57,14 @@ function SpkMaterialQuota($projectId, $excludeSpkId = 0) {
     // Stok fisik inventory: saldo IN - OUT pada seluruh gudang aktif.
     // Batas qty SPK tidak boleh melampaui kuota pembayaran/RAB maupun stok fisik yang tersedia.
     $stock = array();
-    foreach (WhRows("SELECT sm.item_id AS material_id,
-                            SUM(CASE WHEN sm.movement_type='IN' THEN sm.qty ELSE -sm.qty END) AS onhand
-                     FROM stock_movements sm
-                     JOIN warehouses w ON w.id=sm.warehouse_id
-                     WHERE w.active=true
-                     GROUP BY sm.item_id") as $sr) {
+    foreach (WhRows("SELECT bal.item_id AS material_id, SUM(GREATEST(bal.onhand,0)) AS onhand
+                     FROM (SELECT sm.item_id, sm.warehouse_id,
+                                  SUM(CASE WHEN sm.movement_type='IN' THEN sm.qty ELSE -sm.qty END) AS onhand
+                           FROM stock_movements sm
+                           JOIN warehouses w ON w.id=sm.warehouse_id
+                           WHERE w.active=true
+                           GROUP BY sm.item_id, sm.warehouse_id) bal
+                     GROUP BY bal.item_id") as $sr) {
         $stock[(int)$sr['material_id']] = max(0, (float)$sr['onhand']);
     }
 
