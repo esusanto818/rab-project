@@ -20,5 +20,5 @@ require_once __DIR__ . '/../php-func/user.valid.php';
 <header class="heading"><h1 id="title">Laporan Proyek</h1><div class="muted" id="subtitle">RAB-Monitor</div></header>
 <main id="content"><div class="status">Memuat data...</div></main>
 <script>window.PROJECT_PRINT_MODE = <?php echo json_encode($_GET['mode'] ?? 'projects'); ?>; window.PROJECT_PRINT_ID = <?php echo json_encode((int)($_GET['project_id'] ?? 0)); ?>;</script>
-<script src="/rab-project/views/m.proyek.print.js"></script>
+<script src="m.proyek.print.js"></script>
 </body></html>

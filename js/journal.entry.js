@@ -164,7 +164,7 @@ Ext.onReady(function () {
 
     function loadJournalDetail(journalId, refNo) {
         Ext.Ajax.request({
-            url: '../php-crud/journal.entryCRD.php',
+            url: '../dev/php-crud/journal.entryCRD.php',
             method: 'POST',
             params: { task: 'read_lines', id: journalId },
             success: function (response) {
@@ -423,7 +423,7 @@ Ext.onReady(function () {
         if (getFormAccess() == 3 || getFormAccess() == 4) {
             frmEditor.getForm().reset();
             task = 'update';
-            frmEditor.getForm().load({ url: '../php-crud/journal.entryCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
+            frmEditor.getForm().load({ url: '../dev/php-crud/journal.entryCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
             lineGridDs.load({ params: { id: dataRecord.id } });
             setLineEditable(true);
             document.getElementById('editorWdw').style.display = 'block';
@@ -444,7 +444,7 @@ Ext.onReady(function () {
             }
             task = '';
             frmEditor.getForm().reset();
-            frmEditor.getForm().load({ url: '../php-crud/journal.entryCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
+            frmEditor.getForm().load({ url: '../dev/php-crud/journal.entryCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
             lineGridDs.load({ params: { id: dataRecord.id } });
             setLineEditable(false);
             document.getElementById('editorWdw').style.display = 'block';
@@ -500,7 +500,7 @@ Ext.onReady(function () {
         // [PRINT-JV] Tombol Printing utama = cetak SEMUA jurnal (tidak tergantung baris terpilih).
         //            Cetak per jurnal memakai tombol Print di panel Detail Baris Jurnal (printJournal).
         //            Argumen fitur window.open dijadikan satu string (sebelumnya terpisah & diabaikan).
-        window.open('../pdf/journal.php', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
+        window.open('../dev/pdf/journal.php', '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
     };
 
     document.getElementById('saveEdit').onclick = function () {
@@ -528,7 +528,7 @@ Ext.onReady(function () {
         }
 
         frmEditor.getForm().submit({
-            url: '../php-crud/journal.entryCRD.php',
+            url: '../dev/php-crud/journal.entryCRD.php',
             method: 'POST',
             params: { task: task, arrLines: JSON.stringify(arrLines) },
             waitTitle: 'Connecting',

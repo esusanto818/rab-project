@@ -3,7 +3,7 @@
   Description   : ExtJS Controller untuk pengelolaan Master Proyek dengan Integrasi AI Task Breakdown
                    - Panel Detail Sub-Task AI di Layar Utama (Main Screen)
                    - Editor Form Responsif & Tinggi Maksimal
-  Backend       : /rab-project/dev/php-crud/m.proyekCRD.php
+  Backend       : /rab-project/php-crud/m.proyekCRD.php
 */
 
 Ext.onReady(function () {
@@ -12,7 +12,7 @@ Ext.onReady(function () {
         document.getElementById("mainHeaderText").innerHTML = "Master Data <em>Proyek & Kontrak</em>";
     }
 
-    var CRD = '../dev/php-crud/m.proyekCRD.php';
+    var CRD = main_url + '/php-crud/m.proyekCRD.php';
     var task = '';
     var dataRecord = null;
     var curRate = 1;
@@ -137,7 +137,7 @@ Ext.onReady(function () {
     var btnPrintProjects = document.getElementById('printData');
     if (btnPrintProjects) btnPrintProjects.onclick = function (event) {
         if (event && event.preventDefault) event.preventDefault();
-        var w = window.open('/rab-project/views/m.proyek.print.php?mode=projects', '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
+        var w = window.open('/rab-project/dev/views/m.proyek.print.php?mode=projects', '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
         if (!w) Ext.Msg.alert('Popup diblokir', 'Izinkan pop-up untuk situs ini, lalu klik Printing kembali.');
     };
 
@@ -179,18 +179,16 @@ Ext.onReady(function () {
         });
     }
 
-   function renderMainDetailPanel(records) {
+    function renderMainDetailPanel(records) {
         if (!dataRecord) return;
         var scopeTxt = dataRecord.project_scope || 'Belum ada spesifikasi teknis.';
         
-        // Tata letak diperbarui: Judul dan Poin Kontrak di baris pertama, 
-        // Tombol Print Task ditempatkan di sebelah kiri di bawah teks Judul.
-        var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">' +
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;">' +
                    '<h3 style="margin:0; font-size:16px; color:#00bcd4;">Detail & Sub-Task Proyek AI: ' + Ext.util.Format.htmlEncode(dataRecord.name) + '</h3>' +
-                   '<span style="color:#a1c4d0; font-size:12px;">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
+                   '<span style="color:#a1c4d0; font-size:12px; white-space:nowrap;">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
                    '</div>' +
-                   '<div style="margin-bottom:10px;">' +
-                   '<button type="button" id="btnPrintProjectTasks" style="padding:6px 14px; background:#087f8c; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px;">Print Task</button>' +
+                   '<div style="text-align:left; margin:0 0 12px 0;">' +
+                   '<button type="button" id="btnPrintProjectTasks" style="padding:7px 14px; background:#087f8c; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold;">Print Task</button>' +
                    '</div>' +
                    '<div style="background:#132330; padding:10px; border-radius:4px; margin-bottom:12px; border:1px solid #1c3648;">' +
                    '<b style="color:#00bcd4; font-size:13px;">Definisi / Lingkup Proyek:</b>' +
@@ -212,10 +210,10 @@ Ext.onReady(function () {
                 var d = r.data;
                 html += '<tr style="border-bottom:1px solid #182e3e;">' +
                         '<td style="font-weight:bold; color:#e0f7fa;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
-                        '<td style="color:#b0bec5;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
+                        '<td style="color:#b0bec5;padding:12px 8px;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
-                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:11px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
+                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:11px;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
                         '</tr>';
             });
         }
@@ -225,7 +223,7 @@ Ext.onReady(function () {
         mainDtlDiv.style.display = 'block';
         var btnPrintTasks = document.getElementById('btnPrintProjectTasks');
         if (btnPrintTasks) btnPrintTasks.onclick = function () {
-            var w = window.open('/rab-project/views/m.proyek.print.php?mode=tasks&project_id=' + encodeURIComponent(dataRecord.id), '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
+            var w = window.open('/rab-project/dev/views/m.proyek.print.php?mode=tasks&project_id=' + encodeURIComponent(dataRecord.id), '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
             if (!w) Ext.Msg.alert('Popup diblokir', 'Izinkan pop-up untuk situs ini, lalu klik Print Task kembali.');
         };
     }
@@ -317,6 +315,14 @@ Ext.onReady(function () {
         enableKeyEvents: true, listeners: { change: function () { updateReserve(); }, keyup: function () { updateReserve(); } } });
     var fldReserve = new Ext.form.DisplayField({ fieldLabel: 'Cadangan', value: '-' });
 
+    // [PPN][NEW] pengaturan penagihan proyek (dipakai tagihan termin / SPK). Nilai awal untuk proyek baru; proyek lama = 0% (tanpa PPN).
+    var fldPpn = new myNumberField({ fieldLabel: 'Tarif PPN (%)', id: 'ppn_rate', name: 'ppn_rate', decimalPrecision: 2, value: 11, width: 80, minValue: 0, maxValue: 100 });
+    var ppnIncDs = new Ext.data.SimpleStore({ fields: ['id', 'name'], data: [['0', 'Belum termasuk PPN'], ['1', 'Sudah termasuk PPN']] });
+    var fldPpnInc = new myComboField({ fieldLabel: 'Nilai Kontrak', id: 'ppn_inclusive', name: 'ppn_inclusive', hiddenName: 'ppn_inclusive', store: ppnIncDs,
+        displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, editable: false, value: '0', width: 160 });
+    var fldRetention = new myNumberField({ fieldLabel: 'Retensi (%)', id: 'retention_pct', name: 'retention_pct', decimalPrecision: 2, value: 0, width: 80, minValue: 0, maxValue: 100 });
+    var fldDpMin = new myNumberField({ fieldLabel: 'DP Minimum (%)', id: 'dp_min_pct', name: 'dp_min_pct', decimalPrecision: 2, value: 30, width: 80, minValue: 0, maxValue: 100 });
+
     var fldScope = new Ext.form.TextArea({ 
         fieldLabel: 'Definisi / Lingkup Proyek', 
         id: 'project_scope', 
@@ -346,7 +352,7 @@ Ext.onReady(function () {
         defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
         items: [
             { items: [fldId, fldName, fldClient, fldPic, fldLocation, fldStartDate, fldEndDate, fldStatus] },
-            { items: [fldBudget, fldContract, fldReserve, fldProgress, fldNotes] },
+            { items: [fldBudget, fldContract, fldReserve, fldPpn, fldPpnInc, fldRetention, fldDpMin, fldProgress, fldNotes] },     // [PPN] + 4 field pengaturan
             { columnWidth: 1, items: [fldScope] },
             { columnWidth: 1, items: [btnAiPanel, editorTaskGrid] }
         ]
@@ -388,6 +394,11 @@ Ext.onReady(function () {
                 fldContract.setValue(d.contract_value);
                 fldProgress.setValue(d.progress);
                 fldNotes.setValue(d.notes);
+                // [PPN] pengaturan penagihan (kolom baru; proyek lama berisi default 0 / 30)
+                fldPpn.setValue(d.ppn_rate !== undefined && d.ppn_rate !== null ? d.ppn_rate : 0);
+                fldPpnInc.setValue((d.ppn_inclusive === true || d.ppn_inclusive === 't' || d.ppn_inclusive === '1' || d.ppn_inclusive === 1) ? '1' : '0');
+                fldRetention.setValue(d.retention_pct !== undefined && d.retention_pct !== null ? d.retention_pct : 0);
+                fldDpMin.setValue(d.dp_min_pct !== undefined && d.dp_min_pct !== null ? d.dp_min_pct : 30);
                 Ext.getCmp('project_scope').setValue(d.project_scope);
 
                 curRate = parseFloat(d.budget_exch_rate) || 1; 

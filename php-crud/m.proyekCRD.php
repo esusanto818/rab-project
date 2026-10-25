@@ -251,6 +251,18 @@ try {
             $notes          = $_REQUEST['notes'] ?? '';
             $project_scope  = $_REQUEST['project_scope'] ?? '';
 
+            // [PPN][NEW] pengaturan penagihan: tarif PPN, nilai kontrak termasuk PPN, retensi, DP minimum.
+            // Tidak dikirim (UI lama) -> null: saat update nilai lama dipertahankan, saat tambah memakai default kolom.
+            $numOrNull = function ($k) { return (isset($_REQUEST[$k]) && $_REQUEST[$k] !== '') ? (float)str_replace(',', '', $_REQUEST[$k]) : null; };
+            $ppn_rate      = $numOrNull('ppn_rate');
+            $retention_pct = $numOrNull('retention_pct');
+            $dp_min_pct    = $numOrNull('dp_min_pct');
+            $ppn_inclusive = isset($_REQUEST['ppn_inclusive']) && $_REQUEST['ppn_inclusive'] !== ''
+                             ? (in_array((string)$_REQUEST['ppn_inclusive'], ['1', 'true', 't'], true) ? 't' : 'f') : null;   // boolean PDO pgsql: 't' / 'f'
+            foreach (['Tarif PPN' => $ppn_rate, 'Retensi' => $retention_pct, 'DP Minimum' => $dp_min_pct] as $lbl => $v) {
+                if ($v !== null && ($v < 0 || $v > 100)) throw new Exception("{$lbl} harus antara 0 - 100%.");
+            }
+
             $budget_raw     = $_REQUEST['budget'] ?? '';
             $cv_raw         = $_REQUEST['contract_value'] ?? '';
             
@@ -270,13 +282,16 @@ try {
             if ($task === 'create') {
                 $newId = (int)mpFetchOne($db,
                     "INSERT INTO projects
-                        (name, client_id, pic_id, location_id, start_date, end_date, budget, contract_value, progress, status, notes, project_scope, created_at, updated_at)
-                     VALUES (:name, :cid, :pid, :lid, :sd, :ed, :budget, :cv, :progress, :status, :notes, :scope, NOW(), NOW())
+                        (name, client_id, pic_id, location_id, start_date, end_date, budget, contract_value, progress, status, notes, project_scope,
+                         ppn_rate, ppn_inclusive, retention_pct, dp_min_pct, created_at, updated_at)
+                     VALUES (:name, :cid, :pid, :lid, :sd, :ed, :budget, :cv, :progress, :status, :notes, :scope,
+                         COALESCE(CAST(:ppn AS numeric), 0), COALESCE(CAST(:ppninc AS boolean), false), COALESCE(CAST(:ret AS numeric), 0), COALESCE(CAST(:dpmin AS numeric), 30), NOW(), NOW())
                      RETURNING id",
                     ['name' => $name, 'cid' => $client_id, 'pid' => $pic_id, 'lid' => $location_id,
                      'sd' => $start_date, 'ed' => $end_date,
                      'budget' => $budget ?? 0, 'cv' => $contract_value ?? 0,
-                     'progress' => $progress ?? 0, 'status' => $status, 'notes' => $notes, 'scope' => $project_scope],
+                     'progress' => $progress ?? 0, 'status' => $status, 'notes' => $notes, 'scope' => $project_scope,
+                     'ppn' => $ppn_rate, 'ppninc' => $ppn_inclusive, 'ret' => $retention_pct, 'dpmin' => $dp_min_pct],
                     'insert projects')['id'];
                 mpJson(['success' => true, 'id' => $newId, 'message' => "Proyek '{$name}' berhasil ditambahkan."]);
             } else {
@@ -288,12 +303,18 @@ try {
                         budget = COALESCE(CAST(:budget AS numeric), budget),
                         contract_value = COALESCE(CAST(:cv AS numeric), contract_value),
                         progress = COALESCE(CAST(:progress AS smallint), progress),
-                        status = :status, notes = :notes, project_scope = :scope, updated_at = NOW()
+                        status = :status, notes = :notes, project_scope = :scope,
+                        ppn_rate = COALESCE(CAST(:ppn AS numeric), ppn_rate),
+                        ppn_inclusive = COALESCE(CAST(:ppninc AS boolean), ppn_inclusive),
+                        retention_pct = COALESCE(CAST(:ret AS numeric), retention_pct),
+                        dp_min_pct = COALESCE(CAST(:dpmin AS numeric), dp_min_pct),
+                        updated_at = NOW()
                      WHERE id = :id",
                     ['name' => $name, 'cid' => $client_id, 'pid' => $pic_id, 'lid' => $location_id,
                      'sd' => $start_date, 'ed' => $end_date,
                      'budget' => $budget, 'cv' => $contract_value, 'progress' => $progress,
-                     'status' => $status, 'notes' => $notes, 'scope' => $project_scope, 'id' => $id],
+                     'status' => $status, 'notes' => $notes, 'scope' => $project_scope, 'id' => $id,
+                     'ppn' => $ppn_rate, 'ppninc' => $ppn_inclusive, 'ret' => $retention_pct, 'dpmin' => $dp_min_pct],
                     'update projects');
                 mpJson(['success' => true, 'message' => "Proyek '{$name}' berhasil diperbarui."]);
             }

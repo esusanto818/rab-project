@@ -45,8 +45,8 @@ Ext.onReady(function () {
         document.getElementById("mainHeaderText").innerHTML = "Warehouse <em>Issuing</em>";
     }
 
-    var CRD = main_url + '/php-crud/warehouse.issuingCRD.php';
-    //var CRD = '../dev/php-crud/warehouse.issuingCRD.php';     // relatif dari /proyek/views/
+    var CRD =  main_url + '/php-crud/warehouse.issuingCRD.php';     // relatif dari /proyek/views/
+
     var ACCESS_ADD = 2;      // level akses minimal: buat issue
     var ACCESS_EDIT = 3;     // level akses minimal: reverse issue
     var EPS = 0.00005;       // toleransi qty
