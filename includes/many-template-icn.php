@@ -11,21 +11,21 @@
 <div id="container">
   <div class="layerBackGround"></div>
   <div id="content">
-    <?php include BASE_PATH . "includes/div-header-icn.php"; ?>
+    <?php include BASE_PATH . "/includes/div-header-icn.php"; ?>
     <div id="divMainGrid"></div>
     <div id="divDetailGrid"></div>
-    <?php include BASE_PATH . "includes/div-burger-menu.php"; ?>
-    <?php include BASE_PATH . "includes/div-prn-wdw.php"; ?>
-    <?php include BASE_PATH . "includes/div-editor-wdw.php"; ?>
-    <?php include BASE_PATH . "includes/div-add-wdw.php"; ?>
-    <?php include BASE_PATH . "includes/div-upload-wdw.php"; ?>
-    <?php include BASE_PATH . "includes/div-popUp.php"; ?>
-    <?php include BASE_PATH . "includes/div-log.php"; ?>
-    <?php include BASE_PATH . "includes/div-chart.php"; ?>
-    <?php include BASE_PATH . "includes/div-loading-wdw.php"; ?>
+    <?php include BASE_PATH . "/includes/div-burger-menu.php"; ?>
+    <?php include BASE_PATH . "/includes/div-prn-wdw.php"; ?>
+    <?php include BASE_PATH . "/includes/div-editor-wdw.php"; ?>
+    <?php include BASE_PATH . "/includes/div-add-wdw.php"; ?>
+    <?php include BASE_PATH . "/includes/div-upload-wdw.php"; ?>
+    <?php include BASE_PATH . "/includes/div-popUp.php"; ?>
+    <?php include BASE_PATH . "/includes/div-log.php"; ?>
+    <?php include BASE_PATH . "/includes/div-chart.php"; ?>
+    <?php include BASE_PATH . "/includes/div-loading-wdw.php"; ?>
     <div id="linksOverlay" style="display:none;"></div>
   </div>
-  <?php include BASE_PATH . "includes/div-links-menu.php"; ?>
+  <?php include BASE_PATH . "/includes/div-links-menu.php"; ?>
 </div>
 <!-- <script type="text/javascript" src="<?=$B?>/js-ext/ext-base.js"></script>
 <script type="text/javascript" src="<?=$B?>/js-ext/ext-all.js"></script> -->
