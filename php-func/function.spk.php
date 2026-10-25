@@ -92,4 +92,4 @@ function SpkRemaining($spkId, $materialId) {
                 WHERE h.spk_id=$1 AND i.material_id=$2 AND h.status='posted'", array((int)$spkId, (int)$materialId));
     return array('qty' => round((float)$q['q'], 4), 'used' => round((float)$u['q'], 4),
                  'remaining' => max(0, round((float)$q['q'] - (float)$u['q'], 4)));
-}spk
+}

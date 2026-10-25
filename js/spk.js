@@ -13,7 +13,7 @@ Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "<em>SPK</em> - Surat Perintah Kerja";
 
-    var CRD = '../php-crud/spkCRD.php';
+    var CRD =  main_url + '/php-crud/spkCRD.php';
     var ACCESS_EDIT = 2;      // buat / ubah Draft
     var ACCESS_ACTION = 3;    // terbitkan / tutup / batalkan / hapus
     var EPS = 0.00005;

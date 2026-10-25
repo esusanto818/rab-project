@@ -8,7 +8,7 @@
     include "../php-func/user.valid.php";
     include "../includes/many-template-icn.php";
     // [PORTABEL] path dasar aplikasi mengikuti lokasi file ini (mis. /proyek, /rab-project, /rab-project/dev); tidak hard-code
-    $B = rtrim(dirname(dirname($_SERVER["SCRIPT_NAME"])), "/");
+    $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 ?>
 <html>
     <head>
