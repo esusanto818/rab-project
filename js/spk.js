@@ -146,7 +146,6 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     // 1. Stores
     // ------------------------------------------------------------
-    // PENTING: assignment polos (bukan var/let) -- konvensi search box global.
     mainDs = new Ext.data.JsonStore({
         url: CRD, baseParams: { action: 'list' }, root: 'data', totalProperty: 'totalCount', idProperty: 'id',
         fields: ['id', 'spk_no', 'spk_date', 'project_id', 'project_name', 'foreman', 'description', 'status', 'remark',
@@ -288,19 +287,20 @@ Ext.onReady(function () {
                 }
             }
         });
+
+
         matBar = new Ext.Panel({
-            renderTo: 'spkMatBar', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:2px;',
+            renderTo: 'spkMatBar', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:2px; border-radius:20px;',
             items: [
                 { columnWidth: 0.45, layout: 'form', border: false, hideLabels: true, bodyStyle: 'background:transparent;', items: [fMat] },
-                { width: 150, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '+ Tambah Material', handler: addMaterial })] },
-                { width: 210, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '+ Semua Material (Qty Maks)', handler: addAllMaterials })] },     // [DEFAULT-MAKS][NEW]
+                { width: 150, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '<span style="color:#ffffff; font-size:13px; font-weight:400; padding: 10 10;">+ Tambah Material</span>', style: 'background:#087f8c; border-radius:20px;', handler: addMaterial })] },
+                { width: 210, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '<span style="color:#ffffff; font-weight:400; font-size:13px; padding: 10 10;">+ Semua Material (Qty Maks)</span>', style: 'background:#087f8c; border-radius:20px;', handler: addAllMaterials })] },     
                 { columnWidth: 0.4, border: false, bodyStyle: 'background:transparent; padding:6px 0 0 8px; color:#9fc3d1; font-size:11px;',
                   html: 'Qty SPK otomatis = kuota tersedia (maksimum), bisa dikurangi. Kuota = qty RAB x (% kontrak dibayar x 2).' }
             ]
         });
     }
 
-    // info pembayaran + batas persen untuk proyek terpilih
     function loadQuotaInfo() {
         if (!fProject || !fProject.getValue()) { quotaDiv.innerHTML = ''; return; }
         ajax({ action: 'quota', project_id: fProject.getValue() }, function (res) {
@@ -332,8 +332,6 @@ Ext.onReady(function () {
         fMat.clearValue();
     }
 
-    // [DEFAULT-MAKS][NEW] Tambahkan SEMUA material RAB proyek yang masih punya kuota, Qty SPK = kuota tersedia (maksimum).
-    // Material yang sudah ada di daftar dilewati. Qty tiap baris tetap bisa dikurangi (tidak boleh melebihi tersedia).
     function addAllMaterials() {
         if (!fProject.getValue()) { showErr('Pilih proyek terlebih dahulu.'); return; }
         ajax({ action: 'lookup_materials', project_id: fProject.getValue(), exclude_id: editingId }, function (res) {
@@ -392,7 +390,6 @@ Ext.onReady(function () {
                 fForeman.setValue(h.foreman || ''); fDesc.setValue(h.description || ''); fRemark.setValue(h.remark || '');
                 fMat.clearValue(); itemDs.removeAll();
                 loadQuotaInfo();
-                // kuota tiap material (tanpa menghitung SPK ini sendiri) untuk validasi qty
                 ajax({ action: 'lookup_materials', project_id: h.project_id, exclude_id: h.id }, function (q) {
                     var map = {};
                     Ext.each((q.data || []), function (m) { map[String(m.material_id)] = m; });

@@ -31,7 +31,7 @@ Ext.onReady(function () {
     var screenH = window.innerHeight || document.documentElement.clientHeight || 700;
     var mainGridH = Math.round(screenH * 0.5);
     var mainDetailH = Math.round(screenH * 0.40);
-    var editorGridH = Math.round(screenH * 0.30);
+    var editorGridH = 220; // Tinggi tetap untuk grid task di dalam editor agar muat dan bisa digeser
 
     // 1. Stores
     var clientDs = new Ext.data.Store({
@@ -210,10 +210,10 @@ Ext.onReady(function () {
                 var d = r.data;
                 html += '<tr style="border-bottom:1px solid #182e3e;">' +
                         '<td style="font-weight:bold; color:#e0f7fa;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
-                        '<td style="color:#b0bec5;padding:12px 8px;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
+                        '<td style="color:#b0bec5;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
-                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:11px;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
+                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:11px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
                         '</tr>';
             });
         }
@@ -305,32 +305,45 @@ Ext.onReady(function () {
     var fldPic = new myComboField({ fieldLabel: 'PIC Proyek', id: 'pic_id', name: 'pic_id', hiddenName: 'pic_id', store: picDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, width: 220 });
     var fldLocation = new myComboField({ fieldLabel: 'Lokasi', id: 'location_id', name: 'location_id', hiddenName: 'location_id', store: locationDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, width: 220 });
     
-    var fldStartDate = new Ext.form.DateField({ fieldLabel: 'Tgl Mulai', id: 'start_date', name: 'start_date', format: 'Y-m-d', width: 140 });
-    var fldEndDate = new Ext.form.DateField({ fieldLabel: 'Tgl Selesai', id: 'end_date', name: 'end_date', format: 'Y-m-d', width: 140 });
-    var fldStatus = new myComboField({ fieldLabel: 'Status', id: 'status', name: 'status', hiddenName: 'status', store: statusDs, displayField: 'name', valueField: 'id', value: 'Berjalan' });
+    // Tgl Mulai & Tgl Selesai berdampingan
+    var fldStartDate = new Ext.form.DateField({ fieldLabel: 'Tgl Mulai', id: 'start_date', name: 'start_date', format: 'Y-m-d', width: 110 });
+    var fldEndDate = new Ext.form.DateField({ fieldLabel: 'Tgl Selesai', id: 'end_date', name: 'end_date', format: 'Y-m-d', width: 110 });
     
+    var dateContainer = new Ext.Container({
+        layout: 'column',
+        border: false,
+        items: [
+            { columnWidth: 0.5, layout: 'form', border: false, items: [fldStartDate] },
+            { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 70, items: [fldEndDate] }
+        ]
+    });
+
+    // Status naik ke bekas tempat Tgl Selesai
+    var fldStatus = new myComboField({ fieldLabel: 'Status', id: 'status', name: 'status', hiddenName: 'status', store: statusDs, displayField: 'name', valueField: 'id', value: 'Berjalan', width: 220 });
+    
+    // Catatan dipindah ke dekat Status, Definisi dinaikkan ke atas grid detail
+    var fldNotes = new Ext.form.TextArea({ fieldLabel: 'Catatan', id: 'notes', name: 'notes', anchor: '100%', height: 45 });
+    var fldScope = new Ext.form.TextArea({ 
+        fieldLabel: 'Definisi / Lingkup Proyek', 
+        id: 'project_scope', 
+        name: 'project_scope', 
+        anchor: '100%', 
+        height: 60,
+        emptyText: 'Contoh: Bangun gudang ukuran 150x50m struktur baja wf lengkap dengan dak lantai & kelistrikan.' 
+    });
+
     var fldBudget = new myNumberField({ fieldLabel: 'Budget', id: 'budget', name: 'budget', decimalPrecision: 2, value: 0, width: 140,
         enableKeyEvents: true, listeners: { change: function () { updateReserve(); }, keyup: function () { updateReserve(); } } });
     var fldContract = new myNumberField({ fieldLabel: 'Nilai Kontrak (Plafon)', id: 'contract_value', name: 'contract_value', decimalPrecision: 2, value: 0, width: 140,
         enableKeyEvents: true, listeners: { change: function () { updateReserve(); }, keyup: function () { updateReserve(); } } });
     var fldReserve = new Ext.form.DisplayField({ fieldLabel: 'Cadangan', value: '-' });
 
-    // [PPN][NEW] pengaturan penagihan proyek (dipakai tagihan termin / SPK). Nilai awal untuk proyek baru; proyek lama = 0% (tanpa PPN).
     var fldPpn = new myNumberField({ fieldLabel: 'Tarif PPN (%)', id: 'ppn_rate', name: 'ppn_rate', decimalPrecision: 2, value: 11, width: 80, minValue: 0, maxValue: 100 });
     var ppnIncDs = new Ext.data.SimpleStore({ fields: ['id', 'name'], data: [['0', 'Belum termasuk PPN'], ['1', 'Sudah termasuk PPN']] });
     var fldPpnInc = new myComboField({ fieldLabel: 'Nilai Kontrak', id: 'ppn_inclusive', name: 'ppn_inclusive', hiddenName: 'ppn_inclusive', store: ppnIncDs,
         displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, editable: false, value: '0', width: 160 });
     var fldRetention = new myNumberField({ fieldLabel: 'Retensi (%)', id: 'retention_pct', name: 'retention_pct', decimalPrecision: 2, value: 0, width: 80, minValue: 0, maxValue: 100 });
     var fldDpMin = new myNumberField({ fieldLabel: 'DP Minimum (%)', id: 'dp_min_pct', name: 'dp_min_pct', decimalPrecision: 2, value: 30, width: 80, minValue: 0, maxValue: 100 });
-
-    var fldScope = new Ext.form.TextArea({ 
-        fieldLabel: 'Definisi / Lingkup Proyek', 
-        id: 'project_scope', 
-        name: 'project_scope', 
-        anchor: '100%', 
-        height: 65,
-        emptyText: 'Contoh: Bangun gudang ukuran 150x50m struktur baja wf lengkap dengan dak lantai & kelistrikan.' 
-    });
 
     function updateReserve() {
         var b = parseFloat(fldBudget.getValue()) || 0, c = parseFloat(fldContract.getValue()) || 0, bb = b * curRate;
@@ -341,20 +354,21 @@ Ext.onReady(function () {
     }
 
     var fldProgress = new myNumberField({ fieldLabel: 'Progress (%)', id: 'progress', name: 'progress', decimalPrecision: 0, value: 0, width: 80, readOnly: true });
-    var fldNotes = new Ext.form.TextArea({ fieldLabel: 'Catatan', id: 'notes', name: 'notes', anchor: '100%', height: 45 });
 
+    // stdForm dengan autoScroll dan tinggi bodi tetap agar slider geser bawah aktif sempurna
     var frmEditor = new stdForm({
         id: 'frmEditor',
         renderTo: 'editorFormMain',
         labelWidth: 130,
         autoScroll: true,
-        bodyStyle: 'padding: 10px;',
+        height: Math.round(screenH * 0.90),
+        bodyStyle: 'padding: 10px; overflow-y: auto;',
         defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
         items: [
-            { items: [fldId, fldName, fldClient, fldPic, fldLocation, fldStartDate, fldEndDate, fldStatus] },
-            { items: [fldBudget, fldContract, fldReserve, fldPpn, fldPpnInc, fldRetention, fldDpMin, fldProgress, fldNotes] },     // [PPN] + 4 field pengaturan
-            { columnWidth: 1, items: [fldScope] },
-            { columnWidth: 1, items: [btnAiPanel, editorTaskGrid] }
+            { items: [fldId, fldName, fldClient, fldPic, fldLocation, dateContainer, fldStatus, fldNotes] },
+            { items: [fldBudget, fldContract, fldReserve, fldPpn, fldPpnInc, fldRetention, fldDpMin, fldProgress] },     
+            { columnWidth: 1, items: [fldScope] }, 
+            { columnWidth: 1, items: [btnAiPanel, editorTaskGrid] } 
         ]
     });
 
@@ -394,7 +408,6 @@ Ext.onReady(function () {
                 fldContract.setValue(d.contract_value);
                 fldProgress.setValue(d.progress);
                 fldNotes.setValue(d.notes);
-                // [PPN] pengaturan penagihan (kolom baru; proyek lama berisi default 0 / 30)
                 fldPpn.setValue(d.ppn_rate !== undefined && d.ppn_rate !== null ? d.ppn_rate : 0);
                 fldPpnInc.setValue((d.ppn_inclusive === true || d.ppn_inclusive === 't' || d.ppn_inclusive === '1' || d.ppn_inclusive === 1) ? '1' : '0');
                 fldRetention.setValue(d.retention_pct !== undefined && d.retention_pct !== null ? d.retention_pct : 0);
