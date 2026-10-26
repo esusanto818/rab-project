@@ -12,6 +12,7 @@
                    diisi dalam mata uang pembayaran; tagihan termin tetap IDR, nilai setara IDR = nilai x kurs (dibatasi sisa tagihan).
                    [JURNAL] simpan pembayaran memposting jurnal otomatis (Kas/Bank wajib dipilih); hapus pembayaran menghapus jurnalnya.
                    [AI-VARIANCE] Integrasi Analisis Varian Anggaran dan Risiko Proyek menggunakan Google Gemini API.
+                   [PPN - TAHAP 2] Termin memuat PPN Keluaran (default 11%). Nilai termin yang diinput = DPP; tagihan = DPP + PPN.
   Backend       : /rab-project/dev/php-crud/project.paymentCRD.php
   Cetak         : /rab-project/views/project.payment.print.php?id=<id>  (project.payment.print.js)
 */
@@ -27,7 +28,8 @@ Ext.onReady(function () {
     var VEPS = 0.01;         // toleransi nilai
     var TERMIN_RULE_PCT = { 1: 30, 2: 20 };   
     var DP_PCT = 30;                          
-    var allocNote = '';                       
+    var allocNote = '';
+    var PPN_DEFAULT_RATE = 11;                // [PPN] tarif default (%); samakan dengan PP_PPN_DEFAULT_RATE di backend                       
 
     var dataRecord = null;         
     var hdrForm = null;
@@ -448,6 +450,8 @@ Ext.onReady(function () {
         { name: 'inv_no' }, { name: 'termin_name' }, { name: 'invoice_date' },
         { name: 'termin_no', type: 'int' },
         { name: 'percentage', type: 'float' }, { name: 'amount', type: 'float' },
+        { name: 'dpp_amount', type: 'float' }, { name: 'ppn_amount', type: 'float' }, { name: 'ppn_rate', type: 'float' },   // [PPN]
+        { name: 'faktur_pajak_no' }, { name: 'faktur_pajak_date' },                                                          // [PPN] faktur keluaran
         { name: 'paid_amount', type: 'float' }, { name: 'remaining', type: 'float' },
         { name: 'pay', type: 'float', defaultValue: 0 },
         { name: 'pay_idr', type: 'float', defaultValue: 0 }
@@ -537,7 +541,7 @@ Ext.onReady(function () {
                 header: '%', dataIndex: 'percentage', width: 50, align: 'right',
                 renderer: function (v) { return v ? fmtAmt(v) : ''; }
             },
-            { header: 'Tagihan (IDR)', dataIndex: 'amount', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
+            { header: 'Tagihan incl. PPN (IDR)', dataIndex: 'amount', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             { header: 'Terbayar (IDR)', dataIndex: 'paid_amount', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             { header: 'Sisa Tagihan (IDR)', dataIndex: 'remaining', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             {
@@ -598,6 +602,7 @@ Ext.onReady(function () {
             mkBtn('btnPpAddTermin', '+ Tambah Termin', '#2e6da4', openTerminWindow);
             mkBtn('btnPpAutoAlloc', 'Alokasi Otomatis', '#03615e', autoAllocate);
             mkBtn('btnPpPayAll', 'Lunasi Semua Sisa', '#555555', payAllRemaining);
+            mkBtn('btnPpFaktur', 'Faktur Pajak Termin', '#8e6b22', editFakturPajak);        // [PPN] isi/ubah faktur pajak keluaran termin terpilih
 
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; font-family:arial; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
@@ -708,11 +713,11 @@ Ext.onReady(function () {
         if (!fClient || !fClient.getValue()) { fInfo.setValue(''); return; }
         var cv = 0, tt = 0, tp = 0, bt = 0, lines = '';
         Ext.each(projSummary, function (p) {
-            var bel = Math.max(p.contract_value - p.total_termin, 0);
+            var bel = Math.max(p.contract_value - p.total_dpp, 0);      // [PPN] kontrak dibanding DPP termin, bukan tagihan incl. PPN
             cv += p.contract_value; tt += p.total_termin; tp += p.total_paid; bt += bel;
             lines += '<div style="font-size:14px; font-family: arial;line-height:22px; color:#c8dde6;">&bull; <b>' + enc(p.project_name) + '</b>' +
                      ' &nbsp;&ndash;&nbsp; kontrak <b>' + fmtAmt(p.contract_value) + '</b>' +
-                     ' &nbsp;|&nbsp; termin <b>' + fmtAmt(p.total_termin) + '</b>' +
+                     ' &nbsp;|&nbsp; termin (incl. PPN) <b>' + fmtAmt(p.total_termin) + '</b>' +
                      ' &nbsp;|&nbsp; dibayar <b>' + fmtAmt(p.total_paid) + '</b>' +
                      ' &nbsp;|&nbsp; belum ditagihkan <b>' + fmtAmt(bel) + '</b></div>';
         });
@@ -747,6 +752,7 @@ Ext.onReady(function () {
                             project_id: parseInt(p.project_id, 10), project_name: p.project_name,
                             contract_value: parseFloat(p.contract_value) || 0,
                             total_termin: parseFloat(p.total_termin) || 0,
+                            total_dpp: parseFloat(p.total_dpp) || 0,           // [PPN] dasar banding kontrak
                             total_paid: parseFloat(p.total_paid) || 0
                         });
                     });
@@ -980,6 +986,47 @@ Ext.onReady(function () {
         recalcAll();
     }
 
+    // [PPN] Isi / ubah No. & Tgl Faktur Pajak keluaran pada termin yang dipilih (baris di grid tagihan)
+    function editFakturPajak() {
+        if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Tidak memiliki hak akses.'); return; }
+        itemGrid.stopEditing();
+        var rec = itemGrid.getSelectionModel().getSelected();
+        if (!rec) { Ext.Msg.alert('Peringatan', 'Pilih termin pada tabel terlebih dahulu.'); return; }
+        if (!(parseFloat(rec.get('ppn_amount')) > 0)) {
+            Ext.Msg.alert('Peringatan', 'Termin ' + enc(rec.get('inv_no')) + ' tidak memuat PPN, tidak ada faktur pajak.');
+            return;
+        }
+        var cid = fClient.getValue();
+        var fNo = new myTextField({ fieldLabel: 'No. Faktur Pajak', anchor: '95%', maxLength: 30, value: rec.get('faktur_pajak_no') || '' });
+        var fDt = new Ext.form.DateField({
+            fieldLabel: 'Tgl Faktur Pajak', format: 'd/m/Y', width: 130, allowBlank: true,
+            value: rec.get('faktur_pajak_date') ? Date.parseDate(rec.get('faktur_pajak_date'), 'Y-m-d') : ''
+        });
+        var win = new Ext.Window({
+            title: 'Faktur Pajak - ' + rec.get('inv_no'), width: 420, height: 230, modal: true, layout: 'fit',
+            items: new Ext.form.FormPanel({
+                border: false, labelWidth: 120, bodyStyle: 'padding:12px;',
+                items: [{ xtype: 'displayfield', hideLabel: true,
+                          value: 'PPN Keluaran <b>' + fmtAmt(rec.get('ppn_amount')) + '</b> (DPP ' + fmtAmt(rec.get('dpp_amount')) +
+                                 '). Tanggal faktur menentukan masa pajak di Laporan PPN. Kosongkan nomor untuk menghapus.' }, fNo, fDt]
+            }),
+            buttons: [
+                { text: 'Simpan', handler: function () {
+                    var no = fNo.getValue(), dt = fDt.getValue();               // baca nilai sebelum win.close() (field ikut hancur)
+                    ajax({
+                        task: 'update_faktur_pajak', id: rec.get('invoice_id'), client_id: cid,
+                        faktur_pajak_no: no, faktur_pajak_date: dt ? dt.dateFormat('Y-m-d') : ''
+                    }, function (res) {
+                        Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                        if (res.success) { win.close(); loadOutstanding(cid); }
+                    });
+                } },
+                { text: 'Batal', handler: function () { win.close(); } }
+            ]
+        });
+        win.show();
+    }
+
     function deleteTermin(rec) {
         if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Tidak memiliki hak akses.'); return; }
         var cid = fClient.getValue();
@@ -1021,7 +1068,22 @@ Ext.onReady(function () {
         });
         var tName = new myTextField({ fieldLabel: 'Nama Termin', allowBlank: false, anchor: '95%', emptyText: 'mis. Termin 1 - DP' });
         var tDate = new Ext.form.DateField({ fieldLabel: 'Tanggal', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 130 });
-        var tAmt = new myNumberField({ fieldLabel: 'Nilai Termin', decimalPrecision: 2, value: 0, width: 150 });
+        var tAmt = new myNumberField({
+            fieldLabel: 'Nilai Termin (DPP)', decimalPrecision: 2, value: 0, width: 150,
+            listeners: { change: function () { refreshContractInfo(); } }
+        });
+        // [PPN] PPN Keluaran: centang = kenakan PPN, tarif default 11%
+        var tPpnOn = new Ext.form.Checkbox({
+            fieldLabel: 'Kenakan PPN', boxLabel: 'PPN Keluaran', checked: true,
+            listeners: { check: function () { tPpnRate.setDisabled(!tPpnOn.getValue()); refreshContractInfo(); } }
+        });
+        var tPpnRate = new myNumberField({
+            fieldLabel: 'Tarif PPN (%)', decimalPrecision: 2, value: PPN_DEFAULT_RATE, width: 100,
+            listeners: { change: function () { refreshContractInfo(); } }
+        });
+        var tFpNo = new myTextField({ fieldLabel: 'No. Faktur Pajak', anchor: '95%', emptyText: 'opsional' });
+        var tFpDate = new Ext.form.DateField({ fieldLabel: 'Tgl Faktur Pajak', format: 'd/m/Y', width: 130, allowBlank: true });
+        function curPpnRate() { return tPpnOn.getValue() ? (parseFloat(tPpnRate.getValue()) || 0) : 0; }
         var tPct = new myNumberField({
             fieldLabel: 'Persentase (%)', decimalPrecision: 2, width: 100,
             listeners: { change: function () { recalcFromPct(); } }
@@ -1031,9 +1093,14 @@ Ext.onReady(function () {
         function recalcFromPct() {
             var p = parseFloat(tPct.getValue()) || 0;
             if (contract > 0 && p > 0) tAmt.setValue(round2(contract * p / 100));
+            refreshContractInfo();                                   // [PPN] ringkasan ikut diperbarui
         }
         function refreshContractInfo() {
-            tInfo.setValue('<span style="color:#9fc3d1;">Nilai kontrak: <b>' + fmtAmt(contract) + '</b>.</span>');
+            // [PPN] ringkasan DPP / PPN / total tagihan (rumus sama dengan backend: PPN = DPP x tarif, dibulatkan 2 desimal)
+            var dpp = round2(parseFloat(tAmt.getValue()) || 0), rt = curPpnRate(), ppn = round2(dpp * rt / 100);
+            tInfo.setValue('<span style="color:#9fc3d1;">Nilai kontrak (DPP): <b>' + fmtAmt(contract) + '</b>.</span><br/>' +
+                           '<span style="color:#9fc3d1;">DPP <b>' + fmtAmt(dpp) + '</b> &nbsp;|&nbsp; PPN ' + rt + '% <b>' + fmtAmt(ppn) +
+                           '</b> &nbsp;|&nbsp; Total tagihan <b>' + fmtAmt(round2(dpp + ppn)) + '</b></span>');
         }
         refreshContractInfo();
 
@@ -1041,7 +1108,7 @@ Ext.onReady(function () {
         var btnCss = 'margin-left:8px; padding:7px 18px; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;';
         var win = new Ext.Window({
             title: 'Tambah Termin - ' + enc(fClient.getRawValue()),
-            width: 460, height: 360, modal: true, closeAction: 'close', resizable: false,
+            width: 460, height: 500, modal: true, closeAction: 'close', resizable: false,
             layout: 'fit',
             bodyStyle: 'background:#0f1d29;',
             items: [new Ext.form.FormPanel({
@@ -1049,7 +1116,7 @@ Ext.onReady(function () {
                 bodyStyle: 'background:#0f1d29; padding:14px;',
                 defaults: { labelStyle: lblStyle },
                 items: [
-                    tProject, tName, tDate, tPct, tAmt, tInfo,
+                    tProject, tName, tDate, tPct, tAmt, tPpnOn, tPpnRate, tFpNo, tFpDate, tInfo,
                     {
                         xtype: 'panel', border: false, bodyStyle: 'background:transparent; text-align:right; padding-top:10px;',
                         html: '<button type="button" id="ppTerminSave" style="' + btnCss + 'background:#03615e;">Simpan</button>' +
@@ -1069,7 +1136,10 @@ Ext.onReady(function () {
                                         termin_name: tName.getValue(),
                                         invoice_date: tDate.getValue().dateFormat('Y-m-d'),
                                         percentage: (parseFloat(tPct.getValue()) || 0) > 0 ? tPct.getValue() : '',
-                                        amount: tAmt.getValue()
+                                        amount: tAmt.getValue(),
+                                        ppn_rate: curPpnRate(),                                                                   // [PPN]
+                                        faktur_pajak_no: tFpNo.getValue(),                                                         // [PPN]
+                                        faktur_pajak_date: tFpDate.getValue() ? tFpDate.getValue().dateFormat('Y-m-d') : ''        // [PPN]
                                     }, function (res) {
                                         Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
                                         if (res.success) { win.close(); loadOutstanding(cid); }

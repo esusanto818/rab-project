@@ -1,4 +1,14 @@
 <?php
+$requestUri = $_SERVER['REQUEST_URI'] ?? '';
+$crudFile = __DIR__ . '/dev/php-crud/' . $matches[1];
+error_log("DEBUG RAB-PROJECT: file ini dijalankan");
+error_log("DEBUG RAB-PROJECT [FILE]: " . __FILE__);
+error_log("DEBUG RAB-PROJECT [DIR]: " . __DIR__);
+error_log("DEBUG REQUEST URI: " . $requestUri);
+error_log("DEBUG MATCH: " . ($matches[1] ?? 'TIDAK ADA'));
+error_log("DEBUG CRUD FILE: " . $crudFile);
+error_log("DEBUG EXISTS: " . (file_exists($crudFile) ? 'YA' : 'TIDAK'));
+
 // 1. Matikan PCRE JIT untuk mencegah warning alokasi memori pada PHP 7
 ini_set('pcre.jit', '0');
 
@@ -28,7 +38,7 @@ if (preg_match('/\/pdf\/([a-zA-Z0-9_\-\.]+\.php)/i', $requestUri, $matches)) {
     $possiblePaths = [
         __DIR__ . '/pdf/' . $pdfFileName,
         __DIR__ . '/../pdf/' . $pdfFileName,
-        $_SERVER['DOCUMENT_ROOT'] . '/proyekgmn/pdf/' . $pdfFileName
+        $_SERVER['DOCUMENT_ROOT'] . '/rab-project/dev/pdf/' . $pdfFileName
     ];
 
     foreach ($possiblePaths as $pdfFilePath) {
@@ -40,22 +50,32 @@ if (preg_match('/\/pdf\/([a-zA-Z0-9_\-\.]+\.php)/i', $requestUri, $matches)) {
     }
 }
 
+
+
+
+
 // =========================================================================
-// 3.2 BYPASS ROUTER KHUSUS AJAX POST / REQUEST CRUD EXTJS (FIX UTAMA)
+// 3.2 BYPASS ROUTER KHUSUS AJAX POST / REQUEST CRUD EXTJS (FIX AUTOMATIC)
 // =========================================================================
 $isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
 if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['task']) || $isAjax) {
     
-    // Jika request mengarah langsung ke file CRUD di /php-crud/
-    if (preg_match('/\/php-crud\/([a-zA-Z0-9_\-\.]+\.php)/i', $requestUri, $matches)) {
-        $crudFile = __DIR__ . '/php-crud/' . $matches[1];
+    // PERBAIKAN: Tangkap nama file CRUD meskipun URL dari browser salah / kehilangan folder '/dev/'
+    if (preg_match('/php-crud\/([a-zA-Z0-9_\-\.]+\.php)/i', $requestUri, $matches)) {
+        $crudFileName = $matches[1];
+        
+        // Cari lokasi fisik file .php yang benar di server
+        $crudFile = __DIR__ . '/dev/php-crud/' . $crudFileName;
+    
         if (file_exists($crudFile)) {
+            // Pindahkan working directory ke folder crud agar include di dalamnya aman
             chdir(__DIR__ . '/php-crud');
             require_once $crudFile;
             exit;
         }
     }
 }
+
 // =========================================================================
 
 // 4. Load Database Class secara Absolut
@@ -145,7 +165,11 @@ try {
             '="../tcpdf_new/'=> '="/rab-project/dev/tcpdf_new/',
             '="../js-func/'  => '="/rab-project/dev/js-func/',
             '="../php-crud/' => '="/rab-project/dev/php-crud/',
-        ];
+            // KUNCI PERBAIKAN: Pola mentah untuk string di dalam Javascript / ExtJS Store
+            '../php-crud/'   => '/rab-project/dev/php-crud/',
+            '../css/'        => '/rab-project/dev/css/',
+            '../js/'         => '/rab-project/dev/js/',
+            ];
         $htmlOutput = strtr($htmlOutput, $patterns);
 
         echo $htmlOutput;

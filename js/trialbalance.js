@@ -2,16 +2,13 @@
   Document      : m.trialbalance.js
   Description   : Trial Balance - Rekap saldo semua akun per periode,
                    dengan indikator total Debit = Kredit.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/trialbalanceCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/trialbalanceCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Trial <em>Balance</em>";
+    var CRD = main_url + '/php-crud/trialbalanceCRD.php';
 
     ['addData', 'editData', 'deleteData'].forEach(function (id) {
         var el = document.getElementById(id);
@@ -51,7 +48,7 @@ Ext.onReady(function () {
 
     var periodField = [{ name: 'id' }, { name: 'period_name' }, { name: 'start_date' }, { name: 'end_date' }];
     var periodDs = new Ext.data.Store({
-        url: '../php-crud/trialbalanceCRD.php',
+        url: CRD,
         baseParams: { task: 'read_periods' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, periodField),
         listeners: {
@@ -67,7 +64,7 @@ Ext.onReady(function () {
     periodDs.load();
 
     var tbDs = new Ext.data.Store({
-        url: '../php-crud/trialbalanceCRD.php',
+        url: CRD,
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, tbField)
     });
 
@@ -108,7 +105,7 @@ Ext.onReady(function () {
         if (!perId) return;
 
         Ext.Ajax.request({
-            url: '../php-crud/trialbalanceCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'read_trial_balance', period_id: perId },
             success: function (response) {

@@ -3,14 +3,11 @@
   Description   : General Ledger - Laporan read-only, filter Akun & Periode
                    OPSIONAL. Kalau tidak dipilih, tampilkan semua akun /
                    semua periode, dikelompokkan per akun (GroupingView).
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/generalledgerCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/generalledgerCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
+    var CRD = main_url + '/php-crud/generalledgerCRD.php';
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "General <em>Ledger</em>";
 
@@ -46,7 +43,7 @@ Ext.onReady(function () {
 
     var accountField = [{ name: 'id' }, { name: 'account_code' }, { name: 'account_name' }, { name: 'account_type' }];
     var accountDs = new Ext.data.Store({
-        url: '../php-crud/generalledgerCRD.php',
+        url: CRD,
         baseParams: { task: 'read_accounts' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, accountField)
     });
@@ -54,7 +51,7 @@ Ext.onReady(function () {
 
     var periodField = [{ name: 'id' }, { name: 'period_name' }, { name: 'start_date' }, { name: 'end_date' }];
     var periodDs = new Ext.data.Store({
-        url: '../php-crud/generalledgerCRD.php',
+        url: CRD,
         baseParams: { task: 'read_periods' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, periodField)
     });
@@ -62,7 +59,7 @@ Ext.onReady(function () {
 
     // GroupingStore supaya laporan "semua akun" tersusun rapi per kelompok
     var ledgerDs = new Ext.data.GroupingStore({
-        url: '../php-crud/generalledgerCRD.php',
+        url: CRD,
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, ledgerField),
         groupField: 'account_label',
         sortInfo: { field: 'journal_date', direction: 'ASC' },
@@ -105,7 +102,7 @@ Ext.onReady(function () {
         ledgerDs.load({ params: { task: 'read_ledger', account_id: accId, period_id: perId } });
 
         Ext.Ajax.request({
-            url: '../php-crud/generalledgerCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'read_ledger', account_id: accId, period_id: perId },
             success: function (response) {

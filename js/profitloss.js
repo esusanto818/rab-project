@@ -3,16 +3,14 @@
   Description   : Profit & Loss (Laporan Rugi Laba) - Read-only report.
                   Kolom ganda: "Periode Ini" (mutasi dalam periode) dan "Kumulatif s/d Periode" (dari awal s/d akhir periode).
                   Periode default = periode yang memuat tanggal hari ini.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/profitlossCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/profitlossCRD.php
->>>>>>> Stashed changes
   CATATAN       : File ini disusun ulang mengikuti pola balancesheet.js dan tampilan layar Profit & Loss sebelumnya.
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
+    var CRD = main_url + '/php-crud/profitlossCRD.php';
+
     document.getElementById("mainHeaderText").innerHTML = "Profit &amp; <em>Loss</em>";
 
     ['addData', 'editData', 'deleteData'].forEach(function (id) {
@@ -54,7 +52,7 @@ Ext.onReady(function () {
 
     var periodField = [{ name: 'id' }, { name: 'period_name' }, { name: 'start_date' }, { name: 'end_date' }];
     var periodDs = new Ext.data.Store({
-        url: '../php-crud/profitlossCRD.php',
+        url: CRD,
         baseParams: { task: 'read_periods' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, periodField),
         listeners: {
@@ -98,7 +96,7 @@ Ext.onReady(function () {
         }
 
         Ext.Ajax.request({
-            url: '../php-crud/profitlossCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'read_profit_loss', period_id: perId },
             success: function (response) {

@@ -10,6 +10,14 @@
          - read_invoice_detail: karena grn_hdr_id mengarah ke grn_hdr (level
            dokumen, bukan level item), di-JOIN + GROUP BY ke grn_dtl supaya
            qty/harga/nama item tetap bisa ditampilkan.
+   [PPN - TAHAP 1b 2026-10-26] PPN Masukan di invoice supplier (tarif 11% default di UI):
+         - total_amount = DPP + PPN (nilai hutang ke supplier, dipakai pembayaran); dpp_amount = jumlah matched GRN.
+         - ppn_rate / ppn_amount (boleh diisi sesuai faktur pajak supplier; selisih dari hitungan dibatasi PI_PPN_TOLERANCE),
+           faktur_pajak_no (unik per supplier) / faktur_pajak_date.
+         - Jurnal PPN Masukan (fiscal_config PURCHASE_INVOICE_PPN: Dr PPN Masukan / Cr Hutang Usaha) diposting lewat
+           AutoPostJournal (PDO) SETELAH data invoice di-commit, reference_type 'purchase_invoice_ppn'.
+           Create gagal posting -> invoice dibatalkan; update gagal posting -> invoice tersimpan, pesan error meminta simpan ulang.
+         Butuh migrasi: sql/2026-10-26.ppn_invoice.sql dan sql/2026-10-26.ppn_journal_enum.sql
    [BARU 2026-10-08]
          - task 'read_invoice_print': data Tanda Terima Invoice (read-only, tidak mengubah data).
          - create: kolom created_by ikut diisi dari sesi (kolom sudah ada di tabel, sebelumnya kosong)
@@ -55,6 +63,58 @@ if (!$testConn) {
 function pgErrorOrFallback($fallback = 'Terjadi kesalahan pada database.') {
     $err = pg_last_error();
     return $err !== '' ? $err : $fallback;
+}
+
+// [PPN] ---------------------------------------------------------------
+const PI_PPN_TOLERANCE   = 100.00;                    // selisih maks (Rp) antara PPN input (faktur) dan hitungan DPP x tarif
+const PI_PPN_RULE        = 'PURCHASE_INVOICE_PPN';    // fiscal_config: Dr PPN Masukan / Cr Hutang Usaha
+const PI_PPN_JOURNAL_REF = 'purchase_invoice_ppn';    // nilai enum journal_entries.reference_type (lihat sql/2026-10-26.ppn_journal_enum.sql)
+
+// Koneksi PDO terpisah khusus AutoPostJournal / ReverseJournalByReference (file ini selebihnya memakai pg_*)
+function pi_pdo() {
+    static $db = null;
+    if ($db === null) {
+        require_once('../php-class/crudClass.php');
+        $db = new crud();
+    }
+    return $db;
+}
+
+// Samakan jurnal PPN Masukan dengan nilai PPN invoice: hapus jurnal lama (bila ada), posting baru bila PPN > 0
+function pi_sync_ppn_journal($invoiceId, $ppnAmt) {
+    if (!function_exists('AutoPostJournal') || !function_exists('ReverseJournalByReference')) {
+        throw new Exception('AutoPostJournal()/ReverseJournalByReference() tidak tersedia di function.all.php.');
+    }
+    $db = pi_pdo();
+    $db->beginTransaction();
+    try {
+        $st = $db->prepare("SELECT 1 FROM public.journal_entries WHERE reference_type::text = :t AND reference_id = :id LIMIT 1");
+        $st->execute([':t' => PI_PPN_JOURNAL_REF, ':id' => $invoiceId]);
+        if ($st->fetchColumn()) ReverseJournalByReference($db, PI_PPN_JOURNAL_REF, $invoiceId);
+
+        if ($ppnAmt > 0.005) {
+            $st = $db->prepare("SELECT h.inv_no, h.invoice_date, s.name AS supplier_name
+                                  FROM public.purchase_invoice_hdr h
+                                  LEFT JOIN public.m_suppliers s ON s.id = h.supplier_id
+                                 WHERE h.id = :id");
+            $st->execute([':id' => $invoiceId]);
+            $h = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$h) throw new Exception('Invoice tidak ditemukan untuk posting jurnal PPN.');
+            $jr = AutoPostJournal($db, [
+                'rule_code'      => PI_PPN_RULE,
+                'reference_type' => PI_PPN_JOURNAL_REF,
+                'reference_id'   => $invoiceId,
+                'journal_date'   => $h['invoice_date'],
+                'amount'         => $ppnAmt,
+                'description'    => 'PPN Masukan ' . $h['inv_no'] . ' - ' . $h['supplier_name'],
+            ]);
+            if (!$jr['success']) throw new Exception($jr['message']);
+        }
+        $db->commit();
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        throw $e;
+    }
 }
 
 try {
@@ -142,11 +202,12 @@ try {
 
         case 'read_supplier':
             // [FIX] konsisten pakai m_suppliers juga di sini.
-            $sql = "SELECT id, name FROM m_suppliers WHERE active IS NOT FALSE ORDER BY name ASC";
+            $sql = "SELECT id, name, COALESCE(is_pkp, false) AS is_pkp FROM m_suppliers WHERE active IS NOT FALSE ORDER BY name ASC";   // [PPN] is_pkp
             $result = pg_query($sql);
             if (!$result) throw new Exception(pgErrorOrFallback('Gagal memuat daftar supplier.'));
             $data = [];
             while ($row = pg_fetch_assoc($result)) {
+                $row['is_pkp'] = ($row['is_pkp'] === 't' || $row['is_pkp'] === true);   // [PPN]
                 $data[] = $row;
             }
             echo json_encode(['success' => true, 'data' => $data]);
@@ -194,6 +255,7 @@ try {
 
             $sqlH = "SELECT h.id, h.inv_no, h.supplier_invoice_no, h.invoice_date, h.created_at, h.status,
                             h.remark, h.total_amount, s.name AS supplier_name,
+                            h.dpp_amount, h.ppn_rate, h.ppn_amount, h.faktur_pajak_no, h.faktur_pajak_date,   -- [PPN]
                             COALESCE(e.employee_name, u.login_name) AS created_by_name
                      FROM purchase_invoice_hdr h
                      LEFT JOIN m_suppliers s ON s.id = h.supplier_id
@@ -205,6 +267,9 @@ try {
             $hdr = pg_fetch_assoc($resH);
             if (!$hdr) throw new Exception('Invoice tidak ditemukan.');
             $hdr['total_amount'] = floatval($hdr['total_amount']);
+            $hdr['dpp_amount'] = floatval($hdr['dpp_amount']);     // [PPN]
+            $hdr['ppn_rate'] = floatval($hdr['ppn_rate']);         // [PPN]
+            $hdr['ppn_amount'] = floatval($hdr['ppn_amount']);     // [PPN]
 
             $sqlD = "SELECT d.id, d.grn_hdr_id, d.matched_amount, d.remark,
                             g.ref_no AS grn_ref_no, g.grn_date,
@@ -239,6 +304,14 @@ try {
             $invoice_date = isset($_POST['invoice_date']) ? $_POST['invoice_date'] : date('Y-m-d');
             $supplier_id = isset($_POST['supplier_id']) ? intval($_POST['supplier_id']) : 0;
             $remark = isset($_POST['remark']) ? $_POST['remark'] : '';
+            // [PPN] input PPN Masukan (ppn_rate 0 = tanpa PPN; ppn_amount kosong = hitung otomatis DPP x tarif)
+            $ppn_rate   = isset($_POST['ppn_rate']) && $_POST['ppn_rate'] !== '' ? round(floatval($_POST['ppn_rate']), 2) : 0.0;
+            $ppn_amount_in = (isset($_POST['ppn_amount']) && $_POST['ppn_amount'] !== '') ? round(floatval($_POST['ppn_amount']), 2) : null;
+            $fp_no      = isset($_POST['faktur_pajak_no']) ? trim($_POST['faktur_pajak_no']) : '';
+            $fp_date    = isset($_POST['faktur_pajak_date']) ? trim($_POST['faktur_pajak_date']) : '';
+            if ($ppn_rate < 0 || $ppn_rate > 100) throw new Exception('Tarif PPN harus antara 0 - 100%.');
+            if ($fp_date !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fp_date)) throw new Exception('Tanggal faktur pajak tidak valid (YYYY-MM-DD).');
+            $ppn_amount_final = 0.0;     // diisi setelah DPP (jumlah matched) diketahui
 
             $invoice_details = isset($_POST['invoice_details']) ? json_decode($_POST['invoice_details'], true) : [];
 
@@ -291,9 +364,58 @@ try {
                 if (!$resDtl) throw new Exception(pgErrorOrFallback('Gagal menyimpan detail invoice.'));
             }
 
-            pg_query_params("UPDATE purchase_invoice_hdr SET total_amount = $1 WHERE id = $2", [$total_amount_header, $invoice_id]);
+            // [PPN] DPP = jumlah matched; PPN = DPP x tarif (atau nilai faktur dalam toleransi); total hutang = DPP + PPN
+            $dpp = round($total_amount_header, 2);
+            $ppn_calc = ($ppn_rate > 0) ? round($dpp * $ppn_rate / 100, 2) : 0.0;
+            if ($ppn_rate > 0 && $ppn_amount_in !== null) {
+                if (abs($ppn_amount_in - $ppn_calc) > PI_PPN_TOLERANCE) {
+                    throw new Exception('PPN yang diinput (' . number_format($ppn_amount_in, 2) . ') berbeda dari hitungan DPP x ' . $ppn_rate . '% (' .
+                        number_format($ppn_calc, 2) . ') lebih dari toleransi ' . number_format(PI_PPN_TOLERANCE, 2) . '. Kosongkan kolom PPN untuk hitung otomatis.');
+                }
+                $ppn_amount_final = $ppn_amount_in;
+            } else {
+                $ppn_amount_final = $ppn_calc;
+            }
+            $total_with_ppn = round($dpp + $ppn_amount_final, 2);
+
+            // [PPN] no. faktur pajak unik per supplier
+            if ($fp_no !== '') {
+                $resFp = pg_query_params("SELECT 1 FROM purchase_invoice_hdr WHERE supplier_id = $1 AND faktur_pajak_no = $2 AND id <> $3 LIMIT 1",
+                                         [$supplier_id, $fp_no, $invoice_id]);
+                if (!$resFp) throw new Exception(pgErrorOrFallback('Gagal memeriksa no. faktur pajak.'));
+                if (pg_fetch_row($resFp)) throw new Exception('No. faktur pajak ' . $fp_no . ' sudah dipakai invoice lain dari supplier ini.');
+            }
+            // [PPN] total baru tidak boleh lebih kecil dari yang sudah dibayar
+            $resPaid = pg_query_params("SELECT paid_amount FROM purchase_invoice_hdr WHERE id = $1", [$invoice_id]);
+            $rowPaid = $resPaid ? pg_fetch_assoc($resPaid) : null;
+            if ($rowPaid && floatval($rowPaid['paid_amount']) > $total_with_ppn + 0.005) {
+                throw new Exception('Total invoice (' . number_format($total_with_ppn, 2) . ') lebih kecil dari yang sudah dibayar (' . number_format(floatval($rowPaid['paid_amount']), 2) . ').');
+            }
+
+            $resTot = pg_query_params("UPDATE purchase_invoice_hdr
+                                          SET total_amount = $1, dpp_amount = $2, ppn_rate = $3, ppn_amount = $4,
+                                              faktur_pajak_no = $5, faktur_pajak_date = $6
+                                        WHERE id = $7",
+                                     [$total_with_ppn, $dpp, $ppn_rate, $ppn_amount_final,
+                                      $fp_no !== '' ? $fp_no : null, $fp_date !== '' ? $fp_date : null, $invoice_id]);
+            if (!$resTot) throw new Exception(pgErrorOrFallback('Gagal menyimpan total invoice.'));
 
             pg_query("COMMIT");
+
+            // [PPN] jurnal PPN Masukan (PDO terpisah) dipost setelah commit
+            try {
+                pi_sync_ppn_journal(intval($invoice_id), $ppn_amount_final);
+            } catch (Throwable $je) {
+                if ($task == 'create') {          // kompensasi: batalkan invoice yang baru dibuat
+                    pg_query("BEGIN");
+                    pg_query_params("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = $1", [$invoice_id]);
+                    pg_query_params("DELETE FROM purchase_invoice_hdr WHERE id = $1", [$invoice_id]);
+                    pg_query("COMMIT");
+                    throw new Exception('Invoice dibatalkan karena jurnal PPN gagal diposting: ' . $je->getMessage());
+                }
+                throw new Exception('Invoice tersimpan, tetapi jurnal PPN gagal diposting: ' . $je->getMessage() . ' Simpan ulang setelah masalah diperbaiki.');
+            }
+
             echo json_encode(['success' => true, 'message' => 'Data purchase invoice berhasil disimpan.']);
             break;
 
@@ -304,6 +426,12 @@ try {
             pg_query_params("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = $1", [$id]);
             pg_query_params("DELETE FROM purchase_invoice_hdr WHERE id = $1", [$id]);
             pg_query("COMMIT");
+            // [PPN] hapus jurnal PPN Masukan invoice ini (bila ada)
+            try {
+                pi_sync_ppn_journal($id, 0);
+            } catch (Throwable $je) {
+                throw new Exception('Invoice dihapus, tetapi jurnal PPN gagal dihapus: ' . $je->getMessage() . ' Hubungi administrator untuk reverse jurnal ref purchase_invoice_ppn #' . $id . '.');
+            }
             echo json_encode(['success' => true, 'message' => 'Data berhasil dihapus.']);
             break;
 

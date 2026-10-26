@@ -38,7 +38,7 @@ Ext.onReady(function() {
             frmEditor.getForm().reset();
             task = 'update';
             Ext.getCmp('frmEditor').getForm().load({
-                url: '../php-crud/m.form.groupCRD.php',
+                url: '../dev/php-crud/m.form.groupCRD.php',
                 params: { id: dataRecord.id, task: 'read_edit' },
                 success: function(form, action) {
                     let res = Ext.util.JSON.decode(action.response.responseText);
@@ -140,7 +140,7 @@ Ext.onReady(function() {
     };
 
     let myMask = new Ext.LoadMask(Ext.getBody(), { msg: "Please wait..." });
-    let deleteDs = new Ext.data.Store({ url: '../php-crud/m.form.groupCRD.php' });
+    let deleteDs = new Ext.data.Store({ url: '../dev/p/m.form.groupCRD.php' });
     let grpField = [
         { name: 'id' },
         { name: 'seq' },
@@ -150,7 +150,7 @@ Ext.onReady(function() {
     ];
 
     mainDs = new Ext.data.Store({
-        url: '../php-crud/m.form.groupCRD.php',
+        url: '../dev/php-crud/m.form.groupCRD.php',
         idProperty: 'id',
         baseParams: { task: 'read', start: 0, limit: pageSizeVal },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalRecord', fields: grpField })
@@ -169,7 +169,7 @@ Ext.onReady(function() {
     });
 
     let frmEditor = new stdForm({
-        url      : '../php-crud/m.form.groupCRD.php',
+        url      : '../dev/php-crud/m.form.groupCRD.php',
         id       : 'frmEditor',
         reader   : new Ext.data.JsonReader({ root: 'data', fields: grpField }),
         renderTo : 'editorFormMain',
@@ -246,7 +246,7 @@ Ext.onReady(function() {
         pageStore: mainDs
     });
 
-    let GridHistoryDs = new historyDs({ url: '../php-crud/m.form.groupCRD.php' });
+    let GridHistoryDs = new historyDs({ url: '../dev/php-crud/m.form.groupCRD.php' });
     let GridHistory = new historyGrid({ store: GridHistoryDs, renderTo: 'logFormMain' });
 
     document.getElementById('editorWdw').style.display = 'none';

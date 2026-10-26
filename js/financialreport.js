@@ -3,15 +3,13 @@
   Description   : Laporan Keuangan - Neraca & Laba Rugi, render sebagai
                    HTML table (bukan Ext Grid, supaya mudah bikin format
                    laporan keuangan konvensional: indentasi, subtotal, dll).
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/financialreportCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/financialreportCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
+    var CRD = main_url + '/php-crud/financialreportCRD.php';
+
     document.getElementById("mainHeaderText").innerHTML = "Financial <em>Report</em>";
 
     ['addData', 'editData', 'deleteData'].forEach(function (id) {
@@ -50,7 +48,7 @@ Ext.onReady(function () {
 
     var periodField = [{ name: 'id' }, { name: 'period_name' }, { name: 'start_date' }, { name: 'end_date' }];     // [DEFAULT-PERIOD] + tanggal
     var periodDs = new Ext.data.Store({
-        url: '../php-crud/financialreportCRD.php',
+        url: CRD,
         baseParams: { task: 'read_periods' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, periodField),
         listeners: {
@@ -156,7 +154,7 @@ Ext.onReady(function () {
         var perId = fldPeriod.getValue();
         if (!perId) return;
         Ext.Ajax.request({
-            url: '../php-crud/financialreportCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'read_report', period_id: perId },
             success: function (response) {

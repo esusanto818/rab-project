@@ -30,7 +30,9 @@ Ext.onReady(function () {
         { name: 'status' },
         { name: 'remark' },
         { name: 'total_amount', type: 'float' },
-        { name: 'paid_amount', type: 'float' }
+        { name: 'paid_amount', type: 'float' },
+        { name: 'dpp_amount', type: 'float' }, { name: 'ppn_rate', type: 'float' }, { name: 'ppn_amount', type: 'float' },   // [PPN]
+        { name: 'faktur_pajak_no' }, { name: 'faktur_pajak_date' }                                                       // [PPN]
     ];
 
     var mainDs = new Ext.data.Store({
@@ -57,7 +59,8 @@ Ext.onReady(function () {
         baseParams: { task: 'read_supplier' },
         reader: new Ext.data.JsonReader({ root: 'data' }, [
             { name: 'id' },
-            { name: 'name' }
+            { name: 'name' },
+            { name: 'is_pkp' }          // [PPN] status PKP supplier -> default tarif PPN
         ])
     });
 
@@ -85,8 +88,12 @@ Ext.onReady(function () {
             { header: 'No. Supp. Invoice', dataIndex: 'supplier_invoice_no', sortable: true },
             { header: 'Tgl Invoice', dataIndex: 'invoice_date', sortable: true },
             { header: 'Supplier', dataIndex: 'supplier_name', sortable: true },
+            // [PPN] DPP, PPN Masukan, no. faktur pajak
+            { header: 'DPP (Rp)', dataIndex: 'dpp_amount', align: 'right', renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
+            { header: 'PPN (Rp)', dataIndex: 'ppn_amount', align: 'right', renderer: function (v) { return v > 0 ? Ext.util.Format.number(v, '0,000.00') : '-'; } },
+            { header: 'No. Faktur Pajak', dataIndex: 'faktur_pajak_no', sortable: true },
             { 
-                header: 'Total Nilai (Rp)', 
+                header: 'Total + PPN (Rp)', 
                 dataIndex: 'total_amount', 
                 align: 'right',
                 renderer: function (v) {
@@ -233,6 +240,16 @@ Ext.onReady(function () {
         var st = String(h.status || '').toLowerCase();
         var cancelled = (st === 'cancelled' || st === 'void' || st === 'dibatalkan');
         var totalLabel = 'TOTAL' + (codeCount === 1 ? ' (' + enc(onlyCode) + ')' : '');
+        // [PPN] footer cetak: DPP / PPN / total bila invoice memuat PPN
+        var ppnAmtPrn = parseFloat(h.ppn_amount) || 0, tfootHtml;
+        if (ppnAmtPrn > 0) {
+            var ccPrn = codeCount === 1 ? ' (' + enc(onlyCode) + ')' : '';
+            tfootHtml = '<tr><td colspan="5" class="r">DPP' + ccPrn + '</td><td class="r">' + fmtAmt(parseFloat(h.dpp_amount) || sum) + '</td></tr>' +
+                        '<tr><td colspan="5" class="r">PPN ' + (parseFloat(h.ppn_rate) || 0) + '%' + ccPrn + '</td><td class="r">' + fmtAmt(ppnAmtPrn) + '</td></tr>' +
+                        '<tr><td colspan="5" class="r">' + totalLabel + ' (DPP + PPN)</td><td class="r">' + fmtAmt(parseFloat(h.total_amount) || (sum + ppnAmtPrn)) + '</td></tr>';
+        } else {
+            tfootHtml = '<tr><td colspan="5" class="r">' + totalLabel + '</td><td class="r">' + fmtAmt(sum) + '</td></tr>';
+        }
         var printedAt = fmtPrintNow();       // [FIX 2026-10-09]
 
         return '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Tanda Terima Invoice ' + enc(h.inv_no) + '</title>' +
@@ -272,12 +289,14 @@ Ext.onReady(function () {
             '<td class="lbl">Tanggal Invoice</td><td class="sep">:</td><td>' + fmtPrintDate(h.invoice_date) + '</td>' +
             '</tr><tr>' +
             '<td class="lbl">Supplier</td><td class="sep">:</td><td colspan="4"><b>' + enc(h.supplier_name || '-') + '</b></td>' +
+            (h.faktur_pajak_no ? '</tr><tr><td class="lbl">No. Faktur Pajak</td><td class="sep">:</td><td colspan="4"><b>' + enc(h.faktur_pajak_no) + '</b>' +
+                (h.faktur_pajak_date ? ' (' + fmtPrintDate(h.faktur_pajak_date) + ')' : '') + '</td>' : '') +      // [PPN]
             '</tr></table>' +
             '<table class="items"><thead><tr>' +
             '<th style="width:30px;">No</th><th style="width:110px;">No. GRN</th><th style="width:75px;">Tgl GRN</th>' +
             '<th style="width:110px;">No. PO</th><th>Item</th><th style="width:120px;">Nominal Invoice</th>' +
             '</tr></thead><tbody>' + rowsHtml + '</tbody>' +
-            '<tfoot><tr><td colspan="5" class="r">' + totalLabel + '</td><td class="r">' + fmtAmt(sum) + '</td></tr></tfoot></table>' +
+            '<tfoot>' + tfootHtml + '</tfoot></table>' +
             (codeCount > 1 ? '<div class="note"><i>Catatan: GRN terhubung memakai mata uang berbeda; total hanya penjumlahan nominal.</i></div>' : '') +
             (h.remark ? '<div class="note"><b>Keterangan:</b> ' + enc(h.remark) + '</div>' : '') +
             '<table class="sign"><tr>' +
@@ -330,10 +349,21 @@ Ext.onReady(function () {
                         '</tr>';
             });
 
+            // [PPN] bila invoice memuat PPN: tampilkan DPP, PPN, dan total hutang (DPP + PPN)
+            var hd = (dataRecord && String(dataRecord.id) === String(invoiceId)) ? dataRecord : null;
+            var hdPpn = hd ? (parseFloat(hd.ppn_amount) || 0) : 0;
+            if (hdPpn > 0) {
+                html += '<tr class="footer-row" style="background-color:#0f172a;"><td colspan="5" align="right" style="padding:6px;">DPP:</td><td align="right">' + fmtAmt(grandTotal) + '</td></tr>' +
+                        '<tr class="footer-row" style="background-color:#0f172a;"><td colspan="5" align="right" style="padding:6px;">PPN Masukan ' + (parseFloat(hd.ppn_rate) || 0) + '%' +
+                        (hd.faktur_pajak_no ? ' (Faktur ' + Ext.util.Format.htmlEncode(hd.faktur_pajak_no) + ')' : '') + ':</td><td align="right">' + fmtAmt(hdPpn) + '</td></tr>' +
+                        '<tr class="footer-row" style="background-color:#0f172a; font-weight:bold;"><td colspan="5" align="right" style="padding:8px;">TOTAL INVOICE (DPP + PPN):</td>' +
+                        '<td align="right" style="color:#22c55e;">' + fmtAmt(parseFloat(hd.total_amount) || (grandTotal + hdPpn)) + '</td></tr>';
+            } else {
             html += '<tr class="footer-row" style="background-color:#0f172a; font-weight:bold;">' +
                     '<td colspan="5" align="right" style="padding:8px;">TOTAL INVOICE:</td>' +
                     '<td align="right" style="color:#22c55e;">' + fmtAmt(grandTotal) + '</td>' +
                     '</tr>';
+            }
         }
         html += '</tbody></table>';
 
@@ -365,6 +395,42 @@ Ext.onReady(function () {
     var fldInvDate = new Ext.form.DateField({ fieldLabel: 'Tanggal Invoice', id: 'invoice_date', name: 'invoice_date', format: 'Y-m-d', width: 140, allowBlank: false });
     var fldSupplier = new myComboField({ fieldLabel: 'Supplier', id: 'supplier_id', name: 'supplier_id', hiddenName: 'supplier_id', store: supplierDs, displayField: 'name', valueField: 'id', mode: 'remote', triggerAction: 'all', width: 200, allowBlank: false });
     var fldRemark = new Ext.form.TextArea({ fieldLabel: 'Keterangan', id: 'remark', name: 'remark', anchor: '98%', height: 45 });
+
+    // [PPN] PPN Masukan: tarif (0 = tanpa PPN), nilai PPN sesuai faktur (kosong = otomatis), no./tgl faktur pajak supplier
+    var PPN_DEFAULT_RATE = 11;           // tarif default (%); samakan dengan kebijakan pajak berlaku
+    var ppnAmtManual = false;            // true = nilai PPN diketik user / dimuat dari invoice tersimpan -> jangan ditimpa hitungan otomatis
+    var fldPpnRate = new Ext.form.NumberField({
+        fieldLabel: 'Tarif PPN (%)', id: 'ppn_rate', name: 'ppn_rate', decimalPrecision: 2, value: 0, width: 90,
+        listeners: { change: function () { ppnAmtManual = false; recalcInvoicePpn(); } }
+    });
+    var fldPpnAmt = new Ext.form.NumberField({
+        fieldLabel: 'PPN (sesuai faktur)', id: 'ppn_amount', name: 'ppn_amount', decimalPrecision: 2, width: 140, allowNegative: false,
+        listeners: { change: function (f, v) { ppnAmtManual = (v !== '' && v !== null && v !== undefined); recalcInvoicePpn(); } }
+    });
+    var fldFpNo = new myTextField({ fieldLabel: 'No. Faktur Pajak', id: 'faktur_pajak_no', name: 'faktur_pajak_no', allowBlank: true, width: 200 });
+    var fldFpDate = new Ext.form.DateField({ fieldLabel: 'Tgl Faktur Pajak', id: 'faktur_pajak_date', name: 'faktur_pajak_date', format: 'Y-m-d', width: 140, allowBlank: true });
+    var fldPpnInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
+
+    // Hitung ulang DPP / PPN / total dari grid matched (dipanggil saat grid, tarif, atau PPN berubah)
+    function recalcInvoicePpn() {
+        if (typeof gridEditorInvoiceDs === 'undefined') return;
+        var fmt = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
+        var dpp = 0;
+        gridEditorInvoiceDs.each(function (r) { dpp += parseFloat(r.get('matched_amount')) || 0; });
+        dpp = Math.round(dpp * 100) / 100;
+        var rate = parseFloat(fldPpnRate.getValue()) || 0;
+        var calc = rate > 0 ? Math.round(dpp * rate) / 100 : 0;
+        var ppn = calc, warn = '';
+        if (rate > 0 && ppnAmtManual) {
+            ppn = parseFloat(fldPpnAmt.getValue()) || 0;
+            if (Math.abs(ppn - calc) > 100) warn = ' <span style="color:#e6a817;">(beda dari hitungan ' + fmt(calc) + ' - server menolak selisih > Rp 100)</span>';
+        } else if (rate > 0) {
+            fldPpnAmt.setValue(calc);
+        } else {
+            fldPpnAmt.setValue('');
+        }
+        fldPpnInfo.setValue('<span style="color:#9fc3d1;">DPP <b>' + fmt(dpp) + '</b> &nbsp;|&nbsp; PPN <b>' + fmt(ppn) + '</b> &nbsp;|&nbsp; Total hutang <b>' + fmt(dpp + ppn) + '</b>' + warn + '</span>');
+    }
 
     // [BARU] Begitu supplier dipilih, otomatis tarik semua GRN supplier itu
     // yang belum pernah di-invoice-kan, langsung jadi baris di grid detail.
@@ -418,6 +484,10 @@ Ext.onReady(function () {
 
     fldSupplier.on('select', function (combo, record) {
         autoLoadAvailableGrn(record.get('id'));
+        // [PPN] supplier PKP -> tarif default 11%, non-PKP -> 0 (tanpa PPN); tetap bisa diubah manual
+        ppnAmtManual = false;
+        fldPpnRate.setValue(record.get('is_pkp') === true ? PPN_DEFAULT_RATE : 0);
+        recalcInvoicePpn();
     });
 
     var frmEditor = new stdForm({
@@ -426,8 +496,8 @@ Ext.onReady(function () {
         labelWidth: 120,
         defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
         items: [
-            { items: [fldId, fldInvNo, fldSuppInvNo, fldInvDate] },
-            { items: [fldSupplier, fldRemark] }
+            { items: [fldId, fldInvNo, fldSuppInvNo, fldInvDate, fldFpNo, fldFpDate] },          // [PPN] + faktur pajak
+            { items: [fldSupplier, fldRemark, fldPpnRate, fldPpnAmt, fldPpnInfo] }               // [PPN] + tarif, PPN, ringkasan
         ]
     });
 
@@ -448,6 +518,12 @@ Ext.onReady(function () {
         baseParams: { task: 'read_invoice_detail' },
         reader: new Ext.data.JsonReader({ root: 'data', fields: invoiceItemFields })
     });
+
+    // [PPN] hitung ulang ringkasan PPN setiap isi grid detail berubah
+    gridEditorInvoiceDs.on('load', recalcInvoicePpn);
+    gridEditorInvoiceDs.on('add', recalcInvoicePpn);
+    gridEditorInvoiceDs.on('remove', recalcInvoicePpn);
+    gridEditorInvoiceDs.on('update', recalcInvoicePpn);
 
     var editorDeleter = new Extensive.grid.ItemDeleter();
 
@@ -643,6 +719,8 @@ Ext.onReady(function () {
             frmEditor.getForm().reset();
             supplierDs.load();
             gridEditorInvoiceDs.load({ params: { invoice_id: 0 } });
+            ppnAmtManual = false;                                   // [PPN]
+            recalcInvoicePpn();
             showWindow('Tambah Purchase Invoice');
         });
     }
@@ -660,6 +738,7 @@ Ext.onReady(function () {
                     frmEditor.getForm().reset();
                     frmEditor.getForm().setValues(dataRecord);
                     gridEditorInvoiceDs.load({ params: { invoice_id: dataRecord.id } });
+                    ppnAmtManual = (parseFloat(dataRecord.ppn_amount) || 0) > 0;     // [PPN] PPN tersimpan (mis. sesuai faktur) tidak ditimpa
                     showWindow('Edit Purchase Invoice');
                 }
             });

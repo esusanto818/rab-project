@@ -23,7 +23,7 @@ Ext.onReady(function() {
 		if (formAccess==3 || formAccess==4){
 			frmEditor.getForm().reset();
 			task = 'update';
-			Ext.getCmp('frmEditor').getForm().load({url:'../live/php-crud/m.form.nameCRD.php', params:{id: dataRecord.id, task: 'read_edit'}});
+			Ext.getCmp('frmEditor').getForm().load({url:'../dev/php-crud/m.form.nameCRD.php', params:{id: dataRecord.id, task: 'read_edit'}});
 			document.getElementById('editorWdw').style.display='block';
 			document.getElementById("editorFormHeaderText").innerHTML = "&nbsp;&nbsp;Edit Form Name";
       var gridEditorHeight = editorForm.getBoundingClientRect().bottom - btnAddItem.getBoundingClientRect().bottom- 5;
@@ -122,17 +122,10 @@ Ext.onReady(function() {
 	};
 
 	var myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-<<<<<<< Updated upstream
 	var deleteDs = new Ext.data.Store({url: '../dev/php-crud/m.form.nameCRD.php'});
 
 	var GroupDs = new Ext.data.Store({
 		url: '../dev/php-crud/m.form.groupCRD.php',
-=======
-	var deleteDs = new Ext.data.Store({url: '../live/php-crud/m.form.nameCRD.php'});
-
-	var GroupDs = new Ext.data.Store({
-		url: '../live/php-crud/m.form.groupCRD.php',
->>>>>>> Stashed changes
 		baseParams:{task: 'read'},
 		reader: new Ext.data.JsonReader({
       root: 'data',totalProperty: 'totalRecord',
@@ -141,11 +134,7 @@ Ext.onReady(function() {
 	});
 	GroupDs.load();
   var departmentDs = new Ext.data.Store({
-<<<<<<< Updated upstream
     url: '../dev/php-crud/m.department.php',
-=======
-    url: '../live/php-crud/m.department.php',
->>>>>>> Stashed changes
     baseParams:{task: 'read', formId:'3' },
     reader: new Ext.data.JsonReader({
       root: 'data', totalProperty: 'totalCount',
@@ -170,11 +159,7 @@ Ext.onReady(function() {
     { name: 'active', type: 'boolean' }
 	];
 	mainDs = new Ext.data.Store({
-<<<<<<< Updated upstream
 		url: '../dev/php-crud/m.form.nameCRD.php',
-=======
-		url: '../live/php-crud/m.form.nameCRD.php',
->>>>>>> Stashed changes
 		idProperty: 'id',
 		baseParams:{task: 'read'},
 		reader: new Ext.data.JsonReader({root: 'data', totalProperty: 'totalRecord', fields :FormField})
@@ -183,11 +168,7 @@ Ext.onReady(function() {
 
   //Editor Form
   var gridEditorDs = new Ext.data.Store({
-<<<<<<< Updated upstream
     url: '../dev/php-crud/m.form.nameCRD.php',
-=======
-    url: '../live/php-crud/m.form.nameCRD.php',
->>>>>>> Stashed changes
     baseParams:{task: 'read_detail'},
     reader: new Ext.data.JsonReader({root: 'data', fields : FormField})
   });
@@ -208,11 +189,7 @@ Ext.onReady(function() {
   });
   gridEditor.addClass('x-grid3-gridEditor');
   var frmEditor = new stdForm({
-<<<<<<< Updated upstream
     url: '../dev/php-crud/m.form.nameCRD.php',
-=======
-    url: '../live/php-crud/m.form.nameCRD.php',
->>>>>>> Stashed changes
     id: 'frmEditor',
     reader: new Ext.data.JsonReader({root : 'data',fields: FormField}),
     renderTo: 'editorFormMain',
@@ -271,7 +248,7 @@ Ext.onReady(function() {
   };
 
   var gridAddEditorDs = new Ext.data.Store({
-    url: '../live/php-crud/m.form.nameCRD.php',
+    url: '../dev/php-crud/m.form.nameCRD.php',
     baseParams:{task: 'addform'},
     reader: new Ext.data.JsonReader({root: 'data', fields : FormField})
   });
@@ -331,7 +308,7 @@ Ext.onReady(function() {
 	});
   //Detail Grid
   var gridDetailDs = new Ext.data.Store({
-    url: '../live/php-crud/m.form.nameCRD.php',
+    url: '../dev/php-crud/m.form.nameCRD.php',
     baseParams:{task: 'read_detail'},
     reader: new Ext.data.JsonReader({root: 'data', fields : FormField})
   });
@@ -345,7 +322,7 @@ Ext.onReady(function() {
       {header: "Remark",dataIndex: 'remark',width: 300,align: 'left',renderer: CellWrap}
     ]
   });
-  var GridHistoryDs = new historyDs({url: '../live/php-crud/m.form.nameCRD.php'});
+  var GridHistoryDs = new historyDs({url: '../dev/php-crud/m.form.nameCRD.php'});
 	var GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
   document.getElementById('editorWdw').style.display='none';
   document.getElementById('addWdw').style.display='none';

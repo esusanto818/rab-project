@@ -1,15 +1,13 @@
 /*
   Document      : financial_balance_sheet.js
   Description   : Balance Sheet (Neraca Keuangan) - Read-only report
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/balancesheetCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/balancesheetCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
+    var CRD = main_url + '/php-crud/balancesheetCRD.php';
+
     document.getElementById("mainHeaderText").innerHTML = "Balance <em>Sheet</em>";
 
     ['addData', 'editData', 'deleteData'].forEach(function (id) {
@@ -43,7 +41,7 @@ Ext.onReady(function () {
 
     var periodField = [{ name: 'id' }, { name: 'period_name' }, { name: 'start_date' }, { name: 'end_date' }];
     var periodDs = new Ext.data.Store({
-        url: '../php-crud/balancesheetCRD.php',
+        url: CRD,
         baseParams: { task: 'read_periods' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, periodField),
         listeners: {
@@ -92,7 +90,7 @@ Ext.onReady(function () {
         }
 
         Ext.Ajax.request({
-            url: '../php-crud/balancesheetCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'read_balance_sheet', period_id: perId },
             success: function (response) {

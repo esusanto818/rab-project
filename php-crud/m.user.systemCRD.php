@@ -19,7 +19,6 @@ $CheckItemChar = (empty($dataArray)) ? "['0']" : "[" . $dataArray . "]";
 
 
 
-
 // Tangkap task secara fleksibel dari POST maupun REQUEST
 $task = $_POST['task'] ?? $_REQUEST['task'] ?? '';
 $db   = new crud();
