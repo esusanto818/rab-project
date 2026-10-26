@@ -6,6 +6,8 @@
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
+    var CRD = main_url + '/php-crud/journal.entryCRD.php';
+
     document.getElementById("mainHeaderText").innerHTML = "Journal <em>Entry</em>";
 
     var task = '';
@@ -89,13 +91,13 @@ Ext.onReady(function () {
     periodDs.load();
 
     var lineGridDs = new Ext.data.Store({
-        url: '../dev/php-crud/journal.entryCRD.php',
+        url: CRD,
         baseParams: { task: 'read_lines' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, lineField)
     });
 
     var mainDs = new Ext.data.Store({
-        url: '../dev/php-crud/journal.entryCRD.php',
+        url: CRD,
         idProperty: 'id',
         baseParams: { task: 'read' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, journalField)
@@ -164,7 +166,7 @@ Ext.onReady(function () {
 
     function loadJournalDetail(journalId, refNo) {
         Ext.Ajax.request({
-            url: '../dev/php-crud/journal.entryCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'read_lines', id: journalId },
             success: function (response) {
@@ -423,7 +425,7 @@ Ext.onReady(function () {
         if (getFormAccess() == 3 || getFormAccess() == 4) {
             frmEditor.getForm().reset();
             task = 'update';
-            frmEditor.getForm().load({ url: '../dev/php-crud/journal.entryCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
+            frmEditor.getForm().load({ url: CRD, params: { id: dataRecord.id, task: 'read_edit' } });
             lineGridDs.load({ params: { id: dataRecord.id } });
             setLineEditable(true);
             document.getElementById('editorWdw').style.display = 'block';
@@ -444,7 +446,7 @@ Ext.onReady(function () {
             }
             task = '';
             frmEditor.getForm().reset();
-            frmEditor.getForm().load({ url: '../dev/php-crud/journal.entryCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
+            frmEditor.getForm().load({ url: CRD, params: { id: dataRecord.id, task: 'read_edit' } });
             lineGridDs.load({ params: { id: dataRecord.id } });
             setLineEditable(false);
             document.getElementById('editorWdw').style.display = 'block';
@@ -528,7 +530,7 @@ Ext.onReady(function () {
         }
 
         frmEditor.getForm().submit({
-            url: '../dev/php-crud/journal.entryCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: task, arrLines: JSON.stringify(arrLines) },
             waitTitle: 'Connecting',
