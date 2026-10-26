@@ -11,18 +11,15 @@
                    Menerima draft dari Purchase Planning lewat sessionStorage 'po_draft_from_planning'.
                    Alur status: Draft -> Diajukan -> Disetujui -> Selesai (Dibatalkan dari Draft/Diajukan/Disetujui
                    selama belum ada GRN). Edit & Delete hanya untuk PO berstatus Draft.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/poCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/poCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Purchase <em>Order</em>";
 
-    var CRD = '../php-crud/poCRD.php';
+    var CRD = main_url + '/php-crud/poCRD.php';
+
     var ACCESS_ADD = 2;      // level akses minimal: buat PO
     var ACCESS_EDIT = 3;     // ubah / hapus / ganti status PO
     var EPS = 0.0001;        // toleransi qty

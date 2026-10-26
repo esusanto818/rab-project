@@ -34,7 +34,7 @@ Ext.onReady(function () {
     ];
 
     var mainDs = new Ext.data.Store({
-        url: 'php-crud/purchaseinvoiceCRD.php',
+        url: '../php-crud/purchaseinvoiceCRD.php',
         idProperty: 'id',
         baseParams: { task: 'read' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, invoiceFields),
@@ -53,7 +53,7 @@ Ext.onReady(function () {
 
     // Store Supplier untuk ComboBox Form Editor
     var supplierDs = new Ext.data.Store({
-        url: 'php-crud/purchaseinvoiceCRD.php',
+        url: '../../php-crud/purchaseinvoiceCRD.php',
         baseParams: { task: 'read_supplier' },
         reader: new Ext.data.JsonReader({ root: 'data' }, [
             { name: 'id' },
@@ -116,7 +116,7 @@ Ext.onReady(function () {
         if (!invoiceId) return;
 
         Ext.Ajax.request({
-            url: 'php-crud/purchaseinvoiceCRD.php',
+            url: '../../php-crud/purchaseinvoiceCRD.php',
             method: 'POST',
             params: { 
                 task: 'read_invoice_detail', 
@@ -181,7 +181,7 @@ Ext.onReady(function () {
         w.document.write('<html><body style="font-family:Arial,sans-serif;padding:20px;">Memuat Tanda Terima Invoice...</body></html>');
 
         Ext.Ajax.request({
-            url: 'php-crud/purchaseinvoiceCRD.php',
+            url: '../../php-crud/purchaseinvoiceCRD.php',
             method: 'POST',
             params: { task: 'read_invoice_print', invoice_id: invoiceId },
             success: function (response) {
@@ -372,7 +372,7 @@ Ext.onReady(function () {
     function autoLoadAvailableGrn(supplierId) {
         if (!supplierId) return;
         Ext.Ajax.request({
-            url: 'php-crud/purchaseinvoiceCRD.php',
+            url: '../../php-crud/purchaseinvoiceCRD.php',
             method: 'POST',
             params: { task: 'read_available_grn', supplier_id: supplierId },
             success: function (response) {
@@ -444,7 +444,7 @@ Ext.onReady(function () {
     ];
 
     var gridEditorInvoiceDs = new Ext.data.Store({
-        url: 'php-crud/purchaseinvoiceCRD.php',
+        url: '../../php-crud/purchaseinvoiceCRD.php',
         baseParams: { task: 'read_invoice_detail' },
         reader: new Ext.data.JsonReader({ root: 'data', fields: invoiceItemFields })
     });
@@ -453,7 +453,7 @@ Ext.onReady(function () {
 
     // Store daftar GRN yang bisa dipilih (untuk window picker "Add Item")
     var availableGrnDs = new Ext.data.Store({
-        url: 'php-crud/purchaseinvoiceCRD.php',
+        url: '../../php-crud/purchaseinvoiceCRD.php',
         baseParams: { task: 'read_available_grn' },
         reader: new Ext.data.JsonReader({ root: 'data' }, [
             { name: 'grn_hdr_id', type: 'int' },
@@ -677,7 +677,7 @@ Ext.onReady(function () {
             Ext.Msg.confirm('Konfirmasi', 'Apakah Anda yakin ingin menghapus invoice ' + dataRecord.inv_no + '?', function (btn) {
                 if (btn === 'yes') {
                     Ext.Ajax.request({
-                        url: 'php-crud/purchaseinvoiceCRD.php',
+                        url: '../../php-crud/purchaseinvoiceCRD.php',
                         method: 'POST',
                         params: { task: 'delete', id: dataRecord.id },
                         success: function (response) {
@@ -725,7 +725,7 @@ Ext.onReady(function () {
 
             // [PERBAIKAN] Kirim data form beserta detail grid yang sudah di-encode ke format JSON
             frmEditor.getForm().submit({
-                url: 'php-crud/purchaseinvoiceCRD.php',
+                url: '../../php-crud/purchaseinvoiceCRD.php',
                 params: { 
                     task: task,
                     invoice_details: Ext.encode(detailRecords) 

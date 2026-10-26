@@ -1,11 +1,7 @@
 /*
   Document      : m.journal.js
   Description   : Journal Entry (manual) - Header Grid + Detail View + Editor Form
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/journal.entryCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/journal.entryCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
