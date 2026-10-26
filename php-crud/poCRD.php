@@ -22,6 +22,11 @@
  *     - Material beli lokal  => IDR, kurs 1
  *     - Material beli impor  => mis. USD + kurs KMK
  *     Butuh migrasi: sql/2026-10-02.po_item_currency.sql
+ *  6. [PPN - TAHAP 1] PPN Masukan di PO (tarif default 11%). Mode per PO (purchase_orders.ppn_mode):
+ *     NONE = tanpa PPN | EXCL = harga item belum termasuk PPN | INCL = harga item sudah termasuk PPN.
+ *     Tarif disimpan per PO (ppn_rate) agar PO lama tidak berubah bila tarif nasional berganti.
+ *     DPP / PPN / total dihitung server (po_ppn_calc) dari jumlah item dibulatkan per baris,
+ *     pembulatan PPN di level dokumen. Butuh migrasi: sql/2026-10-26.ppn_po.sql
  * ============================================================
  */
 
@@ -39,6 +44,8 @@ header('Content-Type: application/json');
 $db = new crud();
 
 const PO_EPS = 0.0001;
+const PPN_DEFAULT_RATE = 11.0;                 // [PPN] tarif default (%); samakan dengan PPN_DEFAULT_RATE di po.js
+const PPN_MODES = ['NONE', 'EXCL', 'INCL'];    // [PPN] mode PPN yang valid
 const PO_TRANSITIONS = [
     'Draft'     => ['Diajukan', 'Dibatalkan'],
     'Diajukan'  => ['Disetujui', 'Draft', 'Dibatalkan'],
@@ -66,6 +73,32 @@ function sendJsonResponse($success, $data = [], $message = '', $extra = []) {
 
 function po_fmt($n): string {
     return rtrim(rtrim(number_format((float)$n, 3, '.', ''), '0'), '.');
+}
+
+/** [PPN] Normalisasi mode PPN; nilai tak dikenal dianggap NONE. */
+function po_ppn_mode($m): string {
+    $m = strtoupper(trim((string)$m));
+    return in_array($m, PPN_MODES, true) ? $m : 'NONE';
+}
+
+/**
+ * [PPN] Hitung DPP / PPN / total dari subtotal item (jumlah qty x harga per baris, sudah dibulatkan).
+ *  NONE : tanpa PPN
+ *  EXCL : harga belum termasuk PPN -> DPP = subtotal, PPN = DPP x tarif, total = DPP + PPN
+ *  INCL : harga sudah termasuk PPN -> total = subtotal, DPP = subtotal / (1 + tarif), PPN = total - DPP
+ */
+function po_ppn_calc(float $subtotal, string $mode, float $rate): array {
+    $subtotal = round($subtotal, 2);
+    $mode = po_ppn_mode($mode);
+    if ($mode === 'NONE' || $rate <= 0) {
+        return ['subtotal' => $subtotal, 'dpp' => $subtotal, 'ppn' => 0.0, 'total' => $subtotal];
+    }
+    if ($mode === 'INCL') {
+        $dpp = round($subtotal / (1 + $rate / 100), 2);
+        return ['subtotal' => $subtotal, 'dpp' => $dpp, 'ppn' => round($subtotal - $dpp, 2), 'total' => $subtotal];
+    }
+    $ppn = round($subtotal * $rate / 100, 2);
+    return ['subtotal' => $subtotal, 'dpp' => $subtotal, 'ppn' => $ppn, 'total' => round($subtotal + $ppn, 2)];
 }
 
 /** Qty yang sudah di-PO per baris RAB proyek (PO Dibatalkan & PO $exclPoId tidak dihitung). */
@@ -113,8 +146,12 @@ try {
             break;
 
         case 'list_suppliers':
-            $rows = $db->query("SELECT id, name FROM public.m_suppliers WHERE active IS NOT FALSE ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($rows as &$r) $r['id'] = (int)$r['id'];
+            // [PPN] sertakan status PKP & NPWP supplier (kolom baru m_suppliers.is_pkp / npwp_no)
+            $rows = $db->query("SELECT id, name, COALESCE(is_pkp, false) AS is_pkp, npwp_no FROM public.m_suppliers WHERE active IS NOT FALSE ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['is_pkp'] = in_array($r['is_pkp'], [true, 't', 'true', 1, '1'], true);
+            }
             sendJsonResponse(true, $rows);
             break;
 
@@ -260,8 +297,10 @@ try {
                 SELECT po.id, po.po_number, po.po_date, po.project_id, p.name AS project_name,
                        po.supplier_id, s.name AS supplier_name, po.status, po.notes,
                        po.currency_id, c.init AS currency_code, po.exch_rate,
+                       po.ppn_mode, po.ppn_rate,                               -- [PPN]
                        COUNT(i.id) AS item_count,
-                       COALESCE(SUM(i.qty * i.unit_price), 0) AS total_amount
+                       COALESCE(SUM(i.qty * i.unit_price), 0) AS total_amount,
+                       COALESCE(SUM(ROUND(i.qty * i.unit_price, 2)), 0) AS subtotal_r   -- [PPN] dasar hitung DPP/PPN
                   FROM purchase_orders po
                   JOIN public.projects p ON p.id = po.project_id
                   LEFT JOIN public.m_suppliers s ON s.id = po.supplier_id
@@ -284,6 +323,15 @@ try {
                 $r['exch_rate'] = (float)$r['exch_rate'];
                 $r['item_count'] = (int)$r['item_count'];
                 $r['total_amount'] = (float)$r['total_amount'];
+                // [PPN] DPP / PPN / total per PO
+                $r['ppn_mode'] = po_ppn_mode($r['ppn_mode']);
+                $r['ppn_rate'] = (float)$r['ppn_rate'];
+                $calc = po_ppn_calc((float)$r['subtotal_r'], $r['ppn_mode'], $r['ppn_rate']);
+                unset($r['subtotal_r']);
+                $r['dpp'] = $calc['dpp'];
+                $r['ppn_amount'] = $calc['ppn'];
+                $r['grand_total'] = $calc['total'];
+                $r['ppn_idr'] = round($calc['ppn'] * $r['exch_rate'], 2);   // PPN setara IDR (kurs PO)
             }
             sendJsonResponse(true, ['data' => $rows, 'totalCount' => $totalCount]);
             break;
@@ -296,7 +344,8 @@ try {
             $st = $db->prepare("
                 SELECT po.id, po.po_number, po.po_date, po.project_id, p.name AS project_name,
                        po.supplier_id, s.name AS supplier_name, po.status, po.notes,
-                       po.currency_id, c.init AS currency_code, po.exch_rate
+                       po.currency_id, c.init AS currency_code, po.exch_rate,
+                       po.ppn_mode, po.ppn_rate            -- [PPN]
                   FROM purchase_orders po
                   JOIN public.projects p ON p.id = po.project_id
                   LEFT JOIN public.m_suppliers s ON s.id = po.supplier_id
@@ -338,6 +387,20 @@ try {
                 $received += $it['qty_received'];
             }
 
+            unset($it);                    // [PPN] putus referensi foreach di atas sebelum iterasi ulang
+
+            // [PPN] ringkasan DPP / PPN / total PO (dihitung server)
+            $hdr['ppn_mode'] = po_ppn_mode($hdr['ppn_mode']);
+            $hdr['ppn_rate'] = (float)$hdr['ppn_rate'];
+            $subItems = 0.0;
+            foreach ($items as $row) { $subItems += round($row['qty'] * $row['unit_price'], 2); }
+            $calc = po_ppn_calc($subItems, $hdr['ppn_mode'], $hdr['ppn_rate']);
+            $hdr['subtotal']    = $calc['subtotal'];
+            $hdr['dpp']         = $calc['dpp'];
+            $hdr['ppn_amount']  = $calc['ppn'];
+            $hdr['grand_total'] = $calc['total'];
+            $hdr['ppn_idr']     = round($calc['ppn'] * $hdr['exch_rate'], 2);
+
             $allowed = PO_TRANSITIONS[$hdr['status']] ?? [];
             if ($received > PO_EPS) {      // sudah ada barang diterima -> tidak boleh dibatalkan / dikembalikan
                 $allowed = array_values(array_diff($allowed, ['Dibatalkan', 'Draft']));
@@ -358,12 +421,18 @@ try {
             $notes = trim((string)($_POST['notes'] ?? '')) ?: null;
             $items = json_decode($_POST['items'] ?? '[]', true);
             if ($rate <= 0) $rate = 1;
+            // [PPN] mode & tarif PPN (NONE = tanpa PPN, tarif disimpan 0)
+            $ppnMode = po_ppn_mode($_POST['ppn_mode'] ?? 'NONE');
+            $ppnRate = round((float)($_POST['ppn_rate'] ?? PPN_DEFAULT_RATE), 2);
 
             try {
                 $d = DateTime::createFromFormat('Y-m-d', $date);
                 if (!$d || $d->format('Y-m-d') !== $date) throw new PoBusinessError('Tanggal PO tidak valid.');
                 if ($prj <= 0) throw new PoBusinessError('Proyek wajib dipilih.');
                 if (!is_array($items) || !count($items)) throw new PoBusinessError('Minimal satu material harus diisi.');
+                // [PPN] validasi tarif
+                if ($ppnMode === 'NONE') { $ppnRate = 0.0; }
+                elseif ($ppnRate <= 0 || $ppnRate > 100) throw new PoBusinessError('Tarif PPN harus lebih dari 0 dan maksimal 100%.');
 
                 $db->beginTransaction();
                 try {
@@ -442,9 +511,9 @@ try {
                         $st = $db->prepare("
                             UPDATE purchase_orders
                                SET project_id = :p, supplier_id = :s, po_date = CAST(:d AS date), notes = :n,
-                                   currency_id = :c, exch_rate = :r, updated_at = NOW()
+                                   currency_id = :c, exch_rate = :r, ppn_mode = :pm, ppn_rate = :prt, updated_at = NOW()   -- [PPN]
                              WHERE id = :id");
-                        $st->execute([':p' => $prj, ':s' => $sup, ':d' => $date, ':n' => $notes, ':c' => $cur, ':r' => $rate, ':id' => $id]);
+                        $st->execute([':p' => $prj, ':s' => $sup, ':d' => $date, ':n' => $notes, ':c' => $cur, ':r' => $rate, ':pm' => $ppnMode, ':prt' => $ppnRate, ':id' => $id]);   // [PPN]
                         $poNumber = $db->query("SELECT po_number FROM purchase_orders WHERE id = " . $id)->fetchColumn();
                         $db->prepare("DELETE FROM po_items WHERE po_id = :id")->execute([':id' => $id]);
                     } else {
@@ -452,10 +521,10 @@ try {
                         $poNumber = CreateRefNo('purchase_orders', 'po_number', 'PO');
                         $st = $db->prepare("
                             INSERT INTO purchase_orders
-                                (po_number, project_id, supplier_id, po_date, status, notes, currency_id, exch_rate)
-                            VALUES (:no, :p, :s, CAST(:d AS date), 'Draft', :n, :c, :r)
+                                (po_number, project_id, supplier_id, po_date, status, notes, currency_id, exch_rate, ppn_mode, ppn_rate)   -- [PPN]
+                            VALUES (:no, :p, :s, CAST(:d AS date), 'Draft', :n, :c, :r, :pm, :prt)
                             RETURNING id");
-                        $st->execute([':no' => $poNumber, ':p' => $prj, ':s' => $sup, ':d' => $date, ':n' => $notes, ':c' => $cur, ':r' => $rate]);
+                        $st->execute([':no' => $poNumber, ':p' => $prj, ':s' => $sup, ':d' => $date, ':n' => $notes, ':c' => $cur, ':r' => $rate, ':pm' => $ppnMode, ':prt' => $ppnRate]);   // [PPN]
                         $id = (int)$st->fetchColumn();
                     }
 

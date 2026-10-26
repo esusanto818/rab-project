@@ -6,16 +6,13 @@
                    Sisa perlu dibeli). Bisa centang beberapa baris lalu
                    klik "Buat PO dari Terpilih" -> lempar data ke
                    halaman PO (po.php, router?id=24) lewat sessionStorage.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/purchase.planningCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/purchase.planningCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Purchase <em>Planning</em>";
+    var CRD = main_url + '/php-crud/purchase.planningCRD.php';
 
     var dataRecord = null;
     var currentPlanningRows = [];
@@ -30,7 +27,7 @@ Ext.onReady(function () {
 
     // PENTING: assignment polos (bukan var/let) -- konvensi search box global.
     mainDs = new Ext.data.Store({
-        url: '../php-crud/purchase.planningCRD.php',
+        url: CRD,
         idProperty: 'id',
         baseParams: { task: 'list_projects' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, projectField)
@@ -150,7 +147,7 @@ Ext.onReady(function () {
 
     function loadPlanningPanel(projectId, projectName) {
         Ext.Ajax.request({
-            url: '../php-crud/purchase.planningCRD.php',
+            url: CRD,
             method: 'POST',
             params: { task: 'load_planning', project_id: projectId },
             success: function (response) {

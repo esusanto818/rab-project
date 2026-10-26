@@ -11,7 +11,9 @@
                    Menerima draft dari Purchase Planning lewat sessionStorage 'po_draft_from_planning'.
                    Alur status: Draft -> Diajukan -> Disetujui -> Selesai (Dibatalkan dari Draft/Diajukan/Disetujui
                    selama belum ada GRN). Edit & Delete hanya untuk PO berstatus Draft.
-  Backend       : /rab-project/dev/php-crud/poCRD.php
+                   [PPN - TAHAP 1] PPN Masukan (tarif default 11%). Mode per PO: NONE (tanpa PPN) /
+                   EXCL (harga belum termasuk PPN) / INCL (harga sudah termasuk PPN). Kontrol anggaran RAB memakai DPP.
+  Backend       : /proyek/php-crud/poCRD.php   (REMARK: penanda merge conflict git dibersihkan)
 */
 
 Ext.onReady(function () {
@@ -20,15 +22,24 @@ Ext.onReady(function () {
 
     var CRD = main_url + '/php-crud/poCRD.php';
 
+
     var ACCESS_ADD = 2;      // level akses minimal: buat PO
     var ACCESS_EDIT = 3;     // ubah / hapus / ganti status PO
     var EPS = 0.0001;        // toleransi qty
     var VEPS = 0.01;         // toleransi nilai
+    var PPN_DEFAULT_RATE = 11;   // [PPN] tarif default (%); samakan dengan PPN_DEFAULT_RATE di poCRD.php
+    var PPN_MODE_DATA = [        // [PPN] mode PPN per PO
+        ['NONE', 'Tanpa PPN'],
+        ['EXCL', 'PPN belum termasuk harga (exclude)'],
+        ['INCL', 'PPN sudah termasuk harga (include)']
+    ];
 
     var dataRecord = null;         // baris PO terpilih di grid utama
     var editingId = 0;             // 0 = PO baru, >0 = edit PO tsb
     var hdrForm = null, budForm = null;
     var fDate, fProject, fSupplier, fCurrency, fRate, fRateInfo, fNotes, fBudRate, fBudInfo;
+    var fPpnMode, fPpnRate, fPpnInfo, ppnForm = null;     // [PPN] field & form PPN di editor
+    var ppnManual = false;         // [PPN] mode PPN diubah manual / dimuat dari PO tersimpan -> jangan ditimpa default supplier
     var rateManual = false;        // kurs PO diubah manual / dimuat dari PO tersimpan -> jangan ditimpa otomatis
     var budRateManual = false;     // idem untuk kurs mata uang anggaran
     var rateReq = 0, budRateReq = 0;   // penanda request terbaru (abaikan respons usang)
@@ -44,6 +55,34 @@ Ext.onReady(function () {
     function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
     function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
     function round3(v) { return Math.round((parseFloat(v) || 0) * 1000) / 1000; }
+
+    // [PPN] helper -----------------------------------------------------------
+    function ppnMode() { return (fPpnMode && fPpnMode.getValue()) || 'NONE'; }
+    function ppnRate() { return ppnMode() === 'NONE' ? 0 : (parseFloat(fPpnRate && fPpnRate.getValue()) || 0); }
+    // Hitung DPP / PPN / total dari subtotal item (rumus sama dengan po_ppn_calc di poCRD.php; server tetap acuan)
+    function ppnCalc(subtotal, mode, rate) {
+        subtotal = round2(subtotal);
+        if (mode === 'NONE' || !(rate > 0)) return { subtotal: subtotal, dpp: subtotal, ppn: 0, total: subtotal };
+        if (mode === 'INCL') {
+            var dpp = round2(subtotal / (1 + rate / 100));
+            return { subtotal: subtotal, dpp: dpp, ppn: round2(subtotal - dpp), total: subtotal };
+        }
+        var ppn = round2(subtotal * rate / 100);
+        return { subtotal: subtotal, dpp: subtotal, ppn: ppn, total: round2(subtotal + ppn) };
+    }
+    // Nilai satu baris tanpa PPN (dasar kontrol anggaran RAB): INCL -> dibagi (1 + tarif)
+    function ppnRowDpp(sub) {
+        return ppnMode() === 'INCL' ? round2(sub / (1 + ppnRate() / 100)) : sub;
+    }
+    function ppnText(mode, rate) {
+        if (mode === 'EXCL') return 'Exclude ' + rate + '%';
+        if (mode === 'INCL') return 'Include ' + rate + '%';
+        return 'Tanpa PPN';
+    }
+    function supplierIsPkp(id) {
+        var r = id ? supplierDs.getById(id) : null;
+        return !!r && r.get('is_pkp') === true;
+    }
 
     function statusColor(v) {
         switch (v) {
@@ -117,6 +156,8 @@ dtlDiv.style.overflowY = 'auto';
         var cur = h.currency_code || 'IDR';
         var bud = h.budget_code || cur;
         var sameCur = (!h.budget_currency_id) || (h.budget_currency_id === h.currency_id) || (bud === cur);
+        var hasPpn = !!h.ppn_mode && h.ppn_mode !== 'NONE';       // [PPN]
+        var extraTd = sameCur ? '' : '<td></td>';
 
         var html = '<h3 class="detail-title">Detail PO: ' + enc(h.po_number) +
                    ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
@@ -125,6 +166,7 @@ dtlDiv.style.overflowY = 'auto';
                    '</b> &nbsp;|&nbsp; Supplier: <b>' + enc(h.supplier_name || '-') + '</b> &nbsp;|&nbsp; Mata uang PO: <b>' + enc(cur) +
                    '</b> (kurs ' + fmtAmt(h.exch_rate) + ')' +
                    (sameCur ? '' : ' &nbsp;|&nbsp; Mata uang anggaran: <b>' + enc(bud) + '</b> (kurs ' + fmtAmt(h.budget_exch_rate) + ')') +
+                   ' &nbsp;|&nbsp; PPN: <b>' + enc(ppnText(h.ppn_mode, h.ppn_rate)) + '</b>' +      // [PPN]
                    (h.notes ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.notes) : '') + '</div>' +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0">' +
                    '<thead><tr class="header-row">' +
@@ -152,9 +194,17 @@ dtlDiv.style.overflowY = 'auto';
                     (sameCur ? '' : '<td align="right" style="color:#9fc3d1;">' + fmtAmt(i.amount_budget) + '</td>') +
                     '</tr>';
         });
-        html += '<tr class="data-row"><td colspan="4" align="right"><b>Total (' + enc(cur) + ')</b></td>' +
+        html += '<tr class="data-row"><td colspan="4" align="right"><b>' + (hasPpn ? 'Jumlah harga item' + (h.ppn_mode === 'INCL' ? ' (sudah termasuk PPN)' : '') : 'Total') + ' (' + enc(cur) + ')</b></td>' +
                 '<td align="right" class="subtotal-val"><b>' + fmtAmt(grand) + '</b></td>' +
                 (sameCur ? '' : '<td align="right" class="subtotal-val"><b>' + fmtAmt(h.total_budget) + ' ' + enc(bud) + '</b></td>') + '</tr>';
+        if (hasPpn) {                                             // [PPN] baris DPP / PPN / total (angka dari server)
+            html += '<tr class="data-row"><td colspan="4" align="right">DPP (' + enc(cur) + ')</td><td align="right" class="subtotal-val">' + fmtAmt(h.dpp) + '</td>' + extraTd + '</tr>' +
+                    '<tr class="data-row"><td colspan="4" align="right">PPN ' + enc(h.ppn_rate) + '% (' + enc(cur) + ')</td><td align="right" class="subtotal-val">' + fmtAmt(h.ppn_amount) + '</td>' + extraTd + '</tr>' +
+                    '<tr class="data-row"><td colspan="4" align="right"><b>Total + PPN (' + enc(cur) + ')</b></td><td align="right" class="subtotal-val"><b>' + fmtAmt(h.grand_total) + '</b></td>' + extraTd + '</tr>';
+            if (cur !== 'IDR') {
+                html += '<tr class="data-row"><td colspan="4" align="right" style="color:#9fc3d1;">PPN setara IDR (kurs PO ' + fmtAmt(h.exch_rate) + ')</td><td align="right" style="color:#9fc3d1;">' + fmtAmt(h.ppn_idr) + '</td>' + extraTd + '</tr>';
+            }
+        }
         html += '</tbody></table>';
 
         // Tombol aksi status
@@ -209,7 +259,9 @@ dtlDiv.style.overflowY = 'auto';
         { name: 'currency_id' }, { name: 'currency_code' }, { name: 'exch_rate', type: 'float' },
         { name: 'status' }, { name: 'notes' },
         { name: 'item_count', type: 'int' }, { name: 'total_amount', type: 'float' },
-        { name: 'total_budget', type: 'float' }, { name: 'budget_code' }
+        { name: 'total_budget', type: 'float' }, { name: 'budget_code' },
+        { name: 'ppn_mode' }, { name: 'ppn_rate', type: 'float' }, { name: 'dpp', type: 'float' },    // [PPN]
+        { name: 'ppn_amount', type: 'float' }, { name: 'grand_total', type: 'float' }, { name: 'ppn_idr', type: 'float' }
     ];
 
     var projectDs = new Ext.data.Store({
@@ -219,7 +271,7 @@ dtlDiv.style.overflowY = 'auto';
     });
     var supplierDs = new Ext.data.Store({
         url: CRD, baseParams: { task: 'list_suppliers' },
-        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [{ name: 'id' }, { name: 'name' }])
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [{ name: 'id' }, { name: 'name' }, { name: 'is_pkp' }, { name: 'npwp_no' }])   // [PPN] is_pkp, npwp_no
     });
     var currencyDs = new Ext.data.Store({
         url: CRD, baseParams: { task: 'list_currencies' },
@@ -276,7 +328,12 @@ dtlDiv.style.overflowY = 'auto';
             { header: 'Supplier', dataIndex: 'supplier_name', width: 180, renderer: function (v) { return CellWrap(v || '-'); } },
             { header: 'Mata Uang', dataIndex: 'currency_code', width: 80, align: 'center', renderer: function (v) { return v || 'IDR'; } },
             { header: 'Item', dataIndex: 'item_count', width: 50, align: 'center' },
-            { header: 'Total', dataIndex: 'total_amount', width: 120, align: 'right', renderer: function (v) { return fmtAmt(v); } },
+            { header: 'DPP', dataIndex: 'dpp', width: 115, align: 'right', renderer: function (v) { return fmtAmt(v); } },                       // [PPN]
+            {
+                header: 'PPN', dataIndex: 'ppn_amount', width: 100, align: 'right',                                                                  // [PPN]
+                renderer: function (v, meta, rec) { return rec.get('ppn_mode') === 'NONE' ? '-' : fmtAmt(v); }
+            },
+            { header: 'Total', dataIndex: 'grand_total', width: 120, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } },   // [PPN] total + PPN
             {
                 header: 'Setara Anggaran', dataIndex: 'total_budget', width: 150, align: 'right',
                 renderer: function (v, meta, rec) { return fmtAmt(v) + ' ' + enc(rec.get('budget_code') || ''); }
@@ -422,6 +479,11 @@ dtlDiv.style.overflowY = 'auto';
             hdr2.style.cssText = 'margin-bottom:8px;';
             g.parentNode.insertBefore(hdr2, g);
 
+            var hdrPpn = document.createElement('div');          // [PPN] baris form PPN (di antara header & baris kurs anggaran)
+            hdrPpn.id = 'poPpnForm';
+            hdrPpn.style.cssText = 'margin-bottom:2px;';
+            g.parentNode.insertBefore(hdrPpn, hdr2);
+
             var btn = document.createElement('button');
             btn.id = 'btnAddPoRow';
             btn.type = 'button';
@@ -433,6 +495,7 @@ dtlDiv.style.overflowY = 'auto';
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
             totalsDiv.innerHTML = '<div>Total PO: <span id="lblPoTotal" style="color:#ffffff !important;">0.00</span></div>' +
+                                  '<div id="lblPoPpn" style="font-size:12px; font-weight:normal; margin-top:4px; color:#9fc3d1 !important;"></div>' +      // [PPN]
                                   '<div id="lblPoBudget" style="font-size:12px; font-weight:normal; margin-top:4px;"></div>';
             g.parentNode.insertBefore(totalsDiv, g.nextSibling);
         }
@@ -440,7 +503,7 @@ dtlDiv.style.overflowY = 'auto';
 
     // Form header dibuat saat editor dibuka pertama kali (container hidden -> lebar kolom 0 bila dirender lebih awal)
     function ensureHdrForm() {
-        if (hdrForm) { hdrForm.doLayout(); budForm.doLayout(); return; }
+        if (hdrForm) { hdrForm.doLayout(); ppnForm.doLayout(); budForm.doLayout(); return; }   // [PPN] ppnForm ikut di-layout
 
         fDate = new Ext.form.DateField({
             fieldLabel: 'Tanggal PO', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 130,
@@ -456,7 +519,8 @@ dtlDiv.style.overflowY = 'auto';
         });
         fSupplier = new myComboField({
             fieldLabel: 'Supplier', store: supplierDs, displayField: 'name', valueField: 'id',
-            mode: 'local', triggerAction: 'all', forceSelection: true, anchor: '95%'
+            mode: 'local', triggerAction: 'all', forceSelection: true, anchor: '95%',
+            listeners: { select: function () { onSupplierChange(); } }      // [PPN] default mode PPN dari status PKP supplier
         });
         fCurrency = new myComboField({
             fieldLabel: 'Mata Uang PO', store: currencyDs, displayField: 'init', valueField: 'id',
@@ -495,6 +559,26 @@ dtlDiv.style.overflowY = 'auto';
             items: [col(0.34, [fBudRate]), col(0.66, [fBudInfo])]
         });
         setBudRateVisible(false);
+
+        // [PPN] baris form PPN: mode, tarif, keterangan
+        fPpnMode = new myComboField({
+            fieldLabel: 'PPN', store: new Ext.data.ArrayStore({ fields: ['v', 't'], data: PPN_MODE_DATA }),
+            displayField: 't', valueField: 'v', mode: 'local', triggerAction: 'all', forceSelection: true,
+            editable: false, value: 'NONE', anchor: '95%',
+            listeners: { select: function () { ppnManual = true; onPpnModeChange(); } }
+        });
+        fPpnRate = new myNumberField({
+            fieldLabel: 'Tarif PPN (%)', decimalPrecision: 2, value: 0, width: 80, disabled: true,
+            listeners: { change: function () { onRatesChanged(); } }
+        });
+        fPpnInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
+        ppnForm = new Ext.form.FormPanel({
+            renderTo: 'poPpnForm',
+            border: false,
+            layout: 'column',
+            bodyStyle: 'background:transparent; padding:0 2px 0 2px;',
+            items: [col(0.34, [fPpnMode]), col(0.22, [fPpnRate]), col(0.44, [fPpnInfo])]
+        });
     }
 
     function setBudRateVisible(v) {
@@ -547,7 +631,7 @@ dtlDiv.style.overflowY = 'auto';
         var cm = itemGrid.getColumnModel();
         var poCode = currencyCode(poCurId()), budCode = budgetInfo.code || poCode;
         cm.setColumnHeader(3, 'Sisa Nilai RAB (' + budCode + ')');
-        cm.setColumnHeader(5, 'Harga Satuan (' + poCode + ')');
+        cm.setColumnHeader(5, 'Harga Satuan (' + poCode + (ppnMode() === 'INCL' ? ', incl. PPN' : '') + ')');   // [PPN]
         cm.setColumnHeader(6, 'Subtotal (' + poCode + ')');
         cm.setColumnHeader(7, 'Setara ' + budCode);
         if (fBudRate && fBudRate.label) fBudRate.label.update('Kurs ' + budCode + ' *');
@@ -645,9 +729,44 @@ dtlDiv.style.overflowY = 'auto';
         if (!(f > 0)) return;
         itemDs.each(function (r) {
             if (r.get('budget_item_id') && r.get('price_manual') !== true) {
-                r.set('unit_price', round2((parseFloat(r.get('rab_price')) || 0) / f));
+                // [PPN] mode INCL: harga default = harga RAB (tanpa PPN) dikonversi lalu ditambah PPN
+                r.set('unit_price', round2(((parseFloat(r.get('rab_price')) || 0) / f) * (ppnMode() === 'INCL' ? (1 + ppnRate() / 100) : 1)));
             }
         });
+    }
+
+    // [PPN] mode berubah: aktif/nonaktifkan tarif, isi tarif default 11%, hitung ulang
+    function onPpnModeChange() {
+        var m = ppnMode();
+        fPpnRate.setDisabled(m === 'NONE');
+        if (m === 'NONE') fPpnRate.setValue(0);
+        else if (!(parseFloat(fPpnRate.getValue()) > 0)) fPpnRate.setValue(PPN_DEFAULT_RATE);
+        refreshPpnInfo();
+        applyHeaders();
+        onRatesChanged();          // harga default (mode INCL) & seluruh nilai dihitung ulang
+    }
+
+    // [PPN] pilih supplier: bila mode belum diubah manual, PKP -> Exclude, non-PKP -> Tanpa PPN
+    function onSupplierChange() {
+        if (!ppnManual) {
+            fPpnMode.setValue(supplierIsPkp(fSupplier.getValue()) ? 'EXCL' : 'NONE');
+            onPpnModeChange();
+        } else {
+            refreshPpnInfo();
+        }
+    }
+
+    function refreshPpnInfo() {
+        if (!fPpnInfo) return;
+        var sid = fSupplier && fSupplier.getValue(), m = ppnMode(), msg = '';
+        if (m !== 'NONE' && sid && !supplierIsPkp(sid)) {
+            msg = '<span style="color:#e6a817;">Supplier belum berstatus PKP di master supplier - pastikan PPN memang dikenakan.</span>';
+        } else if (m === 'NONE' && sid && supplierIsPkp(sid)) {
+            msg = '<span style="color:#668894;">Supplier berstatus PKP. Pilih mode PPN bila transaksi ini kena PPN.</span>';
+        } else if (m === 'INCL') {
+            msg = '<span style="color:#668894;">Harga satuan sudah termasuk PPN; kontrol anggaran RAB memakai DPP.</span>';
+        }
+        fPpnInfo.setValue(msg);
     }
 
     function defaultCurrencyId() { return baseCurrencyId(); }
@@ -661,6 +780,11 @@ dtlDiv.style.overflowY = 'auto';
         if (base !== null) fCurrency.setValue(base); else fCurrency.clearValue();
         fRate.setValue(1);
         fBudRate.setValue(1);
+        ppnManual = false;                                   // [PPN] PO baru: default mengikuti supplier
+        fPpnMode.setValue('NONE');
+        fPpnRate.setValue(0);
+        fPpnRate.setDisabled(true);
+        refreshPpnInfo();
         rateManual = false;
         budRateManual = false;
         budgetInfo = { id: null, code: '', isBase: true, baseCode: baseCurrencyCode(), totalLimit: 0, totalCommitted: 0, ceiling: null };
@@ -721,7 +845,7 @@ dtlDiv.style.overflowY = 'auto';
             var b = r.get('budget_item_id');
             if (!b) return;
             var q = parseFloat(r.get('qty')) || 0;
-            var amt = round2(round2(q * (parseFloat(r.get('unit_price')) || 0)) * f);
+            var amt = round2(ppnRowDpp(round2(q * (parseFloat(r.get('unit_price')) || 0))) * f);   // [PPN] basis DPP
             sumsQty[b] = (sumsQty[b] || 0) + q;
             sumsAmt[b] = (sumsAmt[b] || 0) + amt;
         });
@@ -731,7 +855,7 @@ dtlDiv.style.overflowY = 'auto';
             var b = r.get('budget_item_id'), s = b ? rabDs.getById(b) : null;
             var q = parseFloat(r.get('qty')) || 0;
             var sub = round2(q * (parseFloat(r.get('unit_price')) || 0));
-            var amt = round2(sub * f);
+            var amt = round2(ppnRowDpp(sub) * f);                 // [PPN] nilai setara anggaran = DPP x faktor
             r.set('subtotal', sub);
             r.set('amount_budget', amt);
             total += sub;
@@ -749,13 +873,25 @@ dtlDiv.style.overflowY = 'auto';
         });
 
         var poCode = currencyCode(poCurId());
+        var pc = ppnCalc(total, ppnMode(), ppnRate());           // [PPN] DPP / PPN / total
         var el = document.getElementById('lblPoTotal');
         if (el) {
-            var html = fmtAmt(total) + ' ' + enc(poCode);
+            var html = fmtAmt(pc.total) + ' ' + enc(poCode);      // [PPN] total sudah termasuk PPN
             if (budgetInfo.id && poCurId() !== budgetInfo.id) {
                 html += ' <span style="color:#9fc3d1; font-weight:normal;">&asymp; ' + fmtAmt(totalBud) + ' ' + enc(budgetInfo.code) + '</span>';
             }
             el.innerHTML = html;
+        }
+        var elp = document.getElementById('lblPoPpn');           // [PPN] rincian DPP / PPN
+        if (elp) {
+            if (ppnMode() === 'NONE') {
+                elp.innerHTML = '';
+            } else {
+                var sp = 'Jumlah item ' + fmtAmt(pc.subtotal) + ' &nbsp;|&nbsp; DPP ' + fmtAmt(pc.dpp) +
+                         ' &nbsp;|&nbsp; PPN ' + ppnRate() + '% ' + fmtAmt(pc.ppn) + ' ' + enc(poCode);
+                if (!isBaseCurrency(poCurId())) sp += ' &nbsp;|&nbsp; PPN setara ' + enc(baseCurrencyCode()) + ' ' + fmtAmt(round2(pc.ppn * poRate()));
+                elp.innerHTML = sp;
+            }
         }
         updateBudgetBar(totalBud);
     }
@@ -871,6 +1007,11 @@ dtlDiv.style.overflowY = 'auto';
             budRateManual = true;
             fRateInfo.setValue('<span style="color:#668894;">Kurs tersimpan pada PO (ganti mata uang untuk ambil ulang)</span>');
             fNotes.setValue(h.notes || '');
+            ppnManual = true;                                    // [PPN] mode tersimpan tidak ditimpa default supplier
+            fPpnMode.setValue(h.ppn_mode || 'NONE');
+            fPpnRate.setValue(parseFloat(h.ppn_rate) || 0);
+            fPpnRate.setDisabled(ppnMode() === 'NONE');
+            refreshPpnInfo();
 
             itemDs.removeAll();
             loadRab(h.project_id, function () {
@@ -897,6 +1038,10 @@ dtlDiv.style.overflowY = 'auto';
     document.getElementById('saveEdit').onclick = function () {
         if (!fProject || !fProject.getValue()) { Ext.Msg.alert('Peringatan', 'Proyek wajib dipilih.'); return; }
         if (!fDate.getValue()) { Ext.Msg.alert('Peringatan', 'Tanggal PO wajib diisi.'); return; }
+        if (ppnMode() !== 'NONE' && !(ppnRate() > 0 && ppnRate() <= 100)) {          // [PPN]
+            Ext.Msg.alert('Peringatan', 'Tarif PPN harus lebih dari 0 dan maksimal 100%.');
+            return;
+        }
         if (needBudRate() && !(parseFloat(fBudRate.getValue()) > 0)) {
             Ext.Msg.alert('Peringatan', 'Kurs ' + budgetInfo.code + ' (mata uang anggaran) wajib diisi.');
             return;
@@ -937,6 +1082,8 @@ dtlDiv.style.overflowY = 'auto';
             budget_exch_rate: needBudRate() ? (parseFloat(fBudRate.getValue()) || 0) : 0,
             po_date: fDate.getValue().format('Y-m-d'),
             notes: fNotes.getValue(),
+            ppn_mode: ppnMode(),                                    // [PPN]
+            ppn_rate: ppnRate(),                                    // [PPN]
             items: Ext.util.JSON.encode(arr)
         }, function (res) {
             if (res.success) {
