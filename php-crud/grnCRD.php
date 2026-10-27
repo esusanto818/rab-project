@@ -22,6 +22,12 @@
  *  - grn_hdr.supplier_do_no (varchar 100). Satu-satunya tempat input No. DO supplier; W/H RCV dan Retur Pembelian
  *    hanya MENURUNKAN nomor ini (join grn_hdr) sehingga bisa di-trace GRN -> W/H RCV -> Retur.
  *  - Dinormalisasi di GrnCleanDo(); GRN_REQUIRE_DO = true -> wajib diisi untuk GRN baru / hasil edit.
+ *
+ * [NEW 2026-10-27] PPN - PO MODE INCLUDE (purchase_orders.ppn_mode = 'INCL', sql/2026-10-26.ppn_po.sql):
+ *  - Harga di PO mode INCL sudah termasuk PPN, sedangkan nilai GRN (grn_dtl.unit_cost) harus DPP agar stok, jurnal WH Rcv,
+ *    dan nilai match invoice benar. Default unit_cost_this_grn = unit_price / (1 + tarif); unit_price_dpp, ppn_mode, ppn_rate ikut dikirim.
+ *  - InsertGrnItems menolak unit_cost yang sama dengan harga PO inklusif PPN (klien lama / input keliru).
+ *  - Mode EXCL / NONE: harga PO sudah DPP, tidak ada perubahan.
  * ============================================================
  */
 
@@ -107,7 +113,8 @@ try {
                            COALESCE(sup.id, p.supplier_id) AS legacy_supplier_id, 
                            sup.name AS supplier_name,
                            p.currency_id, UPPER(TRIM(cur.init)) AS currency_code,
-                           COALESCE(NULLIF(p.exch_rate,0),1) AS exch_rate
+                           COALESCE(NULLIF(p.exch_rate,0),1) AS exch_rate,
+                           p.ppn_mode, p.ppn_rate              -- [PPN]
                     FROM purchase_orders p
                     LEFT JOIN m_suppliers sup ON sup.id = p.supplier_id
                     LEFT JOIN m_currency cur ON cur.id = p.currency_id
@@ -118,7 +125,7 @@ try {
                         GROUP BY po_item_id
                     ) g ON g.po_item_id = pd.id
                     WHERE p.status IN ('" . implode("','", GRN_PO_STATUS_LIST) . "')
-                    GROUP BY p.id, p.po_number, p.po_date, p.supplier_id, sup.id, sup.name, p.currency_id, cur.init, p.exch_rate
+                    GROUP BY p.id, p.po_number, p.po_date, p.supplier_id, sup.id, sup.name, p.currency_id, cur.init, p.exch_rate, p.ppn_mode, p.ppn_rate
                     HAVING SUM(pd.qty) - COALESCE(SUM(g.total_rcv), 0) > 0.0001
                     ORDER BY p.po_date DESC";
             $result = pg_query($sql);
@@ -131,8 +138,10 @@ try {
             $grn_id = (int)($_REQUEST['grn_id'] ?? 0);
 
             $sql = "SELECT pd.id AS po_dtl_id, pd.material_id AS item_id, pd.description AS item_name, 
-                           pd.qty AS qty_ordered, pd.unit_price
+                           pd.qty AS qty_ordered, pd.unit_price,
+                           po.ppn_mode, po.ppn_rate                -- [PPN]
                     FROM po_items pd
+                    JOIN purchase_orders po ON po.id = pd.po_id
                     WHERE pd.po_id = $1
                     ORDER BY pd.id";
             $result = pg_query_params($sql, [$po_id]);
@@ -163,6 +172,11 @@ try {
                     continue;
                 }
 
+                // [PPN] PO mode Include: harga PO sudah termasuk PPN -> default biaya GRN = DPP (harga / (1 + tarif))
+                $ppnMode  = strtoupper((string)$r['ppn_mode']);
+                $ppnRate  = (float)$r['ppn_rate'];
+                $dppPrice = ($ppnMode === 'INCL' && $ppnRate > 0) ? round((float)$r['unit_price'] / (1 + $ppnRate / 100), 4) : (float)$r['unit_price'];
+
                 $data[] = [
                     'po_dtl_id'             => $r['po_dtl_id'],
                     'item_id'               => $r['item_id'],
@@ -174,7 +188,10 @@ try {
                     'qty_max_allowed'       => $tol['qty_max_allowed'],
                     'qty_receivable_max'    => $sisaQtyBolehditerima,
                     'qty_received_this_grn' => $own ? (float)$own['qty_received'] : $sisaQtyPure,
-                    'unit_cost_this_grn'    => $own ? (float)$own['unit_cost'] : (float)$r['unit_price']
+                    'unit_cost_this_grn'    => $own ? (float)$own['unit_cost'] : $dppPrice,       // [PPN] default = DPP
+                    'unit_price_dpp'        => $dppPrice,                                          // [PPN]
+                    'ppn_mode'              => $ppnMode,                                           // [PPN]
+                    'ppn_rate'              => $ppnRate                                            // [PPN]
                 ];
             }
 
@@ -453,10 +470,22 @@ function InsertGrnItems($grn_hdr_id, $arrItems, $exclude_grn_hdr_id, $rate = 1.0
         $qty = (float)($it['qty_received'] ?? 0);
         if ($qty <= 0) continue;
 
-        $poResult = pg_query_params("SELECT qty AS po_qty FROM po_items WHERE id = $1", [$it['po_dtl_id']]);
+        $poResult = pg_query_params("SELECT pi.qty AS po_qty, pi.unit_price, po.ppn_mode, po.ppn_rate
+                                       FROM po_items pi JOIN purchase_orders po ON po.id = pi.po_id
+                                      WHERE pi.id = $1", [$it['po_dtl_id']]);        // [CHG][PPN] + harga & mode PPN PO
         PgOrFail($poResult, 'Gagal cek qty PO');
         $poRow = pg_fetch_assoc($poResult);
         if (!$poRow) throw new Exception('Baris PO tidak ditemukan (po_dtl_id=' . $it['po_dtl_id'] . ')');
+
+        // [PPN] PO mode Include: unit_cost GRN harus DPP; tolak bila sama dengan harga PO yang sudah termasuk PPN
+        if (strtoupper((string)$poRow['ppn_mode']) === 'INCL' && (float)$poRow['ppn_rate'] > 0) {
+            $gross = (float)$poRow['unit_price'];
+            $dpp   = round($gross / (1 + (float)$poRow['ppn_rate'] / 100), 4);
+            if (abs($gross - $dpp) > 0.005 && abs((float)($it['unit_cost'] ?? 0) - $gross) < 0.005) {
+                throw new Exception("Harga PO {$it['item_name']} sudah termasuk PPN (" . (float)$poRow['ppn_rate'] .
+                                    "%). Biaya per unit GRN harus DPP: " . $dpp . ".");
+            }
+        }
 
         $tol = GetPoDtlTolerance($it['po_dtl_id'], (float)$poRow['po_qty'], $exclude_grn_hdr_id);
         if ($qty > $tol['qty_receivable_max'] + 0.0001) {

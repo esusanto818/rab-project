@@ -4,7 +4,7 @@
                    panel detail di bawah grid (alokasi per termin + tombol Cetak Tanda Terima / Hapus).
                    Add membuka editor: pilih CLIENT -> daftar termin yang masih punya sisa tagihan dari SEMUA proyek client tsb
                    -> isi "Bayar Sekarang" per termin (bisa alokasi otomatis berurutan dari tanggal termin, lintas proyek).
-                   Tombol "+ Tambah Termin" membuat tagihan termin baru (project_invoices) untuk salah satu proyek client terpilih.
+                   [TAGIHAN] Tombol "+ Tambah Termin" DIHAPUS: invoice termin diterbitkan dari menu Tagihan ke Klien (projectinvoice.js).
                    Pembayaran tidak bisa diedit; koreksi = hapus (reverse) lalu input ulang.
                    Kelebihan bayar (jumlah diterima > total alokasi) disimpan di excess_amount.
                    [MULTI-PROYEK] satu pembayaran boleh mengalokasikan ke termin beberapa proyek, selama client-nya sama.
@@ -33,7 +33,8 @@ Ext.onReady(function () {
 
     var dataRecord = null;         
     var hdrForm = null;
-    var fDate, fClient, fAccount, fMethod, fRef, fTotal, fNotes, fInfo;     
+    var fDate, fClient, fAccount, fMethod, fRef, fTotal, fNotes, fInfo;
+    var fDeposit, fDepInfo, depBalance = 0;     // [DEPOSIT] pemakaian deposit client (IDR) & info saldo     
     var fCurrency, fRate, fRateInfo;       
     var rateManual = false;                
     var rateReq = 0;                       
@@ -347,6 +348,12 @@ Ext.onReady(function () {
             html += '<tr class="data-row"><td colspan="4" align="right"><b>Lebih Bayar</b></td>' +
                     '<td align="right" style="color:#e6a817;"><b>' + fmtAmt(h.excess_amount) + '</b></td><td></td>' + (foreign ? '<td align="right" style="color:#e6a817;"><b>' + fmtAmt(round2(h.total_amount_cur - allocCur)) + '</b></td>' : '') + '</tr>';
         }
+        if (h.deposit_applied > VEPS) {                                                       // [DEPOSIT] bagian deposit dari total dana
+            html += '<tr class="data-row"><td colspan="4" align="right">Termasuk deposit dipakai</td>' +
+                    '<td align="right" style="color:#2bc1e2;">' + fmtAmt(h.deposit_applied) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>' +
+                    '<tr class="data-row"><td colspan="4" align="right">Kas / bank diterima</td>' +
+                    '<td align="right">' + fmtAmt(round2(h.total_amount - h.deposit_applied)) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>';
+        }
         html += '<tr class="data-row"><td colspan="4" align="right"><b>Total Diterima</b></td>' +
                 '<td align="right" class="subtotal-val"><b>' + fmtAmt(h.total_amount) + '</b></td><td></td>' + (foreign ? '<td align="right"><b>' + fmtAmt(h.total_amount_cur) + '</b></td>' : '') + '</tr>';
         html += '</tbody></table>';
@@ -411,7 +418,7 @@ Ext.onReady(function () {
         { name: 'client_id' }, { name: 'client_name' }, { name: 'project_names' },
         { name: 'account_id' }, { name: 'account_name' }, { name: 'payment_method' },
         { name: 'total_amount', type: 'float' }, { name: 'allocated_amount', type: 'float' },
-        { name: 'excess_amount', type: 'float' }, { name: 'reference_no' }, { name: 'notes' },
+        { name: 'excess_amount', type: 'float' }, { name: 'deposit_applied', type: 'float' }, { name: 'reference_no' }, { name: 'notes' },   // [DEPOSIT]
         { name: 'currency_code' }, { name: 'exch_rate', type: 'float' }, { name: 'total_amount_cur', type: 'float' }
     ];
 
@@ -495,6 +502,8 @@ Ext.onReady(function () {
                 header: 'Lebih Bayar (IDR)', dataIndex: 'excess_amount', width: 100, align: 'right',
                 renderer: function (v) { return v > VEPS ? '<span style="color:#e6a817;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; }
             },
+            { header: 'Deposit Dipakai (IDR)', dataIndex: 'deposit_applied', width: 110, align: 'right',          // [DEPOSIT]
+              renderer: function (v) { return v > VEPS ? '<span style="color:#2bc1e2;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; } },
             { header: 'Referensi', dataIndex: 'reference_no', width: 120, renderer: function (v) { return CellWrap(v || ''); } }
         ],
         viewConfig: { forceFit: true },
@@ -599,7 +608,8 @@ Ext.onReady(function () {
                 b.onclick = fn;
                 g.parentNode.insertBefore(b, g);
             };
-            mkBtn('btnPpAddTermin', '+ Tambah Termin', '#2e6da4', openTerminWindow);
+            // [TAGIHAN] invoice termin sekarang diterbitkan dari menu Tagihan ke Klien (seq 6026); modul ini hanya menerima pembayaran.
+            // mkBtn('btnPpAddTermin', '+ Tambah Termin', '#2e6da4', openTerminWindow);
             mkBtn('btnPpAutoAlloc', 'Alokasi Otomatis', '#03615e', autoAllocate);
             mkBtn('btnPpPayAll', 'Lunasi Semua Sisa', '#555555', payAllRemaining);
             mkBtn('btnPpFaktur', 'Faktur Pajak Termin', '#8e6b22', editFakturPajak);        // [PPN] isi/ubah faktur pajak keluaran termin terpilih
@@ -621,6 +631,69 @@ Ext.onReady(function () {
         itemGrid.setHeight(Math.max(120, Math.floor(avail)));
     }
     Ext.EventManager.onWindowResize(fitGrid);
+
+    // [DEPOSIT] helper -------------------------------------------------------
+    function depIdr() {          // deposit yang dipakai (IDR), dibatasi saldo deposit client
+        if (!fDeposit) return 0;
+        var v = round2(parseFloat(fDeposit.getValue()) || 0);
+        return Math.max(Math.min(v, depBalance), 0);
+    }
+    function depCur() {          // setara mata uang pembayaran
+        var r = curRate();
+        return r > 0 ? depIdr() / r : 0;
+    }
+    function outstandingIdr() {
+        var t = 0;
+        outDs.each(function (r) { t += round2(r.get('remaining')); });
+        return round2(t);
+    }
+    function loadDeposit(cid) {
+        depBalance = 0;
+        if (fDeposit) fDeposit.setValue(0);
+        if (!cid) { if (fDepInfo) fDepInfo.setValue(''); return; }
+        ajax({ task: 'get_client_deposit', client_id: cid }, function (res) {
+            if (fClient.getValue() !== cid) return;                 // client sudah diganti
+            depBalance = round2(parseFloat(res.balance) || 0);
+            if (depBalance > VEPS) {
+                fDepInfo.setValue('<span style="color:#e6a817;">Deposit client tersedia: <b>' + fmtAmt(depBalance) + ' IDR</b></span> ' +
+                                  '&nbsp;<a href="#" style="color:#2bc1e2;" onclick="window.ppUseDeposit(); return false;">pakai maksimal</a>' +
+                                  ' &nbsp;|&nbsp; <a href="#" style="color:#2bc1e2;" onclick="window.ppDepositHistory(); return false;">riwayat</a>');
+            } else {
+                fDepInfo.setValue('<span style="color:#668894;">Deposit client: 0 IDR</span> ' +
+                                  '&nbsp;<a href="#" style="color:#2bc1e2;" onclick="window.ppDepositHistory(); return false;">riwayat</a>');
+            }
+            recalcAll();
+        });
+    }
+    window.ppUseDeposit = function () {                              // pakai deposit sebesar min(saldo, total sisa tagihan)
+        if (!(depBalance > 0)) return;
+        fDeposit.setValue(Math.min(depBalance, outstandingIdr()));
+        fDeposit.fireEvent('change', fDeposit);
+    };
+    window.ppDepositHistory = function () {                          // jendela riwayat deposit (left over) client
+        var cid = fClient && fClient.getValue();
+        if (!cid) { Ext.Msg.alert('Peringatan', 'Pilih client terlebih dahulu.'); return; }
+        var ds = new Ext.data.JsonStore({
+            url: CRD, baseParams: { task: 'get_client_deposit', client_id: cid }, root: 'data',
+            fields: ['payment_date', 'payment_no', 'reference_no', { name: 'deposit_in', type: 'float' }, { name: 'deposit_out', type: 'float' }, { name: 'balance_after', type: 'float' }],
+            listeners: { exception: function () { Ext.Msg.alert('Gagal', 'Gagal memuat riwayat deposit.'); } }
+        });
+        new Ext.Window({
+            title: 'Riwayat Deposit - ' + enc(fClient.getRawValue()), width: 760, height: 380, modal: true, layout: 'fit',
+            items: new Ext.grid.GridPanel({
+                store: ds, stripeRows: true, viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:12px;">Belum ada deposit.</div>' },
+                columns: [
+                    { header: 'Tanggal', dataIndex: 'payment_date', width: 90, align: 'center' },
+                    { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 130 },
+                    { header: 'Referensi', dataIndex: 'reference_no', width: 120, renderer: function (v) { return enc(v || ''); } },
+                    { header: 'Lebih Bayar (+)', dataIndex: 'deposit_in', width: 120, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },
+                    { header: 'Dipakai (-)', dataIndex: 'deposit_out', width: 120, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },
+                    { header: 'Saldo', dataIndex: 'balance_after', width: 120, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } }
+                ]
+            })
+        }).show();
+        ds.load();
+    };
 
     function ensureHdrForm() {
         if (hdrForm) { hdrForm.doLayout(); return; }
@@ -667,6 +740,18 @@ Ext.onReady(function () {
             }
         });
         fNotes = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+        fDeposit = new myNumberField({                      // [DEPOSIT] pakai deposit client untuk membayar tagihan
+            fieldLabel: 'Pakai Deposit (IDR)', decimalPrecision: 2, value: 0, width: 140, allowNegative: false,
+            listeners: {
+                change: function () {
+                    var v = depIdr();
+                    if (round2(parseFloat(fDeposit.getValue()) || 0) !== v) fDeposit.setValue(v);      // batasi ke saldo
+                    if (autoMode && v > 0 && curRate() > 0) { autoAllocate(true); return; }
+                    recalcAll();
+                }
+            }
+        });
+        fDepInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
         fInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
         var col = function (w, items) {
@@ -677,13 +762,13 @@ Ext.onReady(function () {
             border: false,
             layout: 'column',
             bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
-            items: [col(0.34, [fDate, fClient, fCurrency]), col(0.34, [fAccount, fMethod, fRef]), col(0.32, [fTotal, fRate, fNotes])]
+            items: [col(0.34, [fDate, fClient, fCurrency]), col(0.34, [fAccount, fMethod, fRef]), col(0.32, [fTotal, fDeposit, fRate, fNotes])]
         });
         new Ext.form.FormPanel({
             renderTo: 'ppHdrForm',
             border: false,
             bodyStyle: 'background:transparent; padding:0 2px 4px 2px;',
-            items: [fRateInfo, fInfo]
+            items: [fRateInfo, fDepInfo, fInfo]
         });
     }
 
@@ -702,6 +787,9 @@ Ext.onReady(function () {
         fRef.setValue('');
         fNotes.setValue('');
         fTotal.setValue(0);
+        fDeposit.setValue(0);                    // [DEPOSIT]
+        depBalance = 0;
+        fDepInfo.setValue('');
         totalManual = false;
         autoMode = true;
         allocNote = '';
@@ -776,6 +864,7 @@ Ext.onReady(function () {
         allocNote = '';
         fTotal.setValue(0);
         loadOutstanding(fClient.getValue());
+        loadDeposit(fClient.getValue());          // [DEPOSIT] saldo deposit client
     }
 
     function applyCurrencyLabels() {
@@ -844,9 +933,9 @@ Ext.onReady(function () {
         });
         alloc = round2(alloc);
         allocIdr = round2(allocIdr);
-        if (fTotal && !totalManual) fTotal.setValue(alloc);
+        if (fTotal && !totalManual) fTotal.setValue(round2(Math.max(alloc - depCur(), 0)));       // [DEPOSIT] kas yang perlu diterima = alokasi - deposit
         var total = fTotal ? (parseFloat(fTotal.getValue()) || 0) : alloc;
-        var excess = round2(total - alloc);
+        var excess = round2(total + depCur() - alloc);                                              // [DEPOSIT] dana = kas + deposit
 
         var el = document.getElementById('lblPpAlloc');
         if (el) {
@@ -887,12 +976,12 @@ Ext.onReady(function () {
     function autoAllocate(silent) {
         silent = (silent === true);
         itemGrid.stopEditing();
-        var total = numVal(fTotal), rate = curRate();
-        if (total <= 0) { if (!silent) Ext.Msg.alert('Peringatan', 'Isi Jumlah Diterima terlebih dahulu.'); return; }
+        var total = numVal(fTotal), rate = curRate(), depI = depIdr();      // [DEPOSIT]
+        if (total <= 0 && depI <= 0) { if (!silent) Ext.Msg.alert('Peringatan', 'Isi Jumlah Diterima terlebih dahulu.'); return; }
         if (!(rate > 0)) { if (!silent) Ext.Msg.alert('Peringatan', 'Isi kurs ' + curCode() + ' terlebih dahulu.'); return; }
         if (!outDs.getCount()) { if (!silent) Ext.Msg.alert('Peringatan', 'Belum ada termin yang bisa dialokasikan.'); return; }
 
-        var totalIdr = round2(total * rate);
+        var totalIdr = round2(round2(total * rate) + depI);                 // [DEPOSIT] dana alokasi = kas + deposit
         var smap = {};
         Ext.each(projSummary, function (p) { smap[p.project_id] = p; });
 
@@ -1182,7 +1271,7 @@ Ext.onReady(function () {
     document.getElementById('saveEdit').onclick = function () {
         if (!fClient || !fClient.getValue()) { Ext.Msg.alert('Peringatan', 'Client wajib dipilih.'); return; }
         if (!fDate.getValue()) { Ext.Msg.alert('Peringatan', 'Tanggal bayar wajib diisi.'); return; }
-        if (!fAccount.getValue()) { Ext.Msg.alert('Peringatan', 'Akun Kas/Bank wajib dipilih.'); return; }
+        if (!fAccount.getValue() && !(depIdr() > 0 && numVal(fTotal) <= 0)) { Ext.Msg.alert('Peringatan', 'Akun Kas/Bank wajib dipilih.'); return; }   // [DEPOSIT] lunas penuh dari deposit tanpa kas
         var cid = fClient.getValue();
         if (!isBaseCur(curId()) && !(curRate() > 0)) { Ext.Msg.alert('Peringatan', 'Kurs wajib diisi.'); return; }
 
@@ -1202,9 +1291,9 @@ Ext.onReady(function () {
         if (!arr.length) { Ext.Msg.alert('Peringatan', 'Isi "Bayar Sekarang" minimal pada satu termin.'); return; }
 
         var total = round2(fTotal.getValue());
-        if (total <= 0) total = alloc;
-        if (total + VEPS < alloc) { Ext.Msg.alert('Peringatan', 'Jumlah diterima lebih kecil dari total alokasi.'); return; }
-        var excess = round2(total - alloc);
+        if (total <= 0 && depIdr() <= 0) total = alloc;                                          // [DEPOSIT]
+        if (total + depCur() + VEPS < alloc) { Ext.Msg.alert('Peringatan', 'Kas diterima + deposit lebih kecil dari total alokasi.'); return; }
+        var excess = round2(total + depCur() - alloc);
 
         var doSave = function () {
             ajax({
@@ -1216,6 +1305,7 @@ Ext.onReady(function () {
                 account_id: fAccount.getValue() || 0,
                 payment_method: fMethod.getValue() || 'BANK_TRANSFER',
                 total_amount: total,
+                deposit_apply: depIdr(),                                                           // [DEPOSIT]
                 reference_no: fRef.getValue(),
                 notes: fNotes.getValue(),
                 items: Ext.util.JSON.encode(arr)

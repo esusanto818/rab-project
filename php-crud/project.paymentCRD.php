@@ -37,6 +37,23 @@
  *     Dr Piutang Usaha / Cr Pendapatan) dengan reference_type = 'project_invoice', dalam transaksi yang sama[cite: 5]
  *     (gagal posting = termin tidak tersimpan)[cite: 5]. delete_termin menghapus jurnal penagihannya[cite: 5].
  *     Task backfill_termin_journal = sekali jalan, memposting jurnal untuk termin lama yang belum punya jurnal[cite: 5].
+ * 11. [PPN - TAHAP 2] PPN Keluaran di termin. Nilai termin yang diinput = DPP (tanpa PPN); tarif default 11%, 0 = tanpa PPN.
+ *     project_invoices.amount = TOTAL tagihan (DPP + PPN) agar alokasi pembayaran, sisa tagihan, dan laporan lama tidak berubah;
+ *     rinciannya di dpp_amount / ppn_rate / ppn_amount (+ faktur_pajak_no / faktur_pajak_date, opsional).
+ *     Kontrol nilai kontrak membandingkan total DPP termin dengan contract_value (kontrak dianggap di luar PPN).
+ *     Jurnal: PROJECT_INVOICE (Dr Piutang / Cr Pendapatan) senilai DPP + PROJECT_INVOICE_PPN (Dr Piutang / Cr PPN Keluaran)
+ *     senilai PPN; keduanya reference_type 'project_invoice' sehingga delete_termin ikut menghapus keduanya.
+ *     Butuh migrasi: sql/2026-10-26.ppn_invoice.sql
+ * 12. [PPN] Task update_faktur_pajak = isi / ubah No. & Tgl Faktur Pajak keluaran setelah termin dibuat (faktur biasanya terbit belakangan).
+ *     Hanya untuk termin yang memuat PPN; boleh walau sudah ada pembayaran; no. faktur unik antar termin; kosong = hapus.
+ *     Tgl faktur menentukan masa pajak di Laporan PPN (jurnal tidak berubah).
+ * 13. [DEPOSIT / LEFT OVER] Lebih bayar client (excess_amount) = DEPOSIT client (kredit akun Uang Muka Penjualan 2200 via PRJ_PAY_DEP).
+ *     Saldo deposit client = SUM(excess_amount) - SUM(deposit_applied) pada project_payments. Deposit dipakai membayar tagihan berikutnya:
+ *     save_payment menerima deposit_apply (IDR); dana = kas diterima + deposit; lebihnya tetap menjadi excess baru.
+ *     project_payments.total_amount = teralokasi + excess (termasuk bagian deposit); kas/bank yang benar-benar diterima = total_amount - deposit_applied.
+ *     Jurnal: PRJ_PAY_AR (kas) = teralokasi - deposit; PRJ_PAY_DEP = excess; PRJ_DEP_APPLY = deposit (Dr Uang Muka Penjualan / Cr Piutang Usaha, tanpa kas).
+ *     delete_payment ditolak bila deposit hasil pembayaran itu sudah dipakai pembayaran lain. Task get_client_deposit = saldo + riwayat.
+ *     Butuh migrasi: sql/2026-10-27.client_deposit.sql
  * ============================================================
  */
 
@@ -58,7 +75,17 @@ const PP_JOURNAL_REF = 'project_payment';                    // [JURNAL] nilai e
 const PP_METHODS = ['BANK_TRANSFER', 'CASH', 'GIRO', 'CEK']; // metode bayar yang diizinkan (varchar(20))[cite: 5]
 const PP_INV_JOURNAL_REF = 'project_invoice';                // [JURNAL-INVOICE][NEW] nilai enum journal_entries.reference_type untuk penagihan termin[cite: 5]
 
+const PP_INV_PPN_RULE = 'PROJECT_INVOICE_PPN';               // [PPN] fiscal_config: Dr Piutang Usaha / Cr PPN Keluaran
+
 class PpBusinessError extends Exception {}
+
+/** [DEPOSIT] Saldo deposit client = lebih bayar - deposit terpakai (pembayaran $exclPaymentId tidak dihitung). */
+function pp_client_deposit($db, int $clientId, int $exclPaymentId = 0): float {
+    $st = $db->prepare("SELECT COALESCE(SUM(excess_amount), 0) - COALESCE(SUM(deposit_applied), 0)
+                          FROM public.project_payments WHERE client_id = :c AND id <> :x");
+    $st->execute([':c' => $clientId, ':x' => $exclPaymentId]);
+    return round((float)$st->fetchColumn(), 2);
+}
 
 function sendJsonResponse($success, $data = [], $message = '', $extra = []) {
     $response = array_merge(['success' => $success, 'message' => $message], $extra);
@@ -89,7 +116,8 @@ function pp_invoice_has_journal($db, int $invId): bool {
 }
 
 /** [JURNAL-INVOICE][NEW] Posting jurnal penagihan termin (rule PROJECT_INVOICE). Gagal -> lempar PpBusinessError agar transaksi di-rollback.[cite: 5] */
-function pp_post_invoice_journal($db, int $invId, string $invNo, string $date, float $amount, string $projectName): void {
+function pp_post_invoice_journal($db, int $invId, string $invNo, string $date, float $amount, string $projectName, float $ppn = 0.0): void {
+    // [PPN] $amount = DPP (pendapatan); $ppn = PPN Keluaran (0 = tanpa PPN)
     $jr = AutoPostJournal($db, [
         'rule_code'      => 'PROJECT_INVOICE',
         'reference_type' => PP_INV_JOURNAL_REF,
@@ -99,6 +127,18 @@ function pp_post_invoice_journal($db, int $invId, string $invNo, string $date, f
         'description'    => "Tagihan termin {$invNo} - {$projectName}",
     ]);
     if (!$jr['success']) throw new PpBusinessError('Gagal posting jurnal penagihan: ' . $jr['message']);
+
+    if ($ppn > PP_EPS) {                                   // [PPN] jurnal PPN Keluaran terpisah, reference sama
+        $jr = AutoPostJournal($db, [
+            'rule_code'      => PP_INV_PPN_RULE,
+            'reference_type' => PP_INV_JOURNAL_REF,
+            'reference_id'   => $invId,
+            'journal_date'   => $date,
+            'amount'         => $ppn,
+            'description'    => "PPN Keluaran termin {$invNo} - {$projectName}",
+        ]);
+        if (!$jr['success']) throw new PpBusinessError('Gagal posting jurnal PPN Keluaran: ' . $jr['message']);
+    }
 }
 
 if (empty($_SESSION['user_id'])) {
@@ -412,11 +452,13 @@ try {
 
             $st = $db->prepare("
                 SELECT x.invoice_id, x.project_id, x.project_name, x.inv_no, x.termin_name, x.invoice_date,
-                       x.termin_no, x.percentage, x.amount, x.paid_amount, (x.amount - x.paid_amount) AS remaining
+                       x.termin_no, x.percentage, x.amount, x.paid_amount, (x.amount - x.paid_amount) AS remaining,
+                       x.dpp_amount, x.ppn_amount, x.ppn_rate,
+                       x.faktur_pajak_no, x.faktur_pajak_date      -- [PPN]
                   FROM (
                         SELECT v.id AS invoice_id, v.project_id, p.name AS project_name,
                                v.inv_no, v.termin_name, v.invoice_date, v.percentage,
-                               v.amount, v.paid_amount, p.client_id,
+                               v.amount, v.paid_amount, v.dpp_amount, v.ppn_amount, v.ppn_rate, v.faktur_pajak_no, v.faktur_pajak_date, p.client_id,   -- [PPN]
                                ROW_NUMBER() OVER (PARTITION BY v.project_id ORDER BY v.invoice_date ASC, v.id ASC) AS termin_no
                           FROM public.project_invoices v
                           JOIN public.projects p ON p.id = v.project_id
@@ -431,6 +473,9 @@ try {
                 $r['termin_no']   = (int)$r['termin_no'];
                 $r['percentage']  = $r['percentage'] !== null ? (float)$r['percentage'] : null;
                 $r['amount']      = (float)$r['amount'];
+                $r['dpp_amount']  = (float)$r['dpp_amount'];     // [PPN]
+                $r['ppn_amount']  = (float)$r['ppn_amount'];     // [PPN]
+                $r['ppn_rate']    = (float)$r['ppn_rate'];       // [PPN]
                 $r['paid_amount'] = (float)$r['paid_amount'];
                 $r['remaining']   = (float)$r['remaining'];
             }
@@ -440,6 +485,7 @@ try {
                 SELECT p.id AS project_id, p.name AS project_name,
                        COALESCE(p.contract_value, 0)  AS contract_value,
                        COALESCE(SUM(v.amount), 0)      AS total_termin,
+                       COALESCE(SUM(CASE WHEN v.dpp_amount > 0 THEN v.dpp_amount ELSE v.amount END), 0) AS total_dpp,   -- [PPN] dasar banding kontrak
                        COALESCE(SUM(v.paid_amount), 0) AS total_paid
                   FROM public.projects p
                   LEFT JOIN public.project_invoices v ON v.project_id = p.id
@@ -452,6 +498,7 @@ try {
                 $pr['project_id']     = (int)$pr['project_id'];
                 $pr['contract_value'] = (float)$pr['contract_value'];
                 $pr['total_termin']   = (float)$pr['total_termin'];
+                $pr['total_dpp']      = (float)$pr['total_dpp'];          // [PPN]
                 $pr['total_paid']     = (float)$pr['total_paid'];
             }
             unset($pr);
@@ -467,13 +514,18 @@ try {
             $name = trim((string)($_POST['termin_name'] ?? ''));
             $date = (string)($_POST['invoice_date'] ?? '');
             $pct  = ($_POST['percentage'] ?? '') !== '' ? round((float)$_POST['percentage'], 2) : null;
-            $amt  = round((float)($_POST['amount'] ?? 0), 2);
+            $amt  = round((float)($_POST['amount'] ?? 0), 2);          // [PPN] nilai termin = DPP (tanpa PPN)
+            $ppnRate = round((float)($_POST['ppn_rate'] ?? 0), 2);     // [PPN] 0 = tanpa PPN
+            $fpNo    = trim((string)($_POST['faktur_pajak_no'] ?? '')) ?: null;
+            $fpDate  = (string)($_POST['faktur_pajak_date'] ?? '');
 
             try {
                 if ($prj <= 0) throw new PpBusinessError('Proyek wajib dipilih.');
                 if ($name === '') throw new PpBusinessError('Nama termin wajib diisi.');
                 if (!pp_valid_date($date)) throw new PpBusinessError('Tanggal termin tidak valid.');
                 if ($pct !== null && ($pct < 0 || $pct > 100)) throw new PpBusinessError('Persentase harus antara 0 - 100.');
+                if ($ppnRate < 0 || $ppnRate > 100) throw new PpBusinessError('Tarif PPN harus antara 0 - 100%.');                    // [PPN]
+                if ($fpDate !== '' && !pp_valid_date($fpDate)) throw new PpBusinessError('Tanggal faktur pajak tidak valid.');       // [PPN]
 
                 $db->beginTransaction();
                 try {
@@ -487,24 +539,33 @@ try {
                     if ($amt <= 0 && $pct !== null && $contract > 0) $amt = round($contract * $pct / 100, 2);
                     if ($amt <= 0) throw new PpBusinessError('Nilai termin harus lebih dari 0.');
 
-                    $st = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM public.project_invoices WHERE project_id = :p");
+                    // [PPN] banding kontrak memakai DPP (termin lama tanpa dpp_amount dibaca dari amount)
+                    $st = $db->prepare("SELECT COALESCE(SUM(CASE WHEN dpp_amount > 0 THEN dpp_amount ELSE amount END), 0) FROM public.project_invoices WHERE project_id = :p");
                     $st->execute([':p' => $prj]);
                     $existing = (float)$st->fetchColumn();
                     if ($contract > 0 && $existing + $amt > $contract + PP_EPS) {
-                        throw new PpBusinessError('Total termin (' . number_format($existing + $amt, 2) . ') melebihi nilai kontrak (' . number_format($contract, 2) . ').');
+                        throw new PpBusinessError('Total termin DPP (' . number_format($existing + $amt, 2) . ') melebihi nilai kontrak (' . number_format($contract, 2) . ').');   // [PPN]
                     }
 
                     if (!function_exists('CreateRefNo')) throw new Exception('CreateRefNo() tidak tersedia.');
                     $invNo = CreateRefNo('project_invoices', 'inv_no', 'INV');
                     $st = $db->prepare("
-                        INSERT INTO public.project_invoices (inv_no, project_id, termin_name, invoice_date, percentage, amount, paid_amount)
-                        VALUES (:no, :p, :n, CAST(:d AS date), :pct, :a, 0)
+                        INSERT INTO public.project_invoices
+                            (inv_no, project_id, termin_name, invoice_date, percentage, amount, paid_amount,
+                             dpp_amount, ppn_rate, ppn_amount, faktur_pajak_no, faktur_pajak_date)          -- [PPN]
+                        VALUES (:no, :p, :n, CAST(:d AS date), :pct, :a, 0,
+                                :dpp, :pr, :ppn, :fn, CAST(NULLIF(:fd, '') AS date))
                         RETURNING id");
-                    $st->execute([':no' => $invNo, ':p' => $prj, ':n' => $name, ':d' => $date, ':pct' => $pct, ':a' => $amt]);
+                    // [PPN] amount = total tagihan (DPP + PPN); PPN dibulatkan di level dokumen
+                    $ppnAmt = ($ppnRate > 0) ? round($amt * $ppnRate / 100, 2) : 0.0;
+                    $total  = round($amt + $ppnAmt, 2);
+                    $st->execute([':no' => $invNo, ':p' => $prj, ':n' => $name, ':d' => $date, ':pct' => $pct, ':a' => $total,
+                                  ':dpp' => $amt, ':pr' => $ppnRate, ':ppn' => $ppnAmt, ':fn' => $fpNo, ':fd' => $fpDate]);
                     $newId = (int)$st->fetchColumn();
-                    pp_post_invoice_journal($db, $newId, $invNo, $date, $amt, (string)$prjRow['name']);
+                    pp_post_invoice_journal($db, $newId, $invNo, $date, $amt, (string)$prjRow['name'], $ppnAmt);   // [PPN] DPP + PPN
                     $db->commit();
-                    sendJsonResponse(true, ['id' => $newId, 'inv_no' => $invNo], "Termin {$invNo} berhasil dibuat.");
+                    sendJsonResponse(true, ['id' => $newId, 'inv_no' => $invNo],
+                        "Termin {$invNo} berhasil dibuat." . ($ppnAmt > 0 ? ' DPP ' . number_format($amt, 2) . ' + PPN ' . number_format($ppnAmt, 2) . ' = ' . number_format($total, 2) . '.' : ''));
                 } catch (Throwable $e) {
                     if ($db->inTransaction()) { $db->rollBack(); }
                     throw $e;
@@ -542,7 +603,7 @@ try {
             $st = $db->prepare("
                 SELECT pp.id, pp.payment_no, pp.payment_date, pp.client_id, c.name AS client_name,
                        pp.account_id, a.account_name, pp.payment_method,
-                       pp.total_amount, pp.allocated_amount, pp.excess_amount,
+                       pp.total_amount, pp.allocated_amount, pp.excess_amount, pp.deposit_applied,   -- [DEPOSIT]
                        pp.reference_no, pp.notes,
                        COALESCE(UPPER(TRIM(cur.init)), 'IDR') AS currency_code,
                        COALESCE(NULLIF(pp.exch_rate, 0), 1) AS exch_rate,
@@ -571,6 +632,7 @@ try {
                 $r['total_amount'] = (float)$r['total_amount'];
                 $r['allocated_amount'] = (float)$r['allocated_amount'];
                 $r['excess_amount'] = (float)$r['excess_amount'];
+                $r['deposit_applied'] = (float)$r['deposit_applied'];       // [DEPOSIT]
                 $r['exch_rate'] = (float)$r['exch_rate'];
                 $r['total_amount_cur'] = (float)$r['total_amount_cur'];
             }
@@ -586,7 +648,7 @@ try {
                 SELECT pp.id, pp.payment_no, pp.payment_date, pp.client_id, c.name AS client_name,
                        c.address AS client_address, c.phone AS client_phone,
                        pp.account_id, a.account_code, a.account_name, pp.payment_method,
-                       pp.total_amount, pp.allocated_amount, pp.excess_amount,
+                       pp.total_amount, pp.allocated_amount, pp.excess_amount, pp.deposit_applied,   -- [DEPOSIT]
                        pp.reference_no, pp.notes, pp.created_at,
                        COALESCE(UPPER(TRIM(cur.init)), 'IDR') AS currency_code,
                        COALESCE(NULLIF(pp.exch_rate, 0), 1) AS exch_rate,
@@ -606,6 +668,7 @@ try {
             $hdr['total_amount'] = (float)$hdr['total_amount'];
             $hdr['allocated_amount'] = (float)$hdr['allocated_amount'];
             $hdr['excess_amount'] = (float)$hdr['excess_amount'];
+            $hdr['deposit_applied'] = (float)$hdr['deposit_applied'];       // [DEPOSIT]
             $hdr['exch_rate'] = (float)$hdr['exch_rate'];
             $hdr['total_amount_cur'] = (float)$hdr['total_amount_cur'];
 
@@ -650,17 +713,18 @@ try {
             $items  = json_decode($_POST['items'] ?? '[]', true);
             $curIn  = (int)($_POST['currency_id'] ?? 0) ?: null;
             $rateIn = (float)($_POST['exch_rate'] ?? 1);
+            $depIn  = round((float)($_POST['deposit_apply'] ?? 0), 2);      // [DEPOSIT] deposit client yang dipakai (IDR)
 
             try {
                 if (!pp_valid_date($date)) throw new PpBusinessError('Tanggal pembayaran tidak valid.');
-                if (!$acc) throw new PpBusinessError('Akun Kas/Bank wajib dipilih.');
+                if (!$acc && !($depIn > PP_EPS && $total <= 0)) throw new PpBusinessError('Akun Kas/Bank wajib dipilih.');   // [DEPOSIT] lunas penuh dari deposit tanpa kas
                 if ($cli <= 0) throw new PpBusinessError('Client wajib dipilih.');
                 if (!in_array($method, PP_METHODS, true)) throw new PpBusinessError('Metode pembayaran tidak valid.');
                 if (!is_array($items) || !count($items)) throw new PpBusinessError('Alokasikan pembayaran ke minimal satu termin.');
 
                 $db->beginTransaction();
                 try {
-                    $st = $db->prepare("SELECT 1 FROM public.clients WHERE id = :id");
+                    $st = $db->prepare("SELECT 1 FROM public.clients WHERE id = :id FOR UPDATE");     // [DEPOSIT] kunci client: saldo deposit berubah serial
                     $st->execute([':id' => $cli]);
                     if (!$st->fetchColumn()) throw new PpBusinessError('Client tidak ditemukan.');
                     $clientId = $cli;
@@ -714,11 +778,29 @@ try {
                     }
                     $allocated = round($allocated, 2);
                     $allocatedIdr = round($allocatedIdr, 2);
-                    if ($total <= 0) throw new PpBusinessError('Jumlah diterima harus lebih dari 0.');
-                    if ($total + PP_EPS < $allocated) throw new PpBusinessError('Jumlah diterima lebih kecil dari total alokasi termin.');
-                    $excessCur = round($total - $allocated, 2);
-                    $excess    = round($excessCur * $rate, 2);
-                    $totalIdr  = round($allocatedIdr + $excess, 2);
+                    // [DEPOSIT] pemakaian deposit client (IDR)
+                    $depApplied = 0.0;
+                    if ($depIn > PP_EPS) {
+                        $depBal = pp_client_deposit($db, $clientId, 0);
+                        if ($depIn > $depBal + PP_EPS) throw new PpBusinessError('Deposit client tidak cukup (tersedia ' . number_format($depBal, 2) . ' IDR).');
+                        if ($depIn > $allocatedIdr + PP_EPS) throw new PpBusinessError('Deposit yang dipakai melebihi total alokasi termin.');
+                        $depApplied = $depIn;
+                    }
+                    if ($depApplied > PP_EPS) {
+                        // dana = kas diterima (kurs) + deposit; selisih pembulatan kecil di-snap
+                        if ($total < 0) throw new PpBusinessError('Jumlah diterima tidak valid.');
+                        $fundsIdr = round($total * $rate + $depApplied, 2);
+                        $tol      = 0.005 * $rate + PP_EPS;
+                        if ($fundsIdr + $tol < $allocatedIdr) throw new PpBusinessError('Kas diterima + deposit lebih kecil dari total alokasi termin.');
+                        $excess   = ($fundsIdr > $allocatedIdr + $tol) ? round($fundsIdr - $allocatedIdr, 2) : 0.0;
+                        $totalIdr = round($allocatedIdr + $excess, 2);
+                    } else {
+                        if ($total <= 0) throw new PpBusinessError('Jumlah diterima harus lebih dari 0.');
+                        if ($total + PP_EPS < $allocated) throw new PpBusinessError('Jumlah diterima lebih kecil dari total alokasi termin.');
+                        $excessCur = round($total - $allocated, 2);
+                        $excess    = round($excessCur * $rate, 2);
+                        $totalIdr  = round($allocatedIdr + $excess, 2);
+                    }
 
                     if (!function_exists('CreateRefNo')) throw new Exception('CreateRefNo() tidak tersedia.');
                     $payNo = CreateRefNo('project_payments', 'payment_no', 'PPAY');
@@ -728,10 +810,10 @@ try {
                             (payment_no, client_id, account_id, payment_date, payment_method,
                              total_amount, allocated_amount, excess_amount, deposit_applied,
                              reference_no, notes, created_by, currency_id, exch_rate, total_amount_cur)
-                        VALUES (:no, :c, :a, CAST(:d AS date), :m, :t, :al, :ex, 0, :r, :n, :u, :cur, :rate, :tc)
+                        VALUES (:no, :c, :a, CAST(:d AS date), :m, :t, :al, :ex, :da, :r, :n, :u, :cur, :rate, :tc)
                         RETURNING id");
                     $st->execute([':no' => $payNo, ':c' => $clientId, ':a' => $acc, ':d' => $date, ':m' => $method,
-                                  ':t' => $totalIdr, ':al' => $allocatedIdr, ':ex' => $excess, ':r' => $ref, ':n' => $notes,
+                                  ':t' => $totalIdr, ':al' => $allocatedIdr, ':ex' => $excess, ':da' => $depApplied, ':r' => $ref, ':n' => $notes,
                                   ':u' => (int)$_SESSION['user_id'] ?: null,
                                   ':cur' => $curId, ':rate' => $rate, ':tc' => $total]);
                     $payId = (int)$st->fetchColumn();
@@ -747,23 +829,29 @@ try {
                     $stCli->execute([':id' => $clientId]);
                     $cliName = (string)$stCli->fetchColumn();
                     $jrnParts = [];
-                    if ($allocatedIdr > PP_EPS) $jrnParts[] = ['PRJ_PAY_AR',  $allocatedIdr, "Pembayaran termin {$payNo} - {$cliName}"];
-                    if ($excess > PP_EPS)       $jrnParts[] = ['PRJ_PAY_DEP', $excess,       "Lebih bayar (deposit) {$payNo} - {$cliName}"];
+                    // [DEPOSIT] bagian kas = teralokasi - deposit; deposit dipakai = Dr Uang Muka Penjualan / Cr Piutang (tanpa kas)
+                    $arCash = round($allocatedIdr - $depApplied, 2);
+                    if ($arCash > PP_EPS)         $jrnParts[] = ['PRJ_PAY_AR',    $arCash,      "Pembayaran termin {$payNo} - {$cliName}"];
+                    if ($excess > PP_EPS)         $jrnParts[] = ['PRJ_PAY_DEP',   $excess,      "Lebih bayar (deposit) {$payNo} - {$cliName}"];
+                    if ($depApplied > PP_EPS)     $jrnParts[] = ['PRJ_DEP_APPLY', $depApplied,  "Pemakaian deposit {$payNo} - {$cliName}"];
                     foreach ($jrnParts as $jp) {
-                        $jr = AutoPostJournal($db, [
+                        $jin = [
                             'rule_code'        => $jp[0],
                             'reference_type'   => PP_JOURNAL_REF,
                             'reference_id'     => $payId,
                             'journal_date'     => $date,
                             'amount'           => $jp[1],
                             'description'      => $jp[2],
-                            'debit_account_id' => $acc,
-                        ]);
+                        ];
+                        if ($jp[0] !== 'PRJ_DEP_APPLY') $jin['debit_account_id'] = $acc;      // pemakaian deposit tidak melibatkan kas/bank
+                        $jr = AutoPostJournal($db, $jin);
                         if (!$jr['success']) throw new PpBusinessError('Gagal posting jurnal: ' . $jr['message']);
                     }
 
                     $db->commit();
-                    sendJsonResponse(true, ['id' => $payId, 'payment_no' => $payNo], "Pembayaran {$payNo} berhasil disimpan.");
+                    sendJsonResponse(true, ['id' => $payId, 'payment_no' => $payNo], "Pembayaran {$payNo} berhasil disimpan." .
+                        ($depApplied > PP_EPS ? ' Deposit dipakai ' . number_format($depApplied, 2) . '.' : '') .
+                        ($excess > PP_EPS ? ' Lebih bayar ' . number_format($excess, 2) . ' masuk deposit client.' : ''));
                 } catch (Throwable $e) {
                     if ($db->inTransaction()) { $db->rollBack(); }
                     throw $e;
@@ -811,16 +899,64 @@ try {
             break;
 
         /* ------------------------------------------------------------------
+         * [PPN] Isi / ubah faktur pajak keluaran sebuah termin
+         * ------------------------------------------------------------------ */
+        case 'update_faktur_pajak':
+            $id     = (int)($_POST['id'] ?? 0);
+            $cliChk = (int)($_POST['client_id'] ?? 0);
+            $fpNo   = trim((string)($_POST['faktur_pajak_no'] ?? ''));
+            $fpDate = trim((string)($_POST['faktur_pajak_date'] ?? ''));
+            $db->beginTransaction();
+            try {
+                if ($fpDate !== '' && !pp_valid_date($fpDate)) throw new PpBusinessError('Tanggal faktur pajak tidak valid.');
+                if (strlen($fpNo) > 30) throw new PpBusinessError('No. faktur pajak maksimal 30 karakter.');
+                if ($fpNo === '' && $fpDate !== '') throw new PpBusinessError('Isi no. faktur pajak, atau kosongkan tanggalnya.');
+
+                $st = $db->prepare("
+                    SELECT v.inv_no, v.ppn_amount, p.client_id
+                      FROM public.project_invoices v
+                      JOIN public.projects p ON p.id = v.project_id
+                     WHERE v.id = :id FOR UPDATE OF v");
+                $st->execute([':id' => $id]);
+                $inv = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$inv) throw new PpBusinessError('Termin tidak ditemukan.');
+                if ($cliChk > 0 && (int)$inv['client_id'] !== $cliChk) throw new PpBusinessError('Termin bukan milik client yang dipilih.');
+                if ((float)$inv['ppn_amount'] <= PP_EPS) throw new PpBusinessError("Termin {$inv['inv_no']} tidak memuat PPN, tidak ada faktur pajak.");
+
+                if ($fpNo !== '') {                       // no. faktur pajak keluaran unik antar termin
+                    $st = $db->prepare("SELECT inv_no FROM public.project_invoices WHERE faktur_pajak_no = :n AND id <> :id LIMIT 1");
+                    $st->execute([':n' => $fpNo, ':id' => $id]);
+                    $dup = $st->fetchColumn();
+                    if ($dup) throw new PpBusinessError("No. faktur pajak {$fpNo} sudah dipakai termin {$dup}.");
+                }
+                $st = $db->prepare("UPDATE public.project_invoices
+                                       SET faktur_pajak_no = NULLIF(:n, ''), faktur_pajak_date = CAST(NULLIF(:d, '') AS date)
+                                     WHERE id = :id");
+                $st->execute([':n' => $fpNo, ':d' => $fpDate, ':id' => $id]);
+                $db->commit();
+                sendJsonResponse(true, [], $fpNo === '' ? "Faktur pajak termin {$inv['inv_no']} dikosongkan." : "Faktur pajak termin {$inv['inv_no']} tersimpan.");
+            } catch (PpBusinessError $e) {
+                if ($db->inTransaction()) { $db->rollBack(); }
+                sendJsonResponse(false, [], $e->getMessage());
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) { $db->rollBack(); }
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
          * Hapus pembayaran[cite: 5]
          * ------------------------------------------------------------------ */
         case 'delete_payment':
             $id = (int)($_POST['id'] ?? 0);
             $db->beginTransaction();
             try {
-                $st = $db->prepare("SELECT payment_no FROM public.project_payments WHERE id = :id FOR UPDATE");
+                $st = $db->prepare("SELECT payment_no, client_id FROM public.project_payments WHERE id = :id FOR UPDATE");
                 $st->execute([':id' => $id]);
                 $pay = $st->fetch(PDO::FETCH_ASSOC);
                 if (!$pay) throw new PpBusinessError('Pembayaran tidak ditemukan.');
+                $st = $db->prepare("SELECT 1 FROM public.clients WHERE id = :c FOR UPDATE");         // [DEPOSIT] kunci client
+                $st->execute([':c' => (int)$pay['client_id']]);
 
                 $st = $db->prepare("SELECT invoice_id, amount_paid FROM public.project_payment_items WHERE payment_id = :id");
                 $st->execute([':id' => $id]);
@@ -831,6 +967,12 @@ try {
                 ReverseJournalByReference($db, PP_JOURNAL_REF, $id);
                 $db->prepare("DELETE FROM public.project_payment_items WHERE payment_id = :id")->execute([':id' => $id]);
                 $db->prepare("DELETE FROM public.project_payments WHERE id = :id")->execute([':id' => $id]);
+                // [DEPOSIT] deposit hasil pembayaran ini mungkin sudah dipakai pembayaran lain -> saldo tidak boleh negatif
+                $depAfter = pp_client_deposit($db, (int)$pay['client_id'], 0);
+                if ($depAfter < -PP_EPS) {
+                    throw new PpBusinessError('Pembayaran ini tidak bisa dihapus: deposit yang dihasilkannya sudah dipakai pembayaran lain (kekurangan ' .
+                        number_format(-$depAfter, 2) . '). Hapus pembayaran yang memakai deposit tersebut terlebih dahulu.');
+                }
                 $db->commit();
                 sendJsonResponse(true, [], "Pembayaran {$pay['payment_no']} dihapus dan saldo termin dikembalikan.");
             } catch (PpBusinessError $e) {
@@ -840,6 +982,28 @@ try {
                 if ($db->inTransaction()) { $db->rollBack(); }
                 throw $e;
             }
+            break;
+
+        /* ------------------------------------------------------------------
+         * [DEPOSIT] Saldo + riwayat deposit (left over) client
+         * ------------------------------------------------------------------ */
+        case 'get_client_deposit':
+            $cid = (int)($_REQUEST['client_id'] ?? 0);
+            if ($cid <= 0) sendJsonResponse(true, [], '', ['balance' => 0]);
+            $st = $db->prepare("
+                SELECT pp.id, pp.payment_date, pp.payment_no, pp.excess_amount, pp.deposit_applied, pp.reference_no
+                  FROM public.project_payments pp
+                 WHERE pp.client_id = :c AND (pp.excess_amount > 0 OR pp.deposit_applied > 0)
+                 ORDER BY pp.payment_date ASC, pp.id ASC");
+            $st->execute([':c' => $cid]);
+            $bal = 0.0; $ledger = [];
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                $in = (float)$r['excess_amount']; $out = (float)$r['deposit_applied'];
+                $bal = round($bal + $in - $out, 2);
+                $ledger[] = ['id' => (int)$r['id'], 'payment_date' => $r['payment_date'], 'payment_no' => $r['payment_no'],
+                             'reference_no' => $r['reference_no'], 'deposit_in' => $in, 'deposit_out' => $out, 'balance_after' => $bal];
+            }
+            sendJsonResponse(true, array_reverse($ledger), '', ['balance' => $bal]);     // terbaru di atas
             break;
 
         default:
