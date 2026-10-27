@@ -13,8 +13,7 @@ Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Laporan <em>PPN</em>";
 
-    var CRD = main_url + '/php-crud/ppn.reportCRD.php';
-
+     var CRD = main_url + '/php-crud/ppn.reportCRD.php';
     var MONTHS = [[1, 'Januari'], [2, 'Februari'], [3, 'Maret'], [4, 'April'], [5, 'Mei'], [6, 'Juni'],
                   [7, 'Juli'], [8, 'Agustus'], [9, 'September'], [10, 'Oktober'], [11, 'November'], [12, 'Desember']];
 
@@ -138,6 +137,7 @@ Ext.onReady(function () {
     };
     var rateRenderer = function (v) { return v + '%'; };
 
+    var EMPTY_TXT = '<div style="padding:16px;color:#9fc3d1;">Tidak ada transaksi ber-PPN pada periode ini (hanya termin / invoice dengan PPN &gt; 0 yang tampil; masa pajak mengikuti tanggal faktur, bila kosong tanggal invoice).</div>';
     var gridHeight = 300;      // dihitung ulang setelah tab & filter terpasang
     function calcHeight() {
         var used = document.getElementById('ppnTabs').offsetHeight + document.getElementById('ppnFilter').offsetHeight + 20;
@@ -148,7 +148,7 @@ Ext.onReady(function () {
         summary: function () {
             return new Ext.grid.GridPanel({
                 renderTo: 'ppnGrid_summary', height: Math.max(200, gridHeight - 50), store: mainDs, loadMask: true, stripeRows: true,
-                viewConfig: { forceFit: true },
+                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: EMPTY_TXT },   // pesan jelas saat tidak ada transaksi ber-PPN
                 columns: [
                     { header: 'Proyek', dataIndex: 'project_name', width: 240 },
                     amtCol('DPP Keluaran', 'keluaran_dpp'), amtCol('PPN Keluaran', 'keluaran_ppn'),
@@ -160,7 +160,7 @@ Ext.onReady(function () {
         keluaran: function () {
             return new Ext.grid.GridPanel({
                 renderTo: 'ppnGrid_keluaran', height: gridHeight, store: kelDs, loadMask: true, stripeRows: true,
-                viewConfig: { forceFit: true },
+                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: EMPTY_TXT },   // pesan jelas saat tidak ada transaksi ber-PPN
                 columns: [
                     { header: 'Tgl Pajak', dataIndex: 'tax_date', width: 85, align: 'center' },
                     { header: 'No. Invoice', dataIndex: 'inv_no', width: 110 },
@@ -177,7 +177,7 @@ Ext.onReady(function () {
         masukan: function () {
             return new Ext.grid.GridPanel({
                 renderTo: 'ppnGrid_masukan', height: gridHeight, store: masDs, loadMask: true, stripeRows: true,
-                viewConfig: { forceFit: true },
+                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: EMPTY_TXT },   // pesan jelas saat tidak ada transaksi ber-PPN
                 columns: [
                     { header: 'Tgl Pajak', dataIndex: 'tax_date', width: 85, align: 'center' },
                     { header: 'No. Invoice', dataIndex: 'inv_no', width: 110 },
@@ -226,6 +226,15 @@ Ext.onReady(function () {
                     '&project_id=' + p.project_id + '&query=' + encodeURIComponent(q));
     };
 
+    // [PRINT] tombol Printing template -> halaman cetak pdf/ppnreport.php (periode & proyek sesuai filter)
+    if (document.getElementById('printData')) {
+        document.getElementById('printData').onclick = function () {
+            var p = filterParams();
+            window.open('../dev/pdf/ppn.report.php?year=' + p.year + '&month=' + p.month + '&project_id=' + p.project_id,
+                        '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
+        };
+    }
+
     // Total & status kurang/lebih bayar dari respons list_summary
     mainDs.on('load', function (store) {
         var el = document.getElementById('ppnTotals');
@@ -265,6 +274,4 @@ Ext.onReady(function () {
         });
         loadAll();
     } });
-    document.getElementById('editorWdw').style.display = 'none';
-
 });
