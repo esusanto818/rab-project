@@ -14,10 +14,9 @@
          - total_amount = DPP + PPN (nilai hutang ke supplier, dipakai pembayaran); dpp_amount = jumlah matched GRN.
          - ppn_rate / ppn_amount (boleh diisi sesuai faktur pajak supplier; selisih dari hitungan dibatasi PI_PPN_TOLERANCE),
            faktur_pajak_no (unik per supplier) / faktur_pajak_date.
-         - Jurnal PPN Masukan (fiscal_config PURCHASE_INVOICE_PPN: Dr PPN Masukan / Cr Hutang Usaha) diposting lewat
-           AutoPostJournal (PDO) SETELAH data invoice di-commit, reference_type 'purchase_invoice_ppn'.
-           Create gagal posting -> invoice dibatalkan; update gagal posting -> invoice tersimpan, pesan error meminta simpan ulang.
-         Butuh migrasi: sql/2026-10-26.ppn_invoice.sql dan sql/2026-10-26.ppn_journal_enum.sql
+         - TIDAK ADA JURNAL di invoice supplier (prinsip: invoice = pemberitahuan tagihan, belum ada transaksi barang/uang).
+           DPP / PPN / faktur pajak hanya disimpan sebagai data: proyeksi pengeluaran, analisis cash flow, dan Laporan PPN.
+         Butuh migrasi: sql/2026-10-26.ppn_invoice.sql
    [BARU 2026-10-08]
          - task 'read_invoice_print': data Tanda Terima Invoice (read-only, tidak mengubah data).
          - create: kolom created_by ikut diisi dari sesi (kolom sudah ada di tabel, sebelumnya kosong)
@@ -67,55 +66,6 @@ function pgErrorOrFallback($fallback = 'Terjadi kesalahan pada database.') {
 
 // [PPN] ---------------------------------------------------------------
 const PI_PPN_TOLERANCE   = 100.00;                    // selisih maks (Rp) antara PPN input (faktur) dan hitungan DPP x tarif
-const PI_PPN_RULE        = 'PURCHASE_INVOICE_PPN';    // fiscal_config: Dr PPN Masukan / Cr Hutang Usaha
-const PI_PPN_JOURNAL_REF = 'purchase_invoice_ppn';    // nilai enum journal_entries.reference_type (lihat sql/2026-10-26.ppn_journal_enum.sql)
-
-// Koneksi PDO terpisah khusus AutoPostJournal / ReverseJournalByReference (file ini selebihnya memakai pg_*)
-function pi_pdo() {
-    static $db = null;
-    if ($db === null) {
-        require_once('../php-class/crudClass.php');
-        $db = new crud();
-    }
-    return $db;
-}
-
-// Samakan jurnal PPN Masukan dengan nilai PPN invoice: hapus jurnal lama (bila ada), posting baru bila PPN > 0
-function pi_sync_ppn_journal($invoiceId, $ppnAmt) {
-    if (!function_exists('AutoPostJournal') || !function_exists('ReverseJournalByReference')) {
-        throw new Exception('AutoPostJournal()/ReverseJournalByReference() tidak tersedia di function.all.php.');
-    }
-    $db = pi_pdo();
-    $db->beginTransaction();
-    try {
-        $st = $db->prepare("SELECT 1 FROM public.journal_entries WHERE reference_type::text = :t AND reference_id = :id LIMIT 1");
-        $st->execute([':t' => PI_PPN_JOURNAL_REF, ':id' => $invoiceId]);
-        if ($st->fetchColumn()) ReverseJournalByReference($db, PI_PPN_JOURNAL_REF, $invoiceId);
-
-        if ($ppnAmt > 0.005) {
-            $st = $db->prepare("SELECT h.inv_no, h.invoice_date, s.name AS supplier_name
-                                  FROM public.purchase_invoice_hdr h
-                                  LEFT JOIN public.m_suppliers s ON s.id = h.supplier_id
-                                 WHERE h.id = :id");
-            $st->execute([':id' => $invoiceId]);
-            $h = $st->fetch(PDO::FETCH_ASSOC);
-            if (!$h) throw new Exception('Invoice tidak ditemukan untuk posting jurnal PPN.');
-            $jr = AutoPostJournal($db, [
-                'rule_code'      => PI_PPN_RULE,
-                'reference_type' => PI_PPN_JOURNAL_REF,
-                'reference_id'   => $invoiceId,
-                'journal_date'   => $h['invoice_date'],
-                'amount'         => $ppnAmt,
-                'description'    => 'PPN Masukan ' . $h['inv_no'] . ' - ' . $h['supplier_name'],
-            ]);
-            if (!$jr['success']) throw new Exception($jr['message']);
-        }
-        $db->commit();
-    } catch (Throwable $e) {
-        if ($db->inTransaction()) $db->rollBack();
-        throw $e;
-    }
-}
 
 try {
     switch ($task) {
@@ -402,20 +352,6 @@ try {
 
             pg_query("COMMIT");
 
-            // [PPN] jurnal PPN Masukan (PDO terpisah) dipost setelah commit
-            try {
-                pi_sync_ppn_journal(intval($invoice_id), $ppn_amount_final);
-            } catch (Throwable $je) {
-                if ($task == 'create') {          // kompensasi: batalkan invoice yang baru dibuat
-                    pg_query("BEGIN");
-                    pg_query_params("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = $1", [$invoice_id]);
-                    pg_query_params("DELETE FROM purchase_invoice_hdr WHERE id = $1", [$invoice_id]);
-                    pg_query("COMMIT");
-                    throw new Exception('Invoice dibatalkan karena jurnal PPN gagal diposting: ' . $je->getMessage());
-                }
-                throw new Exception('Invoice tersimpan, tetapi jurnal PPN gagal diposting: ' . $je->getMessage() . ' Simpan ulang setelah masalah diperbaiki.');
-            }
-
             echo json_encode(['success' => true, 'message' => 'Data purchase invoice berhasil disimpan.']);
             break;
 
@@ -426,12 +362,6 @@ try {
             pg_query_params("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = $1", [$id]);
             pg_query_params("DELETE FROM purchase_invoice_hdr WHERE id = $1", [$id]);
             pg_query("COMMIT");
-            // [PPN] hapus jurnal PPN Masukan invoice ini (bila ada)
-            try {
-                pi_sync_ppn_journal($id, 0);
-            } catch (Throwable $je) {
-                throw new Exception('Invoice dihapus, tetapi jurnal PPN gagal dihapus: ' . $je->getMessage() . ' Hubungi administrator untuk reverse jurnal ref purchase_invoice_ppn #' . $id . '.');
-            }
             echo json_encode(['success' => true, 'message' => 'Data berhasil dihapus.']);
             break;
 

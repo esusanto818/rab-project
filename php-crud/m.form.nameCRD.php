@@ -98,6 +98,7 @@ try {
                         from m_form_group h
                         where substring(seq,3,2)='00' and substring(seq,1,2)<>'00')
                     ) data
+                    order by seq,name
                 ) g on g.id = dt.group_id
             ";
             
