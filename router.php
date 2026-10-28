@@ -1,13 +1,5 @@
 <?php
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-$crudFile = __DIR__ . '/dev/php-crud/' . $matches[1];
-error_log("DEBUG RAB-PROJECT: file ini dijalankan");
-error_log("DEBUG RAB-PROJECT [FILE]: " . __FILE__);
-error_log("DEBUG RAB-PROJECT [DIR]: " . __DIR__);
-error_log("DEBUG REQUEST URI: " . $requestUri);
-error_log("DEBUG MATCH: " . ($matches[1] ?? 'TIDAK ADA'));
-error_log("DEBUG CRUD FILE: " . $crudFile);
-error_log("DEBUG EXISTS: " . (file_exists($crudFile) ? 'YA' : 'TIDAK'));
+
 
 // 1. Matikan PCRE JIT untuk mencegah warning alokasi memori pada PHP 7
 ini_set('pcre.jit', '0');

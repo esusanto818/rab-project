@@ -11,7 +11,7 @@ Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Tagihan ke <em>Klien</em>";
 
-    var CRD = main_url + '/php-crud/m.project.invoiceCRD.php';
+    var CRD = main_url + '/php-crud/project.invoiceCRD.php';
 
     var ACCESS_ADD = 2;                  // level akses minimal: terbitkan invoice
     var ACCESS_EDIT = 3;                 // ubah / hapus / faktur pajak
@@ -246,7 +246,7 @@ Ext.onReady(function () {
     }
 
     function printInvoice(id) {
-        window.open('../pdf/project.invoice.php?id=' + id, '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
+        window.open('../dev/pdf/project.invoice.php?id=' + id, '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
     }
 
     // Isi / ubah faktur pajak keluaran
@@ -471,5 +471,7 @@ Ext.onReady(function () {
             sel.appendChild(o);
         });
     } });
+    document.getElementById('editorWdw').style.display = 'none';
+
     loadMain();
 });
