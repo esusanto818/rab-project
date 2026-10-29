@@ -2,10 +2,13 @@
   Document      : projectinvoice.js
   Description   : Tagihan ke Klien (invoice termin proyek).  Alur: TERBITKAN invoice -> client membayar (modul Project Payment)
                    -> kelebihan bayar jadi deposit client. Grid utama = daftar invoice (status Belum Bayar / Sebagian / Lunas, jatuh tempo);
-                   klik baris -> panel detail (pembayaran yang masuk, faktur pajak, cetak). Add/Edit membuka jendela invoice.
+                   klik baris -> panel detail (pembayaran yang masuk, faktur pajak, cetak). Add/Edit membuka editor standar template (editorWdw, seperti PO).
                    Nilai yang diinput = DPP; PPN Keluaran default 11% (0 = tanpa PPN); total tagihan = DPP + PPN.
                    Ubah / hapus hanya untuk invoice yang belum ada pembayaran. Ringkasan di atas grid = dasar proyeksi arus kas penerimaan.
-  Backend       : /proyek/php-crud/projectinvoiceCRD.php
+  Backend       : php-crud/project.invoiceCRD.php
+  [CHANGED]     : form Terbitkan/Ubah Invoice dipindah dari Ext.Window (tombol Ext tak terbaca di tema gelap) ke editorWdw template
+                   dengan tombol SAVE/DISCARD standar, tata letak seperti header PO. Checkbox 'Kenakan PPN' (tak terlihat di tema gelap)
+                   diganti pilihan Ya/Tidak. Tombol jendela Faktur Pajak memakai tombol HTML gaya standar (teal / burgundy).
 */
 Ext.onReady(function () {
     Ext.QuickTips.init();
@@ -27,6 +30,11 @@ Ext.onReady(function () {
     function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
     function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
     function ymd(d) { return d ? d.dateFormat('Y-m-d') : ''; }
+    // [CHANGED] tombol HTML gaya standar UI (putih tebal, padding 8px 20px, radius 4px); primer teal #066b78, batal burgundy #800020
+    function uiBtn(id, label, bg) {
+        return '<button type="button" id="' + id + '" style="margin-left:8px;padding:8px 20px;background:' + bg +
+               ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">' + label + '</button>';
+    }
 
     function ajax(params, onOk, onFail) {
         Ext.Ajax.request({
@@ -257,38 +265,97 @@ Ext.onReady(function () {
             fieldLabel: 'Tgl Faktur Pajak', format: 'd/m/Y', width: 130, allowBlank: true,
             value: h.faktur_pajak_date ? Date.parseDate(h.faktur_pajak_date, 'Y-m-d') : ''
         });
+        // [CHANGED] tombol HTML gaya standar (Ext.Button bawaan tak terbaca di tema gelap)
         var win = new Ext.Window({
-            title: 'Faktur Pajak - ' + h.inv_no, width: 420, height: 230, modal: true, layout: 'fit',
+            title: 'Faktur Pajak - ' + h.inv_no, width: 420, height: 250, modal: true, layout: 'fit',
             items: new Ext.form.FormPanel({
                 border: false, labelWidth: 120, bodyStyle: 'padding:12px;',
                 items: [{ xtype: 'displayfield', hideLabel: true,
                           value: 'PPN Keluaran <b>' + fmtAmt(h.ppn_amount) + '</b> (DPP ' + fmtAmt(h.dpp_amount) +
                                  '). Tanggal faktur menentukan masa pajak di Laporan PPN. Kosongkan nomor untuk menghapus.' }, fNo, fDt]
             }),
-            buttons: [
-                { text: 'Simpan', handler: function () {
-                    var no = fNo.getValue(), dt = fDt.getValue();        // baca nilai sebelum win.close()
-                    ajax({ task: 'update_faktur_pajak', id: h.id, faktur_pajak_no: no, faktur_pajak_date: ymd(dt) }, function (res) {
-                        Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
-                        if (res.success) { win.close(); mainDs.load(); loadDetailPanel(h.id); }
-                    });
-                } },
-                { text: 'Batal', handler: function () { win.close(); } }
-            ]
+            bbar: ['->', { xtype: 'tbtext', text: uiBtn('tiFpSave', 'Simpan', '#066b78') + uiBtn('tiFpCancel', 'Batal', '#800020') }]
         });
         win.show();
+        document.getElementById('tiFpCancel').onclick = function () { win.close(); };
+        document.getElementById('tiFpSave').onclick = function () {
+            var no = fNo.getValue(), dt = fDt.getValue();        // baca nilai sebelum win.close()
+            ajax({ task: 'update_faktur_pajak', id: h.id, faktur_pajak_no: no, faktur_pajak_date: ymd(dt) }, function (res) {
+                Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                if (res.success) { win.close(); mainDs.load(); loadDetailPanel(h.id); }
+            });
+        };
     }
 
     // ------------------------------------------------------------
-    // 4. Jendela terbitkan / ubah invoice
+    // 4. Editor invoice (editorWdw template, seperti PO): form header 2 baris + bar ringkasan
     // ------------------------------------------------------------
-    function openEditor(rec) {                        // rec null = invoice baru
-        var editing = !!rec;
-        var dueManual = editing && !!rec.due_date;     // jatuh tempo diubah manual / dimuat dari invoice -> jangan ditimpa TOP
+    var editing = false;                 // true = ubah invoice, false = invoice baru
+    var curRec = null;                   // invoice yang sedang diubah
+    var dueManual = false;               // jatuh tempo diubah manual / dimuat dari invoice -> jangan ditimpa TOP
+    var hdrForm = null, hdrForm2 = null;
+    var fClient, fProject, fName, fDate, fTop, fDue, fPct, fAmt, fPpnOn, fPpnRate, fFpNo, fFpDate, fRemark;
 
-        var fClient = new myComboField({
+    // Tempat form header + bar ringkasan; grid template (editorFormGrid) tidak dipakai -> disembunyikan
+    (function injectExtraUI() {
+        var g = document.getElementById('editorFormGrid');
+        var host = g ? g.parentNode : document.getElementById('editorWdw');
+        if (!host || document.getElementById('tiHdrForm')) return;
+
+        var hdr = document.createElement('div');
+        hdr.id = 'tiHdrForm';
+        hdr.style.cssText = 'margin-bottom:2px;';
+        var hdr2 = document.createElement('div');
+        hdr2.id = 'tiHdrForm2';
+        hdr2.style.cssText = 'margin-bottom:8px;';
+        var bar = document.createElement('div');
+        bar.id = 'tiInfoBar';
+        bar.style.cssText = 'padding:10px 14px; margin-top:8px; font-size:13px; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
+
+        if (g) {
+            host.insertBefore(hdr, g); host.insertBefore(hdr2, g); host.insertBefore(bar, g);
+            g.style.display = 'none';
+        } else {
+            host.appendChild(hdr); host.appendChild(hdr2); host.appendChild(bar);
+        }
+    })();
+
+    function curProject() { return fProject && fProject.getValue() ? projectDs.getById(fProject.getValue()) : null; }
+    function taxed() { return fPpnOn.getValue() === '1'; }
+    function curRate() { return taxed() ? (parseFloat(fPpnRate.getValue()) || 0) : 0; }
+    function syncDue() {
+        if (dueManual) return;
+        var d = fDate.getValue(), n = parseInt(fTop.getValue(), 10);
+        if (d && n >= 0) fDue.setValue(d.add(Date.DAY, n)); else fDue.setValue('');
+    }
+    function recalcFromPct() {                    // nilai kontrak x persen -> DPP
+        var p = curProject(), pct = parseFloat(fPct.getValue()) || 0;
+        if (p && p.get('contract_value') > 0 && pct > 0) fAmt.setValue(round2(p.get('contract_value') * pct / 100));
+    }
+    function refresh() {
+        var bar = document.getElementById('tiInfoBar');
+        if (!bar) return;
+        var p = curProject(), dpp = round2(parseFloat(fAmt.getValue()) || 0), r = curRate(), ppn = round2(dpp * r / 100);
+        var msg = '';
+        if (p) {
+            var cv = p.get('contract_value'), billed = p.get('billed_dpp') - (editing ? (curRec.dpp_amount || 0) : 0);
+            msg += '<div style="font-size:12px;color:#9fc3d1;">Nilai kontrak <b>' + fmtAmt(cv) + '</b> &nbsp;|&nbsp; sudah ditagih (DPP) <b>' + fmtAmt(billed) +
+                   '</b> &nbsp;|&nbsp; sisa kontrak <b>' + fmtAmt(Math.max(cv - billed - dpp, 0)) + '</b>';
+            if (cv > 0 && billed + dpp > cv + VEPS) msg += ' <span style="color:#ff6b5e;">(melebihi nilai kontrak)</span>';
+            msg += '</div>';
+        }
+        msg += '<div style="margin-top:4px;"><b>Total Tagihan: ' + fmtAmt(round2(dpp + ppn)) + '</b> ' +
+               '<span style="font-size:12px;font-weight:normal;color:#9fc3d1;">&nbsp;(DPP ' + fmtAmt(dpp) + ' &nbsp;|&nbsp; PPN ' + r + '% ' + fmtAmt(ppn) + ')</span></div>';
+        bar.innerHTML = msg;
+    }
+
+    // Form dibuat saat editor dibuka pertama kali (container hidden -> lebar kolom 0 bila dirender lebih awal)
+    function ensureForm() {
+        if (hdrForm) { hdrForm.doLayout(); hdrForm2.doLayout(); return; }
+
+        fClient = new myComboField({
             fieldLabel: 'Client', store: clientDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all',
-            forceSelection: true, allowBlank: false, anchor: '95%', disabled: editing,
+            forceSelection: true, allowBlank: false, anchor: '95%',
             listeners: { select: function () {                          // proyek hanya milik client terpilih (filterBy: cocok persis, bukan awalan)
                 var cid = String(fClient.getValue());
                 projectDs.clearFilter();
@@ -296,130 +363,134 @@ Ext.onReady(function () {
                 fProject.clearValue(); refresh();
             } }
         });
-        var fProject = new myComboField({
+        fProject = new myComboField({
             fieldLabel: 'Proyek', store: projectDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all',
-            forceSelection: true, allowBlank: false, anchor: '95%', disabled: editing,
+            forceSelection: true, allowBlank: false, anchor: '95%',
             listeners: { select: function () { recalcFromPct(); refresh(); } }
         });
-        var fName = new myTextField({ fieldLabel: 'Nama Termin', anchor: '95%', allowBlank: false, value: editing ? rec.termin_name : '' });
-        var fDate = new Ext.form.DateField({
-            fieldLabel: 'Tanggal Invoice', format: 'd/m/Y', width: 130, allowBlank: false,
-            value: editing ? Date.parseDate(rec.invoice_date, 'Y-m-d') : new Date(),
+        fName = new myTextField({ fieldLabel: 'Nama Termin', anchor: '95%', allowBlank: false });
+        fDate = new Ext.form.DateField({
+            fieldLabel: 'Tanggal Invoice', format: 'd/m/Y', width: 130, allowBlank: false, value: new Date(),
             listeners: { select: function () { syncDue(); }, change: function () { syncDue(); } }
         });
-        var fTop = new myNumberField({
-            fieldLabel: 'TOP (hari)', decimalPrecision: 0, allowNegative: false, width: 70,
-            value: (editing && rec.due_date) ? Math.round((Date.parseDate(rec.due_date, 'Y-m-d') - Date.parseDate(rec.invoice_date, 'Y-m-d')) / 86400000) : TOP_DEFAULT_DAYS,
+        fTop = new myNumberField({
+            fieldLabel: 'TOP (hari)', decimalPrecision: 0, allowNegative: false, width: 70, value: TOP_DEFAULT_DAYS,
             listeners: { change: function () { dueManual = false; syncDue(); } }
         });
-        var fDue = new Ext.form.DateField({
+        fDue = new Ext.form.DateField({
             fieldLabel: 'Jatuh Tempo', format: 'd/m/Y', width: 130, allowBlank: true,
-            value: editing && rec.due_date ? Date.parseDate(rec.due_date, 'Y-m-d') : '',
             listeners: { select: function () { dueManual = true; }, change: function () { dueManual = !!fDue.getValue(); } }
         });
-        var fPct = new myNumberField({
+        fPct = new myNumberField({
             fieldLabel: '% dari Kontrak', decimalPrecision: 2, allowNegative: false, width: 90,
-            value: editing && rec.percentage > 0 ? rec.percentage : '',
             listeners: { change: function () { recalcFromPct(); refresh(); } }
         });
-        var fAmt = new myNumberField({
-            fieldLabel: 'Nilai Invoice (DPP)', decimalPrecision: 2, allowNegative: false, width: 160, value: editing ? rec.dpp_amount : 0,
+        fAmt = new myNumberField({
+            fieldLabel: 'Nilai Invoice (DPP)', decimalPrecision: 2, allowNegative: false, width: 160, value: 0,
             listeners: { change: function () { refresh(); } }
         });
-        var fPpnOn = new Ext.form.Checkbox({
-            fieldLabel: 'Kenakan PPN', boxLabel: 'PPN Keluaran', checked: editing ? rec.ppn_amount > 0 : true,
-            listeners: { check: function () { fPpnRate.setDisabled(!fPpnOn.getValue()); refresh(); } }
+        // [CHANGED] pilihan Ya/Tidak (bukan checkbox: checkbox bawaan tak terlihat di tema gelap)
+        fPpnOn = new myComboField({
+            fieldLabel: 'Kenakan PPN', store: new Ext.data.ArrayStore({ fields: ['v', 't'], data: [['1', 'Ya'], ['0', 'Tidak']] }),
+            displayField: 't', valueField: 'v', mode: 'local', triggerAction: 'all', forceSelection: true, editable: false,
+            value: '1', width: 90,
+            listeners: { select: function () { fPpnRate.setDisabled(!taxed()); refresh(); } }
         });
-        var fPpnRate = new myNumberField({
-            fieldLabel: 'Tarif PPN (%)', decimalPrecision: 2, width: 90, allowNegative: false,
-            value: editing && rec.ppn_rate > 0 ? rec.ppn_rate : PPN_DEFAULT_RATE, disabled: editing ? !(rec.ppn_amount > 0) : false,
+        fPpnRate = new myNumberField({
+            fieldLabel: 'Tarif PPN (%)', decimalPrecision: 2, width: 90, allowNegative: false, value: PPN_DEFAULT_RATE,
             listeners: { change: function () { refresh(); } }
         });
-        var fFpNo = new myTextField({ fieldLabel: 'No. Faktur Pajak', anchor: '95%', emptyText: 'opsional, bisa diisi setelah terbit', value: editing ? (rec.faktur_pajak_no || '') : '' });
-        var fFpDate = new Ext.form.DateField({
-            fieldLabel: 'Tgl Faktur Pajak', format: 'd/m/Y', width: 130, allowBlank: true,
-            value: editing && rec.faktur_pajak_date ? Date.parseDate(rec.faktur_pajak_date, 'Y-m-d') : ''
+        fFpNo = new myTextField({ fieldLabel: 'No. Faktur Pajak', anchor: '95%', emptyText: 'opsional, bisa diisi setelah terbit' });
+        fFpDate = new Ext.form.DateField({ fieldLabel: 'Tgl Faktur Pajak', format: 'd/m/Y', width: 130, allowBlank: true });
+        fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+
+        var col = function (w, items) {
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items };
+        };
+        hdrForm = new Ext.form.FormPanel({
+            renderTo: 'tiHdrForm', border: false, layout: 'column',
+            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            items: [col(0.34, [fClient, fProject, fName]), col(0.33, [fDate, fTop, fDue]), col(0.33, [fPct, fAmt, fPpnOn, fPpnRate])]
         });
-        var fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%', value: editing ? (rec.remark || '') : '' });
-        var fInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
-
-        function curProject() { return fProject.getValue() ? projectDs.getById(fProject.getValue()) : null; }
-        function curRate() { return fPpnOn.getValue() ? (parseFloat(fPpnRate.getValue()) || 0) : 0; }
-        function syncDue() {
-            if (dueManual) return;
-            var d = fDate.getValue(), n = parseInt(fTop.getValue(), 10);
-            if (d && n >= 0) fDue.setValue(d.add(Date.DAY, n)); else fDue.setValue('');
-        }
-        function recalcFromPct() {                    // nilai kontrak x persen -> DPP
-            var p = curProject(), pct = parseFloat(fPct.getValue()) || 0;
-            if (p && p.get('contract_value') > 0 && pct > 0) fAmt.setValue(round2(p.get('contract_value') * pct / 100));
-        }
-        function refresh() {
-            var p = curProject(), dpp = round2(parseFloat(fAmt.getValue()) || 0), r = curRate(), ppn = round2(dpp * r / 100);
-            var msg = '';
-            if (p) {
-                var cv = p.get('contract_value'), billed = p.get('billed_dpp') - (editing ? (rec.dpp_amount || 0) : 0);
-                msg += 'Nilai kontrak <b>' + fmtAmt(cv) + '</b> | sudah ditagih (DPP) <b>' + fmtAmt(billed) + '</b> | sisa kontrak <b>' + fmtAmt(Math.max(cv - billed - dpp, 0)) + '</b>';
-                if (cv > 0 && billed + dpp > cv + VEPS) msg += ' <span style="color:#ff6b5e;">(melebihi nilai kontrak)</span>';
-                msg += '<br/>';
-            }
-            msg += 'DPP <b>' + fmtAmt(dpp) + '</b> &nbsp;|&nbsp; PPN ' + r + '% <b>' + fmtAmt(ppn) + '</b> &nbsp;|&nbsp; Total tagihan <b>' + fmtAmt(round2(dpp + ppn)) + '</b>';
-            fInfo.setValue('<span style="color:#9fc3d1;">' + msg + '</span>');
-        }
-
-        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 115, bodyStyle: 'padding:0 6px;', items: items }; };
-        var win = new Ext.Window({
-            title: editing ? 'Ubah Invoice ' + rec.inv_no : 'Terbitkan Invoice ke Client', width: 880, height: 440, modal: true, layout: 'fit',
-            items: new Ext.form.FormPanel({
-                border: false, layout: 'column', bodyStyle: 'padding:10px 4px;',
-                items: [
-                    col(0.5, [fClient, fProject, fName, fDate, fTop, fDue, fRemark]),
-                    col(0.5, [fPct, fAmt, fPpnOn, fPpnRate, fFpNo, fFpDate, fInfo])
-                ]
-            }),
-            buttons: [
-                { text: editing ? 'Simpan Perubahan' : 'Terbitkan Invoice', handler: function () {
-                    if (!fProject.getValue()) { showErr('Proyek wajib dipilih.'); return; }
-                    if (!fName.getValue()) { showErr('Nama termin wajib diisi.'); return; }
-                    if (!fDate.getValue()) { showErr('Tanggal invoice wajib diisi.'); return; }
-                    if (!(parseFloat(fAmt.getValue()) > 0)) { showErr('Nilai invoice (DPP) harus lebih dari 0.'); return; }
-                    if (fDue.getValue() && fDue.getValue() < fDate.getValue()) { showErr('Jatuh tempo tidak boleh lebih awal dari tanggal invoice.'); return; }
-                    if (fPpnOn.getValue() && !(curRate() > 0 && curRate() <= 100)) { showErr('Tarif PPN harus lebih dari 0 dan maksimal 100%.'); return; }
-                    var p = {
-                        task: 'save_invoice', id: editing ? rec.id : 0, project_id: fProject.getValue(), client_id: fClient.getValue() || (editing ? rec.client_id : 0),
-                        termin_name: fName.getValue(), invoice_date: ymd(fDate.getValue()), due_date: ymd(fDue.getValue()),
-                        percentage: fPct.getValue(), amount: fAmt.getValue(), ppn_rate: curRate(),
-                        faktur_pajak_no: fFpNo.getValue(), faktur_pajak_date: ymd(fFpDate.getValue()), remark: fRemark.getValue()
-                    };
-                    ajax(p, function (res) {
-                        if (res.success) {
-                            win.close();
-                            Ext.Msg.alert('Sukses', res.message || 'Invoice tersimpan.');
-                            projectDs.load();            // total DPP yang sudah ditagih berubah
-                            mainDs.load();
-                            if (res.data && res.data.id) { dataRecord = { id: res.data.id, paid_amount: 0 }; updateMainButtons(); loadDetailPanel(res.data.id); }
-                        } else {
-                            showErr(res.message || 'Terjadi kesalahan sistem.');
-                        }
-                    });
-                } },
-                { text: 'Batal', handler: function () { win.close(); } }
-            ]
+        hdrForm2 = new Ext.form.FormPanel({
+            renderTo: 'tiHdrForm2', border: false, layout: 'column',
+            bodyStyle: 'background:transparent; padding:0 2px 4px 2px;',
+            items: [col(0.34, [fFpNo]), col(0.33, [fFpDate]), col(0.33, [fRemark])]
         });
-        win.show();
-
-        // pasang nilai awal setelah master (client & proyek) termuat
-        function applyInitial() {
-            projectDs.clearFilter();
-            if (editing) {
-                fClient.setValue(rec.client_id);
-                fProject.setValue(rec.project_id);
-            }
-            if (!editing) syncDue();
-            refresh();
-        }
-        clientDs.load({ callback: function () { projectDs.load({ callback: applyInitial }); } });
     }
+
+    function showEditor(title) {
+        var addWdw = document.getElementById('addWdw');      // jaga-jaga: window Add bawaan template jangan ikut terbuka
+        if (addWdw) addWdw.style.display = 'none';
+        document.getElementById('editorWdw').style.display = 'block';
+        document.getElementById('editorFormHeaderText').innerHTML = '&nbsp;&nbsp;' + enc(title);
+        ensureForm();
+    }
+
+    // Isi form (setelah master client & proyek termuat)
+    function fillForm(rec) {
+        editing = !!rec;
+        curRec = rec || null;
+        dueManual = editing && !!rec.due_date;
+        projectDs.clearFilter();
+
+        fClient.setDisabled(editing);
+        fProject.setDisabled(editing);
+        if (editing) { fClient.setValue(rec.client_id); fProject.setValue(rec.project_id); }
+        else { fClient.clearValue(); fProject.clearValue(); }
+
+        fName.setValue(editing ? rec.termin_name : '');
+        fDate.setValue(editing ? Date.parseDate(rec.invoice_date, 'Y-m-d') : new Date());
+        fTop.setValue((editing && rec.due_date)
+            ? Math.round((Date.parseDate(rec.due_date, 'Y-m-d') - Date.parseDate(rec.invoice_date, 'Y-m-d')) / 86400000) : TOP_DEFAULT_DAYS);
+        fDue.setValue(editing && rec.due_date ? Date.parseDate(rec.due_date, 'Y-m-d') : '');
+        fPct.setValue(editing && rec.percentage > 0 ? rec.percentage : '');
+        fAmt.setValue(editing ? rec.dpp_amount : 0);
+
+        var isTaxed = editing ? rec.ppn_amount > 0 : true;      // invoice baru: default kena PPN
+        fPpnOn.setValue(isTaxed ? '1' : '0');
+        fPpnRate.setValue(editing && rec.ppn_rate > 0 ? rec.ppn_rate : PPN_DEFAULT_RATE);
+        fPpnRate.setDisabled(!isTaxed);
+
+        fFpNo.setValue(editing ? (rec.faktur_pajak_no || '') : '');
+        fFpDate.setValue(editing && rec.faktur_pajak_date ? Date.parseDate(rec.faktur_pajak_date, 'Y-m-d') : '');
+        fRemark.setValue(editing ? (rec.remark || '') : '');
+
+        if (!editing) syncDue();
+        refresh();
+    }
+
+    function openEditor(rec) {                        // rec null = invoice baru
+        showEditor(rec ? 'Ubah Invoice ' + rec.inv_no : 'Terbitkan Invoice ke Client');
+        clientDs.load({ callback: function () { projectDs.load({ callback: function () { fillForm(rec); } }); } });
+    }
+
+    // SAVE (tombol template)
+    document.getElementById('saveEdit').onclick = function () {
+        if (!fProject || !fProject.getValue()) { showErr('Proyek wajib dipilih.'); return; }
+        if (!fName.getValue()) { showErr('Nama termin wajib diisi.'); return; }
+        if (!fDate.getValue()) { showErr('Tanggal invoice wajib diisi.'); return; }
+        if (!(parseFloat(fAmt.getValue()) > 0)) { showErr('Nilai invoice (DPP) harus lebih dari 0.'); return; }
+        if (fDue.getValue() && fDue.getValue() < fDate.getValue()) { showErr('Jatuh tempo tidak boleh lebih awal dari tanggal invoice.'); return; }
+        if (taxed() && !(curRate() > 0 && curRate() <= 100)) { showErr('Tarif PPN harus lebih dari 0 dan maksimal 100%.'); return; }
+        var p = {
+            task: 'save_invoice', id: editing ? curRec.id : 0, project_id: fProject.getValue(), client_id: fClient.getValue() || (editing ? curRec.client_id : 0),
+            termin_name: fName.getValue(), invoice_date: ymd(fDate.getValue()), due_date: ymd(fDue.getValue()),
+            percentage: fPct.getValue(), amount: fAmt.getValue(), ppn_rate: curRate(),
+            faktur_pajak_no: fFpNo.getValue(), faktur_pajak_date: ymd(fFpDate.getValue()), remark: fRemark.getValue()
+        };
+        ajax(p, function (res) {
+            if (res.success) {
+                document.getElementById('editorWdw').style.display = 'none';
+                Ext.Msg.alert('Sukses', res.message || 'Invoice tersimpan.');
+                projectDs.load();            // total DPP yang sudah ditagih berubah
+                mainDs.load();
+                if (res.data && res.data.id) { dataRecord = { id: res.data.id, paid_amount: 0 }; updateMainButtons(); loadDetailPanel(res.data.id); }
+            } else {
+                showErr(res.message || 'Terjadi kesalahan sistem.');
+            }
+        });
+    };
 
     // ------------------------------------------------------------
     // 5. Handler tombol template

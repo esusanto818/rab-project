@@ -22,7 +22,7 @@ Ext.onReady(function () {
     document.getElementById("mainHeaderText").innerHTML = "Pembayaran <em>Termin</em>";
 
     var CRD = '/rab-project/dev/php-crud/project.paymentCRD.php';
-    var PRINT_URL = '/rab-project/views/project.payment.print.php?id=';
+    var PRINT_URL = '/rab-project/dev/views/project.payment.print.php?id=';
     var ACCESS_ADD = 2;      // level akses minimal: input pembayaran / termin
     var ACCESS_EDIT = 3;     // level akses minimal: hapus pembayaran
     var VEPS = 0.01;         // toleransi nilai

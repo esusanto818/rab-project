@@ -8,11 +8,7 @@
     'use strict';
 
     var paymentId = parseInt(window.PAYMENT_ID, 10) || 0;
-<<<<<<< Updated upstream
     var endpoint = window.PAYMENT_CRD_URL || '/rab-project/dev/php-crud/project.paymentCRD.php';
-=======
-    var endpoint = window.PAYMENT_CRD_URL || '../php-crud/project.paymentCRD.php';
->>>>>>> Stashed changes
     var root = document.getElementById('receipt');
 
     function esc(value) {
