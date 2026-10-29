@@ -274,4 +274,6 @@ Ext.onReady(function () {
         });
         loadAll();
     } });
+    document.getElementById('editorWdw').style.display = 'none';
+
 });

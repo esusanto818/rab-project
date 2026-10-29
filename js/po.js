@@ -374,7 +374,12 @@ dtlDiv.style.overflowY = 'auto';
     // ------------------------------------------------------------
     // 3. Editor PO: header (form) + item grid
     // ------------------------------------------------------------
+    // [CHANGED] kolom hapus baris memakai ItemDeleter template (ikon trash, sama dengan Purchase Invoice);
+    // kolom custom '&#10005;' sebelumnya terpotong (ellipsis) oleh lebar kolom fixed 32px pada tema gelap.
+    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });   // [CHANGED] ikon trash di header kolom hapus (seperti Pembayaran Termin)
+    itemDs.on('remove', function () { recalcAll(); });                 // [CHANGED] hitung ulang total setelah baris dihapus
     var itemGrid = new stdGridEditor({
+        selModel: editorDeleter,                                       // [CHANGED]
         store: itemDs,
         renderTo: 'editorFormGrid',
         viewConfig: { forceFit: true, scrollOffset: 0 },
@@ -443,23 +448,12 @@ dtlDiv.style.overflowY = 'auto';
                     return '<span style="color:' + (v === 'OK' ? '#00ff4c' : '#c0392b') + ' !important;font-weight:bold;">' + enc(v) + '</span>';
                 }
             },
-            {
-                id: 'poDeleteCol', header: '', dataIndex: 'budget_item_id', width: 32, align: 'center', fixed: true,
-                renderer: function () {
-                    return '<span style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus baris">&#10005;</span>';
-                }
-            }
+            editorDeleter                                                  // [CHANGED] kolom ikon trash
         ],
         listeners: {
             afteredit: function (e) {
                 if (e.field === 'unit_price') e.record.set('price_manual', true);       // harga diubah user -> jangan ditimpa konversi
                 if (e.field === 'qty' || e.field === 'unit_price' || e.field === 'budget_item_id') recalcAll();
-            },
-            cellclick: function (grid, rowIndex, columnIndex) {
-                if (grid.getColumnModel().getColumnId(columnIndex) === 'poDeleteCol') {
-                    grid.getStore().removeAt(rowIndex);
-                    recalcAll();
-                }
             }
         }
     });
@@ -564,11 +558,11 @@ dtlDiv.style.overflowY = 'auto';
         fPpnMode = new myComboField({
             fieldLabel: 'PPN', store: new Ext.data.ArrayStore({ fields: ['v', 't'], data: PPN_MODE_DATA }),
             displayField: 't', valueField: 'v', mode: 'local', triggerAction: 'all', forceSelection: true,
-            editable: false, value: 'NONE', anchor: '95%',
+            editable: false, value: 'EXCL', anchor: '95%',          // [CHANGED] default EXCL = kena PPN (pilih 'Tanpa PPN' bila tidak kena)
             listeners: { select: function () { ppnManual = true; onPpnModeChange(); } }
         });
         fPpnRate = new myNumberField({
-            fieldLabel: 'Tarif PPN (%)', decimalPrecision: 2, value: 0, width: 80, disabled: true,
+            fieldLabel: 'Tarif PPN (%)', decimalPrecision: 2, value: PPN_DEFAULT_RATE, width: 80, disabled: false,   // [CHANGED] default tarif aktif
             listeners: { change: function () { onRatesChanged(); } }
         });
         fPpnInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
@@ -746,14 +740,9 @@ dtlDiv.style.overflowY = 'auto';
         onRatesChanged();          // harga default (mode INCL) & seluruh nilai dihitung ulang
     }
 
-    // [PPN] pilih supplier: bila mode belum diubah manual, PKP -> Exclude, non-PKP -> Tanpa PPN
+    // [PPN][CHANGED] pilih supplier: default tetap kena PPN (tidak lagi dibedakan PKP / non-PKP); status PKP hanya jadi peringatan
     function onSupplierChange() {
-        if (!ppnManual) {
-            fPpnMode.setValue(supplierIsPkp(fSupplier.getValue()) ? 'EXCL' : 'NONE');
-            onPpnModeChange();
-        } else {
-            refreshPpnInfo();
-        }
+        refreshPpnInfo();
     }
 
     function refreshPpnInfo() {
@@ -780,10 +769,10 @@ dtlDiv.style.overflowY = 'auto';
         if (base !== null) fCurrency.setValue(base); else fCurrency.clearValue();
         fRate.setValue(1);
         fBudRate.setValue(1);
-        ppnManual = false;                                   // [PPN] PO baru: default mengikuti supplier
-        fPpnMode.setValue('NONE');
-        fPpnRate.setValue(0);
-        fPpnRate.setDisabled(true);
+        ppnManual = false;                                   // [PPN] PO baru
+        fPpnMode.setValue('EXCL');                           // [CHANGED] default: kena PPN (Exclude), tarif default
+        fPpnRate.setValue(PPN_DEFAULT_RATE);
+        fPpnRate.setDisabled(false);
         refreshPpnInfo();
         rateManual = false;
         budRateManual = false;
