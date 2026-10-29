@@ -25,7 +25,8 @@ try {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard - RAB Project Monitor</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- <script src="https://cdn.tailwindcss.com"></script> -->
+<link rel="stylesheet" href="../assets/css/dashboard.tailwind.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -175,7 +176,7 @@ $fStmt = $db->prepare($fsql); $fStmt->execute(['group_id' => $child["id"], 'user
             </div>
 
             <!-- 4. Persentase Penyerapan -->
-            <div class="bg-slate-900/50 p-4 rounded-md border-l-4 border-l-amber-500 flex flex-col justify-between">
+            <div class="bg-slate-900/50 p-4 rounded-xl border-l-4 border-l-amber-500 flex flex-col justify-between">
                 <div>
                     <div class="text-base text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1.5">
                         <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -299,7 +300,7 @@ $fStmt = $db->prepare($fsql); $fStmt->execute(['group_id' => $child["id"], 'user
 
 <!-- JAVASCRIPT -->
 <script>
-const API_ENDPOINT = '../php-crud/dashboardCRD.php';
+const API_ENDPOINT = '../dev/php-crud/dashboardCRD.php';
 let currentProjectId = 0;
 let finChart = null, doughnutChart = null, barMaterialChart = null;
 let globalTaxRates = [];
