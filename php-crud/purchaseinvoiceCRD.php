@@ -14,9 +14,18 @@
          - total_amount = DPP + PPN (nilai hutang ke supplier, dipakai pembayaran); dpp_amount = jumlah matched GRN.
          - ppn_rate / ppn_amount (boleh diisi sesuai faktur pajak supplier; selisih dari hitungan dibatasi PI_PPN_TOLERANCE),
            faktur_pajak_no (unik per supplier) / faktur_pajak_date.
-         - TIDAK ADA JURNAL di invoice supplier (prinsip: invoice = pemberitahuan tagihan, belum ada transaksi barang/uang).
-           DPP / PPN / faktur pajak hanya disimpan sebagai data: proyeksi pengeluaran, analisis cash flow, dan Laporan PPN.
+         - (SEBELUMNYA tidak ada jurnal di invoice supplier; sejak 2026-10-29 DIJURNAL, lihat bagian [JURNAL] di bawah.)
          Butuh migrasi: sql/2026-10-26.ppn_invoice.sql
+   [JURNAL 2026-10-29] Invoice supplier kini dijurnal (keputusan: aktifkan sebelum pembayaran supplier pertama, agar Hutang Usaha
+         terbentuk dan GRN Clearing ter-offset; tanpa ini pembayaran supplier membuat Hutang Usaha bersaldo debit):
+         - rule PUR_INVOICE          : Dr 2600 GRN Clearing   / Cr 2100 Hutang Usaha  sebesar DPP
+         - rule PURCHASE_INVOICE_PPN : Dr 2400 PPN Masukan    / Cr 2100 Hutang Usaha  sebesar PPN (hanya bila PPN > 0)
+         - reference_type 'purchase_invoice', tanggal jurnal = tanggal invoice; edit = reverse + posting ulang; hapus = reverse.
+         - create / update / delete dipindah ke PDO (class crud) dalam SATU transaksi bersama jurnal (AutoPostJournal butuh PDO,
+           sedangkan koneksi pg_* tidak bisa berbagi transaksi). Task read tetap memakai pg_*.
+         - delete ditolak bila invoice sudah ada pembayaran supplier.
+         - task baru 'backfill_journal' (preview / run) untuk memposting jurnal invoice lama yang belum dijurnal.
+         Butuh migrasi: sql/2026-10-29.purchase_invoice_journal.sql (menambah nilai enum reference_type 'purchase_invoice')
    [BARU 2026-10-08]
          - task 'read_invoice_print': data Tanda Terima Invoice (read-only, tidak mengubah data).
          - create: kolom created_by ikut diisi dari sesi (kolom sudah ada di tabel, sebelumnya kosong)
@@ -26,6 +35,10 @@ session_start();
 
 if (file_exists('../php-func/function.all.php')) {
     require_once('../php-func/function.all.php');
+}
+// [JURNAL] class crud (PDO) untuk transaksi tulis + AutoPostJournal / ReverseJournalByReference
+if (file_exists('../php-class/crudClass.php')) {
+    require_once('../php-class/crudClass.php');
 }
 
 $task = isset($_POST['task']) ? $_POST['task'] : (isset($_GET['task']) ? $_GET['task'] : '');
@@ -66,6 +79,46 @@ function pgErrorOrFallback($fallback = 'Terjadi kesalahan pada database.') {
 
 // [PPN] ---------------------------------------------------------------
 const PI_PPN_TOLERANCE   = 100.00;                    // selisih maks (Rp) antara PPN input (faktur) dan hitungan DPP x tarif
+const PI_JOURNAL_REF     = 'purchase_invoice';        // [JURNAL] reference_type jurnal invoice supplier
+
+/** [JURNAL] pastikan enum reference_type sudah memuat 'purchase_invoice' (bila kolom berupa enum). */
+function PiAssertJournalRefType($db) {
+    $st = $db->query("SELECT t.typtype, EXISTS (SELECT 1 FROM pg_enum e WHERE e.enumtypid = t.oid AND e.enumlabel = '" . PI_JOURNAL_REF . "') AS has_label
+                        FROM pg_attribute a
+                        JOIN pg_class c ON c.oid = a.attrelid
+                        JOIN pg_type t ON t.oid = a.atttypid
+                       WHERE c.relname = 'journal_entries' AND a.attname = 'reference_type' AND NOT a.attisdropped
+                       LIMIT 1");
+    $r = $st ? $st->fetch(PDO::FETCH_ASSOC) : false;
+    if ($r && $r['typtype'] === 'e' && !in_array($r['has_label'], [true, 't', '1', 1], true)) {
+        throw new Exception("Tipe jurnal 'purchase_invoice' belum terdaftar di database. Jalankan sql/2026-10-29.purchase_invoice_journal.sql terlebih dahulu.");
+    }
+}
+
+function PiHasJournal($db, $invoiceId) {
+    $st = $db->prepare("SELECT 1 FROM journal_entries WHERE reference_type::text = :t AND reference_id = :id LIMIT 1");
+    $st->execute([':t' => PI_JOURNAL_REF, ':id' => $invoiceId]);
+    return (bool)$st->fetchColumn();
+}
+
+/** [JURNAL] posting jurnal invoice supplier: DPP (GRN Clearing -> Hutang) + PPN Masukan (-> Hutang). Panggil di dalam transaksi. */
+function PiPostJournal($db, $invoiceId, $invNo, $supplierInvNo, $invDate, $dpp, $ppn) {
+    $desc = 'Invoice supplier ' . $invNo . ($supplierInvNo !== '' ? ' (' . $supplierInvNo . ')' : '');
+    if ($dpp > 0.005) {
+        $r = AutoPostJournal($db, [
+            'rule_code' => 'PUR_INVOICE', 'reference_type' => PI_JOURNAL_REF, 'reference_id' => $invoiceId,
+            'journal_date' => $invDate, 'amount' => $dpp, 'description' => $desc,
+        ]);
+        if (!$r['success']) throw new Exception('Gagal posting jurnal invoice: ' . $r['message']);
+    }
+    if ($ppn > 0.005) {
+        $r = AutoPostJournal($db, [
+            'rule_code' => 'PURCHASE_INVOICE_PPN', 'reference_type' => PI_JOURNAL_REF, 'reference_id' => $invoiceId,
+            'journal_date' => $invDate, 'amount' => $ppn, 'description' => 'PPN Masukan ' . $desc,
+        ]);
+        if (!$r['success']) throw new Exception('Gagal posting jurnal PPN Masukan: ' . $r['message']);
+    }
+}
 
 try {
     switch ($task) {
@@ -244,12 +297,9 @@ try {
 
         case 'create':
         case 'update':
-            pg_query("BEGIN");
-
+            // [JURNAL] seluruh penulisan memakai PDO dalam satu transaksi (header + detail + total + jurnal)
             $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
-            // [FIX] inv_no sekarang No. Ref Dokumen yang di-generate sistem,
-            // bukan input user -> field ini sudah disabled di JS, jadi
-            // $_POST['inv_no'] diabaikan sepenuhnya di sini.
+            // [FIX] inv_no adalah No. Ref Dokumen yang di-generate sistem, bukan input user -> $_POST['inv_no'] diabaikan.
             $supplier_invoice_no = isset($_POST['supplier_invoice_no']) ? $_POST['supplier_invoice_no'] : '';
             $invoice_date = isset($_POST['invoice_date']) ? $_POST['invoice_date'] : date('Y-m-d');
             $supplier_id = isset($_POST['supplier_id']) ? intval($_POST['supplier_id']) : 0;
@@ -261,57 +311,51 @@ try {
             $fp_date    = isset($_POST['faktur_pajak_date']) ? trim($_POST['faktur_pajak_date']) : '';
             if ($ppn_rate < 0 || $ppn_rate > 100) throw new Exception('Tarif PPN harus antara 0 - 100%.');
             if ($fp_date !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fp_date)) throw new Exception('Tanggal faktur pajak tidak valid (YYYY-MM-DD).');
-            $ppn_amount_final = 0.0;     // diisi setelah DPP (jumlah matched) diketahui
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $invoice_date)) throw new Exception('Tanggal invoice tidak valid (YYYY-MM-DD).');
+            if ($supplier_id <= 0) throw new Exception('Supplier wajib dipilih.');
 
             $invoice_details = isset($_POST['invoice_details']) ? json_decode($_POST['invoice_details'], true) : [];
+            if (!is_array($invoice_details) || !count($invoice_details)) throw new Exception('Minimal satu GRN harus di-match ke invoice.');
+
+            $db = new crud();
+            $db->beginTransaction();
+            PiAssertJournalRefType($db);
 
             if ($task == 'create') {
-                // [FIX] Sebelumnya manggil CreateRefNo('PINV', 'purchase_invoice_hdr', 'inv_no')
-                // dengan asumsi urutan param (prefix, table, column) -> ternyata SALAH.
-                // Dari log server: fungsi ini pakai param pertama sebagai NAMA TABEL
-                // ("FROM PINV") dan param kedua sebagai nama kolom di substring() ->
-                // query di dalam CreateRefNo() error "relation pinv does not exist",
-                // $inv_no jadi kosong/null, lalu INSERT gagal (kolom NOT NULL).
-                // Sampai urutan param yang benar dikonfirmasi, generate ref no sendiri
-                // di sini saja (self-contained, tidak bergantung fungsi lain).
+                // No. Ref Dokumen PINV-YYMM-NNNNN: nomor terakhir bulan ini + 1 (aman setelah ada invoice yang dihapus)
                 $prefix = 'PINV-' . date('ym') . '-';
-                $sqlSeq = "SELECT COUNT(*) + 1 AS next_seq FROM purchase_invoice_hdr WHERE inv_no LIKE $1";
-                $resSeq = pg_query_params($sqlSeq, [$prefix . '%']);
-                if (!$resSeq) throw new Exception(pgErrorOrFallback('Gagal generate No. Ref Dokumen.'));
-                $rowSeq = pg_fetch_assoc($resSeq);
-                $inv_no = $prefix . str_pad($rowSeq['next_seq'], 5, '0', STR_PAD_LEFT);
+                $stSeq = $db->prepare("SELECT COALESCE(MAX(CAST(RIGHT(inv_no, 5) AS integer)), 0) + 1
+                                         FROM purchase_invoice_hdr WHERE inv_no LIKE :p AND inv_no ~ '-[0-9]{5}$'");
+                $stSeq->execute([':p' => $prefix . '%']);
+                $inv_no = $prefix . str_pad((string)$stSeq->fetchColumn(), 5, '0', STR_PAD_LEFT);
 
-                // [CHG] + created_by (kolom sudah ada di tabel, sebelumnya tidak diisi)
                 $created_by = isset($_SESSION['user_id']) ? intval($_SESSION['user_id']) : null;
-                $sqlHdr = "INSERT INTO purchase_invoice_hdr (inv_no, supplier_invoice_no, invoice_date, supplier_id, remark, status, created_by)
-                           VALUES ($1, $2, $3, $4, $5, 'posted', $6) RETURNING id";
-                $resHdr = pg_query_params($sqlHdr, [$inv_no, $supplier_invoice_no, $invoice_date, $supplier_id, $remark, $created_by]);
-                if (!$resHdr) throw new Exception(pgErrorOrFallback('Gagal membuat invoice baru.'));
-                $rowHdr = pg_fetch_assoc($resHdr);
-                $invoice_id = $rowHdr['id'];
+                $stHdr = $db->prepare("INSERT INTO purchase_invoice_hdr (inv_no, supplier_invoice_no, invoice_date, supplier_id, remark, status, created_by)
+                                       VALUES (:no, :sno, CAST(:d AS date), :sup, :rm, 'posted', :cb) RETURNING id");
+                $stHdr->execute([':no' => $inv_no, ':sno' => $supplier_invoice_no, ':d' => $invoice_date, ':sup' => $supplier_id, ':rm' => $remark, ':cb' => $created_by]);
+                $invoice_id = (int)$stHdr->fetchColumn();
             } else {
                 $invoice_id = $id;
-                // [FIX] inv_no sengaja tidak disertakan di SET -> No. Ref Dokumen immutable setelah dibuat.
-                $sqlHdr = "UPDATE purchase_invoice_hdr SET supplier_invoice_no = $1, invoice_date = $2, supplier_id = $3, remark = $4
-                           WHERE id = $5";
-                $resHdr = pg_query_params($sqlHdr, [$supplier_invoice_no, $invoice_date, $supplier_id, $remark, $invoice_id]);
-                if (!$resHdr) throw new Exception(pgErrorOrFallback('Gagal mengupdate invoice.'));
+                $stCur = $db->prepare("SELECT inv_no FROM purchase_invoice_hdr WHERE id = :id FOR UPDATE");
+                $stCur->execute([':id' => $invoice_id]);
+                $inv_no = $stCur->fetchColumn();
+                if ($inv_no === false) throw new Exception('Invoice tidak ditemukan.');
 
-                // [FIX] invoice_hdr_id, bukan invoice_id
-                pg_query_params("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = $1", [$invoice_id]);
+                // [FIX] inv_no sengaja tidak ikut di SET -> No. Ref Dokumen immutable setelah dibuat.
+                $stUp = $db->prepare("UPDATE purchase_invoice_hdr SET supplier_invoice_no = :sno, invoice_date = CAST(:d AS date), supplier_id = :sup, remark = :rm WHERE id = :id");
+                $stUp->execute([':sno' => $supplier_invoice_no, ':d' => $invoice_date, ':sup' => $supplier_id, ':rm' => $remark, ':id' => $invoice_id]);
+                $db->prepare("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = :id")->execute([':id' => $invoice_id]);
             }
 
             $total_amount_header = 0;
+            $stDtl = $db->prepare("INSERT INTO purchase_invoice_dtl (invoice_hdr_id, grn_hdr_id, matched_amount) VALUES (:h, :g, :m)");
             foreach ($invoice_details as $item) {
-                // [FIX] field dari frontend juga perlu grn_hdr_id, lihat catatan di purchaseinvoice.js
                 $grn_hdr_id = intval(isset($item['grn_hdr_id']) ? $item['grn_hdr_id'] : (isset($item['grn_dtl_id']) ? $item['grn_dtl_id'] : 0));
-                $matched_amount = floatval($item['matched_amount']);
+                $matched_amount = round(floatval($item['matched_amount']), 2);
+                if ($grn_hdr_id <= 0) throw new Exception('GRN pada rincian invoice tidak valid.');
+                if ($matched_amount <= 0) throw new Exception('Nominal matched harus lebih besar dari 0.');
                 $total_amount_header += $matched_amount;
-
-                // [FIX] invoice_hdr_id, grn_hdr_id, bukan invoice_id, grn_dtl_id
-                $sqlDtl = "INSERT INTO purchase_invoice_dtl (invoice_hdr_id, grn_hdr_id, matched_amount) VALUES ($1, $2, $3)";
-                $resDtl = pg_query_params($sqlDtl, [$invoice_id, $grn_hdr_id, $matched_amount]);
-                if (!$resDtl) throw new Exception(pgErrorOrFallback('Gagal menyimpan detail invoice.'));
+                $stDtl->execute([':h' => $invoice_id, ':g' => $grn_hdr_id, ':m' => $matched_amount]);
             }
 
             // [PPN] DPP = jumlah matched; PPN = DPP x tarif (atau nilai faktur dalam toleransi); total hutang = DPP + PPN
@@ -330,39 +374,81 @@ try {
 
             // [PPN] no. faktur pajak unik per supplier
             if ($fp_no !== '') {
-                $resFp = pg_query_params("SELECT 1 FROM purchase_invoice_hdr WHERE supplier_id = $1 AND faktur_pajak_no = $2 AND id <> $3 LIMIT 1",
-                                         [$supplier_id, $fp_no, $invoice_id]);
-                if (!$resFp) throw new Exception(pgErrorOrFallback('Gagal memeriksa no. faktur pajak.'));
-                if (pg_fetch_row($resFp)) throw new Exception('No. faktur pajak ' . $fp_no . ' sudah dipakai invoice lain dari supplier ini.');
+                $stFp = $db->prepare("SELECT 1 FROM purchase_invoice_hdr WHERE supplier_id = :s AND faktur_pajak_no = :f AND id <> :id LIMIT 1");
+                $stFp->execute([':s' => $supplier_id, ':f' => $fp_no, ':id' => $invoice_id]);
+                if ($stFp->fetchColumn()) throw new Exception('No. faktur pajak ' . $fp_no . ' sudah dipakai invoice lain dari supplier ini.');
             }
             // [PPN] total baru tidak boleh lebih kecil dari yang sudah dibayar
-            $resPaid = pg_query_params("SELECT paid_amount FROM purchase_invoice_hdr WHERE id = $1", [$invoice_id]);
-            $rowPaid = $resPaid ? pg_fetch_assoc($resPaid) : null;
-            if ($rowPaid && floatval($rowPaid['paid_amount']) > $total_with_ppn + 0.005) {
-                throw new Exception('Total invoice (' . number_format($total_with_ppn, 2) . ') lebih kecil dari yang sudah dibayar (' . number_format(floatval($rowPaid['paid_amount']), 2) . ').');
+            $stPaid = $db->prepare("SELECT paid_amount FROM purchase_invoice_hdr WHERE id = :id");
+            $stPaid->execute([':id' => $invoice_id]);
+            $paidNow = floatval($stPaid->fetchColumn());
+            if ($paidNow > $total_with_ppn + 0.005) {
+                throw new Exception('Total invoice (' . number_format($total_with_ppn, 2) . ') lebih kecil dari yang sudah dibayar (' . number_format($paidNow, 2) . ').');
             }
 
-            $resTot = pg_query_params("UPDATE purchase_invoice_hdr
-                                          SET total_amount = $1, dpp_amount = $2, ppn_rate = $3, ppn_amount = $4,
-                                              faktur_pajak_no = $5, faktur_pajak_date = $6
-                                        WHERE id = $7",
-                                     [$total_with_ppn, $dpp, $ppn_rate, $ppn_amount_final,
-                                      $fp_no !== '' ? $fp_no : null, $fp_date !== '' ? $fp_date : null, $invoice_id]);
-            if (!$resTot) throw new Exception(pgErrorOrFallback('Gagal menyimpan total invoice.'));
+            $stTot = $db->prepare("UPDATE purchase_invoice_hdr
+                                      SET total_amount = :t, dpp_amount = :dpp, ppn_rate = :pr, ppn_amount = :pa,
+                                          faktur_pajak_no = :fn, faktur_pajak_date = CAST(:fd AS date)
+                                    WHERE id = :id");
+            $stTot->execute([':t' => $total_with_ppn, ':dpp' => $dpp, ':pr' => $ppn_rate, ':pa' => $ppn_amount_final,
+                             ':fn' => $fp_no !== '' ? $fp_no : null, ':fd' => $fp_date !== '' ? $fp_date : null, ':id' => $invoice_id]);
 
-            pg_query("COMMIT");
+            // [JURNAL] edit: buang jurnal lama lalu posting ulang sesuai nilai terbaru
+            if (PiHasJournal($db, $invoice_id)) ReverseJournalByReference($db, PI_JOURNAL_REF, $invoice_id);
+            PiPostJournal($db, $invoice_id, $inv_no, $supplier_invoice_no, $invoice_date, $dpp, $ppn_amount_final);
+
+            $db->commit();
 
             echo json_encode(['success' => true, 'message' => 'Data purchase invoice berhasil disimpan.']);
             break;
 
         case 'delete':
             $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
-            pg_query("BEGIN");
-            // [FIX] invoice_hdr_id, bukan invoice_id
-            pg_query_params("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = $1", [$id]);
-            pg_query_params("DELETE FROM purchase_invoice_hdr WHERE id = $1", [$id]);
-            pg_query("COMMIT");
+            if ($id <= 0) throw new Exception('ID invoice tidak valid.');
+            $db = new crud();
+            $db->beginTransaction();
+
+            $stLk = $db->prepare("SELECT inv_no, paid_amount FROM purchase_invoice_hdr WHERE id = :id FOR UPDATE");
+            $stLk->execute([':id' => $id]);
+            $rowLk = $stLk->fetch(PDO::FETCH_ASSOC);
+            if (!$rowLk) throw new Exception('Invoice tidak ditemukan.');
+            $stPay = $db->prepare("SELECT 1 FROM supplier_payment_items WHERE invoice_id = :id LIMIT 1");
+            $stPay->execute([':id' => $id]);
+            if (floatval($rowLk['paid_amount']) > 0.005 || $stPay->fetchColumn()) {
+                throw new Exception('Invoice ' . $rowLk['inv_no'] . ' sudah ada pembayaran supplier, tidak dapat dihapus. Hapus pembayarannya terlebih dahulu.');
+            }
+
+            if (PiHasJournal($db, $id)) ReverseJournalByReference($db, PI_JOURNAL_REF, $id);   // [JURNAL] jurnal ikut dibatalkan
+            $db->prepare("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = :id")->execute([':id' => $id]);
+            $db->prepare("DELETE FROM purchase_invoice_hdr WHERE id = :id")->execute([':id' => $id]);
+            $db->commit();
             echo json_encode(['success' => true, 'message' => 'Data berhasil dihapus.']);
+            break;
+
+        // [JURNAL] Backfill sekali pakai: posting jurnal untuk invoice lama yang belum dijurnal.
+        //   task=backfill_journal            -> preview (hanya baca)
+        //   task=backfill_journal&confirm=YA -> jalankan (POST)
+        case 'backfill_journal':
+            $db = new crud();
+            $stList = $db->query("SELECT h.id, h.inv_no, h.supplier_invoice_no, h.invoice_date, h.dpp_amount, h.ppn_amount, h.total_amount
+                                    FROM purchase_invoice_hdr h
+                                   WHERE LOWER(h.status) NOT IN ('cancelled','canceled','dibatalkan','void','reversed')
+                                     AND NOT EXISTS (SELECT 1 FROM journal_entries j WHERE j.reference_type::text = '" . PI_JOURNAL_REF . "' AND j.reference_id = h.id)
+                                   ORDER BY h.id");
+            $todo = $stList->fetchAll(PDO::FETCH_ASSOC);
+            $run = (isset($_POST['confirm']) && $_POST['confirm'] === 'YA' && $_SERVER['REQUEST_METHOD'] === 'POST');
+            if ($run && count($todo)) {
+                $db->beginTransaction();
+                PiAssertJournalRefType($db);
+                foreach ($todo as $r) {
+                    PiPostJournal($db, (int)$r['id'], $r['inv_no'], (string)$r['supplier_invoice_no'], $r['invoice_date'],
+                                  round(floatval($r['dpp_amount']), 2), round(floatval($r['ppn_amount']), 2));
+                }
+                $db->commit();
+            }
+            echo json_encode(['success' => true, 'totalCount' => count($todo), 'data' => $todo,
+                              'message' => $run ? count($todo) . ' invoice berhasil dijurnal.'
+                                                : count($todo) . ' invoice belum dijurnal (preview, belum ada yang diubah). Kirim POST task=backfill_journal&confirm=YA untuk menjalankan.']);
             break;
 
         default:
@@ -370,6 +456,9 @@ try {
             break;
     }
 } catch (Exception $e) {
+    if (isset($db) && is_object($db) && method_exists($db, 'inTransaction') && $db->inTransaction()) {      // [JURNAL] transaksi PDO
+        $db->rollBack();
+    }
     if (function_exists('pg_query')) {
         @pg_query("ROLLBACK");
     }
