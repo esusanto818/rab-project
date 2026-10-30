@@ -11,8 +11,8 @@
 <html>
     <head>
         <style>
-            #editorForm {top: 50%; width: 90%; height: 75%;}
-            #addForm {top: 50%; width: 85%; height: 70%;}
+            #editorForm {top: 50%; width: 90%; height: 85%;}
+            #addForm {top: 50%; width: 85%; height: 80%;}
         </style>
         <title id="page-title">Purchase Invoice</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />

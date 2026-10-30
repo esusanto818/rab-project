@@ -7,7 +7,8 @@
 
 Ext.onReady(function () {
     Ext.QuickTips.init();
-    
+    var CRD = main_url + '/php-crud/m.materialsCRD.php';
+
     // Header halaman
     if (document.getElementById("mainHeaderText")) {
         document.getElementById("mainHeaderText").innerHTML = "Master <em>Material</em>";
@@ -34,7 +35,7 @@ Ext.onReady(function () {
     ];
 
     var mainDs = new Ext.data.Store({
-        url: '../php-crud/m.materialsCRD.php',
+        url: CRD,
         idProperty: 'id',
         baseParams: { task: 'list' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, materialField)
@@ -155,7 +156,7 @@ Ext.onReady(function () {
             if (getFormAccess() >= 3 || getFormAccess() === 0) {
                 task = 'update';
                 frmEditor.getForm().load({
-                    url: '../php-crud/m.materialsCRD.php',
+                    url: CRD,
                     params: { id: dataRecord.id, task: 'read_edit' },
                     success: function (form, action) {
                         var res = Ext.util.JSON.decode(action.response.responseText);
@@ -190,7 +191,7 @@ Ext.onReady(function () {
                 Ext.Msg.confirm('Konfirmasi', 'Nonaktifkan material \'' + dataRecord.material_name + '\'?', function (btn) {
                     if (btn === 'yes') {
                         Ext.Ajax.request({
-                            url: '../php-crud/m.materialsCRD.php',
+                            url: CRD,
                             method: 'POST',
                             params: { task: 'delete', id: dataRecord.id },
                             success: function (response) {
@@ -232,7 +233,7 @@ Ext.onReady(function () {
             var activeVal = (isChecked === true || isChecked === 'true' || isChecked === '1') ? 'true' : 'false';
 
             frmEditor.getForm().submit({
-                url: '../php-crud/m.materialsCRD.php',
+                url: CRD,
                 method: 'POST',
                 params: {
                     task: task,

@@ -1,292 +1,441 @@
 /*
-  Document    : stock.opname.js
-  Description : Stock Opname (draft -> posting -> reverse). ExtJS 3.4.1
-  Backend     : php-crud/stock.opnameCRD.php
-  CATATAN     : container render diasumsikan div #main-content (fallback ke body).
+  Document      : stock.opname.js
+  Description   : Stock Opname. Grid utama = daftar opname; klik baris -> panel detail di bawah grid (lembar hitung, selisih,
+                   jejak audit, pergerakan stok & jurnal hasil posting, tombol aksi status).
+                   Add/Edit membuka editor (header + grid hitung). Edit hanya untuk status Draft; dokumen tidak pernah dihapus.
+                   Alur status: Draft -> Diajukan -> Disetujui (posting stok + jurnal). Dibatalkan dari Draft / Diajukan / Disetujui
+                   (alasan wajib; Disetujui = reverse). Stok sistem = snapshot saat disimpan / di-refresh.
+  Backend       : ../php-crud/stock.opnameCRD.php
 */
 Ext.onReady(function () {
     Ext.QuickTips.init();
+    document.getElementById("mainHeaderText").innerHTML = "Stock <em>Opname</em>";
 
-    var URL = 'php-crud/stock.opnameCRD.php';
-    var RENDER_TO = Ext.get('main-content') ? 'main-content' : Ext.getBody();
-    var dataRecord = null;
+    var CRD = '../php-crud/stock.opnameCRD.php';
+    var ACCESS_ADD = 2;          // level akses minimal: buat / ubah lembar hitung
+    var ACCESS_EDIT = 3;         // level akses minimal: ajukan / setujui / batalkan
+    var EPS = 0.00005;
+    var REASONS = ['Salah Hitung / Salah Catat', 'Rusak', 'Hilang / Susut', 'Kelebihan Penerimaan', 'Salah Pengeluaran', 'Lainnya'];
 
-    function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
+    var dataRecord = null;       // baris opname terpilih di grid utama
+    var editingId = 0;           // 0 = baru, >0 = edit Draft
+    var hdrForm = null, fWh, fDate, fRemark;
+
+    function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
+    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
     function fmtQty(v) { return Ext.util.Format.number(v || 0, '0,000.0000'); }
     function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
-    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
+    function round4(v) { return Math.round((parseFloat(v) || 0) * 10000) / 10000; }
+    function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
     function storeError(proxy, type, action, opt, res) {
         var m = 'Gagal memuat data dari server.';
         if (res && res.message) { m = res.message; } else if (res && res.status) { m += ' (HTTP ' + res.status + ')'; }
         showErr(m);
     }
-    function ajaxPost(params, okCb) {
+    function ymd(d) { return d ? d.dateFormat('Y-m-d') : ''; }
+    function uiBtn(cls, label, bg, attrs) {      // tombol HTML gaya standar UI
+        return '<button type="button" class="' + cls + '" ' + (attrs || '') + ' style="margin-left:8px;padding:8px 20px;background:' + bg +
+               ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">' + label + '</button>';
+    }
+    function statusColor(v) {
+        switch (v) {
+            case 'Draft': return '#999999 !important';
+            case 'Diajukan': return '#e6a817 !important';
+            case 'Disetujui': return '#00ff4c !important';
+            case 'Dibatalkan': return '#c0392b !important';
+        }
+        return '#ffffff !important';
+    }
+    function ajax(params, onOk) {
         Ext.Ajax.request({
-            url: URL, method: 'POST', params: params,
+            url: CRD, method: 'POST', params: params,
             success: function (r) {
                 var o;
-                try { o = Ext.decode(r.responseText); } catch (e) { showErr('Respon server tidak valid.'); return; }
-                if (!o.success) { showErr(o.message || 'Proses gagal.'); return; }
-                okCb(o);
+                try { o = Ext.decode(r.responseText); } catch (e) { showErr('Respons server tidak valid (cek error_log PHP).'); return; }
+                onOk(o);
             },
             failure: function (r) { showErr('Koneksi ke server gagal (HTTP ' + r.status + ').'); }
         });
     }
-    function statusRenderer(v) {
-        var c = (v === 'posted') ? '#2e9e4f' : (v === 'draft' ? '#e6a817' : '#c0392b');
-        return '<span style="color:' + c + ';font-weight:bold;">' + enc(v) + '</span>';
-    }
-    function diffRenderer(v) {
-        v = parseFloat(v) || 0;
-        var c = v > 0 ? '#2e9e4f' : (v < 0 ? '#c0392b' : '#888');
-        return '<span style="color:' + c + ';font-weight:bold;">' + fmtQty(v) + '</span>';
-    }
 
-    // ---------------- grid utama ----------------
-    mainDs = new Ext.data.JsonStore({      // assignment polos (konvensi template)
-        url: URL, baseParams: { action: 'list' }, root: 'data', totalProperty: 'totalCount', idProperty: 'id',
-        fields: ['id', 'ref_no', 'opname_date', 'warehouse_id', 'warehouse_name', 'status', 'remark',
-                 { name: 'line_count', type: 'int' }, { name: 'diff_value', type: 'float' }],
-        listeners: { exception: storeError }
-    });
-    var searchField = new Ext.form.TextField({
-        emptyText: 'Cari No / Gudang...', width: 200, enableKeyEvents: true,
-        listeners: { specialkey: function (f, e) { if (e.getKey() === e.ENTER) { doSearch(); } } }
-    });
-    function doSearch() { mainDs.baseParams.query = searchField.getValue(); mainDs.load({ params: { start: 0, limit: 25 } }); }
+    // ------------------------------------------------------------
+    // 0. Panel detail (di bawah grid utama)
+    // ------------------------------------------------------------
+    var GridMainHeight = maxGridHeight(document.getElementById('divMainGrid'));
+    var dtlDiv = document.createElement('div');
+    dtlDiv.id = 'soDtlContainer';
+    dtlDiv.className = 'detail-panel-container';
+    dtlDiv.style.display = 'none';
+    dtlDiv.style.maxHeight = Math.round(GridMainHeight - (GridMainHeight * 0.6) - 30);
+    dtlDiv.style.overflowY = 'auto';
+    var gridContainer = document.getElementById('divMainGrid');
+    if (gridContainer && gridContainer.parentNode) { gridContainer.parentNode.insertBefore(dtlDiv, gridContainer.nextSibling); }
 
-    function needRec(statusWanted, msg) {
-        if (!dataRecord) { showErr('Pilih dokumen terlebih dahulu.'); return false; }
-        if (statusWanted && dataRecord.status !== statusWanted) { showErr(msg); return false; }
-        return true;
-    }
-    function confirmAction(title, text, params, doneMsg) {
-        Ext.Msg.confirm(title, text, function (b) {
-            if (b !== 'yes') { return; }
-            ajaxPost(params, function (o) { Ext.Msg.alert('Sukses', o.message || doneMsg); dataRecord = null; mainDs.reload(); });
+    function loadDetailPanel(id) {
+        ajax({ action: 'detail', id: id }, function (res) {
+            if (!res.success) { dtlDiv.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>'; dtlDiv.style.display = 'block'; return; }
+            renderDetail(res);
         });
     }
 
-    new Ext.grid.GridPanel({
-        store: mainDs, renderTo: RENDER_TO, title: 'Stock Opname',
-        height: Math.max(420, Ext.getBody().getViewSize().height - 140), loadMask: true, stripeRows: true,
-        sm: new Ext.grid.RowSelectionModel({ singleSelect: true }), viewConfig: { forceFit: true },
+    function renderDetail(res) {
+        var h = res.header, lines = res.data || [], mov = res.movements || [], jr = res.journals || [];
+        var counted = 0, withDiff = 0;
+        Ext.each(lines, function (l) { if (l.counted_qty !== null && l.counted_qty !== undefined) { counted++; if (Math.abs(parseFloat(l.diff_qty)) > EPS) withDiff++; } });
+
+        var html = '<h3 class="detail-title">Detail Opname: ' + enc(h.ref_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
+                   '<hr class="detail-hr" /><div style="padding:4px 2px 10px 2px;">Gudang: <b>' + enc(h.warehouse_name) + '</b> &nbsp;|&nbsp; Tanggal: <b>' + enc(h.opname_date) +
+                   '</b> &nbsp;|&nbsp; Item: <b>' + lines.length + '</b> &nbsp;|&nbsp; Dihitung: <b>' + counted + '</b> &nbsp;|&nbsp; Ada selisih: <b>' + withDiff + '</b>' +
+                   (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div>' +
+                   '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
+                   '<th align="left">Material</th><th align="right">Stok Sistem</th><th align="right">Qty Hitung</th><th align="right">Selisih</th>' +
+                   '<th align="right">Biaya Satuan</th><th align="right">Nilai Selisih</th><th align="left">Alasan</th><th align="left">Catatan</th></tr></thead><tbody>';
+        if (!lines.length) { html += '<tr><td colspan="8" style="padding:15px;text-align:center;color:#557982;">Belum ada baris.</td></tr>'; }
+        Ext.each(lines, function (l) {
+            var has = (l.counted_qty !== null && l.counted_qty !== undefined);
+            var diff = parseFloat(l.diff_qty) || 0;
+            var col = !has ? '#668894' : (diff > EPS ? '#2e9e4f' : (diff < -EPS ? '#e05353' : '#9fc3d1'));
+            html += '<tr class="data-row"><td align="left">' + enc(l.material_name) + ' <span style="color:#668894;">(' + enc(l.material_code) + ')</span></td>' +
+                    '<td align="right">' + fmtQty(l.system_qty) + ' ' + enc(l.unit || '') + '</td>' +
+                    '<td align="right">' + (has ? fmtQty(l.counted_qty) : '<i style="color:#668894;">tidak dihitung</i>') + '</td>' +
+                    '<td align="right" style="color:' + col + ';font-weight:bold;">' + (has ? fmtQty(diff) : '-') + '</td>' +
+                    '<td align="right">' + fmtAmt(l.unit_cost) + '</td>' +
+                    '<td align="right" style="color:' + col + ';">' + (parseFloat(l.diff_value) ? fmtAmt(l.diff_value) : '-') + '</td>' +
+                    '<td align="left">' + enc(l.reason || '') + '</td><td align="left">' + enc(l.note || '') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+
+        // Jejak audit
+        var trail = [];
+        trail.push('Dibuat: <b>' + enc(h.created_by_name || '-') + '</b> (' + enc(h.created_at) + ')');
+        if (h.submitted_at) trail.push('Diajukan: <b>' + enc(h.submitted_by_name || '-') + '</b> (' + enc(h.submitted_at) + ')');
+        if (h.approved_at) trail.push('Disetujui: <b>' + enc(h.approved_by_name || '-') + '</b> (' + enc(h.approved_at) + ')');
+        if (h.cancelled_at) trail.push('Dibatalkan: <b>' + enc(h.cancelled_by_name || '-') + '</b> (' + enc(h.cancelled_at) + ') - ' + enc(h.cancel_reason || ''));
+        html += '<div style="margin-top:12px;color:#9fc3d1;">' + trail.join(' &nbsp;|&nbsp; ') + '</div>';
+        if (h.status === 'Disetujui') {
+            html += '<div style="margin-top:6px;color:#9fc3d1;">Nilai lebih diposting: <b>' + fmtAmt(h.total_gain) + '</b> &nbsp;|&nbsp; Nilai kurang diposting: <b>' + fmtAmt(h.total_loss) + '</b>';
+            if (jr.length) { html += ' &nbsp;|&nbsp; Jurnal: ' + Ext.pluck(jr, 'ref_no').join(', '); }
+            html += ' &nbsp;|&nbsp; Pergerakan stok: ' + mov.length + ' baris (lihat Kartu Stok, ref ' + enc(h.ref_no) + ')</div>';
+        }
+
+        // Tombol aksi menurut status
+        var btns = '';
+        if (h.status === 'Draft') btns += uiBtn('soAct', 'Ajukan', '#066b78', 'data-act="submit"') + uiBtn('soAct', 'Refresh Stok Sistem', '#555555', 'data-act="refresh"');
+        if (h.status === 'Diajukan') btns += uiBtn('soAct', 'Setujui &amp; Posting', '#066b78', 'data-act="approve"') + uiBtn('soAct', 'Refresh / Kembali ke Draft', '#555555', 'data-act="refresh"');
+        if (h.status !== 'Dibatalkan') btns += uiBtn('soAct', h.status === 'Disetujui' ? 'Batalkan (Reverse)' : 'Batalkan', '#800020', 'data-act="cancel"');
+        if (btns) html += '<div style="margin-top:15px;text-align:right;">' + btns + '</div>';
+
+        dtlDiv.innerHTML = html;
+        dtlDiv.style.display = 'block';
+        var els = dtlDiv.querySelectorAll('.soAct');
+        for (var i = 0; i < els.length; i++) { els[i].onclick = function () { doAction(h, this.getAttribute('data-act')); }; }
+    }
+
+    function doAction(h, act) {
+        if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses untuk aksi ini.'); return; }
+        var done = function (res) {
+            Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+            if (res.success) { mainDs.load(); loadDetailPanel(h.id); if (dataRecord && dataRecord.id == h.id) { dataRecord.status = res.status || dataRecord.status; } updateMainButtons(); }
+        };
+        var texts = { submit: 'Ajukan opname <b>' + enc(h.ref_no) + '</b> untuk persetujuan?',
+                      refresh: 'Ambil ulang stok sistem untuk semua baris? Status kembali ke Draft.',
+                      approve: 'Setujui &amp; posting opname <b>' + enc(h.ref_no) + '</b>? Stok dan jurnal akan disesuaikan.' };
+        if (act === 'cancel') {
+            Ext.Msg.prompt('Batalkan Opname', 'Alasan pembatalan (wajib, min. 5 karakter):', function (btn, txt) {
+                if (btn !== 'ok') return;
+                ajax({ action: 'cancel', id: h.id, reason: txt }, done);
+            }, this, true);
+            return;
+        }
+        Ext.Msg.confirm('Konfirmasi', texts[act], function (btn) {
+            if (btn !== 'yes') return;
+            ajax({ action: act, id: h.id }, done);
+        });
+    }
+
+    // ------------------------------------------------------------
+    // 1. Stores & grid utama
+    // ------------------------------------------------------------
+    mainDs = new Ext.data.Store({       // assignment polos (konvensi search box template)
+        url: CRD, baseParams: { action: 'list' },
+        reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, [
+            { name: 'id' }, { name: 'ref_no' }, { name: 'warehouse_id' }, { name: 'warehouse_name' }, { name: 'opname_date' },
+            { name: 'status' }, { name: 'remark' }, { name: 'created_by_name' },
+            { name: 'line_count', type: 'int' }, { name: 'counted_count', type: 'int' }, { name: 'diff_count', type: 'int' },
+            { name: 'total_gain', type: 'float' }, { name: 'total_loss', type: 'float' }
+        ]),
+        listeners: { exception: storeError }
+    });
+    mainDs.load();
+
+    var whDs = new Ext.data.Store({
+        url: CRD, baseParams: { action: 'lookup_warehouses' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [{ name: 'id' }, { name: 'code' }, { name: 'name' }]),
+        listeners: { exception: storeError }
+    });
+    var matDs = new Ext.data.Store({
+        url: CRD, baseParams: { action: 'lookup_materials' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'material_id' }, [
+            { name: 'material_id' }, { name: 'material_code' }, { name: 'material_name' }, { name: 'unit' },
+            { name: 'system_qty', type: 'float' }, { name: 'unit_cost', type: 'float' }]),
+        listeners: { exception: storeError }
+    });
+
+    var mainHeight = Math.round(GridMainHeight * 0.6);
+    var gridMain = new Ext.grid.GridPanel({
+        store: mainDs, renderTo: 'divMainGrid', height: mainHeight,
         columns: [
-            { header: 'No. Opname', dataIndex: 'ref_no', width: 110 },
-            { header: 'Tanggal', dataIndex: 'opname_date', width: 85, align: 'center' },
-            { header: 'Gudang', dataIndex: 'warehouse_name', width: 180 },
-            { header: 'Item', dataIndex: 'line_count', width: 50, align: 'center' },
-            { header: 'Nilai Selisih', dataIndex: 'diff_value', width: 120, align: 'right', renderer: fmtAmt },
-            { header: 'Status', dataIndex: 'status', width: 80, align: 'center', renderer: statusRenderer }
+            { header: 'No. Opname', dataIndex: 'ref_no', width: 120 },
+            { header: 'Tanggal', dataIndex: 'opname_date', width: 90, align: 'center' },
+            { header: 'Gudang', dataIndex: 'warehouse_name', width: 190, renderer: CellWrap },
+            { header: 'Item', dataIndex: 'line_count', width: 55, align: 'center' },
+            { header: 'Dihitung', dataIndex: 'counted_count', width: 70, align: 'center' },
+            { header: 'Ada Selisih', dataIndex: 'diff_count', width: 80, align: 'center' },
+            { header: 'Nilai Lebih', dataIndex: 'total_gain', width: 110, align: 'right', renderer: fmtAmt },
+            { header: 'Nilai Kurang', dataIndex: 'total_loss', width: 110, align: 'right', renderer: fmtAmt },
+            { header: 'Dibuat Oleh', dataIndex: 'created_by_name', width: 110 },
+            { header: 'Status', dataIndex: 'status', width: 90, align: 'center',
+              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
         ],
-        tbar: [
-            { text: 'Opname Baru', handler: function () { openEditor(null); } },
-            { text: 'Edit Draft', handler: function () {
-                if (!needRec('draft', 'Hanya dokumen draft yang dapat diedit.')) { return; }
-                openEditor(dataRecord);
-            } },
-            { text: 'Posting', handler: function () {
-                if (!needRec('draft', 'Hanya dokumen draft yang dapat diposting.')) { return; }
-                confirmAction('Posting Opname', 'Posting <b>' + enc(dataRecord.ref_no) + '</b>? Selisih akan masuk ke stok dan tidak bisa diedit lagi.',
-                    { action: 'post', id: dataRecord.id });
-            } },
-            { text: 'Detail', handler: function () { if (needRec()) { openDetail(dataRecord); } } },
-            { text: 'Reverse', handler: function () {
-                if (!needRec('posted', 'Hanya dokumen posted yang dapat di-reverse.')) { return; }
-                confirmAction('Reverse Opname', 'Reverse <b>' + enc(dataRecord.ref_no) + '</b>? Mutasi selisih dihapus dari stok.',
-                    { action: 'reverse', id: dataRecord.id });
-            } },
-            { text: 'Hapus Draft', handler: function () {
-                if (!needRec('draft', 'Hanya dokumen draft yang dapat dihapus.')) { return; }
-                confirmAction('Hapus Draft', 'Hapus draft <b>' + enc(dataRecord.ref_no) + '</b>?',
-                    { action: 'delete', id: dataRecord.id });
-            } },
-            '->', searchField, { text: 'Cari', handler: doSearch }
-        ],
-        bbar: new Ext.PagingToolbar({ store: mainDs, pageSize: 25, displayInfo: true }),
-        listeners: { rowclick: function (g, i) { var r = g.getStore().getAt(i); dataRecord = r ? r.data : null; } }
+        viewConfig: { forceFit: true }, loadMask: true,
+        listeners: {
+            rowclick: function (grid, rowIndex) {
+                var rec = grid.getStore().getAt(rowIndex);
+                if (!rec) return;
+                dataRecord = rec.data;
+                updateMainButtons();
+                loadDetailPanel(dataRecord.id);
+            }
+        }
     });
-    mainDs.load({ params: { start: 0, limit: 25 } });
 
-    // ---------------- detail (read-only) ----------------
-    function openDetail(rec) {
-        var ds = new Ext.data.JsonStore({
-            url: URL, baseParams: { action: 'detail', id: rec.id }, root: 'data',
-            fields: ['material_code', 'material_name', 'unit', { name: 'system_qty', type: 'float' },
-                     { name: 'counted_qty', type: 'float' }, { name: 'diff_qty', type: 'float' },
-                     { name: 'unit_cost', type: 'float' }, { name: 'diff_value', type: 'float' }],
-            listeners: { exception: storeError }
+    function updateMainButtons() {
+        mainBtnEnable('#addData');
+        mainBtnDisable('#deleteData');          // dokumen opname tidak dihapus, hanya Dibatalkan (jejak audit)
+        if (dataRecord && dataRecord.status === 'Draft') { mainBtnEnable('#editData'); } else { mainBtnDisable('#editData'); }
+    }
+    editDataDisable();
+    updateMainButtons();
+
+    // ------------------------------------------------------------
+    // 2. Editor: header + grid hitung
+    // ------------------------------------------------------------
+    var itemField = [
+        { name: 'material_id' }, { name: 'material_code' }, { name: 'material_name' }, { name: 'unit' },
+        { name: 'system_qty', type: 'float' }, { name: 'counted_qty' }, { name: 'diff_qty', type: 'float' },
+        { name: 'unit_cost', type: 'float' }, { name: 'reason' }, { name: 'note' }
+    ];
+    var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, itemField) });
+
+    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });
+    itemDs.on('remove', function () { updateSummary(); });
+
+    function hasCount(r) { var v = r.get('counted_qty'); return !(v === null || v === undefined || v === ''); }
+    function recalcRow(r) {
+        r.set('diff_qty', hasCount(r) ? round4((parseFloat(r.get('counted_qty')) || 0) - (parseFloat(r.get('system_qty')) || 0)) : 0);
+    }
+    function updateSummary() {
+        var n = 0, c = 0, d = 0, gain = 0, loss = 0;
+        itemDs.each(function (r) {
+            n++;
+            if (!hasCount(r)) return;
+            c++;
+            var diff = parseFloat(r.get('diff_qty')) || 0;
+            if (Math.abs(diff) > EPS) { d++; var v = diff * (parseFloat(r.get('unit_cost')) || 0); if (diff > 0) gain += v; else loss += -v; }
         });
-        new Ext.Window({
-            title: 'Detail Opname ' + rec.ref_no, width: 860, height: 400, modal: true, layout: 'fit',
-            items: new Ext.grid.GridPanel({
-                store: ds, stripeRows: true, viewConfig: { forceFit: true },
-                columns: [
-                    { header: 'Kode', dataIndex: 'material_code', width: 90 },
-                    { header: 'Material', dataIndex: 'material_name', width: 200 },
-                    { header: 'Sat', dataIndex: 'unit', width: 50, align: 'center' },
-                    { header: 'Stok Sistem', dataIndex: 'system_qty', width: 100, align: 'right', renderer: fmtQty },
-                    { header: 'Qty Hitung', dataIndex: 'counted_qty', width: 100, align: 'right', renderer: fmtQty },
-                    { header: 'Selisih', dataIndex: 'diff_qty', width: 100, align: 'right', renderer: diffRenderer },
-                    { header: 'Biaya Satuan', dataIndex: 'unit_cost', width: 100, align: 'right', renderer: fmtAmt },
-                    { header: 'Nilai Selisih', dataIndex: 'diff_value', width: 110, align: 'right', renderer: fmtAmt }
-                ]
-            })
-        }).show();
-        ds.load();
+        var el = document.getElementById('soSummary');
+        if (el) el.innerHTML = 'Item: <b>' + n + '</b> &nbsp;|&nbsp; Dihitung: <b>' + c + '</b> &nbsp;|&nbsp; Ada selisih: <b>' + d +
+            '</b> &nbsp;|&nbsp; Perkiraan nilai lebih: <b style="color:#2e9e4f;">' + fmtAmt(gain) + '</b> &nbsp;|&nbsp; Perkiraan nilai kurang (FIFO bisa berbeda): <b style="color:#e05353;">' + fmtAmt(loss) + '</b>';
     }
 
-    // ---------------- editor draft ----------------
-    var whDs = new Ext.data.JsonStore({
-        url: URL, baseParams: { action: 'lookup_warehouses' }, root: 'data', fields: ['id', 'name'],
-        listeners: { exception: storeError }
-    });
-    var itemDs = new Ext.data.JsonStore({
-        url: URL, baseParams: { action: 'lookup_items' }, root: 'data',
-        fields: ['item_id', 'material_code', 'material_name', 'unit', { name: 'system_qty', type: 'float' }],
-        listeners: { exception: storeError }
-    });
-    gridAddEditorDs = new Ext.data.JsonStore({      // store detail editor
-        root: 'data', fields: ['item_id', 'material_code', 'material_name', 'unit',
-            { name: 'system_qty', type: 'float' }, { name: 'counted_qty', type: 'float' }, 'remark']
-    });
-
-    function openEditor(rec) {                      // rec null = baru, rec = edit draft
-        gridAddEditorDs.removeAll();
-        var editId = rec ? rec.id : 0;
-
-        var fWh = new Ext.form.ComboBox({
-            fieldLabel: 'Gudang', store: whDs, displayField: 'name', valueField: 'id', mode: 'local',
-            triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%'
-        });
-        var fDate = new Ext.form.DateField({ fieldLabel: 'Tanggal', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 120 });
-        var fRemark = new Ext.form.TextField({ fieldLabel: 'Catatan', anchor: '95%', value: rec ? rec.remark : '' });
-
-        fWh.on('select', function () { gridAddEditorDs.removeAll(); fItem.clearValue(); });
-
-        var fItem = new Ext.form.ComboBox({
-            store: itemDs, displayField: 'material_name', valueField: 'item_id', mode: 'remote', queryParam: 'query',
-            minChars: 0, triggerAction: 'all', forceSelection: true, width: 340, listWidth: 480,
-            emptyText: 'Tambah item manual...',
-            tpl: '<tpl for="."><div class="x-combo-list-item">{material_code} - {material_name} <b>(sistem {system_qty} {unit})</b></div></tpl>',
-            listeners: {
-                beforequery: function () {
-                    if (!fWh.getValue()) { showErr('Pilih gudang terlebih dahulu.'); return false; }
-                    itemDs.baseParams.warehouse_id = fWh.getValue();
+    var itemGrid = new stdGridEditor({
+        selModel: editorDeleter, store: itemDs, renderTo: 'editorFormGrid',
+        viewConfig: { forceFit: true, scrollOffset: 0 }, height: 300,
+        columns: [
+            { header: 'Kode', dataIndex: 'material_code', width: 80 },
+            { header: 'Material', dataIndex: 'material_name', width: 200 },
+            { header: 'Sat', dataIndex: 'unit', width: 45, align: 'center' },
+            { header: 'Stok Sistem', dataIndex: 'system_qty', width: 90, align: 'right', renderer: fmtQty },
+            { header: 'Qty Hitung', dataIndex: 'counted_qty', width: 90, align: 'right',
+              editor: new myNumberField({ decimalPrecision: 4, allowNegative: false }),
+              renderer: function (v) { return (v === null || v === undefined || v === '') ? '<i style="color:#668894;">isi</i>' : fmtQty(v); } },
+            { header: 'Selisih', dataIndex: 'diff_qty', width: 90, align: 'right',
+              renderer: function (v, m, r) {
+                  if (!hasCount(r)) return '';
+                  var c = v > EPS ? '#2e9e4f' : (v < -EPS ? '#e05353' : '#9fc3d1');
+                  return '<span style="color:' + c + ';font-weight:bold;">' + fmtQty(v) + '</span>';
+              } },
+            { header: 'Biaya Satuan', dataIndex: 'unit_cost', width: 100, align: 'right',
+              editor: new myNumberField({ decimalPrecision: 4, allowNegative: false }), renderer: fmtAmt },
+            { header: 'Alasan Selisih', dataIndex: 'reason', width: 150,
+              editor: new Ext.form.ComboBox({ store: REASONS, triggerAction: 'all', editable: false, forceSelection: true }) },
+            { header: 'Catatan', dataIndex: 'note', width: 150, editor: new myTextField() },
+            editorDeleter
+        ],
+        listeners: {
+            afteredit: function (e) {
+                if (e.field === 'counted_qty') {
+                    if (e.value === '' || e.value === null) { e.record.set('counted_qty', null); }
+                    recalcRow(e.record);
                 }
+                updateSummary();
             }
-        });
-        function addRow(d) {
-            if (gridAddEditorDs.find('item_id', d.item_id) >= 0) { return false; }
-            var R = gridAddEditorDs.recordType;
-            gridAddEditorDs.add(new R(d));
-            return true;
         }
-        function addItem() {
-            var r = fItem.findRecord('item_id', fItem.getValue());
-            if (!r) { showErr('Pilih item terlebih dahulu.'); return; }
-            if (!addRow({ item_id: r.get('item_id'), material_code: r.get('material_code'), material_name: r.get('material_name'),
-                          unit: r.get('unit'), system_qty: r.get('system_qty'), counted_qty: r.get('system_qty'), remark: '' })) {
-                showErr('Item sudah ada di daftar.');
-            }
-            fItem.clearValue();
-        }
-        // muat semua item berstok di gudang sebagai lembar hitung
-        function loadSystem() {
-            if (!fWh.getValue()) { showErr('Pilih gudang terlebih dahulu.'); return; }
-            Ext.Ajax.request({
-                url: URL, method: 'POST', params: { action: 'load_system', warehouse_id: fWh.getValue() },
-                success: function (resp) {
-                    var o;
-                    try { o = Ext.decode(resp.responseText); } catch (e) { showErr('Respon server tidak valid.'); return; }
-                    if (!o.success) { showErr(o.message); return; }
-                    gridAddEditorDs.removeAll();
-                    Ext.each(o.data, function (d) {
-                        addRow({ item_id: d.item_id, material_code: d.material_code, material_name: d.material_name, unit: d.unit,
-                                 system_qty: parseFloat(d.system_qty), counted_qty: parseFloat(d.system_qty), remark: '' });
-                    });
-                },
-                failure: function (resp) { showErr('Koneksi ke server gagal (HTTP ' + resp.status + ').'); }
-            });
-        }
+    });
+    itemGrid.addClass('x-grid3-gridEditor');
 
-        var detailGrid = new Ext.grid.EditorGridPanel({
-            region: 'center', store: gridAddEditorDs, clicksToEdit: 1, stripeRows: true, viewConfig: { forceFit: true },
-            tbar: [{ text: 'Muat Semua Item Berstok', handler: function () {
-                        if (gridAddEditorDs.getCount()) {
-                            Ext.Msg.confirm('Muat Item', 'Daftar saat ini akan diganti. Lanjutkan?', function (b) { if (b === 'yes') { loadSystem(); } });
-                        } else { loadSystem(); }
-                    } }, '-', fItem, { text: 'Tambah', handler: addItem }],
-            columns: [
-                { header: 'Kode', dataIndex: 'material_code', width: 90 },
-                { header: 'Material', dataIndex: 'material_name', width: 200 },
-                { header: 'Sat', dataIndex: 'unit', width: 50, align: 'center' },
-                { header: 'Stok Sistem', dataIndex: 'system_qty', width: 100, align: 'right', renderer: fmtQty },
-                { header: 'Qty Hitung', dataIndex: 'counted_qty', width: 100, align: 'right', renderer: fmtQty,
-                  editor: new Ext.form.NumberField({ allowNegative: false, decimalPrecision: 4 }) },
-                { header: 'Selisih', width: 100, align: 'right',
-                  renderer: function (v, m, r) { return diffRenderer((parseFloat(r.get('counted_qty')) || 0) - (parseFloat(r.get('system_qty')) || 0)); } },
-                { header: 'Catatan', dataIndex: 'remark', width: 140, editor: new Ext.form.TextField() },
-                { header: '', dataIndex: 'item_id', width: 30, align: 'center', fixed: true,
-                  renderer: function () { return '<span style="color:#e05353;cursor:pointer;font-weight:bold;">&#10005;</span>'; } }
-            ],
-            bbar: ['Stok sistem dihitung ulang saat Simpan dan saat Posting; selisih final ditentukan saat Posting.'],
-            listeners: {
-                cellclick: function (g, row, col) { if (col === g.getColumnModel().getColumnCount() - 1) { g.getStore().removeAt(row); } }
-            }
+    (function injectExtraUI() {      // form header + pemilih material + ringkasan
+        var g = document.getElementById('editorFormGrid');
+        if (!g || document.getElementById('soHdrForm')) return;
+        var hdr = document.createElement('div'); hdr.id = 'soHdrForm'; hdr.style.cssText = 'margin-bottom:2px;';
+        g.parentNode.insertBefore(hdr, g);
+        var bar = document.createElement('div'); bar.id = 'soAddBar'; bar.style.cssText = 'margin:6px 0;';
+        g.parentNode.insertBefore(bar, g);
+        var sum = document.createElement('div'); sum.id = 'soSummary';
+        sum.style.cssText = 'padding:10px 14px;margin-top:8px;font-size:13px;text-align:right;background:#1f2d3a;color:#ffffff !important;border-radius:4px;';
+        g.parentNode.insertBefore(sum, g.nextSibling);
+    })();
+
+    var fMat = null;
+    function ensureForm() {
+        if (hdrForm) { hdrForm.doLayout(); return; }
+        fWh = new myComboField({
+            fieldLabel: 'Gudang', store: whDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all',
+            forceSelection: true, allowBlank: false, anchor: '95%',
+            listeners: { select: function () { itemDs.removeAll(); updateSummary(); } }
+        });
+        fDate = new Ext.form.DateField({ fieldLabel: 'Tanggal Opname', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 130 });
+        fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items }; };
+        hdrForm = new Ext.form.FormPanel({
+            renderTo: 'soHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:4px 2px 0 2px;',
+            items: [col(0.34, [fWh]), col(0.22, [fDate]), col(0.44, [fRemark])]
         });
 
-        var form = new Ext.form.FormPanel({
-            region: 'north', height: 90, border: false, layout: 'column', bodyStyle: 'padding:8px 6px 0 6px;',
-            items: [
-                { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 80, items: [fWh, fDate] },
-                { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 80, items: [fRemark] }
-            ]
+        // baris tambah material + ambil semua stok gudang
+        fMat = new Ext.form.ComboBox({
+            store: matDs, displayField: 'material_name', valueField: 'material_id', mode: 'remote', queryParam: 'query', minChars: 0,
+            triggerAction: 'all', forceSelection: true, width: 380, listWidth: 520, emptyText: 'Tambah material (termasuk yang stok sistemnya 0)...',
+            tpl: '<tpl for="."><div class="x-combo-list-item">{material_code} - {material_name} <b>(stok {system_qty} {unit})</b></div></tpl>',
+            renderTo: 'soAddBar',
+            listeners: { beforequery: function () {
+                if (!fWh.getValue()) { showErr('Pilih gudang terlebih dahulu.'); return false; }
+                matDs.baseParams.warehouse_id = fWh.getValue();
+            } }
         });
-
-        var win = new Ext.Window({
-            title: rec ? 'Edit Draft Opname ' + rec.ref_no : 'Stock Opname Baru', width: 920, height: 580, modal: true, layout: 'border',
-            items: [form, detailGrid],
-            buttons: [
-                { text: 'Simpan Draft', handler: function () {
-                    if (!fWh.getValue() || !fDate.getValue()) { showErr('Gudang dan tanggal wajib diisi.'); return; }
-                    var arr = [], err = '';
-                    gridAddEditorDs.each(function (r) {
-                        var q = parseFloat(r.get('counted_qty'));
-                        if (isNaN(q) || q < 0) { err = 'Qty hitung ' + r.get('material_name') + ' harus angka >= 0.'; return false; }
-                        arr.push({ item_id: r.get('item_id'), counted_qty: q, remark: r.get('remark') || '' });
-                    });
-                    if (err) { showErr(err); return; }
-                    if (!arr.length) { showErr('Tambahkan minimal satu item.'); return; }
-                    ajaxPost({
-                        action: 'save', id: editId, warehouse_id: fWh.getValue(),
-                        opname_date: fDate.getValue().format('Y-m-d'), remark: fRemark.getValue(),
-                        details: Ext.util.JSON.encode(arr)
-                    }, function (o) { win.close(); Ext.Msg.alert('Sukses', o.message); mainDs.reload(); });
-                } },
-                { text: 'Batal', handler: function () { win.close(); } }
-            ]
-        });
-        win.show();
-
-        // edit: tunggu combo gudang terisi, lalu pasang nilai & detail (form sudah ter-render saat window tampil)
-        whDs.load({ callback: function () {
-            if (!rec) { return; }
-            fWh.setValue(rec.warehouse_id);
-            fDate.setValue(Date.parseDate(rec.opname_date, 'Y-m-d') || new Date());
-            Ext.Ajax.request({
-                url: URL, method: 'POST', params: { action: 'detail', id: rec.id },
-                success: function (resp) {
-                    var o;
-                    try { o = Ext.decode(resp.responseText); } catch (e) { showErr('Respon server tidak valid.'); return; }
-                    if (!o.success) { showErr(o.message); return; }
-                    Ext.each(o.data, function (d) {
-                        addRow({ item_id: d.item_id, material_code: d.material_code, material_name: d.material_name, unit: d.unit,
-                                 system_qty: parseFloat(d.system_qty), counted_qty: parseFloat(d.counted_qty), remark: d.remark || '' });
-                    });
-                },
-                failure: function (resp) { showErr('Koneksi ke server gagal (HTTP ' + resp.status + ').'); }
-            });
-        } });
+        var b1 = document.createElement('span');
+        b1.innerHTML = uiBtn('soBtnAdd', 'Tambah', '#066b78') + uiBtn('soBtnSnap', 'Ambil Semua Stok Gudang', '#555555');
+        document.getElementById('soAddBar').appendChild(b1);
+        document.getElementById('soAddBar').getElementsByClassName('soBtnAdd')[0].onclick = addMaterial;
+        document.getElementById('soAddBar').getElementsByClassName('soBtnSnap')[0].onclick = loadSnapshot;
     }
+
+    function newRec(cfg) {
+        var Rec = itemDs.recordType || Ext.data.Record.create(itemField);
+        return new Rec(Ext.apply({ material_id: null, material_code: '', material_name: '', unit: '', system_qty: 0, counted_qty: null, diff_qty: 0, unit_cost: 0, reason: '', note: '' }, cfg || {}));
+    }
+    function addMaterial() {
+        var rec = fMat.findRecord('material_id', fMat.getValue());
+        if (!rec) { showErr('Pilih material terlebih dahulu.'); return; }
+        if (itemDs.find('material_id', rec.get('material_id')) >= 0) { showErr('Material sudah ada di daftar.'); return; }
+        itemDs.add(newRec({ material_id: rec.get('material_id'), material_code: rec.get('material_code'), material_name: rec.get('material_name'),
+                            unit: rec.get('unit'), system_qty: rec.get('system_qty'), unit_cost: rec.get('unit_cost') }));
+        fMat.clearValue();
+        updateSummary();
+    }
+    function loadSnapshot() {
+        if (!fWh.getValue()) { showErr('Pilih gudang terlebih dahulu.'); return; }
+        ajax({ action: 'snapshot', warehouse_id: fWh.getValue() }, function (res) {
+            if (!res.success) { showErr(res.message || 'Gagal mengambil stok.'); return; }
+            var added = 0;
+            Ext.each(res.data, function (d) {
+                if (itemDs.find('material_id', d.material_id) >= 0) return;
+                itemDs.add(newRec({ material_id: d.material_id, material_code: d.material_code, material_name: d.material_name, unit: d.unit,
+                                    system_qty: parseFloat(d.system_qty), unit_cost: parseFloat(d.unit_cost) }));
+                added++;
+            });
+            updateSummary();
+            Ext.Msg.alert('Stok Gudang', added + ' material ditambahkan dari stok sistem.');
+        });
+    }
+
+    function showEditor(title) {
+        var addWdw = document.getElementById('addWdw'); if (addWdw) addWdw.style.display = 'none';
+        document.getElementById('editorWdw').style.display = 'block';
+        document.getElementById('editorFormHeaderText').innerHTML = '&nbsp;&nbsp;' + enc(title);
+        ensureForm();
+    }
+
+    // ------------------------------------------------------------
+    // 3. Handler tombol template
+    // ------------------------------------------------------------
+    document.getElementById('addData').onclick = function () {
+        if (getFormAccess() < ACCESS_ADD) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses untuk membuat opname.'); return; }
+        editingId = 0;
+        showEditor('Stock Opname Baru');
+        whDs.load({ callback: function () {
+            fWh.clearValue(); fWh.setDisabled(false); fDate.setValue(new Date()); fRemark.setValue('');
+            itemDs.removeAll(); updateSummary();
+        } });
+    };
+
+    document.getElementById('editData').onclick = function () {
+        if (!dataRecord) { showErr('Pilih opname terlebih dahulu dari tabel.'); return; }
+        if (dataRecord.status !== 'Draft') { showErr('Hanya opname berstatus Draft yang dapat diubah.'); return; }
+        if (getFormAccess() < ACCESS_ADD) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses untuk mengubah opname.'); return; }
+        ajax({ action: 'detail', id: dataRecord.id }, function (res) {
+            if (!res.success) { showErr(res.message || 'Gagal memuat opname.'); return; }
+            var h = res.header;
+            editingId = parseInt(h.id, 10);
+            showEditor('Edit Opname ' + h.ref_no);
+            whDs.load({ callback: function () {
+                fWh.setValue(parseInt(h.warehouse_id, 10)); fWh.setDisabled(true);       // gudang tidak dapat diganti
+                fDate.setValue(Date.parseDate(h.opname_date, 'Y-m-d') || new Date());
+                fRemark.setValue(h.remark || '');
+                itemDs.removeAll();
+                Ext.each(res.data, function (d) {
+                    itemDs.add(newRec({
+                        material_id: d.material_id, material_code: d.material_code, material_name: d.material_name, unit: d.unit,
+                        system_qty: parseFloat(d.system_qty), counted_qty: (d.counted_qty === null ? null : parseFloat(d.counted_qty)),
+                        diff_qty: parseFloat(d.diff_qty), unit_cost: parseFloat(d.unit_cost), reason: d.reason || '', note: d.note || ''
+                    }));
+                });
+                updateSummary();
+            } });
+        });
+    };
+
+    document.getElementById('saveEdit').onclick = function () {
+        if (!fWh.getValue()) { showErr('Gudang wajib dipilih.'); return; }
+        if (!fDate.getValue()) { showErr('Tanggal opname wajib diisi.'); return; }
+        if (!itemDs.getCount()) { showErr('Tambahkan minimal satu material.'); return; }
+        var arr = [], err = '';
+        itemDs.each(function (r) {
+            var c = hasCount(r) ? parseFloat(r.get('counted_qty')) : null;
+            if (c !== null && c < 0) { err = err || ('Qty hitung ' + r.get('material_name') + ' tidak boleh negatif.'); return; }
+            arr.push({ material_id: r.get('material_id'), counted_qty: c, unit_cost: parseFloat(r.get('unit_cost')) || 0,
+                       reason: r.get('reason') || '', note: r.get('note') || '' });
+        });
+        if (err) { showErr(err); return; }
+        ajax({
+            action: 'save', id: editingId, warehouse_id: fWh.getValue(), opname_date: ymd(fDate.getValue()), remark: fRemark.getValue(),
+            details: Ext.util.JSON.encode(arr)          // detail bertingkat -> JSON via POST
+        }, function (res) {
+            if (res.success) {
+                document.getElementById('editorWdw').style.display = 'none';
+                Ext.Msg.alert('Sukses', res.message || 'Opname tersimpan.');
+                mainDs.load();
+                var newId = res.id || (res.data && res.data.id);        // WhOk: id di top-level atau di dalam data
+                if (newId) { dataRecord = { id: newId, status: 'Draft' }; updateMainButtons(); loadDetailPanel(newId); }
+            } else {
+                showErr(res.message || 'Terjadi kesalahan sistem.');
+            }
+        });
+    };
+
+    document.getElementById('popOK').onclick = function () {
+        document.getElementById('popWdw').style.display = 'none';
+        if (document.getElementById('popCancel')) { document.getElementById('popCancel').style.display = 'none'; }
+    };
+    document.getElementById('editorWdw').style.display = 'none';
 });

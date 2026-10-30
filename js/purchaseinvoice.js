@@ -397,33 +397,17 @@ Ext.onReady(function () {
     var fldRemark = new Ext.form.TextArea({ fieldLabel: 'Keterangan', id: 'remark', name: 'remark', anchor: '98%', height: 45 });
 
     // [PPN] PPN Masukan: tarif (0 = tanpa PPN), nilai PPN sesuai faktur (kosong = otomatis), no./tgl faktur pajak supplier
-    var PPN_DEFAULT_RATE = 11;           // tarif default (%); samakan dengan kebijakan pajak berlaku
     var ppnAmtManual = false;            // true = nilai PPN diketik user / dimuat dari invoice tersimpan -> jangan ditimpa hitungan otomatis
-    // [CHANGED] pilihan 'Kena PPN' Ya / Tidak (default Ya): Ya -> tarif default 11%; Tidak -> tarif 0 (tanpa PPN).
-    // Memakai combo (bukan checkbox) karena checkbox bawaan tak terlihat di tema gelap dan merusak tinggi baris form.
-    // Tanpa name / hiddenName agar tidak ikut terkirim; yang dikirim tetap ppn_rate.
+    // [CHANGED 2026-10-29] Kena PPN & tarif DIAMBIL DARI PO tiap GRN (exclude / include / tanpa PPN) dan hanya ditampilkan.
+    // Server menghitung ulang dari PO; input tarif dari klien diabaikan. Combo tanpa name agar tidak ikut terkirim.
     var ppnTaxSyncing = false;
     var fldPpnTax = new myComboField({
-        fieldLabel: 'Kena PPN', store: new Ext.data.ArrayStore({ fields: ['v', 't'], data: [['1', 'Ya'], ['0', 'Tidak']] }),
+        fieldLabel: 'Kena PPN (menurut PO)', store: new Ext.data.ArrayStore({ fields: ['v', 't'], data: [['1', 'Ya'], ['0', 'Tidak']] }),
         displayField: 't', valueField: 'v', mode: 'local', triggerAction: 'all', forceSelection: true, editable: false,
-        value: '1', width: 90,
-        listeners: {
-            select: function () {
-                if (ppnTaxSyncing) return;
-                ppnAmtManual = false;
-                fldPpnRate.setValue(fldPpnTax.getValue() === '1' ? PPN_DEFAULT_RATE : 0);
-                recalcInvoicePpn();
-            }
-        }
+        value: '0', width: 90, disabled: true
     });
-    function syncPpnTax() {                                  // [CHANGED] pilihan Ya/Tidak mengikuti tarif
-        ppnTaxSyncing = true;
-        fldPpnTax.setValue((parseFloat(fldPpnRate.getValue()) || 0) > 0 ? '1' : '0');
-        ppnTaxSyncing = false;
-    }
     var fldPpnRate = new Ext.form.NumberField({
-        fieldLabel: 'Tarif PPN (%)', id: 'ppn_rate', name: 'ppn_rate', decimalPrecision: 2, value: PPN_DEFAULT_RATE, width: 90,   // [CHANGED] default 11
-        listeners: { change: function () { ppnAmtManual = false; syncPpnTax(); recalcInvoicePpn(); } }
+        fieldLabel: 'Tarif PPN (%)', id: 'ppn_rate', name: 'ppn_rate', decimalPrecision: 2, value: 0, width: 90, readOnly: true   // informasi: hasil dari PO
     });
     var fldPpnAmt = new Ext.form.NumberField({
         fieldLabel: 'PPN (sesuai faktur)', id: 'ppn_amount', name: 'ppn_amount', decimalPrecision: 2, width: 140, allowNegative: false,
@@ -433,25 +417,54 @@ Ext.onReady(function () {
     var fldFpDate = new Ext.form.DateField({ fieldLabel: 'Tgl Faktur Pajak', id: 'faktur_pajak_date', name: 'faktur_pajak_date', format: 'Y-m-d', width: 140, allowBlank: true });
     var fldPpnInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
-    // Hitung ulang DPP / PPN / total dari grid matched (dipanggil saat grid, tarif, atau PPN berubah)
+    // Hitung ulang DPP / PPN / total dari grid matched (dipanggil saat grid atau PPN berubah).
+    // [CHANGED] PPN per baris menurut mode & tarif PO GRN-nya (nilai GRN sudah berbasis DPP): EXCL / INCL (tarif > 0) -> DPP x tarif; tanpa PPN -> 0
     function recalcInvoicePpn() {
         if (typeof gridEditorInvoiceDs === 'undefined') return;
         var fmt = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
-        var dpp = 0;
-        gridEditorInvoiceDs.each(function (r) { dpp += parseFloat(r.get('matched_amount')) || 0; });
+        var dpp = 0, calc = 0, groups = {}, rateCount = 0, lastRate = 0, seen = {};
+        gridEditorInvoiceDs.each(function (r) {
+            var m = parseFloat(r.get('matched_amount')) || 0;
+            dpp += m;
+            var mode = String(r.get('ppn_mode') || 'NONE').toUpperCase(), rt = parseFloat(r.get('ppn_rate')) || 0;
+            if ((mode === 'EXCL' || mode === 'INCL') && rt > 0) {
+                var k = mode + '|' + rt;
+                groups[k] = (groups[k] || 0) + m;
+                if (!seen[rt]) { seen[rt] = true; rateCount++; lastRate = rt; }
+            }
+        });
         dpp = Math.round(dpp * 100) / 100;
-        var rate = parseFloat(fldPpnRate.getValue()) || 0;
-        var calc = rate > 0 ? Math.round(dpp * rate) / 100 : 0;
+        for (var key in groups) {
+            if (groups.hasOwnProperty(key)) {
+                var sub = Math.round(groups[key] * 100) / 100, rt2 = parseFloat(key.split('|')[1]);
+                calc += Math.round(sub * rt2) / 100;
+            }
+        }
+        calc = Math.round(calc * 100) / 100;
+
+        ppnTaxSyncing = true;                                 // field informasi: ikut hasil hitung dari PO
+        fldPpnTax.setValue(calc > 0 ? '1' : '0');
+        fldPpnRate.setValue(rateCount === 0 ? 0 : (rateCount === 1 ? lastRate : (dpp > 0 ? Math.round(calc / dpp * 10000) / 100 : 0)));
+        ppnTaxSyncing = false;
+
         var ppn = calc, warn = '';
-        if (rate > 0 && ppnAmtManual) {
+        if (calc > 0 && ppnAmtManual) {
             ppn = parseFloat(fldPpnAmt.getValue()) || 0;
-            if (Math.abs(ppn - calc) > 100) warn = ' <span style="color:#e6a817;">(beda dari hitungan ' + fmt(calc) + ' - server menolak selisih > Rp 100)</span>';
-        } else if (rate > 0) {
+            if (Math.abs(ppn - calc) > 100) warn = ' <span style="color:#e6a817;">(beda dari hitungan PO ' + fmt(calc) + ' - server menolak selisih > Rp 100)</span>';
+        } else if (calc > 0) {
             fldPpnAmt.setValue(calc);
         } else {
             fldPpnAmt.setValue('');
         }
+        if (rateCount > 1) warn += ' <span style="color:#9fc3d1;">(tarif PO campur, ditampilkan tarif efektif)</span>';
         fldPpnInfo.setValue('<span style="color:#9fc3d1;">DPP <b>' + fmt(dpp) + '</b> &nbsp;|&nbsp; PPN <b>' + fmt(ppn) + '</b> &nbsp;|&nbsp; Total hutang <b>' + fmt(dpp + ppn) + '</b>' + warn + '</span>');
+    }
+
+    // [CHANGED] teks mode PPN PO untuk kolom grid
+    function ppnLabel(mode, rate) {
+        mode = String(mode || 'NONE').toUpperCase();
+        if ((mode !== 'EXCL' && mode !== 'INCL') || !(parseFloat(rate) > 0)) return 'Tanpa PPN';
+        return (mode === 'INCL' ? 'Include ' : 'Exclude ') + parseFloat(rate) + '%';
     }
 
     // [BARU] Begitu supplier dipilih, otomatis tarik semua GRN supplier itu
@@ -493,6 +506,7 @@ Ext.onReady(function () {
                         qty_received: qty,
                         unit_cost: price,
                         grn_total: g.grn_total,
+                        ppn_mode: g.ppn_mode, ppn_rate: g.ppn_rate, returned_value: g.returned_value,   // [CHANGED]
                         matched_amount: remaining
                     });
                     gridEditorInvoiceDs.add(newRecord);
@@ -506,9 +520,8 @@ Ext.onReady(function () {
 
     fldSupplier.on('select', function (combo, record) {
         autoLoadAvailableGrn(record.get('id'));
-        // [PPN][CHANGED] ikut checkbox 'Kena PPN' (default tercentang -> 11%), tidak lagi dibedakan PKP / non-PKP
+        // [PPN][CHANGED] tarif & mode PPN mengikuti PO tiap GRN (dihitung di recalcInvoicePpn)
         ppnAmtManual = false;
-        fldPpnRate.setValue(fldPpnTax.getValue() === '1' ? PPN_DEFAULT_RATE : 0);
         recalcInvoicePpn();
     });
 
@@ -532,7 +545,10 @@ Ext.onReady(function () {
         { name: 'qty_received', type: 'float' },
         { name: 'unit_cost', type: 'float' },
         { name: 'grn_total', type: 'float' },
-        { name: 'matched_amount', type: 'float' }
+        { name: 'matched_amount', type: 'float' },
+        { name: 'ppn_mode', type: 'string' },          // [CHANGED] mode PPN PO (EXCL / INCL / NONE)
+        { name: 'ppn_rate', type: 'float' },           // [CHANGED] tarif PPN PO
+        { name: 'returned_value', type: 'float' }      // [CHANGED] nilai retur yang sudah mengurangi sisa GRN
     ];
 
     var gridEditorInvoiceDs = new Ext.data.Store({
@@ -562,6 +578,9 @@ Ext.onReady(function () {
             { name: 'unit_cost', type: 'float' },
             { name: 'grn_total', type: 'float' },
             { name: 'already_matched', type: 'float' },
+            { name: 'returned_value', type: 'float' },     // [CHANGED]
+            { name: 'ppn_mode', type: 'string' },          // [CHANGED]
+            { name: 'ppn_rate', type: 'float' },           // [CHANGED]
             { name: 'remaining', type: 'float' }
         ])
     });
@@ -582,7 +601,9 @@ Ext.onReady(function () {
             { header: 'Item', dataIndex: 'item_name', width: 150 },
             { header: 'Total GRN', dataIndex: 'grn_total', width: 90, align: 'right', renderer: format_number },
             { header: 'Sudah Di-invoice', dataIndex: 'already_matched', width: 100, align: 'right', renderer: format_number },
-            { header: 'Sisa Belum Invoice', dataIndex: 'remaining', width: 110, align: 'right', renderer: format_number, css: 'font-weight:bold;' }
+            { header: 'Retur', dataIndex: 'returned_value', width: 80, align: 'right', renderer: function (v) { return v > 0 ? format_number(v) : '-'; } },   // [CHANGED]
+            { header: 'PPN (PO)', dataIndex: 'ppn_mode', width: 90, renderer: function (v, m, rec) { return ppnLabel(v, rec.get('ppn_rate')); } },   // [CHANGED]
+            { header: 'Sisa Belum Invoice (setelah retur)', dataIndex: 'remaining', width: 130, align: 'right', renderer: format_number, css: 'font-weight:bold;' }
         ]
     });
 
@@ -627,6 +648,7 @@ Ext.onReady(function () {
                     qty_received: qty,
                     unit_cost: price,
                     grn_total: rec.get('grn_total'),
+                    ppn_mode: rec.get('ppn_mode'), ppn_rate: rec.get('ppn_rate'), returned_value: rec.get('returned_value'),   // [CHANGED]
                     // [FIX] Nominal matched default = sisa yang belum di-invoice
                     // (untuk GRN baru = qty x harga = sama dengan grn_total)
                     matched_amount: remaining
@@ -660,6 +682,8 @@ Ext.onReady(function () {
                 editor: new Ext.form.NumberField(),
                 css: cssGridEditColumn 
             },
+            { header: 'PPN (PO)', dataIndex: 'ppn_mode', width: 95, align: 'center', renderer: function (v, m, rec) { return ppnLabel(v, rec.get('ppn_rate')); } },   // [CHANGED]
+            { header: 'Retur', dataIndex: 'returned_value', width: 85, align: 'right', renderer: function (v) { return v > 0 ? format_number(v) : '-'; } },   // [CHANGED]
             editorDeleter,
             { dataIndex: 'id', hidden: true },
             { dataIndex: 'invoice_hdr_id', hidden: true },
@@ -742,9 +766,7 @@ Ext.onReady(function () {
             supplierDs.load();
             gridEditorInvoiceDs.load({ params: { invoice_id: 0 } });
             ppnAmtManual = false;                                   // [PPN]
-            fldPpnRate.setValue(PPN_DEFAULT_RATE);                  // [CHANGED] invoice baru: default kena PPN (pastikan tarif kembali ke default setelah reset())
-            syncPpnTax();
-            recalcInvoicePpn();
+            recalcInvoicePpn();                                     // [CHANGED] tarif / kena PPN ikut PO (grid kosong -> Tidak)
             showWindow('Tambah Purchase Invoice');
         });
     }
@@ -763,7 +785,6 @@ Ext.onReady(function () {
                     frmEditor.getForm().setValues(dataRecord);
                     gridEditorInvoiceDs.load({ params: { invoice_id: dataRecord.id } });
                     ppnAmtManual = (parseFloat(dataRecord.ppn_amount) || 0) > 0;     // [PPN] PPN tersimpan (mis. sesuai faktur) tidak ditimpa
-                    syncPpnTax();                                                    // [CHANGED] pilihan Kena PPN mengikuti tarif tersimpan (0 = Tidak)
                     showWindow('Edit Purchase Invoice');
                 }
             });
