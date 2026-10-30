@@ -37,8 +37,20 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .nav-item:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
-.dropdown-menu { opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s ease-in-out; }
-
+/* .dropdown-menu { 
+    opacity: 0; 
+    visibility: 
+    hidden; transform: 
+    translateY(-6px); 
+    transition: all 0.2s ease-in-out; }*/
+.dropdown-menu { 
+    opacity: 0; 
+    visibility: hidden; 
+    transform: translateY(-6px); 
+    transition: all 0.2s ease-in-out; 
+    max-width: calc(100vw - 2rem); /* Batasi lebar maksimal sesuai lebar layar */
+    width: max-content; /* Menyesuaikan dengan konten secara otomatis */
+}
 /* [FIX] Menu Horizontal Layout */
 /* Menu Horizontal */
 .menu-column {
@@ -109,10 +121,15 @@ $hasChildren = count($childGroups) > 0;
 <?= $romanNum . '. ' . strtoupper(htmlspecialchars($main['name'])); ?>
 </a>
 
-<?php if ($hasChildren): ?>
-<!--[FIX] Menu Horizontal dengan flex-wrap-->
+<!--<?php /*if ($hasChildren): */ ?>
+[FIX] Menu Horizontal dengan flex-wrap
 <div class="dropdown-menu absolute left-0 top-full mt-1 min-w-[900px] max-w-[1200px] bg-[#0f172a] border border-[#0a2d4a] rounded-xl shadow-2xl p-4 text-xl font-normal text-cyan-100 z-50">
-<div class="flex flex-wrap gap-6">
+<div class="flex flex-wrap gap-6"> -->
+
+<?php if ($hasChildren): ?>
+<!-- [FIX] Menu Dropdown agar tidak offside dari layar dan menumpuk ke bawah jika melebihi lebar screen -->
+<div class="dropdown-menu absolute left-0 top-full mt-1 bg-[#0f172a] border border-[#0a2d4a] rounded-xl shadow-2xl p-4 text-xl font-normal text-cyan-100 z-50">
+<div class="flex flex-wrap gap-6 max-w-[1200px]">
 
 <!-- [FIX] Menu Horizontal Dinamis - Lebar auto, max 95% layar
 <div class="dropdown-menu absolute left-0 top-full mt-1 w-auto min-w-[900px] max-w-[calc(100vw-2rem)] bg-[#0f172a] border border-[#0a2d4a] rounded-xl shadow-2xl p-4 text-xl font-normal text-cyan-100 z-50">
