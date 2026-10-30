@@ -25,7 +25,18 @@
            sedangkan koneksi pg_* tidak bisa berbagi transaksi). Task read tetap memakai pg_*.
          - delete ditolak bila invoice sudah ada pembayaran supplier.
          - task baru 'backfill_journal' (preview / run) untuk memposting jurnal invoice lama yang belum dijurnal.
-         Butuh migrasi: sql/2026-10-29.purchase_invoice_journal.sql (menambah nilai enum reference_type 'purchase_invoice')
+         (Enum reference_type di database ini SUDAH memuat 'purchase_invoice' -> sql/2026-10-29.purchase_invoice_journal.sql tidak perlu dijalankan.)
+   [PPN MENGIKUTI PO 2026-10-29] DPP / PPN invoice ditentukan dari PO tiap GRN yang di-match, BUKAN dari tarif yang diketik user:
+         - Nilai GRN (grn_dtl.unit_cost) sudah berbasis DPP untuk semua mode PO (GRN menolak harga PO inklusif PPN; default = harga / (1+tarif)).
+           Jadi matched_amount = DPP. PO EXCL / INCL (tarif > 0): PPN = DPP x tarif PO ; PO NONE: PPN 0 ; total hutang = DPP + PPN
+           (untuk PO INCL total = nilai PO yang inklusif PPN, sesuai 'tagihan dibayar sesuai PO').
+         - Input 'PPN sesuai faktur' dari klien tetap boleh sebagai koreksi, dalam toleransi PI_PPN_TOLERANCE.
+         - ppn_rate header = tarif tunggal bila seragam; bila campur diisi tarif efektif (PPN / DPP). Hanya informasi.
+         - Satu invoice hanya boleh satu mata uang; jurnal diposting dalam mata uang dasar (nilai x kurs GRN).
+   [NILAI BERSIH SETELAH RETUR 2026-10-29] Sisa yang bisa di-invoice = nilai GRN - retur supplier berstatus Dikirim / Kredit
+         (Diganti tidak mengurangi: barang pengganti memenuhi GRN) - yang sudah di-match invoice lain. Invoice yang sudah ada tetap boleh
+         disimpan ulang pada nilai lamanya; retur setelah invoice diselesaikan lewat nota kredit retur (bukan mengubah invoice).
+         Retur dihitung dari supplier_return_dtl.qty_claim x unit_cost (mata uang dasar) / kurs GRN -> mata uang PO.
    [BARU 2026-10-08]
          - task 'read_invoice_print': data Tanda Terima Invoice (read-only, tidak mengubah data).
          - create: kolom created_by ikut diisi dari sesi (kolom sudah ada di tabel, sebelumnya kosong)
@@ -80,6 +91,47 @@ function pgErrorOrFallback($fallback = 'Terjadi kesalahan pada database.') {
 // [PPN] ---------------------------------------------------------------
 const PI_PPN_TOLERANCE   = 100.00;                    // selisih maks (Rp) antara PPN input (faktur) dan hitungan DPP x tarif
 const PI_JOURNAL_REF     = 'purchase_invoice';        // [JURNAL] reference_type jurnal invoice supplier
+
+/** [PPN] Hitung PPN dari DPP menurut mode & tarif PO. EXCL / INCL (tarif > 0) -> DPP x tarif ; NONE -> 0. */
+function PiPpnFromDpp($dpp, $mode, $rate) {
+    $mode = strtoupper((string)$mode);
+    $rate = (float)$rate;
+    if (($mode === 'EXCL' || $mode === 'INCL') && $rate > 0) return round($dpp * $rate / 100, 2);
+    return 0.0;
+}
+
+/**
+ * [PPN][RETUR] Info satu GRN untuk validasi & hitung invoice: supplier, mata uang & kurs GRN, mode/tarif PPN PO,
+ * nilai GRN, nilai retur (Dikirim / Kredit) dalam mata uang PO, dan total yang sudah di-match di invoice LAIN.
+ */
+function PiGrnInfo($db, $grnId, $excludeInvoiceId) {
+    $st = $db->prepare("
+        SELECT g.id, g.ref_no, COALESCE(g.supplier_id, po.supplier_id) AS supplier_id,
+               UPPER(TRIM(COALESCE(cur.init, ''))) AS currency_code,
+               COALESCE(NULLIF(g.exch_rate, 0), 1) AS exch_rate,
+               COALESCE(po.ppn_mode, 'NONE') AS ppn_mode, COALESCE(po.ppn_rate, 0) AS ppn_rate,
+               (SELECT COALESCE(SUM(d.qty_received * d.unit_cost), 0) FROM grn_dtl d WHERE d.grn_hdr_id = g.id) AS grn_total,
+               (SELECT COALESCE(SUM(sd.qty_claim * sd.unit_cost), 0)
+                  FROM supplier_return_hdr sh
+                  JOIN supplier_return_dtl sd ON sd.return_hdr_id = sh.id
+                  JOIN wh_receiving_hdr r ON r.id = sh.wh_receiving_hdr_id
+                 WHERE r.grn_hdr_id = g.id AND sh.status IN ('Dikirim', 'Kredit')) AS returned_base,
+               (SELECT COALESCE(SUM(m.matched_amount), 0) FROM purchase_invoice_dtl m
+                 WHERE m.grn_hdr_id = g.id AND m.invoice_hdr_id <> :ex) AS matched_other
+          FROM grn_hdr g
+          LEFT JOIN purchase_orders po ON po.id = g.po_id
+          LEFT JOIN m_currency cur ON cur.id = g.currency_id
+         WHERE g.id = :id");
+    $st->execute([':id' => $grnId, ':ex' => (int)$excludeInvoiceId]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$r) return null;
+    $r['exch_rate']     = (float)$r['exch_rate'];
+    $r['ppn_rate']      = (float)$r['ppn_rate'];
+    $r['grn_total']     = (float)$r['grn_total'];
+    $r['returned']      = round((float)$r['returned_base'] / ($r['exch_rate'] > 0 ? $r['exch_rate'] : 1), 2);   // dalam mata uang PO
+    $r['matched_other'] = (float)$r['matched_other'];
+    return $r;
+}
 
 /** [JURNAL] pastikan enum reference_type sudah memuat 'purchase_invoice' (bila kolom berupa enum). */
 function PiAssertJournalRefType($db) {
@@ -164,6 +216,7 @@ try {
             // read_invoice_detail soal grn_hdr_id mengarah ke level dokumen).
             $supplier_id = isset($_REQUEST['supplier_id']) ? intval($_REQUEST['supplier_id']) : 0;
 
+            // [PPN][RETUR] + mode/tarif PPN PO, mata uang & kurs GRN, nilai retur; sisa = nilai GRN - retur - sudah di-match
             $sql = "SELECT h.id AS grn_hdr_id, h.ref_no AS grn_ref_no, h.grn_date, h.supplier_id,
                            string_agg(DISTINCT gd.item_name, ', ') AS item_name,
                            SUM(gd.qty_received) AS qty_received,
@@ -172,20 +225,35 @@ try {
                                 ELSE 0 END AS unit_cost,
                            SUM(gd.qty_received * gd.unit_cost) AS grn_total,
                            COALESCE(im.already_matched, 0) AS already_matched,
-                           SUM(gd.qty_received * gd.unit_cost) - COALESCE(im.already_matched, 0) AS remaining
+                           ROUND(COALESCE(rt.returned_base, 0) / COALESCE(NULLIF(h.exch_rate, 0), 1), 2) AS returned_value,
+                           SUM(gd.qty_received * gd.unit_cost) - COALESCE(im.already_matched, 0)
+                             - ROUND(COALESCE(rt.returned_base, 0) / COALESCE(NULLIF(h.exch_rate, 0), 1), 2) AS remaining,
+                           COALESCE(po.ppn_mode, 'NONE') AS ppn_mode, COALESCE(po.ppn_rate, 0) AS ppn_rate,
+                           UPPER(TRIM(COALESCE(cur.init, ''))) AS currency_code
                     FROM grn_hdr h
                     JOIN grn_dtl gd ON gd.grn_hdr_id = h.id
+                    LEFT JOIN purchase_orders po ON po.id = h.po_id
+                    LEFT JOIN m_currency cur ON cur.id = h.currency_id
                     LEFT JOIN (
                         SELECT grn_hdr_id, SUM(matched_amount) AS already_matched
                         FROM purchase_invoice_dtl
                         GROUP BY grn_hdr_id
                     ) im ON im.grn_hdr_id = h.id
+                    LEFT JOIN (
+                        SELECT r.grn_hdr_id, SUM(sd.qty_claim * sd.unit_cost) AS returned_base
+                          FROM supplier_return_hdr sh
+                          JOIN supplier_return_dtl sd ON sd.return_hdr_id = sh.id
+                          JOIN wh_receiving_hdr r ON r.id = sh.wh_receiving_hdr_id
+                         WHERE sh.status IN ('Dikirim', 'Kredit')
+                         GROUP BY r.grn_hdr_id
+                    ) rt ON rt.grn_hdr_id = h.id
                     WHERE h.status IN ('open', 'partial')
                       AND ($1 = 0 OR h.supplier_id = $1)
-                    GROUP BY h.id, h.ref_no, h.grn_date, h.supplier_id, im.already_matched
-                    -- [BARU] Invoicing partial dibolehkan: GRN tetap muncul selama
-                    -- masih ada sisa nilai yang belum di-match ke invoice manapun.
-                    HAVING SUM(gd.qty_received * gd.unit_cost) - COALESCE(im.already_matched, 0) > 0
+                    GROUP BY h.id, h.ref_no, h.grn_date, h.supplier_id, h.exch_rate, im.already_matched, rt.returned_base,
+                             po.ppn_mode, po.ppn_rate, cur.init
+                    -- Invoicing partial dibolehkan: GRN tetap muncul selama masih ada sisa nilai (setelah retur) yang belum di-match.
+                    HAVING SUM(gd.qty_received * gd.unit_cost) - COALESCE(im.already_matched, 0)
+                           - ROUND(COALESCE(rt.returned_base, 0) / COALESCE(NULLIF(h.exch_rate, 0), 1), 2) > 0.004
                     ORDER BY h.grn_date DESC";
 
             $result = pg_query_params($sql, [$supplier_id]);
@@ -198,6 +266,8 @@ try {
                 $row['grn_total'] = floatval($row['grn_total']);
                 $row['already_matched'] = floatval($row['already_matched']);
                 $row['remaining'] = floatval($row['remaining']);
+                $row['returned_value'] = floatval($row['returned_value']);   // [RETUR]
+                $row['ppn_rate'] = floatval($row['ppn_rate']);               // [PPN]
                 $data[] = $row;
             }
             echo json_encode(['success' => true, 'data' => $data]);
@@ -225,6 +295,7 @@ try {
             // GROUP BY ke grn_dtl untuk tetap dapat qty/harga/nama item.
             $sql = "SELECT d.id, d.invoice_hdr_id, d.grn_hdr_id, d.matched_amount, d.remark,
                            h.ref_no AS grn_ref_no,
+                           COALESCE(po.ppn_mode, 'NONE') AS ppn_mode, COALESCE(po.ppn_rate, 0) AS ppn_rate,   -- [PPN] mode & tarif PO
                            string_agg(DISTINCT gd.item_name, ', ') AS item_name,
                            SUM(gd.qty_received) AS qty_received,
                            CASE WHEN SUM(gd.qty_received) > 0
@@ -233,9 +304,10 @@ try {
                            SUM(gd.qty_received * gd.unit_cost) AS grn_total
                     FROM purchase_invoice_dtl d
                     JOIN grn_hdr h ON h.id = d.grn_hdr_id
+                    LEFT JOIN purchase_orders po ON po.id = h.po_id
                     LEFT JOIN grn_dtl gd ON gd.grn_hdr_id = h.id
                     WHERE d.invoice_hdr_id = $1
-                    GROUP BY d.id, d.invoice_hdr_id, d.grn_hdr_id, d.matched_amount, d.remark, h.ref_no";
+                    GROUP BY d.id, d.invoice_hdr_id, d.grn_hdr_id, d.matched_amount, d.remark, h.ref_no, po.ppn_mode, po.ppn_rate";
 
             $result = pg_query_params($sql, [$invoice_id]);
             if (!$result) throw new Exception(pgErrorOrFallback('Gagal memuat detail invoice.'));
@@ -246,6 +318,7 @@ try {
                 $row['qty_received'] = floatval($row['qty_received']);
                 $row['unit_cost'] = floatval($row['unit_cost']);
                 $row['grn_total'] = floatval($row['grn_total']);
+                $row['ppn_rate'] = floatval($row['ppn_rate']);               // [PPN]
                 $data[] = $row;
             }
             echo json_encode(['success' => true, 'data' => $data]);
@@ -304,12 +377,11 @@ try {
             $invoice_date = isset($_POST['invoice_date']) ? $_POST['invoice_date'] : date('Y-m-d');
             $supplier_id = isset($_POST['supplier_id']) ? intval($_POST['supplier_id']) : 0;
             $remark = isset($_POST['remark']) ? $_POST['remark'] : '';
-            // [PPN] input PPN Masukan (ppn_rate 0 = tanpa PPN; ppn_amount kosong = hitung otomatis DPP x tarif)
-            $ppn_rate   = isset($_POST['ppn_rate']) && $_POST['ppn_rate'] !== '' ? round(floatval($_POST['ppn_rate']), 2) : 0.0;
+            // [PPN] tarif & mode PPN diambil dari PO tiap GRN (input ppn_rate dari klien diabaikan);
+            //       ppn_amount kosong = hitung otomatis, terisi = koreksi sesuai faktur (dalam toleransi)
             $ppn_amount_in = (isset($_POST['ppn_amount']) && $_POST['ppn_amount'] !== '') ? round(floatval($_POST['ppn_amount']), 2) : null;
             $fp_no      = isset($_POST['faktur_pajak_no']) ? trim($_POST['faktur_pajak_no']) : '';
             $fp_date    = isset($_POST['faktur_pajak_date']) ? trim($_POST['faktur_pajak_date']) : '';
-            if ($ppn_rate < 0 || $ppn_rate > 100) throw new Exception('Tarif PPN harus antara 0 - 100%.');
             if ($fp_date !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fp_date)) throw new Exception('Tanggal faktur pajak tidak valid (YYYY-MM-DD).');
             if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $invoice_date)) throw new Exception('Tanggal invoice tidak valid (YYYY-MM-DD).');
             if ($supplier_id <= 0) throw new Exception('Supplier wajib dipilih.');
@@ -320,6 +392,7 @@ try {
             $db = new crud();
             $db->beginTransaction();
             PiAssertJournalRefType($db);
+            $prevMatched = [];                                    // [RETUR] diisi pada update
 
             if ($task == 'create') {
                 // No. Ref Dokumen PINV-YYMM-NNNNN: nomor terakhir bulan ini + 1 (aman setelah ada invoice yang dihapus)
@@ -341,36 +414,82 @@ try {
                 $inv_no = $stCur->fetchColumn();
                 if ($inv_no === false) throw new Exception('Invoice tidak ditemukan.');
 
+                // [RETUR] nilai matched lama per GRN (sebelum dihapus) -> boleh dipertahankan walau retur datang setelah invoice
+                $stPrev = $db->prepare("SELECT grn_hdr_id, SUM(matched_amount) AS m FROM purchase_invoice_dtl WHERE invoice_hdr_id = :id GROUP BY grn_hdr_id");
+                $stPrev->execute([':id' => $invoice_id]);
+                foreach ($stPrev->fetchAll(PDO::FETCH_ASSOC) as $pv) $prevMatched[(int)$pv['grn_hdr_id']] = (float)$pv['m'];
+
                 // [FIX] inv_no sengaja tidak ikut di SET -> No. Ref Dokumen immutable setelah dibuat.
                 $stUp = $db->prepare("UPDATE purchase_invoice_hdr SET supplier_invoice_no = :sno, invoice_date = CAST(:d AS date), supplier_id = :sup, remark = :rm WHERE id = :id");
                 $stUp->execute([':sno' => $supplier_invoice_no, ':d' => $invoice_date, ':sup' => $supplier_id, ':rm' => $remark, ':id' => $invoice_id]);
                 $db->prepare("DELETE FROM purchase_invoice_dtl WHERE invoice_hdr_id = :id")->execute([':id' => $invoice_id]);
             }
 
+            // [PPN][RETUR] validasi tiap GRN terhadap supplier, mata uang, nilai bersih setelah retur; kelompokkan per mode/tarif PO
             $total_amount_header = 0;
+            $groups = [];                  // key "MODE|rate" => subtotal DPP (mata uang PO)
+            $dppBase = 0.0;                // DPP dalam mata uang dasar (untuk jurnal)
+            $curCode = null;
+            $seenGrn = [];
             $stDtl = $db->prepare("INSERT INTO purchase_invoice_dtl (invoice_hdr_id, grn_hdr_id, matched_amount) VALUES (:h, :g, :m)");
             foreach ($invoice_details as $item) {
                 $grn_hdr_id = intval(isset($item['grn_hdr_id']) ? $item['grn_hdr_id'] : (isset($item['grn_dtl_id']) ? $item['grn_dtl_id'] : 0));
                 $matched_amount = round(floatval($item['matched_amount']), 2);
                 if ($grn_hdr_id <= 0) throw new Exception('GRN pada rincian invoice tidak valid.');
                 if ($matched_amount <= 0) throw new Exception('Nominal matched harus lebih besar dari 0.');
+                if (isset($seenGrn[$grn_hdr_id])) throw new Exception('GRN yang sama tidak boleh muncul dua kali dalam satu invoice.');
+                $seenGrn[$grn_hdr_id] = true;
+
+                $gi = PiGrnInfo($db, $grn_hdr_id, $invoice_id);
+                if (!$gi) throw new Exception('GRN pada rincian invoice tidak ditemukan.');
+                if ($gi['supplier_id'] !== null && (int)$gi['supplier_id'] !== $supplier_id) {
+                    throw new Exception('GRN ' . $gi['ref_no'] . ' bukan milik supplier yang dipilih.');
+                }
+                if ($curCode === null) $curCode = $gi['currency_code'];
+                elseif ($curCode !== $gi['currency_code']) throw new Exception('Satu invoice hanya boleh satu mata uang (' . $curCode . ' dan ' . $gi['currency_code'] . ' tercampur).');
+
+                // batas: tidak boleh melebihi nilai GRN - invoice lain; penambahan di atas nilai lama dibatasi nilai bersih setelah retur
+                $grossCap = round($gi['grn_total'] - $gi['matched_other'], 2);
+                $netCap   = round($gi['grn_total'] - $gi['returned'] - $gi['matched_other'], 2);
+                $prev     = isset($prevMatched[$grn_hdr_id]) ? $prevMatched[$grn_hdr_id] : 0.0;
+                $allowed  = min($grossCap, max($netCap, $prev));
+                if ($matched_amount > $allowed + 0.005) {
+                    throw new Exception('GRN ' . $gi['ref_no'] . ': nominal matched (' . number_format($matched_amount, 2) . ') melebihi sisa yang boleh di-invoice (' .
+                        number_format(max($allowed, 0), 2) . ($gi['returned'] > 0 ? ', sudah dikurangi retur ' . number_format($gi['returned'], 2) : '') . ').');
+                }
+
                 $total_amount_header += $matched_amount;
+                $key = strtoupper($gi['ppn_mode']) . '|' . $gi['ppn_rate'];
+                $groups[$key] = (isset($groups[$key]) ? $groups[$key] : 0.0) + $matched_amount;
+                $dppBase += round($matched_amount * $gi['exch_rate'], 2);
                 $stDtl->execute([':h' => $invoice_id, ':g' => $grn_hdr_id, ':m' => $matched_amount]);
             }
 
-            // [PPN] DPP = jumlah matched; PPN = DPP x tarif (atau nilai faktur dalam toleransi); total hutang = DPP + PPN
+            // [PPN] DPP = jumlah matched ; PPN = hitungan per kelompok mode/tarif PO (pembulatan di level kelompok)
             $dpp = round($total_amount_header, 2);
-            $ppn_calc = ($ppn_rate > 0) ? round($dpp * $ppn_rate / 100, 2) : 0.0;
-            if ($ppn_rate > 0 && $ppn_amount_in !== null) {
+            $ppn_calc = 0.0; $rates = [];
+            foreach ($groups as $key => $sub) {
+                list($gm, $gr) = explode('|', $key);
+                $p = PiPpnFromDpp(round($sub, 2), $gm, (float)$gr);
+                if ($p > 0) { $ppn_calc += $p; $rates[(string)(float)$gr] = true; }
+            }
+            $ppn_calc = round($ppn_calc, 2);
+            if ($ppn_calc > 0 && $ppn_amount_in !== null) {
                 if (abs($ppn_amount_in - $ppn_calc) > PI_PPN_TOLERANCE) {
-                    throw new Exception('PPN yang diinput (' . number_format($ppn_amount_in, 2) . ') berbeda dari hitungan DPP x ' . $ppn_rate . '% (' .
+                    throw new Exception('PPN yang diinput (' . number_format($ppn_amount_in, 2) . ') berbeda dari hitungan menurut PO (' .
                         number_format($ppn_calc, 2) . ') lebih dari toleransi ' . number_format(PI_PPN_TOLERANCE, 2) . '. Kosongkan kolom PPN untuk hitung otomatis.');
                 }
                 $ppn_amount_final = $ppn_amount_in;
             } else {
-                $ppn_amount_final = $ppn_calc;
+                $ppn_amount_final = $ppn_calc;       // PO tanpa PPN -> PPN 0, input klien diabaikan
             }
             $total_with_ppn = round($dpp + $ppn_amount_final, 2);
+            // tarif header: seragam -> tarif itu; campur -> tarif efektif (informasi)
+            if (!count($rates)) $ppn_rate = 0.0;
+            elseif (count($rates) === 1) $ppn_rate = (float)array_keys($rates)[0];
+            else $ppn_rate = ($dpp > 0) ? round($ppn_amount_final / $dpp * 100, 2) : 0.0;
+            // nilai jurnal dalam mata uang dasar: DPP x kurs GRN; PPN proporsional terhadap DPP
+            $ppnBase = ($dpp > 0) ? round($ppn_amount_final * ($dppBase / $dpp), 2) : 0.0;
 
             // [PPN] no. faktur pajak unik per supplier
             if ($fp_no !== '') {
@@ -395,7 +514,7 @@ try {
 
             // [JURNAL] edit: buang jurnal lama lalu posting ulang sesuai nilai terbaru
             if (PiHasJournal($db, $invoice_id)) ReverseJournalByReference($db, PI_JOURNAL_REF, $invoice_id);
-            PiPostJournal($db, $invoice_id, $inv_no, $supplier_invoice_no, $invoice_date, $dpp, $ppn_amount_final);
+            PiPostJournal($db, $invoice_id, $inv_no, $supplier_invoice_no, $invoice_date, $dppBase, $ppnBase);   // mata uang dasar
 
             $db->commit();
 

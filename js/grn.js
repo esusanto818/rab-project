@@ -1,7 +1,7 @@
 /*
   Document      : grn00_5.js
   Description   : Purchase GRN (Goods Receipt Note) - ExtJS 3.x Frontend Controller
-  Backend       : /inv/php-crud/grnCRD.php
+  Backend       : /inv/dev/php-crud/grnCRD.php
   Multi currency: GRN membekukan mata uang & kurs PO. Harga satuan GRN dalam mata uang PO (bisa diedit);
                   nilai dalam mata uang dasar (= harga x kurs PO) dihitung server dan dipakai WH Rcv.
                   GRN hanya bisa dibuat dari PO berstatus Disetujui.
@@ -76,14 +76,14 @@ Ext.onReady(function () {
     var poField = [{ name: 'id' }, { name: 'ref_no' }, { name: 'supplier_id' }, { name: 'supplier_name' },
                    { name: 'currency_code' }, { name: 'exch_rate', type: 'float' }];
     var poDs = new Ext.data.Store({
-        url: '../php-crud/grnCRD.php',
+        url: '../dev/php-crud/grnCRD.php',
         baseParams: { task: 'list_po_open' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, poField)
     });
     poDs.load();
 
     var itemGridDs = new Ext.data.Store({
-        url: '../php-crud/grnCRD.php',
+        url: '../dev/php-crud/grnCRD.php',
         baseParams: { task: 'read_po_items' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, itemField),
         listeners: {
@@ -112,7 +112,7 @@ Ext.onReady(function () {
     });
 
     var mainDs = new Ext.data.Store({
-        url: '../php-crud/grnCRD.php',
+        url: '../dev/php-crud/grnCRD.php',
         idProperty: 'id',
         baseParams: { task: 'read' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, grnField)
@@ -180,7 +180,7 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     function loadGrnDetail(grnId, grnNo) {
         Ext.Ajax.request({
-            url: '../php-crud/grnCRD.php',
+            url: '../dev/php-crud/grnCRD.php',
             method: 'POST',
             params: { task: 'read_grn_items', grn_id: grnId },
             success: function (response) {
@@ -287,7 +287,7 @@ Ext.onReady(function () {
         if (!w) { Ext.Msg.alert('Popup Diblokir', 'Izinkan popup untuk situs ini, lalu klik Cetak Tanda Terima lagi.'); return; }
         w.document.write('<html><body style="font-family:Arial,sans-serif;padding:20px;">Memuat Tanda Terima GRN...</body></html>');
         Ext.Ajax.request({
-            url: '../php-crud/grnCRD.php',
+            url: '../dev/php-crud/grnCRD.php',
             method: 'POST',
             params: { task: 'read_grn_print', grn_id: grnId },
             success: function (response) {
@@ -467,10 +467,12 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     // 5. Editor Form
     // ------------------------------------------------------------
-    var fldRefNo = new myTextField({ fieldLabel: 'No. GRN', id: 'ref_no', name: 'ref_no', readOnly: true, emptyText: 'Auto-generate' });
+    // [CHANGED 2026-10-30] semua field diberi lebar eksplisit (anchor / width) dan dikelompokkan per kolom seperti form PO / Purchase Invoice;
+    // sebelumnya tiap field berdiri sendiri tanpa lebar -> input dan pembungkusnya tampil sebagai dua kotak (form berantakan).
+    var fldRefNo = new myTextField({ fieldLabel: 'No. GRN', id: 'ref_no', name: 'ref_no', readOnly: true, emptyText: 'Auto-generate', anchor: '95%' });
     var fldPoHdr = new myComboField({
         fieldLabel: 'Purchase Order', id: 'po_id', name: 'po_id', hiddenName: 'po_id',
-        store: poDs, displayField: 'ref_no', valueField: 'id', allowBlank: false,
+        store: poDs, displayField: 'ref_no', valueField: 'id', allowBlank: false, anchor: '95%',      // [CHANGED]
         listeners: {
             select: function (combo, record) {
                 Ext.getCmp('supplier_id_hidden') && Ext.getCmp('supplier_id_hidden').setValue(record.get('supplier_id'));
@@ -486,15 +488,15 @@ Ext.onReady(function () {
         }
     });
     var fldCurInfo = new Ext.form.DisplayField({ fieldLabel: 'Mata Uang PO', value: '-' });
-    var fldGrnDate = new myDateField({ fieldLabel: 'Tgl GRN', id: 'grn_date', name: 'grn_date', allowBlank: false, value: new Date() });
+    var fldGrnDate = new myDateField({ fieldLabel: 'Tgl GRN', id: 'grn_date', name: 'grn_date', allowBlank: false, value: new Date(), width: 130 });   // [CHANGED]
     var fldSupplierIdHidden = new myTextField({ id: 'supplier_id_hidden', name: 'supplier_id', hidden: true });
-    var fldRemark = new myTextArea({ fieldLabel: 'Keterangan', id: 'remark', name: 'remark' });
+    var fldRemark = new myTextArea({ fieldLabel: 'Keterangan', id: 'remark', name: 'remark', anchor: '95%', height: 60 });   // [CHANGED]
     // [NEW] No. DO Supplier (nomor surat jalan dari supplier) -> acuan trace ke W/H RCV dan Retur Pembelian
-    var fldSupplierDo = new myTextField({ fieldLabel: 'No. DO Supplier', id: 'supplier_do_no', name: 'supplier_do_no', maxLength: 100 });
+    var fldSupplierDo = new myTextField({ fieldLabel: 'No. DO Supplier', id: 'supplier_do_no', name: 'supplier_do_no', maxLength: 100, anchor: '95%' });   // [CHANGED]
     // [NEW] Plat No. Kendaraan & Nama Driver (opsional; backend merapikan plat jadi huruf besar)
-    var fldPlate = new myTextField({ fieldLabel: 'Plat No. Kendaraan', id: 'vehicle_plate_no', name: 'vehicle_plate_no', maxLength: 20,
+    var fldPlate = new myTextField({ fieldLabel: 'Plat No. Kendaraan', id: 'vehicle_plate_no', name: 'vehicle_plate_no', maxLength: 20, anchor: '95%',     // [CHANGED]
         listeners: { blur: function (f) { f.setValue(String(f.getValue() || '').toUpperCase()); } } });
-    var fldDriver = new myTextField({ fieldLabel: 'Nama Driver', id: 'driver_name', name: 'driver_name', maxLength: 100 });
+    var fldDriver = new myTextField({ fieldLabel: 'Nama Driver', id: 'driver_name', name: 'driver_name', maxLength: 100, anchor: '95%' });   // [CHANGED]
 
     var frmEditor = new stdForm({
         id: 'frmEditor',
@@ -502,15 +504,10 @@ Ext.onReady(function () {
         labelWidth: 120,
         defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
         items: [
-            { columnWidth: .333, items: fldRefNo },
-            { columnWidth: .333, items: fldGrnDate },
-            { columnWidth: .333, items: fldPoHdr },
-            { columnWidth: .333, items: fldSupplierDo },      // [NEW]
-            { columnWidth: .333, items: fldPlate },      // [NEW]
-            { columnWidth: .333, items: fldDriver },      // [NEW]
-            { columnWidth: 1, items: fldCurInfo },
-            { columnWidth: 1, items: fldRemark },
-            { items: fldSupplierIdHidden }
+            // [CHANGED] tiga kolom, field dikelompokkan dalam array (pola sama dengan form PO / Purchase Invoice)
+            { columnWidth: .34, items: [fldRefNo, fldGrnDate, fldPoHdr] },
+            { columnWidth: .33, items: [fldSupplierDo, fldPlate, fldDriver] },      // [NEW] DO, plat, driver
+            { columnWidth: .33, items: [fldCurInfo, fldRemark, fldSupplierIdHidden] }
         ]
     });
 
@@ -554,7 +551,7 @@ Ext.onReady(function () {
             }
 
             frmEditor.getForm().load({
-                url: '../php-crud/grnCRD.php',
+                url: '../dev/php-crud/grnCRD.php',
                 params: { id: dataRecord.id, task: 'read_edit' },
                 success: function (form, action) {
                     fldPoHdr.setDisabled(true);
@@ -586,7 +583,7 @@ Ext.onReady(function () {
             Ext.Msg.confirm('Konfirmasi Hapus', 'Hapus GRN \'' + dataRecord.ref_no + '\'? Jurnal & status outstanding PO akan dibatalkan otomatis.', function (btn) {
                 if (btn === 'yes') {
                     Ext.Ajax.request({
-                        url: '../php-crud/grnCRD.php',
+                        url: '../dev/php-crud/grnCRD.php',
                         method: 'POST',
                         params: { task: 'delete', id: dataRecord.id },
                         success: function (response) {
@@ -640,7 +637,7 @@ Ext.onReady(function () {
         }
 
         frmEditor.getForm().submit({
-            url: '../php-crud/grnCRD.php',
+            url: '../dev/php-crud/grnCRD.php',
             method: 'POST',
             params: {
                 task: task,
