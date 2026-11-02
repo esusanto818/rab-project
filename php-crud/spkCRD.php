@@ -27,6 +27,7 @@ try {
         case 'list':             SpkList(); break;
         case 'detail':           SpkDetail(); break;
         case 'lookup_projects':  SpkLookupProjects(); break;
+        case 'lookup_tasks':     SpkLookupTasks(); break;
         case 'lookup_materials': SpkLookupMaterials(); break;
         case 'quota':            SpkQuotaInfo(); break;
         case 'save':             SpkSave(); break;
@@ -112,14 +113,27 @@ function SpkDetail() {
     $s = SpkGet($id);
     $p = WhRow('SELECT p.name, c.name AS client_name FROM projects p LEFT JOIN clients c ON c.id=p.client_id WHERE p.id=$1', array((int)$s['project_id']));
     $pay = SpkProjectPaid($s['project_id']);
+    $tasks = WhRows("SELECT t.id, t.task_name, COALESCE(t.description,'') AS description, t.start_date, t.end_date, COALESCE(t.status,'') AS status
+                     FROM spk_tasks st JOIN public.project_tasks t ON t.id=st.task_id WHERE st.spk_id=$1 ORDER BY t.start_date NULLS LAST, t.id", array($id));
     WhJson(array('success' => true, 'header' => array_merge($s, array('project_name' => $p['name'], 'client_name' => $p['client_name'])),
-                 'pay' => $pay, 'items' => SpkItemsWithUsage($id), 'issue_count' => SpkIssueCount($id)));
+                 'pay' => $pay, 'items' => SpkItemsWithUsage($id), 'tasks' => $tasks, 'issue_count' => SpkIssueCount($id)));
 }
 
 function SpkLookupProjects() {
     $q = WhReq('query');
     $rows = WhRows("SELECT p.id, p.name FROM projects p WHERE p.name ILIKE $1 ORDER BY p.name LIMIT 100", array('%' . $q . '%'));
     WhJson(array('success' => true, 'totalCount' => count($rows), 'data' => $rows));
+}
+
+function SpkLookupTasks() {
+    $pid = (int)WhReq('project_id'); $exclude = (int)WhReq('exclude_id');
+    if ($pid < 1 || !WhRow('SELECT 1 FROM projects WHERE id=$1', array($pid))) { throw new WhException('Pilih proyek yang valid.'); }
+    $rows = WhRows("SELECT t.id, t.task_name, COALESCE(t.description,'') AS description, t.start_date, t.end_date, COALESCE(t.status,'') AS status
+                    FROM public.project_tasks t WHERE t.project_id=$1
+                      AND NOT EXISTS (SELECT 1 FROM spk_tasks st JOIN spk s ON s.id=st.spk_id
+                                      WHERE st.task_id=t.id AND s.id<>$2 AND s.status NOT IN ('Dibatalkan','Selesai'))
+                    ORDER BY t.start_date NULLS LAST, t.id", array($pid, $exclude));
+    WhJson(array('success'=>true,'totalCount'=>count($rows),'data'=>$rows));
 }
 
 function SpkQuotaInfo() {
@@ -146,7 +160,12 @@ function SpkSave() {
     $projectId = (int)WhPost('project_id');
     $date = WhDate(WhPost('spk_date'), 'Tanggal SPK');
     $foreman = trim(WhPost('foreman')); $desc = trim(WhPost('description')); $remark = trim(WhPost('remark'));
-    $details = WhDetails();
+    $detailsRaw = isset($_POST['details']) ? $_POST['details'] : '[]';
+    $details = is_array($detailsRaw) ? $detailsRaw : json_decode((string)$detailsRaw, true);
+    if (!is_array($details) || !count($details)) { throw new WhException('Tambahkan minimal satu material.'); }
+    $taskRaw = isset($_POST['task_details']) ? $_POST['task_details'] : '[]';
+    $taskDetails = is_array($taskRaw) ? $taskRaw : json_decode((string)$taskRaw, true);
+    if (!is_array($taskDetails) || !count($taskDetails)) { throw new WhException('Pilih minimal satu task proyek untuk SPK.'); }
     $userId = WhUserId();
     if ($projectId < 1) { throw new WhException('Proyek wajib dipilih.'); }
     if (!WhRow('SELECT 1 FROM projects WHERE id=$1', array($projectId))) { throw new WhException('Proyek tidak ditemukan.'); }
@@ -169,12 +188,35 @@ function SpkSave() {
     if (!count($lines)) { throw new WhException('Tambahkan minimal satu material.'); }
 
     WhQ('BEGIN');
+    // Lock proyek agar kalkulasi kuota tidak berubah saat SPK disimpan.
+    WhLock(0, 900000 + $projectId);
+    $taskIds = array();
+    foreach ($taskDetails as $td) {
+        $tid = isset($td['task_id']) ? (int)$td['task_id'] : 0;
+        if ($tid < 1 || isset($taskIds[$tid])) { throw new WhException('Task SPK tidak valid atau dipilih lebih dari sekali.'); }
+        if (!WhRow('SELECT 1 FROM public.project_tasks WHERE id=$1 AND project_id=$2 FOR UPDATE', array($tid, $projectId))) {
+            throw new WhException('Task yang dipilih bukan bagian dari proyek ini.');
+        }
+        if (WhRow("SELECT 1 FROM spk_tasks st JOIN spk s ON s.id=st.spk_id WHERE st.task_id=$1 AND s.id<>$2 AND s.status NOT IN ('Dibatalkan','Selesai') LIMIT 1", array($tid, $id))) {
+            throw new WhException('Task sudah terikat pada SPK aktif lain.');
+        }
+        $taskIds[$tid] = true;
+    }
+    $qt = SpkMaterialQuota($projectId, $id);
+    foreach ($lines as $mid => $ln) {
+        if (!isset($qt['materials'][$mid])) { throw new WhException('Material ID ' . $mid . ' tidak ditemukan dalam RAB proyek.'); }
+        $maxQty = (float)$qt['materials'][$mid]['available'];
+        if ($ln['qty'] > $maxQty + 0.00005) {
+            throw new WhException('Qty SPK ' . $qt['materials'][$mid]['material_name'] . ' (' . WhFmt($ln['qty']) . ') melebihi maksimum tersedia (' . WhFmt($maxQty) . ').');
+        }
+    }
     if ($id > 0) {
         $s = SpkGet($id, true);
         if ($s['status'] !== 'Draft') { throw new WhException('Hanya SPK berstatus Draft yang dapat diubah.'); }
         WhQ('UPDATE spk SET spk_date=$2, project_id=$3, foreman=$4, description=$5, remark=$6, updated_at=now() WHERE id=$1',
             array($id, $date, $projectId, $foreman, $desc, $remark));
         WhQ('DELETE FROM spk_items WHERE spk_id=$1', array($id));
+        WhQ('DELETE FROM spk_tasks WHERE spk_id=$1', array($id));
         $spkNo = $s['spk_no'];
     } else {
         $spkNo = CreateRefNo('spk', 'spk_no', 'SPK');
@@ -182,6 +224,9 @@ function SpkSave() {
                     VALUES ($1,$2,$3,$4,$5,'Draft',$6,$7) RETURNING id",
                    array($spkNo, $date, $projectId, $foreman, $desc, $remark, $userId));
         $id = (int)$h['id'];
+    }
+    foreach (array_keys($taskIds) as $tid) {
+        WhQ('INSERT INTO spk_tasks (spk_id, task_id) VALUES ($1,$2)', array($id, (int)$tid));
     }
     foreach ($lines as $mid => $ln) {
         $m = WhRow('SELECT unit FROM materials WHERE id=$1', array($mid));
