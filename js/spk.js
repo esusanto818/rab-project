@@ -22,6 +22,7 @@ Ext.onReady(function () {
     var editingId = 0;        // 0 = SPK baru
     var hdrForm = null, matBar = null;
     var fDate, fProject, fForeman, fDesc, fRemark, fMat, quotaDiv;
+    var selectedTasks = [], taskSelect = null, taskListDiv = null;
 
     function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
     function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
@@ -161,7 +162,7 @@ Ext.onReady(function () {
     var materialDs = new Ext.data.JsonStore({
         url: CRD, baseParams: { action: 'lookup_materials' }, root: 'data',
         fields: ['material_id', 'material_code', 'material_name', 'unit',
-                 { name: 'rab_qty', type: 'float' }, { name: 'cap_qty', type: 'float' }, { name: 'available', type: 'float' }],
+                 { name: 'rab_qty', type: 'float' }, { name: 'cap_qty', type: 'float' }, { name: 'stock_available', type: 'float' }, { name: 'quota_available', type: 'float' }, { name: 'available', type: 'float' }],
         listeners: { exception: storeError }
     });
     var itemField = ['material_id', 'material_code', 'material_name', 'unit',
@@ -224,8 +225,8 @@ Ext.onReady(function () {
             { sortable: false, menuDisabled: true, header: 'Qty SPK', dataIndex: 'qty', width: 90, align: 'right',
               editor: new myNumberField({ decimalPrecision: 4 }), renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
             { sortable: false, menuDisabled: true, header: 'Catatan', dataIndex: 'notes', width: 140, editor: new myTextField({}) },
-            { id: 'spkDeleteCol', sortable: false, menuDisabled: true, header: '', dataIndex: 'material_id', width: 30, align: 'center', fixed: true,
-              renderer: function () { return '<span style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus baris">&#10005;</span>'; } }
+            { id: 'spkDeleteCol', sortable: false, menuDisabled: true, header: '<span style="color:#e53935;font-size:15px;" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>', dataIndex: 'material_id', width: 34, align: 'center', fixed: true,
+              renderer: function () { return '<span style="color:#e53935;cursor:pointer;font-size:15px;" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>'; } }
         ],
         listeners: {
             validateedit: function (e) {
@@ -246,13 +247,50 @@ Ext.onReady(function () {
         if (g && !document.getElementById('spkHdrForm')) {
             var hdr = document.createElement('div'); hdr.id = 'spkHdrForm'; hdr.style.cssText = 'margin-bottom:2px;';
             g.parentNode.insertBefore(hdr, g);
+            var taskBox = document.createElement('div'); taskBox.id = 'spkTaskBox'; taskBox.style.cssText = 'margin:8px 4px;padding:10px;background:#172936;border:1px solid #29495b;border-radius:4px;color:#dcebf0;';
+            taskBox.innerHTML = '<b>Task Proyek (wajib)</b><div style="margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><select id="spkTaskSelect" style="min-width:320px;max-width:70%;padding:6px;background:#fff;color:#222;"><option value="">Pilih proyek terlebih dahulu...</option></select><button type="button" id="spkAddTask" style="padding:6px 12px;">+ Tambah Task</button></div><div id="spkTaskList"></div>';
+            g.parentNode.insertBefore(taskBox, g);
             var q = document.createElement('div'); q.id = 'spkQuotaInfo'; q.style.cssText = 'margin:2px 4px 6px 4px;';
             g.parentNode.insertBefore(q, g);
             var bar = document.createElement('div'); bar.id = 'spkMatBar'; bar.style.cssText = 'margin-bottom:6px;';
             g.parentNode.insertBefore(bar, g);
         }
         quotaDiv = document.getElementById('spkQuotaInfo');
+        taskSelect = document.getElementById('spkTaskSelect');
+        taskListDiv = document.getElementById('spkTaskList');
+        var addTaskButton = document.getElementById('spkAddTask');
+        if (addTaskButton && !addTaskButton._spkBound) {
+            addTaskButton._spkBound = true;
+            addTaskButton.onclick = function () {
+                var id = parseInt(taskSelect.value, 10);
+                if (!id) { showErr('Pilih task proyek terlebih dahulu.'); return; }
+                if (selectedTasks.some(function(t){ return parseInt(t.id,10) === id; })) { showErr('Task sudah ada di daftar SPK.'); return; }
+                var opt = taskSelect.options[taskSelect.selectedIndex];
+                selectedTasks.push({id:id, task_name:opt.getAttribute('data-name') || opt.text, description:opt.getAttribute('data-description') || '', status:opt.getAttribute('data-status') || '', start_date:opt.getAttribute('data-start') || '', end_date:opt.getAttribute('data-end') || ''});
+                renderSelectedTasks();
+            };
+        }
     })();
+
+    function renderSelectedTasks() {
+        if (!taskListDiv) return;
+        if (!selectedTasks.length) { taskListDiv.innerHTML = '<div style="color:#e6a817;">Belum ada task dipilih.</div>'; return; }
+        var html = '<table style="width:100%;border-collapse:collapse;"><thead><tr style="text-align:left;border-bottom:1px solid #365567;"><th style="padding:5px;">Task</th><th style="padding:5px;">Jadwal</th><th style="padding:5px;">Status</th><th></th></tr></thead><tbody>';
+        selectedTasks.forEach(function(t, idx) { html += '<tr style="border-bottom:1px solid #29495b;"><td style="padding:6px;">' + enc(t.task_name) + '</td><td style="padding:6px;white-space:nowrap;">' + enc(t.start_date || '-') + ' - ' + enc(t.end_date || '-') + '</td><td style="padding:6px;">' + enc(t.status || 'Belum Mulai') + '</td><td><button type="button" data-spk-task-index="' + idx + '" style="color:#c0392b;">Hapus</button></td></tr>'; });
+        taskListDiv.innerHTML = html + '</tbody></table>';
+        var buttons = taskListDiv.querySelectorAll('button[data-spk-task-index]');
+        for (var i=0;i<buttons.length;i++) buttons[i].onclick = function(){ selectedTasks.splice(parseInt(this.getAttribute('data-spk-task-index'),10),1); renderSelectedTasks(); };
+    }
+    function loadProjectTasks(projectId, existing) {
+        selectedTasks = (existing || []).map(function(t){ return {id:parseInt(t.id || t.task_id,10),task_name:t.task_name || '',description:t.description || '',start_date:t.start_date || '',end_date:t.end_date || '',status:t.status || ''}; });
+        if (taskSelect) taskSelect.innerHTML = '<option value="">Memuat task proyek...</option>';
+        if (!projectId) { if(taskSelect) taskSelect.innerHTML='<option value="">Pilih proyek terlebih dahulu...</option>'; renderSelectedTasks(); return; }
+        ajax({action:'lookup_tasks',project_id:projectId,exclude_id:editingId},function(res){
+            if(!res.success){showErr(res.message || 'Gagal memuat task proyek.');return;}
+            if(taskSelect){ var opts='<option value="">Pilih task proyek...</option>'; (res.data || []).forEach(function(t){opts+='<option value="'+enc(t.id)+'" data-name="'+enc(t.task_name)+'" data-description="'+enc(t.description || '')+'" data-status="'+enc(t.status || '')+'" data-start="'+enc(t.start_date || '')+'" data-end="'+enc(t.end_date || '')+'">'+enc(t.task_name)+' ('+enc(t.status || 'Belum Mulai')+')</option>';}); taskSelect.innerHTML=opts; }
+            renderSelectedTasks();
+        });
+    }
 
     function ensureHdrForm() {
         if (hdrForm) { hdrForm.doLayout(); matBar.doLayout(); return; }
@@ -278,7 +316,7 @@ Ext.onReady(function () {
             queryParam: 'query', minChars: 0, triggerAction: 'all', forceSelection: true, anchor: '98%', listWidth: 560,
             emptyText: 'Cari material dari RAB proyek...',
             tpl: '<tpl for="."><div class="x-combo-list-item">{material_code} - {material_name} ' +
-                 '<b>(RAB {rab_qty}, kuota {cap_qty}, tersedia {available} {unit})</b></div></tpl>',
+                 '<b>(RAB {rab_qty}, stok {stock_available}, kuota {quota_available}, maksimal {available} {unit})</b></div></tpl>',
             listeners: {
                 beforequery: function () {
                     if (!fProject.getValue()) { showErr('Pilih proyek terlebih dahulu.'); return false; }
@@ -318,6 +356,7 @@ Ext.onReady(function () {
         itemDs.removeAll();
         fMat.clearValue();
         loadQuotaInfo();
+        loadProjectTasks(fProject.getValue(), []);
     }
 
     function addMaterial() {
@@ -327,7 +366,7 @@ Ext.onReady(function () {
         if (rec.get('available') <= 0) { showErr('Tidak ada kuota tersedia untuk material ini (kuota habis / belum ada pembayaran / sudah dipakai SPK lain).'); return; }
         itemDs.add(new itemDs.recordType({
             material_id: rec.get('material_id'), material_code: rec.get('material_code'), material_name: rec.get('material_name'), unit: rec.get('unit'),
-            rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), available: rec.get('available'), qty: rec.get('available'), notes: ''
+            rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), stock_available: rec.get('stock_available'), quota_available: rec.get('quota_available'), available: rec.get('available'), qty: rec.get('available'), notes: ''
         }));
         fMat.clearValue();
     }
@@ -372,6 +411,7 @@ Ext.onReady(function () {
             showEditor('SPK Baru');
             fDate.setValue(new Date()); fProject.clearValue(); fForeman.setValue(''); fDesc.setValue(''); fRemark.setValue('');
             itemDs.removeAll(); fMat.clearValue(); quotaDiv.innerHTML = '';
+            selectedTasks = []; renderSelectedTasks(); if (taskSelect) taskSelect.innerHTML = '<option value="">Pilih proyek terlebih dahulu...</option>';
         } });
     };
 
@@ -390,6 +430,7 @@ Ext.onReady(function () {
                 fForeman.setValue(h.foreman || ''); fDesc.setValue(h.description || ''); fRemark.setValue(h.remark || '');
                 fMat.clearValue(); itemDs.removeAll();
                 loadQuotaInfo();
+                loadProjectTasks(h.project_id, res.tasks || []);
                 ajax({ action: 'lookup_materials', project_id: h.project_id, exclude_id: h.id }, function (q) {
                     var map = {};
                     Ext.each((q.data || []), function (m) { map[String(m.material_id)] = m; });
@@ -397,7 +438,7 @@ Ext.onReady(function () {
                         var m = map[String(i.material_id)] || {};
                         itemDs.add(new itemDs.recordType({
                             material_id: i.material_id, material_code: i.material_code, material_name: i.material_name, unit: i.unit,
-                            rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, available: parseFloat(m.available) || 0,
+                            rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, stock_available: parseFloat(m.stock_available) || 0, quota_available: parseFloat(m.quota_available) || 0, available: parseFloat(m.available) || 0,
                             qty: parseFloat(i.qty), notes: i.notes || ''
                         }));
                     });
@@ -416,10 +457,12 @@ Ext.onReady(function () {
         });
         if (err) { showErr(err); return; }
         if (!arr.length) { showErr('Tambahkan minimal satu material.'); return; }
+        if (!selectedTasks.length) { showErr('Pilih minimal satu task proyek untuk SPK.'); return; }
         ajax({
             action: 'save', id: editingId, project_id: fProject.getValue(), spk_date: ymd(fDate.getValue()),
             foreman: fForeman.getValue(), description: fDesc.getValue(), remark: fRemark.getValue(),
-            details: Ext.util.JSON.encode(arr)
+            details: Ext.util.JSON.encode(arr),
+            task_details: Ext.util.JSON.encode(selectedTasks.map(function(t){ return {task_id:t.id}; }))
         }, function (res) {
             if (res.success) {
                 Ext.Msg.alert('Sukses', res.message || 'SPK tersimpan.');
