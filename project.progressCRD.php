@@ -1,180 +1,394 @@
 <?php
 /**
- * project.progressCRD.php — Backend untuk Entry Progress Proyek & Verifikasi HO
+ * project.progressCRD.php
+ * ============================================================
+ * Backend Progress Proyek (level proyek) -- project.progress.js
+ * Pola sama dengan poCRD.php: PDO (class crud), dispatch lewat $_REQUEST['task'], respons JSON {success, message, data}.
+ *
+ * Tujuan: progress proyek (projects.progress) TIDAK lagi bisa diketik bebas. Alurnya:
+ *   lapangan mengajukan klaim (persen + bukti) -> orang LAIN memverifikasi / menolak -> baru projects.progress berubah.
+ *
+ * Pembanding otomatis (Earned Value sederhana, semua dalam mata uang dasar):
+ *   Nilai hasil  = Budget (x kurs anggaran) x progress terverifikasi
+ *   Biaya aktual = pemakaian material (issue PROJECT, posted) + biaya non-material (financial_expenses)
+ *   Indeks biaya = Nilai hasil / Biaya aktual   (< PROG_CPI_YELLOW kuning, < PROG_CPI_RED merah)
+ *
+ * Aturan:
+ *  1. Lapor progress   : akses >= PROG_ACCESS_REPORT; proyek harus berstatus Berjalan / Tertunda.
+ *  2. Klaim            : persen harus LEBIH BESAR dari progress terverifikasi, maks 100; bukti wajib (PROG_REQUIRE_EVIDENCE);
+ *                        hanya satu klaim yang boleh menunggu verifikasi per proyek.
+ *  3. Verifikasi/tolak : akses >= PROG_ACCESS_VERIFY; pemverifikasi tidak boleh pelapor sendiri (PROG_ALLOW_SELF_VERIFY = false);
+ *                        tolak wajib catatan; setujui saat indeks biaya MERAH wajib catatan. Saat disetujui, posisi
+ *                        budget / biaya / indeks disimpan sebagai jejak audit (snap_*).
+ *  4. Batal            : pelapor (atau akses verifikasi) dapat membatalkan klaim yang masih Diajukan.
+ *  5. Bukti          : boleh berupa file unggahan (foto / PDF, maks 5 file x 5 MB -> /rab-project/uploads/progress/) dan/atau teks (no. BAP).
+ *                      Beberapa bukti disimpan satu per baris di evidence_ref (butuh kolom text: sql/2026-10-13.progress_evidence.sql).
+ *  Butuh sql/2026-10-12.project_progress.sql.
+ * ============================================================
  */
-ob_start();
-ini_set('display_errors', '0');
-require_once '../php-func/function.all.php';
-require_once '../php-class/crudClass.php';
 
-$action = WhReq('action', 'list');
+ini_set('display_errors', '0');
+ob_start();
+
+require_once __DIR__ . '/../php-func/function.all.php';
+require_once __DIR__ . '/../php-class/crudClass.php';
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+header('Content-Type: application/json');
+
+$db = new crud();
+
+const PROG_ACCESS_REPORT    = 2;
+const PROG_ACCESS_VERIFY    = 3;
+const PROG_CPI_YELLOW       = 0.90;     // indeks biaya di bawah ini -> KUNING
+const PROG_CPI_RED          = 0.80;     // indeks biaya di bawah ini -> MERAH
+const PROG_REQUIRE_EVIDENCE = true;     // bukti (no. foto / BAP / link) wajib pada klaim
+const PROG_ALLOW_SELF_VERIFY = false;   // false = pelapor tidak boleh memverifikasi klaimnya sendiri
+
+class ProgBusinessError extends Exception {}
+
+function sendJsonResponse($success, $data = [], $message = '', $extra = []) {
+    $response = array_merge(['success' => $success, 'message' => $message], $extra);
+    if ($success) {
+        if (is_array($data) && isset($data['data'])) {
+            $response['data'] = $data['data'];
+            if (isset($data['totalCount'])) $response['totalCount'] = $data['totalCount'];
+        } else {
+            $response['data'] = $data;
+        }
+    }
+    if (ob_get_length()) { ob_clean(); }
+    echo json_encode($response, JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
+}
+
+function prog_fmt($n): string { return number_format((float)$n, 2, ',', '.'); }
+
+function prog_text($s, int $len): string {
+    $s = trim((string)$s);
+    if (function_exists('mb_substr')) return mb_substr($s, 0, $len, 'UTF-8');
+    $chars = preg_split('//u', $s, -1, PREG_SPLIT_NO_EMPTY);
+    return $chars === false ? substr($s, 0, $len) : implode('', array_slice($chars, 0, $len));
+}
+
+function prog_need_access(int $min, string $what) {
+    if (intval($_SESSION['FormAccess'] ?? 0) < $min) {
+        throw new ProgBusinessError("Anda tidak memiliki hak akses untuk {$what}.");
+    }
+}
+
+/** Status indikator dari indeks biaya. */
+function prog_status(float $budgetBase, float $actual, ?float $cpi): string {
+    if ($budgetBase <= 0) return 'NO BUDGET';
+    if ($actual <= 0 || $cpi === null) return '-';
+    if ($cpi < PROG_CPI_RED) return 'MERAH';
+    if ($cpi < PROG_CPI_YELLOW) return 'KUNING';
+    return 'OK';
+}
+
+/**
+ * Metrik per proyek (satu proyek bila $projectId > 0). $progressOverride = hitung seolah-olah progress sebesar itu
+ * (dipakai saat verifikasi untuk menghitung indeks pada progress yang diklaim).
+ */
+function prog_metrics($db, int $projectId = 0, string $query = '', ?int $progressOverride = null): array {
+    $where = []; $params = [];
+    if ($projectId > 0) { $where[] = 'p.id = :id'; $params[':id'] = $projectId; }
+    if ($query !== '') { $where[] = 'p.name ILIKE :q'; $params[':q'] = '%' . $query . '%'; }
+    $w = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+    // [SELARAS DASHBOARD 2026-11-01] biaya riil juga mencakup prestasi subkon yang disetujui (modul Subkontraktor), sama dengan kartu Kesehatan Proyek.
+    $hasSub = false;
+    try { $hasSub = (bool)$db->query("SELECT to_regclass('public.subcon_progress') IS NOT NULL AND to_regclass('public.subcon_contracts') IS NOT NULL")->fetchColumn(); } catch (Exception $e) { $hasSub = false; }
+    $subCte  = $hasSub ? ", sub AS (SELECT sc.project_id, SUM(sp.gross_amount) AS c FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id WHERE sp.status = 'Disetujui' GROUP BY sc.project_id)" : '';
+    $subSel  = $hasSub ? 'COALESCE(sub.c, 0)' : '0';
+    $subJoin = $hasSub ? 'LEFT JOIN sub ON sub.project_id = p.id' : '';
+    $st = $db->prepare("
+        WITH iss AS (
+            SELECT moh.project_id, SUM(moi.qty_out * moi.unit_cost) AS c
+              FROM material_out_items moi
+              JOIN material_out_header moh ON moh.id = moi.material_out_id AND moh.status = 'posted' AND moh.issue_type = 'PROJECT'
+             GROUP BY moh.project_id
+        ), oth AS (
+            SELECT project_id, SUM(amount) AS c
+              FROM financial_expenses
+             WHERE project_id IS NOT NULL AND UPPER(COALESCE(status, '')) NOT IN ('CANCELLED', 'CANCELED', 'VOID', 'DIBATALKAN')
+             GROUP BY project_id
+        ), pend AS (
+            SELECT project_id, COUNT(*) AS n FROM project_progress_log WHERE status = 'Diajukan' GROUP BY project_id
+        ){$subCte}
+        SELECT p.id, p.name, p.status, COALESCE(p.progress, 0) AS progress,
+               COALESCE(p.budget, 0) * COALESCE(NULLIF(p.budget_exch_rate, 0), 1) AS budget_base,
+               COALESCE(p.contract_value, 0) AS contract_value,
+               COALESCE(iss.c, 0) AS cost_material, COALESCE(oth.c, 0) AS cost_other, {$subSel} AS cost_subcon,
+               COALESCE(pend.n, 0) AS pending_count
+          FROM projects p
+          LEFT JOIN iss ON iss.project_id = p.id
+          LEFT JOIN oth ON oth.project_id = p.id
+          LEFT JOIN pend ON pend.project_id = p.id
+          {$subJoin}
+          {$w}
+         ORDER BY p.id DESC");
+    $st->execute($params);
+    $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($rows as &$r) {
+        $r['id'] = (int)$r['id'];
+        $r['progress'] = $progressOverride !== null ? $progressOverride : (int)$r['progress'];
+        $r['pending_count'] = (int)$r['pending_count'];
+        $bb = round((float)$r['budget_base'], 2);
+        $cm = round((float)$r['cost_material'], 2);
+        $co = round((float)$r['cost_other'], 2);
+        $cs = round((float)$r['cost_subcon'], 2);
+        $actual = round($cm + $co + $cs, 2);
+        $ev = round($bb * $r['progress'] / 100, 2);
+        $cpi = $actual > 0 ? round($ev / $actual, 4) : null;
+        $r['budget_base'] = $bb; $r['contract_value'] = (float)$r['contract_value'];
+        $r['cost_material'] = $cm; $r['cost_other'] = $co; $r['cost_subcon'] = $cs; $r['cost_actual'] = $actual;
+        $r['earned_value'] = $ev;
+        $r['cost_pct'] = $bb > 0 ? round($actual / $bb * 100, 2) : null;
+        $r['cpi'] = $cpi;
+        $r['cpi_status'] = prog_status($bb, $actual, $cpi);
+    }
+    return $rows;
+}
+
+if (empty($_SESSION['user_id'])) {
+    http_response_code(401);
+    sendJsonResponse(false, [], 'Sesi berakhir, silakan login ulang.');
+}
+$userId = (int)$_SESSION['user_id'];
+$task = $_REQUEST['task'] ?? '';
 
 try {
-    switch ($action) {
-        case 'list':            PrgList(); break;
-        case 'detail':          PrgDetail(); break;
-        case 'lookup_projects': PrgLookupProjects(); break;
-        case 'rab_items':       PrgRabItems(); break;
-        case 'save':            PrgSave(); break;
-        case 'submit':          PrgSubmit(); break;
-        case 'verify':          PrgVerify(); break;
-        case 'reject':          PrgReject(); break;
-        case 'delete':          PrgDelete(); break;
-        case 'upload_ba':       PrgUploadBa(); break;
-        default: throw new WhException('Action tidak dikenali.');
+    switch ($task) {
+
+        /* ------------------------------------------------------------------
+         * Daftar proyek + indikator progress vs biaya
+         * ------------------------------------------------------------------ */
+        case 'list_projects':
+            $rows = prog_metrics($db, 0, trim((string)($_REQUEST['query'] ?? '')));
+            sendJsonResponse(true, ['data' => $rows, 'totalCount' => count($rows)], '',
+                             ['thresholds' => ['yellow' => PROG_CPI_YELLOW, 'red' => PROG_CPI_RED]]);
+            break;
+
+        /* ------------------------------------------------------------------
+         * Riwayat klaim satu proyek
+         * ------------------------------------------------------------------ */
+        case 'list_log':
+            $pid = (int)($_REQUEST['project_id'] ?? 0);
+            if ($pid <= 0) throw new ProgBusinessError('Proyek tidak valid.');
+            $st = $db->prepare("
+                SELECT l.id, l.project_id, l.report_date, l.percent_claimed, l.prev_percent, l.reported_by,
+                       COALESCE(er.employee_name, ur.login_name) AS reporter_name,
+                       l.evidence_ref, l.note, l.status, l.verified_by,
+                       COALESCE(ev.employee_name, uv.login_name) AS verifier_name,
+                       l.verified_at, l.verify_note, l.snap_cost_base, l.snap_cpi, l.created_at
+                  FROM project_progress_log l
+                  LEFT JOIN m_user_system ur ON ur.id = l.reported_by
+                  LEFT JOIN m_employee er ON er.id = ur.employee_id
+                  LEFT JOIN m_user_system uv ON uv.id = l.verified_by
+                  LEFT JOIN m_employee ev ON ev.id = uv.employee_id
+                 WHERE l.project_id = :p
+                 ORDER BY l.report_date DESC, l.id DESC");
+            $st->execute([':p' => $pid]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['percent_claimed'] = (int)$r['percent_claimed'];
+                $r['prev_percent'] = (int)$r['prev_percent'];
+                $r['reported_by'] = $r['reported_by'] !== null ? (int)$r['reported_by'] : null;
+                $r['snap_cost_base'] = $r['snap_cost_base'] !== null ? (float)$r['snap_cost_base'] : null;
+                $r['snap_cpi'] = $r['snap_cpi'] !== null ? (float)$r['snap_cpi'] : null;
+            }
+            sendJsonResponse(true, $rows, '', ['user_id' => $userId, 'allow_self_verify' => PROG_ALLOW_SELF_VERIFY]);      // [CHANGED] + flag untuk tampilan tombol
+            break;
+
+        /* ------------------------------------------------------------------
+         * [NEW] Unggah bukti progress (foto / PDF, maks 5 MB) -> /rab-project/uploads/progress/, kembalikan URL.
+         *       Pola sama dengan upload bukti pengiriman di warehouse.issuingCRD.php.
+         * ------------------------------------------------------------------ */
+        case 'upload_evidence':
+            prog_need_access(PROG_ACCESS_REPORT, 'mengunggah bukti progress');
+            if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+                $code = isset($_FILES['file']['error']) ? (int)$_FILES['file']['error'] : -1;
+                throw new ProgBusinessError('File gagal diunggah (kode ' . $code . '). Cek batas upload_max_filesize / post_max_size di php.ini.');
+            }
+            $f = $_FILES['file'];
+            if ($f['size'] > 5 * 1024 * 1024) throw new ProgBusinessError('Ukuran file maksimal 5 MB.');
+            $allowed = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+                        'webp' => 'image/webp', 'gif' => 'image/gif', 'pdf' => 'application/pdf'];
+            $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
+            if (!isset($allowed[$ext])) throw new ProgBusinessError('Tipe file tidak diizinkan. Gunakan JPG, PNG, WEBP, GIF atau PDF.');
+            if (function_exists('finfo_open')) {                 // cek isi file, bukan hanya ekstensi
+                $fi = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($fi, $f['tmp_name']);
+                finfo_close($fi);
+                if ($mime !== $allowed[$ext]) throw new ProgBusinessError('Isi file tidak sesuai dengan ekstensinya.');
+            }
+            $dir = dirname(__DIR__) . '/uploads/progress';
+            if (!is_dir($dir) && !@mkdir($dir, 0755, true)) {
+                throw new ProgBusinessError('Folder uploads/progress tidak bisa dibuat. Buat manual dan beri izin tulis untuk user web server.');
+            }
+            $ht = $dir . '/.htaccess';                           // larang eksekusi script di folder upload
+            if (!file_exists($ht)) {
+                @file_put_contents($ht, "<FilesMatch \"\\.(php|phtml|phar|pl|cgi)$\">\n    Require all denied\n</FilesMatch>\n");
+            }
+            $name = 'prg_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+            if (!move_uploaded_file($f['tmp_name'], $dir . '/' . $name)) {
+                throw new ProgBusinessError('Gagal menyimpan file. Cek izin tulis folder uploads/progress.');
+            }
+            sendJsonResponse(true, ['url' => '/rab-project/uploads/progress/' . $name, 'name' => $name]);
+            break;
+
+        /* ------------------------------------------------------------------
+         * Ajukan klaim progress
+         * ------------------------------------------------------------------ */
+        case 'submit_claim':
+            prog_need_access(PROG_ACCESS_REPORT, 'melaporkan progress');
+            $pid  = (int)($_POST['project_id'] ?? 0);
+            $date = (string)($_POST['report_date'] ?? '');
+            $pct  = (int)round((float)($_POST['percent_claimed'] ?? -1));
+            $note = prog_text($_POST['note'] ?? '', 1000);
+            $evid = prog_text($_POST['evidence_ref'] ?? '', 2000);      // [CHANGED] banyak bukti (URL + teks), satu per baris
+
+            $d = DateTime::createFromFormat('Y-m-d', $date);
+            if (!$d || $d->format('Y-m-d') !== $date) throw new ProgBusinessError('Tanggal laporan tidak valid.');
+            if ($date > date('Y-m-d')) throw new ProgBusinessError('Tanggal laporan tidak boleh di masa depan.');
+            if ($pct < 0 || $pct > 100) throw new ProgBusinessError('Persen progress harus antara 0 - 100.');
+            if (PROG_REQUIRE_EVIDENCE && $evid === '') throw new ProgBusinessError('Bukti (no. foto / BAP / link) wajib diisi.');
+
+            $db->beginTransaction();
+            try {
+                $st = $db->prepare("SELECT name, status, COALESCE(progress, 0) AS progress FROM projects WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $pid]);
+                $pj = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$pj) throw new ProgBusinessError('Proyek tidak ditemukan.');
+                if (!in_array($pj['status'], ['Berjalan', 'Tertunda'], true)) {
+                    throw new ProgBusinessError("Progress hanya bisa dilaporkan untuk proyek berstatus Berjalan / Tertunda (status sekarang: {$pj['status']}).");
+                }
+                $cur = (int)$pj['progress'];
+                if ($pct <= $cur) {
+                    throw new ProgBusinessError("Klaim {$pct}% harus lebih besar dari progress terverifikasi saat ini ({$cur}%).");
+                }
+                $st = $db->prepare("SELECT 1 FROM project_progress_log WHERE project_id = :p AND status = 'Diajukan'");
+                $st->execute([':p' => $pid]);
+                if ($st->fetchColumn()) throw new ProgBusinessError('Masih ada klaim progress yang menunggu verifikasi. Verifikasi / batalkan dulu.');
+
+                $st = $db->prepare("
+                    INSERT INTO project_progress_log (project_id, report_date, percent_claimed, prev_percent, reported_by, note, evidence_ref, status)
+                    VALUES (:p, CAST(:d AS date), :pct, :prev, :u, :n, :e, 'Diajukan') RETURNING id");
+                $st->execute([':p' => $pid, ':d' => $date, ':pct' => $pct, ':prev' => $cur, ':u' => $userId,
+                              ':n' => $note !== '' ? $note : null, ':e' => $evid !== '' ? $evid : null]);
+                $id = (int)$st->fetchColumn();
+                $db->commit();
+                sendJsonResponse(true, ['id' => $id], "Klaim progress {$pct}% untuk {$pj['name']} diajukan, menunggu verifikasi.");
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) { $db->rollBack(); }
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * Verifikasi / tolak klaim
+         * ------------------------------------------------------------------ */
+        case 'verify':
+            prog_need_access(PROG_ACCESS_VERIFY, 'memverifikasi progress');
+            $id       = (int)($_POST['id'] ?? 0);
+            $decision = (string)($_POST['decision'] ?? '');
+            $vnote    = prog_text($_POST['verify_note'] ?? '', 1000);
+            if (!in_array($decision, ['Diverifikasi', 'Ditolak'], true)) throw new ProgBusinessError('Keputusan tidak valid.');
+
+            $db->beginTransaction();
+            try {
+                $st = $db->prepare("SELECT * FROM project_progress_log WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $id]);
+                $cl = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$cl) throw new ProgBusinessError('Klaim tidak ditemukan.');
+                if ($cl['status'] !== 'Diajukan') throw new ProgBusinessError("Klaim ini sudah berstatus {$cl['status']}.");
+                if (!PROG_ALLOW_SELF_VERIFY && (int)$cl['reported_by'] === $userId) {
+                    throw new ProgBusinessError('Klaim tidak boleh diverifikasi oleh pelapornya sendiri. Minta PM / QS lain memverifikasi.');
+                }
+                $pid = (int)$cl['project_id'];
+                $pct = (int)$cl['percent_claimed'];
+
+                $st = $db->prepare("SELECT name, COALESCE(progress, 0) AS progress FROM projects WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $pid]);
+                $pj = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$pj) throw new ProgBusinessError('Proyek tidak ditemukan.');
+
+                if ($decision === 'Ditolak') {
+                    if ($vnote === '') throw new ProgBusinessError('Alasan penolakan wajib diisi.');
+                    $st = $db->prepare("UPDATE project_progress_log SET status = 'Ditolak', verified_by = :u, verified_at = NOW(), verify_note = :n WHERE id = :id");
+                    $st->execute([':u' => $userId, ':n' => $vnote, ':id' => $id]);
+                    $db->commit();
+                    sendJsonResponse(true, [], "Klaim {$pct}% ditolak.");
+                }
+
+                // Setujui: hitung posisi biaya pada progress yang diklaim, simpan sebagai jejak audit
+                if ($pct <= (int)$pj['progress']) {
+                    throw new ProgBusinessError("Klaim {$pct}% tidak lebih besar dari progress terverifikasi sekarang ({$pj['progress']}%). Tolak atau batalkan klaim ini.");
+                }
+                $m = prog_metrics($db, $pid, '', $pct)[0] ?? null;
+                if (!$m) throw new ProgBusinessError('Data proyek tidak ditemukan.');
+                if ($m['cpi'] !== null && $m['cpi'] < PROG_CPI_RED && $vnote === '') {
+                    throw new ProgBusinessError('Indeks biaya pada progress ' . $pct . '% adalah ' . number_format($m['cpi'], 2, ',', '.') .
+                        ' (di bawah ' . number_format(PROG_CPI_RED, 2, ',', '.') . '): biaya terpakai ' . prog_fmt($m['cost_actual']) .
+                        ' jauh melebihi nilai pekerjaan ' . prog_fmt($m['earned_value']) . '. Isi catatan verifikasi bila tetap disetujui.');
+                }
+                $st = $db->prepare("
+                    UPDATE project_progress_log
+                       SET status = 'Diverifikasi', verified_by = :u, verified_at = NOW(), verify_note = :n,
+                           snap_budget_base = :sb, snap_cost_base = :sc, snap_cpi = :cpi
+                     WHERE id = :id");
+                $st->execute([':u' => $userId, ':n' => $vnote !== '' ? $vnote : null, ':sb' => $m['budget_base'],
+                              ':sc' => $m['cost_actual'], ':cpi' => $m['cpi'], ':id' => $id]);
+                $st = $db->prepare("UPDATE projects SET progress = :p WHERE id = :id");      // satu-satunya jalur yang mengubah progress
+                $st->execute([':p' => $pct, ':id' => $pid]);
+                $db->commit();
+                sendJsonResponse(true, [], "Progress {$pj['name']} terverifikasi {$pct}%." .
+                    ($m['cpi'] !== null ? ' Indeks biaya ' . number_format($m['cpi'], 2, ',', '.') . ' (' . $m['cpi_status'] . ').' : ''));
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) { $db->rollBack(); }
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * Batalkan klaim yang masih Diajukan
+         * ------------------------------------------------------------------ */
+        case 'cancel_claim':
+            prog_need_access(PROG_ACCESS_REPORT, 'membatalkan klaim progress');
+            $id = (int)($_POST['id'] ?? 0);
+            $db->beginTransaction();
+            try {
+                $st = $db->prepare("SELECT status, reported_by, percent_claimed FROM project_progress_log WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $id]);
+                $cl = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$cl) throw new ProgBusinessError('Klaim tidak ditemukan.');
+                if ($cl['status'] !== 'Diajukan') throw new ProgBusinessError("Klaim berstatus {$cl['status']} tidak dapat dibatalkan.");
+                if ((int)$cl['reported_by'] !== $userId && intval($_SESSION['FormAccess'] ?? 0) < PROG_ACCESS_VERIFY) {
+                    throw new ProgBusinessError('Hanya pelapor (atau pemverifikasi) yang dapat membatalkan klaim ini.');
+                }
+                $st = $db->prepare("UPDATE project_progress_log SET status = 'Dibatalkan', verified_by = :u, verified_at = NOW() WHERE id = :id");
+                $st->execute([':u' => $userId, ':id' => $id]);
+                $db->commit();
+                sendJsonResponse(true, [], 'Klaim ' . (int)$cl['percent_claimed'] . '% dibatalkan.');
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) { $db->rollBack(); }
+                throw $e;
+            }
+            break;
+
+        default:
+            sendJsonResponse(false, [], 'Aksi/Task tidak dikenal.');
+            break;
     }
-} catch (WhException $e) {
-    @pg_query($conn, 'ROLLBACK');
-    WhFail($e->getMessage());
-} catch (Exception $e) {
-    @pg_query($conn, 'ROLLBACK');
-    WhLog('project.progressCRD: ' . $e->getMessage());
-    WhFail('Terjadi kesalahan pada server.');
-}
-
-function PrgList() {
-    list($start, $limit) = WhPage();
-    $q = WhReq('query');
-    $params = array();
-    $where = '1=1';
-    if ($q !== '') {
-        $params[] = '%' . $q . '%';
-        $where .= ' AND (p.name ILIKE $1 OR l.status ILIKE $1)';
-    }
-    $c = WhRow("SELECT COUNT(*) AS n FROM project_progress_logs l JOIN projects p ON p.id=l.project_id WHERE $where", $params);
-    $params[] = $limit;  $pl = '$' . count($params);
-    $params[] = $start;  $ps = '$' . count($params);
-    $rows = WhRows("SELECT l.id, l.project_id, p.name AS project_name, l.period_date, l.progress_pct, l.progress_delta,
-                           l.ba_document_url, l.status, l.rejection_note,
-                           u1.username AS reported_by_name, u2.username AS verified_by_name, l.verified_at
-                    FROM project_progress_logs l
-                    JOIN projects p ON p.id=l.project_id
-                    LEFT JOIN users u1 ON u1.id=l.reported_by
-                    LEFT JOIN users u2 ON u2.id=l.verified_by
-                    WHERE $where ORDER BY l.period_date DESC, l.id DESC LIMIT $pl OFFSET $ps", $params);
-    WhJson(array('success' => true, 'totalCount' => (int)$c['n'], 'data' => $rows));
-}
-
-function PrgDetail() {
-    $id = (int)WhReq('id');
-    $rows = WhRows("SELECT pi.id, pi.budget_item_id, m.material_code AS item_code, m.material_name AS item_name, m.unit,
-                           bi.budget_qty AS qty_plan, pi.qty_installed, pi.installed_pct, pi.notes
-                    FROM project_progress_items pi
-                    JOIN budget_items bi ON bi.id=pi.budget_item_id
-                    JOIN materials m ON m.id=bi.material_id
-                    WHERE pi.progress_log_id=$1 ORDER BY pi.id", array($id));
-    WhJson(array('success' => true, 'totalCount' => count($rows), 'data' => $rows));
-}
-
-function PrgLookupProjects() {
-    $q = WhReq('query');
-    $rows = WhRows("SELECT id, name AS project_name, COALESCE(budget,0) AS budget, COALESCE(progress,0) AS current_progress
-                    FROM projects WHERE name ILIKE $1 ORDER BY name LIMIT 50", array('%' . $q . '%'));
-    WhJson(array('success' => true, 'totalCount' => count($rows), 'data' => $rows));
-}
-
-function PrgRabItems() {
-    $projectId  = (int)WhReq('project_id');
-    $progressId = (int)WhReq('progress_id');
-    $rows = WhRows("SELECT bi.id AS budget_item_id, m.material_code AS item_code, m.material_name AS item_name, m.unit,
-                           bi.budget_qty AS qty_plan, COALESCE(pi.qty_installed, 0) AS qty_installed,
-                           COALESCE(pi.installed_pct, 0) AS installed_pct, COALESCE(pi.notes, '') AS notes
-                    FROM budget_items bi
-                    JOIN materials m ON m.id=bi.material_id
-                    LEFT JOIN project_progress_items pi ON pi.budget_item_id=bi.id AND pi.progress_log_id=$2
-                    WHERE bi.project_id=$1 ORDER BY m.material_name", array($projectId, $progressId));
-    WhJson(array('success' => true, 'totalCount' => count($rows), 'data' => $rows));
-}
-
-function PrgSave() {
-    WhRequirePost();
-    $id        = (int)WhPost('id');
-    $projectId = (int)WhPost('project_id');
-    $date      = WhDate(WhPost('period_date'), 'Tanggal Cut-Off');
-    $baUrl     = WhPost('ba_document_url');
-    $details   = WhDetails();
-    $userId    = WhUserId();
-
-    WhQ('BEGIN');
-    if ($id > 0) {
-        WhQ("UPDATE project_progress_logs SET period_date=$2, ba_document_url=$3, updated_at=now() WHERE id=$1", array($id, $date, $baUrl));
-        WhQ("DELETE FROM project_progress_items WHERE progress_log_id=$1", array($id));
-    } else {
-        $h = WhRow("INSERT INTO project_progress_logs (project_id, period_date, progress_pct, progress_delta, ba_document_url, reported_by, status)
-                    VALUES ($1, $2, 0, 0, $3, $4, 'DRAFT') RETURNING id", array($projectId, $date, $baUrl, $userId));
-        $id = (int)$h['id'];
-    }
-
-    $totalPctSum = 0; $count = 0;
-    foreach ($details as $d) {
-        $biId = (int)$d['budget_item_id'];
-        $qty  = WhNum($d['qty_installed']);
-        $pct  = WhNum($d['installed_pct']);
-        $note = trim($d['notes']);
-        WhQ("INSERT INTO project_progress_items (progress_log_id, budget_item_id, qty_installed, installed_pct, notes)
-             VALUES ($1, $2, $3, $4, $5)", array($id, $biId, $qty, $pct, $note));
-        $totalPctSum += $pct;
-        $count++;
-    }
-
-    // Kalkulasi rata-rata atau bobot progress
-    $cumProgress = $count > 0 ? round($totalPctSum / $count, 2) : 0;
-    
-    // Ambil progress proyek sebelum laporan ini
-    $p = WhRow("SELECT progress FROM projects WHERE id=$1", array($projectId));
-    $oldProg = (int)($p['progress'] ?? 0);
-    $delta = max(0, $cumProgress - $oldProg);
-
-    WhQ("UPDATE project_progress_logs SET progress_pct=$2, progress_delta=$3 WHERE id=$1", array($id, $cumProgress, $delta));
-    WhQ('COMMIT');
-    WhOk('Laporan progress tersimpan sebagai DRAFT.', array('id' => $id));
-}
-
-function PrgSubmit() {
-    $id = (int)WhPost('id');
-    WhQ("UPDATE project_progress_logs SET status='SUBMITTED', updated_at=now() WHERE id=$1", array($id));
-    WhOk('Laporan progress berhasil disubmit ke HO.');
-}
-
-function PrgVerify() {
-    $id = (int)WhPost('id');
-    $userId = WhUserId();
-    WhQ('BEGIN');
-    $log = WhRow("SELECT * FROM project_progress_logs WHERE id=$1 FOR UPDATE", array($id));
-    if (!$log || $log['status'] !== 'SUBMITTED') { throw new WhException('Status laporan tidak valid untuk diverifikasi.'); }
-
-    // Lock & Update status log
-    WhQ("UPDATE project_progress_logs SET status='VERIFIED', verified_by=$2, verified_at=now(), updated_at=now() WHERE id=$1", array($id, $userId));
-    
-    // Update progress fisik resmi di tabel proyek utama
-    WhQ("UPDATE projects SET progress=$2, updated_at=now() WHERE id=$1", array($log['project_id'], (int)$log['progress_pct']));
-    WhQ('COMMIT');
-    WhOk('Progress terverifikasi HO! Progress resmi proyek diperbarui ke ' . $log['progress_pct'] . '%.');
-}
-
-function PrgReject() {
-    $id = (int)WhPost('id');
-    $note = WhPost('rejection_note');
-    WhQ("UPDATE project_progress_logs SET status='REJECTED', rejection_note=$2, updated_at=now() WHERE id=$1", array($id, $note));
-    WhOk('Laporan progress ditolak. Notifikasi dikirim ke site engineer.');
-}
-
-function PrgDelete() {
-    $id = (int)WhPost('id');
-    WhQ("DELETE FROM project_progress_logs WHERE id=$1 AND status IN ('DRAFT','REJECTED')", array($id));
-    WhOk('Laporan progress berhasil dihapus.');
-}
-
-function PrgUploadBa() {
-    if (empty($_FILES['file'])) throw new WhException('File tidak ditemukan.');
-    $f = $_FILES['file'];
-    $ext = strtolower(pathinfo($f['name'], PATHINFO_EXTENSION));
-    $dir = dirname(__DIR__) . '/uploads/progress';
-    if (!is_dir($dir)) @mkdir($dir, 0755, true);
-    $name = 'ba_' . date('Ymd_His') . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
-    if (move_uploaded_file($f['tmp_name'], $dir . '/' . $name)) {
-        WhJson(array('success' => true, 'url' => '/rab-project/uploads/progress/' . $name));
-    } else {
-        throw new WhException('Gagal mengunggah file.');
-    }
+} catch (ProgBusinessError $e) {
+    sendJsonResponse(false, [], $e->getMessage());
+} catch (PDOException $e) {
+    error_log('[project.progressCRD] ' . $e->getMessage());
+    sendJsonResponse(false, [], 'Database Error: ' . $e->getMessage());
+} catch (Throwable $e) {
+    error_log('[project.progressCRD] ' . $e->getMessage());
+    sendJsonResponse(false, [], 'System Error: ' . $e->getMessage());
 }

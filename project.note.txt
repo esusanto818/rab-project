@@ -1,0 +1,36 @@
+2026-11-01
+Kartu dashboard dan layar Pembayaran Termin sekarang memakai satu mesin analisis dan satu tabel, jadi status kartu dan hasil AI tidak akan beda lagi. Hasilnya sudah saya uji di salinan skema database Anda dengan data contoh dan jawaban AI tiruan. Belum dites dengan Gemini asli atau di browser Anda.
+
+**Kenapa kartu NORMAL padahal AI bilang HIGH**
+- Kartu dulu hanya dihitung dari gap biaya. Proyek Renovasi Gedung Kantor Pusat punya pemakaian 18% dan progres 92%, jadi gapnya −74 dan tampil NORMAL, padahal ia lewat jadwal 153 hari.
+- Hasil analisis AI juga tidak pernah dibaca kartu.
+
+**Yang berubah di dashboard**
+- Status kartu kini berasal dari gap biaya, indeks biaya CPI (di bawah 0,90 kuning dan di bawah 0,80 merah, sama dengan modul Project Progress), keterlambatan jadwal, dan hasil AI terakhir.
+- Biaya "belum tercatat" (pemakaian jauh di bawah progres) kini minimal WASPADA.
+- Setiap analisis baru atau Analisis Ulang menyimpan satu baris ke `ai_variance_logs`. Kartu langsung naik ke status baru (ditandai "• AI") dan tetap begitu setelah dimuat ulang, selama hasilnya masih dalam 14 hari.
+- Arahkan mouse ke kartu untuk melihat alasan statusnya.
+
+**Sisi Pembayaran Termin**
+- Analisis di sana dulu membandingkan nilai kontrak dengan uang yang diterima dari klien, sehingga angkanya tidak bisa selaras dengan dashboard. Sekarang tombol "Analisis Varian AI" memakai mesin yang sama dengan dashboard dan menyimpan ke tabel yang sama.
+- Panel di layar pembayaran menampilkan headline, ringkasan, rekomendasi mitigasi, hal yang perlu dikonfirmasi, dan temuan sistem.
+- Bila Anda menganalisis dari salah satu layar, layar lainnya menampilkan hasil yang sama.
+- Hasil lama (rumus lama) tidak dihapus. Ia ditandai "format lama" dan tidak dipakai untuk status kartu.
+- Cetak tanda terima belum saya lihat kodenya. Field lama yang dipakainya (`risk_level`, `ai_summary`, `recommendations`, `created_at`) masih dikirim, jadi seharusnya tetap jalan.
+
+**Modul Project Progress**
+- `project_progressCRD.php` kini memasukkan prestasi subkon ke biaya riil, jadi CPI di sana sama dengan CPI di dashboard. Angka biaya dan CPI keduanya sudah saya cocokkan pada data uji.
+- Anggaran di dashboard sekarang memakai kurs anggaran, sama seperti modul progress.
+
+**Memasangnya**
+1. Jalankan `2026-11-01.ai_variance_unify.sql`. Ini hanya menambah kolom, jadi hasil lama tetap aman. Tanpa SQL ini semuanya masih jalan, tetapi tanpa penyimpanan lengkap dan tanpa cache.
+2. Salin ke folder masing-masing:
+   - `php-func/project.analysis.php`, file baru yang dipakai bersama.
+   - `php-crud/dashboardCRD.php`, `project_paymentCRD.php`, dan `project_progressCRD.php`.
+   - `js/project_payment.js` dan `views/dashboard.php`.
+3. Tabel cache `dashboard_ai_cache` dari versi sebelumnya sudah tidak dipakai. Kalau sempat dibuat, boleh dihapus.
+
+**Yang perlu Anda cek**
+- Setelah dipasang, lebih banyak kartu akan berstatus WASPADA atau KRITIS, misalnya semua kartu "pemakaian 0%" di screenshot Anda. Itu disengaja: pemakaian 0% dengan progres tinggi lebih mungkin biaya belum tercatat daripada efisiensi.
+- Klik kartu memakai hasil AI yang tersimpan bila datanya sama dan umurnya kurang dari 12 jam. Tombol "Analisis Ulang" dan tombol di layar pembayaran selalu menganalisis ulang.
+- Struktur `ai_variance_logs` saya ambil dari kode `project_paymentCRD.php`, dan kolom `budget_exch_rate` dari `project_progressCRD.php`. Bila ada error saat simpan atau muat, kirim pesannya ke saya.

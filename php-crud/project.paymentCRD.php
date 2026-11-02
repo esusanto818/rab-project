@@ -62,6 +62,7 @@ ob_start();
 
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
+require_once __DIR__ . '/../php-func/project.analysis.php';     // [AI-VARIANCE 2026-11-01] mesin analisis bersama dengan dashboard (tabel ai_variance_logs)
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -80,6 +81,28 @@ const PP_INV_PPN_RULE = 'PROJECT_INVOICE_PPN';               // [PPN] fiscal_con
 class PpBusinessError extends Exception {}
 
 /** [DEPOSIT] Saldo deposit client = lebih bayar - deposit terpakai (pembayaran $exclPaymentId tidak dihitung). */
+/**
+ * [AI-VARIANCE 2026-11-01] Bentuk respons analisis AI untuk layar Pembayaran Termin dari hasil mesin bersama (project.analysis.php).
+ * Field lama (total_budget, total_actual, variance_*, risk_level, ai_summary, recommendations, created_at) dipertahankan agar panel & cetak tanda terima tetap jalan;
+ * field baru (headline, questions, findings, metrics, ai_used, ai_note, source) ditambahkan.
+ * Makna baru: total_budget = budget proyek (kurs anggaran), total_actual = biaya riil (material out proyek + pengeluaran + prestasi subkon),
+ * variance_amount = biaya - budget. (Sebelumnya: nilai kontrak vs uang yang diterima dari klien -> menyesatkan, tidak selaras dengan dashboard.)
+ */
+function pp_variance_payload(array $a, int $logId, $createdAt): array {
+    $m = $a['metrics'] ?? [];
+    $budget = (float)($m['budget'] ?? 0); $cost = (float)($m['cost_total'] ?? 0);
+    return [
+        'id' => $logId, 'project_id' => (int)($a['project_id'] ?? 0),
+        'total_budget' => $budget, 'total_actual' => $cost, 'variance_amount' => round($cost - $budget, 2),
+        'variance_percentage' => $budget > 0 ? round(($cost - $budget) / $budget * 100, 2) : 0,
+        'risk_level' => (string)($a['risk'] ?? 'LOW'), 'ai_summary' => (string)($a['summary'] ?? ''), 'recommendations' => array_values($a['actions'] ?? []),
+        'created_at' => $createdAt,
+        'headline' => (string)($a['headline'] ?? ''), 'questions' => array_values($a['questions'] ?? []), 'findings' => array_values($a['findings'] ?? []),
+        'metrics' => $m, 'ai_used' => !empty($a['ai_used']), 'ai_note' => (string)($a['ai_note'] ?? ''), 'source' => (string)($a['source'] ?? ''),
+        'cached' => !empty($a['cached']), 'risk_rule' => (string)($a['risk_rule'] ?? ''),
+    ];
+}
+
 function pp_client_deposit($db, int $clientId, int $exclPaymentId = 0): float {
     $st = $db->prepare("SELECT COALESCE(SUM(excess_amount), 0) - COALESCE(SUM(deposit_applied), 0)
                           FROM public.project_payments WHERE client_id = :c AND id <> :x");
@@ -152,17 +175,16 @@ try {
     switch ($task) {
 
         /* ------------------------------------------------------------------
-         * [AI-VARIANCE] Ambil hasil analisis terakhir yang sudah tersimpan.
-         * Digunakan oleh cetak tanda terima agar hasilnya sama dengan panel di layar,
-         * tanpa menjalankan analisis Gemini ulang.
+         * [AI-VARIANCE] Ambil hasil analisis terakhir yang sudah tersimpan (ai_variance_logs).
+         * Sumber SAMA dengan panel AI & kartu Kesehatan Proyek di dashboard. Digunakan juga oleh cetak tanda terima.
          * ------------------------------------------------------------------ */
         case 'latest_project_variance':
             $prjId = (int)($_REQUEST['project_id'] ?? 0);
             if ($prjId <= 0) sendJsonResponse(false, [], 'Proyek wajib dipilih.');
-
+            $cols = avl_has_cols($db) ? ', analysis, headline, source, ai_used, risk_rule' : '';
             $st = $db->prepare("
                 SELECT id, project_id, total_budget, total_actual, variance_amount,
-                       variance_percentage, risk_level, ai_summary, recommendations, created_at
+                       variance_percentage, risk_level, ai_summary, recommendations, created_at{$cols}
                   FROM public.ai_variance_logs
                  WHERE project_id = :pid
                  ORDER BY created_at DESC, id DESC
@@ -173,173 +195,39 @@ try {
             if (!$log) {
                 sendJsonResponse(false, [], 'Belum ada hasil analisis AI tersimpan untuk proyek ini.');
             }
-            $recommendations = $log['recommendations'] ?? [];
+            $analysis = (isset($log['analysis']) && $log['analysis'] !== null) ? json_decode($log['analysis'], true) : null;
+            if (is_array($analysis)) {            // baris format baru (mesin bersama)
+                $analysis['risk'] = $log['risk_level'];
+                sendJsonResponse(true, pp_variance_payload($analysis, (int)$log['id'], $log['created_at']), 'Hasil analisis AI terakhir berhasil dimuat.');
+            }
+            $recommendations = $log['recommendations'] ?? [];      // baris lama (rumus lama) -> tetap ditampilkan, ditandai legacy
             if (is_string($recommendations)) {
                 $decoded = json_decode($recommendations, true);
                 $recommendations = is_array($decoded) ? $decoded : [];
             }
             if (!is_array($recommendations)) $recommendations = [];
-
             sendJsonResponse(true, [
-                'id' => (int)$log['id'],
-                'project_id' => (int)$log['project_id'],
-                'total_budget' => (float)$log['total_budget'],
-                'total_actual' => (float)$log['total_actual'],
-                'variance_amount' => (float)$log['variance_amount'],
-                'variance_percentage' => (float)$log['variance_percentage'],
-                'risk_level' => $log['risk_level'],
-                'ai_summary' => $log['ai_summary'],
-                'recommendations' => $recommendations,
-                'created_at' => $log['created_at']
-            ], 'Hasil analisis AI terakhir berhasil dimuat.');
+                'id' => (int)$log['id'], 'project_id' => (int)$log['project_id'],
+                'total_budget' => (float)$log['total_budget'], 'total_actual' => (float)$log['total_actual'],
+                'variance_amount' => (float)$log['variance_amount'], 'variance_percentage' => (float)$log['variance_percentage'],
+                'risk_level' => $log['risk_level'], 'ai_summary' => $log['ai_summary'], 'recommendations' => $recommendations,
+                'created_at' => $log['created_at'], 'legacy' => true,
+            ], 'Hasil analisis AI terakhir (format lama) berhasil dimuat. Jalankan Analisis Varian AI untuk memperbarui.');
             break;
 
         /* ------------------------------------------------------------------
-         * [AI-VARIANCE] Analisis Varian Anggaran Proyek menggunakan Google Gemini API
+         * [AI-VARIANCE] Analisis proyek (tombol "Analisis Varian AI"): memakai mesin bersama dengan dashboard
+         * (biaya riil vs budget, progres, jadwal, penagihan, pembelian, subkon) lalu SIMPAN ke ai_variance_logs.
          * ------------------------------------------------------------------ */
         case 'analyze_project_variance':
             $prjId = (int)($_REQUEST['project_id'] ?? 0);
             if ($prjId <= 0) sendJsonResponse(false, [], 'Proyek wajib dipilih.');
-
             try {
-                // 1. Ambil data agregat RAB vs Aktual (Termin / Pengeluaran) dari database existing
-                $st = $db->prepare("
-                    SELECT 
-                        p.id AS project_id,
-                        p.name AS project_name,
-                        COALESCE(p.contract_value, 0) AS total_budget,
-                        COALESCE((SELECT SUM(amount) FROM public.project_invoices WHERE project_id = p.id), 0) AS total_invoiced,
-                        COALESCE((SELECT SUM(amount_paid) FROM public.project_payment_items pi JOIN public.project_invoices vi ON vi.id = pi.invoice_id WHERE vi.project_id = p.id), 0) AS total_actual
-                    FROM public.projects p
-                    WHERE p.id = :id
-                ");
-                $st->execute([':id' => $prjId]);
-                $prjData = $st->fetch(PDO::FETCH_ASSOC);
-                
-                if (!$prjData) {
-                    sendJsonResponse(false, [], 'Proyek tidak ditemukan.');
-                }
-
-                $totalBudget = (float)$prjData['total_budget'];
-                $totalActual = (float)$prjData['total_actual'];
-                $varianceAmount = $totalActual - $totalBudget;
-                $variancePercentage = $totalBudget > 0 ? ($varianceAmount / $totalBudget) * 100 : 0;
-
-                // 2. Susun Prompt untuk Google Gemini API
-                $prompt = "
-                    Anda adalah Construction Cost Estimator dan System Analyst ahli untuk sistem ERP RAB Kontraktor. 
-                    Analisis data varian anggaran proyek konstruksi berikut:
-                    - Nama Proyek: {$prjData['project_name']}
-                    - Total Anggaran / Kontrak (RAB): {$totalBudget}
-                    - Total Pengeluaran / Realisasi Aktual: {$totalActual}
-                    - Selisih Varian: {$varianceAmount} (" . number_format($variancePercentage, 2) . "%)
-                    
-                    Berikan analisis dalam format JSON murni dengan struktur kunci berikut tanpa markdown backtick tambahan:
-                    - \"risk_level\": string (\"LOW\", \"MEDIUM\", \"HIGH\", atau \"CRITICAL\")
-                    - \"ai_summary\": string (ringkasan eksekutif mengenai kondisi overbudget atau efisiensi biaya proyek)
-                    - \"recommendations\": array of strings (poin-poin tindakan mitigasi konkret untuk kontraktor)
-                ";
-                $apiKey = getenv('GOOGLE_API_KEY');
-                // Daftar model cadangan (fallback) untuk mengantisipasi trafik tinggi / error 503
-                $candidateModels = ['gemini-3.6-flash','gemini-3.5-flash-lite'];
-
-                $payload = json_encode([
-                    'contents' => [
-                        [
-                            'parts' => [
-                                ['text' => $prompt]
-                            ]
-                        ]
-                    ],
-                    'generationConfig' => [
-                        'responseMimeType' => 'application/json'
-                    ]
-                ]);
-
-                $response = null;
-                $httpCode = 0;
-                $lastErrorMsg = '';
-
-                // 3. Loop mencoba ke model cadangan & sistem retry otomatis jika menemui kendala 503/429
-                foreach ($candidateModels as $model) {
-                    $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
-                    
-                    for ($attempt = 1; $attempt <= 2; $attempt++) {
-                        $ch = curl_init($apiUrl);
-                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-                        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
-                        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                            'Content-Type: application/json',
-                            'x-goog-api-key: ' . $apiKey
-                        ]);
-                        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-                        
-                        $response = curl_exec($ch);
-                        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                        curl_close($ch);
-
-                        if ($httpCode === 200) {
-                            break 2; // Keluar dari kedua loop jika sukses
-                        }
-
-                        $lastErrorMsg = "Model {$model} (HTTP {$httpCode}): " . $response;
-                        
-                        if ($httpCode === 503 || $httpCode === 429) {
-                            sleep(1); // Jeda 1 detik sebelum retry
-                        } else {
-                            break; // Lanjut ke model berikutnya jika error selain 503/429
-                        }
-                    }
-                }
-
-                if ($httpCode !== 200) {
-                    throw new Exception("Layanan Gemini API sedang padat beban. Silakan coba beberapa saat lagi. ({$lastErrorMsg})");
-                }
-
-                $apiResult = json_decode($response, true);
-                $aiRawText = $apiResult['candidates'][0]['content']['parts'][0]['text'] ?? '{}';
-                
-                // Bersihkan format markdown jika terbawa
-                $aiRawText = trim(str_replace(['```json', '```'], '', $aiRawText));
-                $aiParsed = json_decode($aiRawText, true);
-
-                // 4. Simpan hasil analisis ke tabel log ai_variance_logs
-                $stIns = $db->prepare("
-                    INSERT INTO public.ai_variance_logs 
-                    (project_id, total_budget, total_actual, variance_amount, variance_percentage, risk_level, ai_summary, recommendations, created_by)
-                    VALUES (:pid, :tb, :ta, :va, :vp, :rl, :sum, CAST(:rec AS jsonb), :uid)
-                    RETURNING id, created_at
-                ");
-                $stIns->execute([
-                    ':pid' => $prjId,
-                    ':tb'  => $totalBudget,
-                    ':ta'  => $totalActual,
-                    ':va'  => $varianceAmount,
-                    ':vp'  => $variancePercentage,
-                    ':rl'  => $aiParsed['risk_level'] ?? 'LOW',
-                    ':sum' => $aiParsed['ai_summary'] ?? '',
-                    ':rec' => json_encode($aiParsed['recommendations'] ?? []),
-                    ':uid' => (int)($_SESSION['user_id'] ?? 0) ?: null
-                ]);
-                $logRow = $stIns->fetch(PDO::FETCH_ASSOC);
-
-                sendJsonResponse(true, [
-                    'id'                  => (int)$logRow['id'],
-                    'project_id'          => $prjId,
-                    'total_budget'        => $totalBudget,
-                    'total_actual'        => $totalActual,
-                    'variance_amount'     => $varianceAmount,
-                    'variance_percentage' => $variancePercentage,
-                    'risk_level'          => $aiParsed['risk_level'] ?? 'LOW',
-                    'ai_summary'          => $aiParsed['ai_summary'] ?? '',
-                    'recommendations'     => $aiParsed['recommendations'] ?? [],
-                    'created_at'          => $logRow['created_at']
-                ], 'Analisis varian AI berhasil dijalankan.');
-
+                $res = dash_run_analysis($db, $prjId, true, 'payment', (int)($_SESSION['user_id'] ?? 0) ?: null);
             } catch (Exception $e) {
-                sendJsonResponse(false, [], 'Gagal memproses AI: ' . $e->getMessage());
+                sendJsonResponse(false, [], 'Gagal memproses analisis: ' . $e->getMessage());
             }
+            sendJsonResponse(true, pp_variance_payload($res, (int)($res['log_id'] ?? 0), $res['generated_at']), 'Analisis proyek berhasil dijalankan.');
             break;
 
         /* ------------------------------------------------------------------

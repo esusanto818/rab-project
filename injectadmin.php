@@ -5,8 +5,8 @@ require_once __DIR__ . '/php-func/function.all.php';
 $db = new crud();
 
 try {
-    $username = 'admin';
-    $raw_pass = '789';
+    $username = 'demo';
+    $raw_pass = 'xyz789';
     // Menggunakan enkripsi yang dibaca sistem (misal md5 atau EncodeData)
     $hashed_pass00 = md5($raw_pass); 
 	$hashed_pass = password_hash($raw_pass, PASSWORD_DEFAULT);
@@ -33,7 +33,7 @@ try {
         $query .= "INSERT INTO m_user_login_status (user_id) VALUES (currval('m_user_system_id_seq'::regclass));";
 
         $db->cmdQ($query);
-        echo "Berhasil! User <b>admin</b> dengan password <b>789</b> berhasil di-inject ke database.";
+        echo "Berhasil! User <b>demo</b> dengan password <b>xyz789</b> berhasil di-inject ke database.";
     }
 } catch (Exception $e) {
     echo "Gagal melakukan injection: " . $e->getMessage();

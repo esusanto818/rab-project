@@ -12,6 +12,72 @@ Ext.onReady(function() {
     var CRD = main_url + '/php-crud/m.user.systemCRD.php';
 
     // ==========================================
+    // SVG ICONS (SHOW / HIDE PASSWORD)
+    // ==========================================
+    var ICON_EYE_OPEN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    var ICON_EYE_CLOSED = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+
+    function togglePasswordVisibility(fieldId, btnElement) {
+        var field = Ext.getCmp(fieldId);
+        if (!field || !field.el || !field.el.dom) return;
+        
+        var inputEl = field.el.dom;
+        if (inputEl.tagName !== 'INPUT') {
+            inputEl = inputEl.querySelector('input') || inputEl;
+        }
+        
+        var isCurrentlyHidden = (inputEl.type === 'password');
+        if (isCurrentlyHidden) {
+            inputEl.type = 'text';
+            btnElement.innerHTML = ICON_EYE_OPEN;
+            btnElement.title = 'Sembunyikan password';
+        } else {
+            inputEl.type = 'password';
+            btnElement.innerHTML = ICON_EYE_CLOSED;
+            btnElement.title = 'Tampilkan password';
+        }
+    }
+
+    function addToggleToField(fieldId) {
+        setTimeout(function() {
+            var field = Ext.getCmp(fieldId);
+            if (!field || !field.el || !field.el.dom) return;
+            
+            var inputEl = field.el.dom;
+            if (inputEl.tagName !== 'INPUT') {
+                inputEl = inputEl.querySelector('input') || inputEl;
+            }
+            
+            var wrapper = inputEl;
+            while (wrapper && wrapper !== document.body && !wrapper.classList.contains('x-form-field-wrap')) {
+                wrapper = wrapper.parentNode;
+            }
+            if (!wrapper || wrapper === document.body) {
+                wrapper = inputEl.parentNode;
+            }
+            
+            wrapper.style.position = 'relative';
+            if (document.getElementById('toggle-' + fieldId)) return;
+            
+            var toggleBtn = document.createElement('div');
+            toggleBtn.id = 'toggle-' + fieldId;
+            toggleBtn.style.cssText = 'position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; padding:4px; z-index:99; display:flex; align-items:center; justify-content:center; background:transparent; border:none;';
+            
+            toggleBtn.innerHTML = ICON_EYE_CLOSED;
+            toggleBtn.title = 'Tampilkan password';
+            
+            toggleBtn.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePasswordVisibility(fieldId, this);
+            };
+            
+            wrapper.appendChild(toggleBtn);
+            inputEl.style.paddingRight = '32px';
+        }, 400);
+    }
+
+    // ==========================================
     // 1. EVENT HANDLERS TOP TOOLBAR BUTTONS
     // ==========================================
     document.getElementById('addData').onclick = function(event) {
@@ -58,7 +124,7 @@ Ext.onReady(function() {
     document.getElementById('deleteData').onclick = function(event) {
         if (formAccess == 4) {
             task = 'delete';
-            deleteRow = 0; // Pastikan bukan penghapusan baris grid editor
+            deleteRow = 0;
             var userName = dataRecord.employee_name;
             document.getElementById('popWdw').style.display = 'block';
             document.getElementById('popCancel').style.display = 'block';
@@ -115,11 +181,7 @@ Ext.onReady(function() {
         });
     };
 
-    // ==========================================
-    // 2. DIALOG POP-UP OK HANDLER (DISESUAIKAN)
-    // ==========================================
     document.getElementById('popOK').onclick = function(event) {
-        // A. Hapus Baris Grid Editor (Lokal)
         if (deleteRow > 0) {
             if (deleteRecord && Ext.getCmp('gridEditor')) {
                 Ext.getCmp('gridEditor').getStore().remove(deleteRecord);
@@ -129,10 +191,9 @@ Ext.onReady(function() {
             deleteRecord = null;
             document.getElementById('popWdw').style.display = 'none';
             document.getElementById('popCancel').style.display = 'none';
-            return; // Hentikan eksekusi agar tidak memicu hapus master user
+            return;
         }
 
-        // B. Hapus Master Data User (Backend API)
         if (task == 'delete') {
             deleteDs.load({
                 params: { task: "delete", id: dataRecord.id },
@@ -272,212 +333,207 @@ Ext.onReady(function() {
     gridEditor.addClass('x-grid3-gridEditor');
 
     // ==========================================
-    // 5. FORM EDITOR MAIN (DIRAPIKAN LAYOUT-NYA)
+    // 5. FORM EDITOR MAIN
     // ==========================================
-// Editor Form (Perbaikan Struktur Layout Horizontal Sejajar)
-  var frmEditor = new stdForm({
-    url: CRD,
-    id: 'frmEditor',
-    reader: new Ext.data.JsonReader({ root: 'data', fields: employeeFields }),
-    renderTo: 'editorFormMain',
-    items: [
-      // =========================================================
-      // BARIS 1: Checkbox Active (0.2) + Dropdown Name (0.8)
-      // =========================================================
-      {
-        columnWidth: 1.0,
-        layout: 'column',
-        baseCls: 'x-plain',
-        style: 'margin-bottom: 5px;',
+    var frmEditor = new stdForm({
+        url: CRD,
+        id: 'frmEditor',
+        reader: new Ext.data.JsonReader({ root: 'data', fields: employeeFields }),
+        renderTo: 'editorFormMain',
         items: [
-          {
-            columnWidth: 0.2,
-            layout: 'form',
-            baseCls: 'x-plain',
-            labelAlign: 'left',
-            labelWidth: 100,
-            items: [
-              {
-                xtype: 'checkbox',
-                fieldLabel: 'User is active',
-                labelSeparator: '&nbsp;&nbsp;-',
-                name: 'active',
-                id: 'AddActive',
-                cls: 'fieldCheckClass regular-checkbox'
-              }
-            ]
-          },
-          {
-            columnWidth: 0.8,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [
-              new myComboField({
-                fieldLabel: 'Name',
-                id: 'name',
-                name: 'name',
-                store: employeeDs,
-                valueField: 'id',
-                displayField: 'name',
-                hiddenName: 'name',
-                allowBlank: false,
-                listeners: {
-                  select: function(combo, record, index) {
-                    Ext.getCmp('department_name').setValue(record.get('department_name'));
-                  }
-                }
-              })
-            ]
-          }
-        ]
-      },
-
-      // =========================================================
-      // BARIS 2: Department (0.4) + Login Name (0.2) + Password (0.2) + Conf. Password (0.2)
-      // =========================================================
-      {
-        columnWidth: 1.0,
-        layout: 'column',
-        baseCls: 'x-plain',
-        style: 'margin-bottom: 5px;',
-        items: [
-          {
-            columnWidth: 0.4,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [
-              new myTextField({
-                fieldLabel: 'Department',
-                id: 'department_name',
-                name: 'department_name',
-                readOnly: true
-              })
-            ]
-          },
-          {
-            columnWidth: 0.2,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [
-              new myTextField({
-                fieldLabel: 'Login Name',
-                id: 'login_name',
-                name: 'login_name',
-                autoCreate: { tag: "input", maxlength: 100, type: "text", size: "100", autocomplete: "off" }
-              })
-            ]
-          },
-          {
-            columnWidth: 0.2,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [
-              new myTextField({
-                fieldLabel: 'Password',
-                id: 'newpwd',
-                name: 'password',
-                inputType: 'password',
-                autoCreate: { tag: "input", maxlength: 50, type: "password", size: "50", autocomplete: "off" },
-                minLength: 4,
-                maxLength: 50,
-                minLengthText: 'Password must be at least 4 characters long.',
-                maskRe: /^([a-zA-Z0-9])/
-              })
-            ]
-          },
-          {
-            columnWidth: 0.2,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [
-              new myTextField({
-                fieldLabel: 'Conf. Password',
-                id: 'confpwd',
-                name: 'confirm_password',
-                inputType: 'password',
-                autoCreate: { tag: "input", maxlength: 50, type: "password", size: "50", autocomplete: "off" },
-                minLength: 4,
-                maxLength: 50,
-                minLengthText: 'Password must be at least 4 characters long.',
-                maskRe: /^([a-zA-Z0-9])/,
-                vtype: 'password',
-                initialPassField: 'newpwd'
-              })
-            ]
-          }
-        ]
-      },
-
-      // =========================================================
-      // BARIS 3: Form Access Header (0.2) + Spacer (0.7) + Button Add (0.1)
-      // =========================================================
-      {
-        columnWidth: 1.0,
-        layout: 'column',
-        baseCls: 'x-plain',
-        style: 'margin-top: 10px; margin-bottom: 5px;',
-        items: [
-          {
-            columnWidth: 0.2,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [
-              { xtype: 'label', text: 'Form Access', cls: 'x-form-item my-label-GroupLbl' }
-            ]
-          },
-          {
-            columnWidth: 0.7,
-            layout: 'form',
-            baseCls: 'x-plain',
-            items: [ButtonSpace]
-          },
-          {
-            columnWidth: 0.1,
-            layout: 'form',
-            baseCls: 'x-plain',
-            style: 'text-align: right;',
-            items: [
-              {
-                xtype: 'button',
-                text: 'Add',
-                cls: 'field-button grey-field-button',
-                id: 'btnAddItem',
-                listeners: {
-                  click: function() {
-                    gridEditorCheck = 0;
-                    document.getElementById('addWdw').style.display = 'block';
-                    document.getElementById("addFormHeaderText").innerHTML = "&nbsp;&nbsp;Add Form";
-                    ArrayItem = [];
-                    for (v = 0; v < gridEditor.store.data.length; v++) {
-                      listData = gridEditor.store.data.items[v];
-                      ArrayItem.push(listData.data.form_id);
+            {
+                columnWidth: 1.0,
+                layout: 'column',
+                baseCls: 'x-plain',
+                style: 'margin-bottom: 5px;',
+                items: [
+                    {
+                        columnWidth: 0.2,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        labelAlign: 'left',
+                        labelWidth: 100,
+                        items: [
+                            {
+                                xtype: 'checkbox',
+                                fieldLabel: 'User is active',
+                                labelSeparator: '&nbsp;&nbsp;-',
+                                name: 'active',
+                                id: 'AddActive',
+                                cls: 'fieldCheckClass regular-checkbox'
+                            }
+                        ]
+                    },
+                    {
+                        columnWidth: 0.8,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            new myComboField({
+                                fieldLabel: 'Name',
+                                id: 'name',
+                                name: 'name',
+                                store: employeeDs,
+                                valueField: 'id',
+                                displayField: 'name',
+                                hiddenName: 'name',
+                                allowBlank: false,
+                                listeners: {
+                                    select: function(combo, record, index) {
+                                        Ext.getCmp('department_name').setValue(record.get('department_name'));
+                                    }
+                                }
+                            })
+                        ]
                     }
-                    gridAddEditorDs.load({ params: { iteminfo: Array2Json(ArrayItem) } });
-                    var gridItemHeight = (document.getElementById('addForm').clientHeight - document.getElementById('addFormHeader').clientHeight) - 2;
-                    gridAddEditor.setHeight(gridItemHeight);
-                  }
-                }
-              }
-            ]
-          }
+                ]
+            },
+            {
+                columnWidth: 1.0,
+                layout: 'column',
+                baseCls: 'x-plain',
+                style: 'margin-bottom: 5px;',
+                items: [
+                    {
+                        columnWidth: 0.4,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            new myTextField({
+                                fieldLabel: 'Department',
+                                id: 'department_name',
+                                name: 'department_name',
+                                readOnly: true
+                            })
+                        ]
+                    },
+                    {
+                        columnWidth: 0.2,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            new myTextField({
+                                fieldLabel: 'Login Name',
+                                id: 'login_name',
+                                name: 'login_name',
+                                autoCreate: { tag: "input", maxlength: 100, type: "text", size: "100", autocomplete: "off" }
+                            })
+                        ]
+                    },
+                    {
+                        columnWidth: 0.2,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            {
+                                xtype: 'textfield',
+                                fieldLabel: 'Password',
+                                id: 'newpwd',
+                                name: 'password',
+                                inputType: 'password',
+                                autoCreate: { tag: "input", maxlength: 50, type: "password", size: "50", autocomplete: "off" },
+                                minLength: 4,
+                                maxLength: 50,
+                                minLengthText: 'Password must be at least 4 characters long.',
+                                maskRe: /^([a-zA-Z0-9])/,
+                                listeners: {
+                                    'render': function(field) {
+                                        addToggleToField('newpwd');
+                                    }
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        columnWidth: 0.2,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            {
+                                xtype: 'textfield',
+                                fieldLabel: 'Conf. Password',
+                                id: 'confpwd',
+                                name: 'confirm_password',
+                                inputType: 'password',
+                                autoCreate: { tag: "input", maxlength: 50, type: "password", size: "50", autocomplete: "off" },
+                                minLength: 4,
+                                maxLength: 50,
+                                minLengthText: 'Password must be at least 4 characters long.',
+                                maskRe: /^([a-zA-Z0-9])/,
+                                vtype: 'password',
+                                initialPassField: 'newpwd',
+                                listeners: {
+                                    'render': function(field) {
+                                        addToggleToField('confpwd');
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                columnWidth: 1.0,
+                layout: 'column',
+                baseCls: 'x-plain',
+                style: 'margin-top: 10px; margin-bottom: 5px;',
+                items: [
+                    {
+                        columnWidth: 0.2,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            { xtype: 'label', text: 'Form Access', cls: 'x-form-item my-label-GroupLbl' }
+                        ]
+                    },
+                    {
+                        columnWidth: 0.7,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [ButtonSpace]
+                    },
+                    {
+                        columnWidth: 0.1,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        style: 'text-align: right;',
+                        items: [
+                            {
+                                xtype: 'button',
+                                text: 'Add',
+                                cls: 'field-button grey-field-button',
+                                id: 'btnAddItem',
+                                listeners: {
+                                    click: function() {
+                                        gridEditorCheck = 0;
+                                        document.getElementById('addWdw').style.display = 'block';
+                                        document.getElementById("addFormHeaderText").innerHTML = "&nbsp;&nbsp;Add Form";
+                                        ArrayItem = [];
+                                        for (v = 0; v < gridEditor.store.data.length; v++) {
+                                            listData = gridEditor.store.data.items[v];
+                                            ArrayItem.push(listData.data.form_id);
+                                        }
+                                        gridAddEditorDs.load({ params: { iteminfo: Array2Json(ArrayItem) } });
+                                        var gridItemHeight = (document.getElementById('addForm').clientHeight - document.getElementById('addFormHeader').clientHeight) - 2;
+                                        gridAddEditor.setHeight(gridItemHeight);
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                columnWidth: 1.0,
+                layout: 'form',
+                baseCls: 'x-plain',
+                items: [gridEditor]
+            },
+            { items: [new myTextField({ name: 'id', id: 'id', hidden: true })] },
+            { items: [new myTextField({ name: 'employee_id', id: 'employee_id', hidden: true })] }
         ]
-      },
+    });
 
-      // =========================================================
-      // BARIS 4: Grid Editor (1.0 Lebar Penuh)
-      // =========================================================
-      {
-        columnWidth: 1.0,
-        layout: 'form',
-        baseCls: 'x-plain',
-        items: [gridEditor]
-      },
-
-      // Hidden Fields
-      { items: [new myTextField({ name: 'id', id: 'id', hidden: true })] },
-      { items: [new myTextField({ name: 'employee_id', id: 'employee_id', hidden: true })] }
-    ]
-  });
     frmEditor.on('clientvalidation', function(f, valid) {
         if (!valid) { saveEditDisable(); } else { saveEditEnable(); }
     });

@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>📦 Modul Invoice & Payment Subkontraktor - Complete Package</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0a1929; color: #e2e8f0; padding: 20px; }
+.container { max-width: 1400px; margin: 0 auto; }
+h1 { color: #22d3ee; margin-bottom: 10px; font-size: 28px; }
+.subtitle { color: #94a3b8; margin-bottom: 20px; font-size: 14px; }
+.download-all { background: linear-gradient(135deg, #22d3ee 0%, #066b78 100%); color: #0a1929; border: none; padding: 14px 28px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-bottom: 30px; box-shadow: 0 4px 15px rgba(34, 211, 238, 0.3); }
+.download-all:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(34, 211, 238, 0.5); }
+.file-block { background: #0d2137; border: 1px solid #1e3a5f; border-radius: 8px; margin-bottom: 20px; overflow: hidden; }
+.file-header { background: #1a3650; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e3a5f; }
+.file-name { font-weight: bold; color: #22d3ee; font-size: 14px; }
+.file-path { color: #94a3b8; font-size: 12px; margin-left: 10px; }
+.btn-copy { background: #066b78; color: #fff; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+.btn-copy:hover { background: #0891a8; }
+.btn-copy.copied { background: #10b981; }
+pre { padding: 16px; overflow-x: auto; font-size: 11px; line-height: 1.5; color: #e2e8f0; max-height: 500px; overflow-y: auto; }
+pre code { font-family: 'Consolas', 'Monaco', monospace; }
+.guide { background: #0d2137; border: 1px solid #1e3a5f; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+.guide h2 { color: #22d3ee; margin-bottom: 12px; font-size: 18px; }
+.guide h3 { color: #f39c12; margin: 16px 0 8px 0; font-size: 15px; }
+.guide ol, .guide ul { margin-left: 24px; margin-bottom: 12px; }
+.guide li { margin-bottom: 6px; line-height: 1.6; }
+.guide code { background: #1a3650; padding: 2px 6px; border-radius: 3px; font-family: monospace; color: #22d3ee; }
+.alert { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); color: #f87171; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+.success { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); color: #10b981; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>📦 Modul Invoice & Payment Subkontraktor</h1>
+<p class="subtitle">Complete Package: SQL + Backend + Frontend + View + Panduan (TERMASUK PAYMENT EDITOR)</p>
+
+<button class="download-all" onclick="downloadAll()">📥 Download Semua File sebagai ZIP</button>
+
+<div class="guide">
+<h2>📋 Panduan Implementasi</h2>
+<div class="alert">⚠️ <b>PENTING:</b> Jalankan SQL Migration terlebih dahulu sebelum mengupload file PHP/JS!</div>
+
+<h3>Step 1: Jalankan SQL Migration</h3>
+<ol>
+<li>Buka database PostgreSQL Anda (misal: <code>proyekGMN</code>)</li>
+<li>Jalankan file <code>sql/2026-11-02.subcon_invoice.sql</code></li>
+<li>Via psql: <code>psql -U postgres -d proyekGMN -f sql/2026-11-02.subcon_invoice.sql</code></li>
+</ol>
+
+<h3>Step 2: Upload File ke Server</h3>
+<ol>
+<li><code>php-crud/subcon.invoiceCRD.php</code> → folder <code>/rab-project/dev/php-crud/</code></li>
+<li><code>js/subcon.invoice.js</code> → folder <code>/rab-project/dev/js/</code></li>
+<li><code>views/subcon.invoice.php</code> → folder <code>/rab-project/dev/views/</code></li>
+</ol>
+
+<h3>Step 3: Daftarkan Menu di Database</h3>
+<pre style="background:#1a3650; padding:12px; border-radius:4px; font-size:12px;">INSERT INTO m_form_name (group_id, title, php_url, seq, active) 
+VALUES (
+    (SELECT id FROM m_form_group WHERE name = 'SUBKONTRAKTOR'),
+    'INVOICE SUBKON', 'subcon.invoice.php', '04.02', true
+) ON CONFLICT DO NOTHING;</pre>
+
+<h3>Step 4: Hard Refresh Browser</h3>
+<ul>
+<li>Tekan <code>Ctrl + Shift + R</code> (Windows) atau <code>Cmd + Shift + R</code> (Mac)</li>
+<li>Buka menu <b>Subkontraktor → Invoice Subkon</b></li>
+</ul>
+
+<div class="success">✅ Selesai! Modul Invoice & Payment Subkontraktor siap digunakan.</div>
+
+<h3>🎯 Alur Kerja 2-Step Payment</h3>
+<ol>
+<li><b>Step 1 - Terima Invoice</b>: Draft → Diajukan → Disetujui (jurnal otomatis Dr WIP / Cr Hutang Subkon)</li>
+<li><b>Step 2 - Release Payment</b>: Pilih invoice Disetujui → Bayar (bisa partial) → Posted (jurnal Dr Hutang Subkon / Cr Kas-Bank)</li>
+</ol>
+</div>
+
+<!-- FILE 1: SQL Migration -->
+<div class="file-block" data-filename="sql/2026-11-02.subcon_invoice.sql" data-path="sql/2026-11-02.subcon_invoice.sql">
+<div class="file-header">
+<div><span class="file-name">📄 2026-11-02.subcon_invoice.sql</span><span class="file-path">sql/2026-11-02.subcon_invoice.sql</span></div>
+<button class="btn-copy" onclick="copyFile(this)">📋 Copy</button>
+</div>
+<pre><code>-- ============================================================
+-- SUBCONTRAKTOR INVOICE & PAYMENT (2-Step Payment)
+-- Migration Date: 2026-11-02
+-- ============================================================
+
+-- Tabel Invoice Subkontraktor
+CREATE TABLE IF NOT EXISTS subcon_invoices (
+    id SERIAL PRIMARY KEY,
+    invoice_no VARCHAR(30) NOT NULL UNIQUE,
+    contract_id INT NOT NULL REFERENCES subcon_contracts(id) ON DELETE CASCADE,
+    progress_id INT REFERENCES subcon_progress(id),
+    invoice_date DATE NOT NULL,
+    due_date DATE,
+    total_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
+    paid_amount NUMERIC(15,2) NOT NULL DEFAULT 0,
+    status VARCHAR(20) NOT NULL DEFAULT 'Draft',
+    reference_no VARCHAR(100),
+    notes TEXT,
+    created_by INT REFERENCES m_user_system(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP,
+    approved_by INT REFERENCES m_user_system(id),
+    approved_at TIMESTAMP,
+    cancelled_by INT REFERENCES m_user_system(id),
+    cancelled_at TIMESTAMP,
+    cancel_reason TEXT,
+    CONSTRAINT chk_subcon_inv_status CHECK (status IN ('Draft', 'Diajukan', 'Disetujui', 'Dibatalkan')),
+    CONSTRAINT chk_subcon_inv_amount CHECK (total_amount >= 0 AND paid_amount >= 0)
+);
+
+CREATE INDEX idx_subcon_invoices_contract ON subcon_invoices(contract_id);
+CREATE INDEX idx_subcon_invoices_progress ON subcon_invoices(progress_id);
+CREATE INDEX idx_subcon_invoices_status ON subcon_invoices(status);
+
+COMMENT ON TABLE subcon_invoices IS 'Invoice subkontraktor (step 1: terima invoice dari subkon)';
+
+-- Tabel Pembayaran Invoice Subkontraktor
+CREATE TABLE IF NOT EXISTS subcon_invoice_payments (
+    id SERIAL PRIMARY KEY,
+    payment_no VARCHAR(30) NOT NULL UNIQUE,
+    invoice_id INT NOT NULL REFERENCES subcon_invoices(id) ON DELETE CASCADE,
+    contract_id INT NOT NULL REFERENCES subcon_contracts(id) ON DELETE CASCADE,
+    payment_date DATE NOT NULL,
+    account_id INT NOT NULL REFERENCES chart_of_accounts(id),
+    payment_method VARCHAR(20) NOT NULL DEFAULT 'BANK_TRANSFER',
+    amount NUMERIC(15,2) NOT NULL DEFAULT 0,
+    reference_no VARCHAR(100),
+    notes TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'Posted',
+    created_by INT REFERENCES m_user_system(id),
+    created_at TIMESTAMP DEFAULT NOW(),
+    cancelled_by INT REFERENCES m_user_system(id),
+    cancelled_at TIMESTAMP,
+    cancel_reason TEXT,
+    CONSTRAINT chk_subcon_inv_pay_status CHECK (status IN ('Posted', 'Dibatalkan')),
+    CONSTRAINT chk_subcon_inv_pay_amount CHECK (amount > 0)
+);
+
+CREATE INDEX idx_subcon_inv_payments_invoice ON subcon_invoice_payments(invoice_id);
+CREATE INDEX idx_subcon_inv_payments_contract ON subcon_invoice_payments(contract_id);
+
+COMMENT ON TABLE subcon_invoice_payments IS 'Pembayaran invoice subkontraktor (step 2: release payment)';
+
+-- Tambah reference type jurnal (jika pakai enum)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'journal_reference_type') THEN
+        ALTER TYPE journal_reference_type ADD VALUE IF NOT EXISTS 'subcon_invoice';
+        ALTER TYPE journal_reference_type ADD VALUE IF NOT EXISTS 'subcon_invoice_pay';
+    END IF;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;</code></pre>
+</div>
+
+<!-- FILE 2: Backend PHP -->
+<div class="file-block" data-filename="php-crud/subcon.invoiceCRD.php" data-path="php-crud/subcon.invoiceCRD.php">
+<div class="file-header">
+<div><span class="file-name">📄 subcon.invoiceCRD.php</span><span class="file-path">php-crud/subcon.invoiceCRD.php</span></div>
+<button class="btn-copy" onclick="copyFile(this)">📋 Copy</button>
+</div>
+<pre><code>&lt;?php
+/**
+* subcon.invoiceCRD.php
+* ============================================================
+* Backend Modul Invoice & Pembayaran Subkontraktor (2-Step Payment)
+* 
+* Alur:
+*   Step 1: Terima Invoice dari Subkon (berdasarkan prestasi disetujui)
+*           Draft -> Diajukan -> Disetujui -> (Dibatalkan)
+*           Saat Disetujui: jurnal Dr WIP / Cr Hutang Subkon
+*   
+*   Step 2: Release Payment (bayar invoice)
+*           Posted -> (Dibatalkan)
+*           Saat Posted: jurnal Dr Hutang Subkon / Cr Kas-Bank
+* 
+* File related: - subcon.invoice.js
+*               - subcon.invoice.php
+* Migration: sql/2026-11-02.subcon_invoice.sql
+* ============================================================
+*/
+ini_set('display_errors', '0');
+ob_start();
+require_once __DIR__ . '/../php-func/function.all.php';
+require_once __DIR__ . '/../php-class/crudClass.php';
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+header('Content-Type: application/json');
+$db = new crud();
+
+const SC_INV_EPS = 0.01;
+const SC_INV_REF = 'subcon_invoice';
+const SC_INV_PAY_REF = 'subcon_invoice_pay';
+
+class ScInvError extends Exception {}
+
+function sc_inv_send($success, $data = [], $message = '', $extra = []) {
+    $resp = array_merge(['success' => $success, 'message' => $message], $extra);
+    if ($success) {
+        $resp['data'] = $data;
+        if (!isset($resp['totalCount'])) $resp['totalCount'] = is_array($data) ? count($data) : 0;
+    }
+    if (ob_get_length()) { ob_clean(); }
+    echo json_encode($resp, JSON_INVALID_UTF8_SUBSTITUTE);
+    exit;
+}
+
+function sc_inv_f($v): float { return round((float)$v, 2); }
+function sc_inv_uid() { return isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null; }
+
+function sc_inv_has_journal($db, string $ref, int $id): bool {
+    $st = $db->prepare("SELECT 1 FROM journal_entries WHERE reference_type::text = :t AND reference_id = :id LIMIT 1");
+    $st->execute([':t' => $ref, ':id' => $id]);
+    return (bool)$st->fetchColumn();
+}
+
+function sc_inv_post($db, string $rule, string $ref, int $id, string $date, float $amount, string $desc, ?int $creditAccountId = null): void {
+    if ($amount <= 0.004) return;
+    $p = ['rule_code' => $rule, 'reference_type' => $ref, 'reference_id' => $id, 'journal_date' => $date, 'amount' => $amount, 'description' => $desc];
+    if ($creditAccountId) $p['credit_account_id'] = $creditAccountId;
+    $r = AutoPostJournal($db, $p);
+    if (!$r['success']) throw new ScInvError('Gagal posting jurnal ' . $rule . ': ' . $r['message']);
+}
+
+if (empty($_SESSION['user_id'])) {
+    http_response_code(401);
+    sc_inv_send(false, [], 'Sesi berakhir, silakan login ulang.');
+}
+
+$task = $_REQUEST['task'] ?? '';
+
+try {
+    switch ($task) {
+        /* ------------------------------------------------------------------
+         * MASTER: List kontrak subkon untuk combo
+         * ------------------------------------------------------------------ */
+        case 'list_contracts':
+            $rows = $db->query("SELECT c.id, c.spk_no, s.name AS subcontractor_name, c.contract_value, c.status
+                FROM subcon_contracts c
+                JOIN subcontractors s ON s.id = c.subcontractor_id
+                WHERE c.status = 'Disetujui'
+                ORDER BY c.spk_no ASC")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['contract_value'] = (float)$r['contract_value'];
+            }
+            sc_inv_send(true, $rows);
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: LIST INVOICES (Grid utama invoice subkon)
+         * ------------------------------------------------------------------ */
+        case 'list_invoices':
+            $start = (int)($_REQUEST['start'] ?? 0);
+            $limit = (int)($_REQUEST['limit'] ?? 250);
+            $contractId = (int)($_REQUEST['contract_id'] ?? 0);
+            
+            $where = '';
+            $params = [];
+            if ($contractId > 0) {
+                $where = "WHERE inv.contract_id = :cid";
+                $params[':cid'] = $contractId;
+            }
+            
+            $sql = "SELECT inv.id, inv.invoice_no, inv.contract_id, c.spk_no, s.name AS subcontractor_name,
+                inv.progress_id, p.ref_no AS progress_ref_no,
+                inv.invoice_date, inv.due_date, inv.total_amount, inv.paid_amount,
+                (inv.total_amount - inv.paid_amount) AS unpaid_amount,
+                inv.status, inv.reference_no, inv.notes,
+                inv.created_by, cu.login_name AS created_by_name,
+                inv.approved_by, au.login_name AS approved_by_name
+                FROM subcon_invoices inv
+                JOIN subcon_contracts c ON c.id = inv.contract_id
+                JOIN subcontractors s ON s.id = c.subcontractor_id
+                LEFT JOIN subcon_progress p ON p.id = inv.progress_id
+                LEFT JOIN m_user_system cu ON cu.id = inv.created_by
+                LEFT JOIN m_user_system au ON au.id = inv.approved_by
+                {$where}
+                ORDER BY inv.invoice_date DESC, inv.id DESC
+                LIMIT :limit OFFSET :start";
+            
+            $stmt = $db->prepare($sql);
+            foreach ($params as $k => $v) $stmt->bindValue($k, $v);
+            $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+            $stmt->bindValue(':start', $start, PDO::PARAM_INT);
+            $stmt->execute();
+            
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['contract_id'] = (int)$r['contract_id'];
+                $r['progress_id'] = $r['progress_id'] !== null ? (int)$r['progress_id'] : null;
+                $r['total_amount'] = (float)$r['total_amount'];
+                $r['paid_amount'] = (float)$r['paid_amount'];
+                $r['unpaid_amount'] = (float)$r['unpaid_amount'];
+                $r['created_by'] = (int)$r['created_by'];
+                $r['approved_by'] = $r['approved_by'] !== null ? (int)$r['approved_by'] : null;
+            }
+            unset($r);
+            
+            sc_inv_send(true, $rows, '', ['totalCount' => count($rows)]);
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: LOAD INVOICE (untuk edit/detail)
+         * ------------------------------------------------------------------ */
+        case 'load_invoice':
+            $id = (int)($_REQUEST['id'] ?? 0);
+            $stmt = $db->prepare("SELECT inv.*, c.spk_no, s.name AS subcontractor_name, s.npwp_no,
+                p.ref_no AS progress_ref_no, p.gross_amount, p.ppn_amount, p.pph_amount,
+                p.retention_amount, p.dp_recovery, p.net_payable,
+                cu.login_name AS created_by_name, au.login_name AS approved_by_name
+                FROM subcon_invoices inv
+                JOIN subcon_contracts c ON c.id = inv.contract_id
+                JOIN subcontractors s ON s.id = c.subcontractor_id
+                LEFT JOIN subcon_progress p ON p.id = inv.progress_id
+                LEFT JOIN m_user_system cu ON cu.id = inv.created_by
+                LEFT JOIN m_user_system au ON au.id = inv.approved_by
+                WHERE inv.id = :id");
+            $stmt->execute([':id' => $id]);
+            $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$inv) sc_inv_send(false, [], 'Invoice tidak ditemukan.');
+            
+            $inv['id'] = (int)$inv['id'];
+            $inv['contract_id'] = (int)$inv['contract_id'];
+            $inv['progress_id'] = $inv['progress_id'] !== null ? (int)$inv['progress_id'] : null;
+            $inv['total_amount'] = (float)$inv['total_amount'];
+            $inv['paid_amount'] = (float)$inv['paid_amount'];
+            $inv['gross_amount'] = (float)($inv['gross_amount'] ?? 0);
+            $inv['ppn_amount'] = (float)($inv['ppn_amount'] ?? 0);
+            $inv['pph_amount'] = (float)($inv['pph_amount'] ?? 0);
+            $inv['retention_amount'] = (float)($inv['retention_amount'] ?? 0);
+            $inv['dp_recovery'] = (float)($inv['dp_recovery'] ?? 0);
+            $inv['net_payable'] = (float)($inv['net_payable'] ?? 0);
+            
+            // Load pembayaran yang sudah ada
+            $stmtPay = $db->prepare("SELECT pay.id, pay.payment_no, pay.payment_date, pay.amount, pay.status,
+                a.account_code, a.account_name, pay.reference_no, pay.notes,
+                pay.created_by, cu.login_name AS created_by_name
+                FROM subcon_invoice_payments pay
+                JOIN chart_of_accounts a ON a.id = pay.account_id
+                LEFT JOIN m_user_system cu ON cu.id = pay.created_by
+                WHERE pay.invoice_id = :id AND pay.status = 'Posted'
+                ORDER BY pay.payment_date DESC");
+            $stmtPay->execute([':id' => $id]);
+            $payments = $stmtPay->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($payments as &$p) {
+                $p['id'] = (int)$p['id'];
+                $p['amount'] = (float)$p['amount'];
+                $p['created_by'] = (int)$p['created_by'];
+            }
+            
+            sc_inv_send(true, ['invoice' => $inv, 'payments' => $payments]);
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: LIST PROGRESS (untuk pilih prestasi saat buat invoice)
+         * ------------------------------------------------------------------ */
+        case 'list_progress':
+            $contractId = (int)($_REQUEST['contract_id'] ?? 0);
+            if ($contractId <= 0) sc_inv_send(true, []);
+            
+            $stmt = $db->prepare("SELECT p.id, p.ref_no, p.progress_date, p.gross_amount, p.ppn_amount,
+                p.pph_amount, p.retention_amount, p.dp_recovery, p.net_payable, p.cum_pct, p.status,
+                COALESCE((SELECT SUM(pay.amount) FROM subcon_invoice_payments pay 
+                    JOIN subcon_invoices inv ON inv.id = pay.invoice_id 
+                    WHERE inv.progress_id = p.id AND pay.status = 'Posted'), 0) AS paid_amount
+                FROM subcon_progress p
+                WHERE p.contract_id = :cid AND p.status = 'Disetujui'
+                ORDER BY p.progress_date DESC");
+            $stmt->execute([':cid' => $contractId]);
+            $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['gross_amount'] = (float)$r['gross_amount'];
+                $r['ppn_amount'] = (float)$r['ppn_amount'];
+                $r['pph_amount'] = (float)$r['pph_amount'];
+                $r['retention_amount'] = (float)$r['retention_amount'];
+                $r['dp_recovery'] = (float)$r['dp_recovery'];
+                $r['net_payable'] = (float)$r['net_payable'];
+                $r['cum_pct'] = (float)$r['cum_pct'];
+                $r['paid_amount'] = (float)$r['paid_amount'];
+                $r['unpaid_amount'] = round($r['net_payable'] - $r['paid_amount'], 2);
+            }
+            sc_inv_send(true, $rows);
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: SAVE INVOICE (Create/Update)
+         * ------------------------------------------------------------------ */
+        case 'save_invoice':
+            $id = (int)($_POST['id'] ?? 0);
+            $contractId = (int)($_POST['contract_id'] ?? 0);
+            $progressId = (int)($_POST['progress_id'] ?? 0) ?: null;
+            $invoiceDate = (string)($_POST['invoice_date'] ?? '');
+            $dueDate = (string)($_POST['due_date'] ?? '') ?: null;
+            $totalAmount = sc_inv_f($_POST['total_amount'] ?? 0);
+            $referenceNo = trim((string)($_POST['reference_no'] ?? '')) ?: null;
+            $notes = trim((string)($_POST['notes'] ?? '')) ?: null;
+            
+            if ($contractId <= 0) throw new ScInvError('Kontrak subkon wajib dipilih.');
+            if ($invoiceDate === '') throw new ScInvError('Tanggal invoice wajib diisi.');
+            if ($totalAmount <= 0) throw new ScInvError('Total invoice harus lebih dari 0.');
+            
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT status FROM subcon_contracts WHERE id = :id");
+                $stmt->execute([':id' => $contractId]);
+                $contract = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$contract || $contract['status'] !== 'Disetujui') {
+                    throw new ScInvError('Kontrak subkon tidak ditemukan atau tidak berstatus Disetujui.');
+                }
+                
+                if ($progressId) {
+                    $stmt = $db->prepare("SELECT net_payable, status FROM subcon_progress WHERE id = :id");
+                    $stmt->execute([':id' => $progressId]);
+                    $progress = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$progress || $progress['status'] !== 'Disetujui') {
+                        throw new ScInvError('Prestasi tidak ditemukan atau belum disetujui.');
+                    }
+                    $stmt = $db->prepare("SELECT 1 FROM subcon_invoices WHERE progress_id = :pid AND id <> :id AND status <> 'Dibatalkan'");
+                    $stmt->execute([':pid' => $progressId, ':id' => $id]);
+                    if ($stmt->fetchColumn()) {
+                        throw new ScInvError('Prestasi ini sudah di-invoice.');
+                    }
+                }
+                
+                if ($id > 0) {
+                    $stmt = $db->prepare("SELECT status FROM subcon_invoices WHERE id = :id FOR UPDATE");
+                    $stmt->execute([':id' => $id]);
+                    $cur = $stmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$cur) throw new ScInvError('Invoice tidak ditemukan.');
+                    if ($cur['status'] !== 'Draft') throw new ScInvError('Hanya invoice Draft yang bisa diubah.');
+                    
+                    $db->prepare("UPDATE subcon_invoices SET contract_id = :cid, progress_id = :pid,
+                        invoice_date = CAST(:idate AS date), due_date = CAST(:ddate AS date),
+                        total_amount = :amt, reference_no = :ref, notes = :notes, updated_at = NOW()
+                        WHERE id = :id")
+                        ->execute([':cid' => $contractId, ':pid' => $progressId, ':idate' => $invoiceDate,
+                        ':ddate' => $dueDate, ':amt' => $totalAmount, ':ref' => $referenceNo,
+                        ':notes' => $notes, ':id' => $id]);
+                    
+                    $invNo = $db->query("SELECT invoice_no FROM subcon_invoices WHERE id = {$id}")->fetchColumn();
+                } else {
+                    if (!function_exists('CreateRefNo')) throw new Exception('CreateRefNo() tidak tersedia.');
+                    $invNo = CreateRefNo('subcon_invoices', 'invoice_no', 'INV-SC');
+                    
+                    $stmt = $db->prepare("INSERT INTO subcon_invoices (invoice_no, contract_id, progress_id, invoice_date, due_date,
+                        total_amount, paid_amount, status, reference_no, notes, created_by)
+                        VALUES (:no, :cid, :pid, CAST(:idate AS date), CAST(:ddate AS date), :amt, 0, 'Draft', :ref, :notes, :uid)
+                        RETURNING id");
+                    $stmt->execute([':no' => $invNo, ':cid' => $contractId, ':pid' => $progressId,
+                        ':idate' => $invoiceDate, ':ddate' => $dueDate, ':amt' => $totalAmount,
+                        ':ref' => $referenceNo, ':notes' => $notes, ':uid' => sc_inv_uid()]);
+                    $id = (int)$stmt->fetchColumn();
+                }
+                
+                $db->commit();
+                sc_inv_send(true, ['id' => $id, 'invoice_no' => $invNo], 'Invoice berhasil disimpan.');
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: SUBMIT INVOICE (Draft -> Diajukan)
+         * ------------------------------------------------------------------ */
+        case 'update_invoice_status':
+            $id = (int)($_POST['id'] ?? 0);
+            $to = (string)($_POST['to'] ?? '');
+            
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT * FROM subcon_invoices WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $id]);
+                $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$inv) throw new ScInvError('Invoice tidak ditemukan.');
+                
+                $allowed = ['Draft' => ['Diajukan', 'Dibatalkan'], 'Diajukan' => ['Disetujui', 'Draft', 'Dibatalkan']];
+                if (!in_array($to, $allowed[$inv['status']] ?? [])) {
+                    throw new ScInvError("Status {$inv['status']} tidak dapat diubah ke {$to}.");
+                }
+                
+                $set = "status = :s, updated_at = NOW()";
+                $p = [':s' => $to, ':id' => $id];
+                
+                if ($to === 'Disetujui') {
+                    $set .= ", approved_by = :uid, approved_at = NOW()";
+                    $p[':uid'] = sc_inv_uid();
+                }
+                
+                $db->prepare("UPDATE subcon_invoices SET {$set} WHERE id = :id")->execute($p);
+                $db->commit();
+                sc_inv_send(true, [], "Invoice sekarang berstatus {$to}.");
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: APPROVE INVOICE (Disetujui -> posting jurnal)
+         * ------------------------------------------------------------------ */
+        case 'approve_invoice':
+            $id = (int)($_POST['id'] ?? 0);
+            
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT * FROM subcon_invoices WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $id]);
+                $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$inv) throw new ScInvError('Invoice tidak ditemukan.');
+                if ($inv['status'] !== 'Diajukan') throw new ScInvError('Hanya invoice Diajukan yang bisa disetujui.');
+                
+                $db->prepare("UPDATE subcon_invoices SET status = 'Disetujui', approved_by = :uid, approved_at = NOW()
+                    WHERE id = :id")->execute([':uid' => sc_inv_uid(), ':id' => $id]);
+                
+                $date = $inv['invoice_date'];
+                $desc = "Invoice subkon {$inv['invoice_no']}";
+                sc_inv_post($db, 'SUBCON_INVOICE', SC_INV_REF, $id, $date, (float)$inv['total_amount'], $desc);
+                
+                $db->commit();
+                sc_inv_send(true, [], 'Invoice disetujui & dijurnal.');
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 1: CANCEL INVOICE
+         * ------------------------------------------------------------------ */
+        case 'cancel_invoice':
+            $id = (int)($_POST['id'] ?? 0);
+            $reason = trim((string)($_POST['reason'] ?? ''));
+            if (strlen($reason) < 5) throw new ScInvError('Alasan pembatalan minimal 5 karakter.');
+            
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT * FROM subcon_invoices WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $id]);
+                $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$inv) throw new ScInvError('Invoice tidak ditemukan.');
+                if ($inv['status'] === 'Dibatalkan') throw new ScInvError('Invoice sudah dibatalkan.');
+                
+                $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM subcon_invoice_payments WHERE invoice_id = :id AND status = 'Posted'");
+                $stmt->execute([':id' => $id]);
+                $paid = (float)$stmt->fetchColumn();
+                if ($paid > 0) throw new ScInvError('Invoice sudah ada pembayaran. Batalkan pembayaran dulu.');
+                
+                if ($inv['status'] === 'Disetujui' && sc_inv_has_journal($db, SC_INV_REF, $id)) {
+                    ReverseJournalByReference($db, SC_INV_REF, $id);
+                }
+                
+                $db->prepare("UPDATE subcon_invoices SET status = 'Dibatalkan', cancelled_by = :uid, 
+                    cancelled_at = NOW(), cancel_reason = :reason WHERE id = :id")
+                    ->execute([':uid' => sc_inv_uid(), ':reason' => $reason, ':id' => $id]);
+                
+                $db->commit();
+                sc_inv_send(true, [], 'Invoice dibatalkan.');
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 2: LIST ACCOUNTS (untuk combo pembayaran)
+         * ------------------------------------------------------------------ */
+        case 'list_accounts':
+            $rows = $db->query("SELECT id, account_code, account_name FROM chart_of_accounts
+                WHERE account_type::text IN ('cash','bank') AND is_active
+                ORDER BY account_code")->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id'];
+                $r['label'] = $r['account_code'] . ' - ' . $r['account_name'];
+            }
+            sc_inv_send(true, $rows);
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 2: SAVE PAYMENT (Release Payment)
+         * ------------------------------------------------------------------ */
+        case 'save_payment':
+            $invoiceId = (int)($_POST['invoice_id'] ?? 0);
+            $contractId = (int)($_POST['contract_id'] ?? 0);
+            $paymentDate = (string)($_POST['payment_date'] ?? '');
+            $accountId = (int)($_POST['account_id'] ?? 0);
+            $paymentMethod = trim((string)($_POST['payment_method'] ?? 'BANK_TRANSFER'));
+            $amount = sc_inv_f($_POST['amount'] ?? 0);
+            $referenceNo = trim((string)($_POST['reference_no'] ?? '')) ?: null;
+            $notes = trim((string)($_POST['notes'] ?? '')) ?: null;
+            
+            if ($invoiceId <= 0) throw new ScInvError('Invoice wajib dipilih.');
+            if ($accountId <= 0) throw new ScInvError('Akun kas/bank wajib dipilih.');
+            if ($amount <= 0) throw new ScInvError('Jumlah pembayaran harus lebih dari 0.');
+            if ($paymentDate === '') throw new ScInvError('Tanggal pembayaran wajib diisi.');
+            
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT * FROM subcon_invoices WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $invoiceId]);
+                $inv = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$inv) throw new ScInvError('Invoice tidak ditemukan.');
+                if ($inv['status'] !== 'Disetujui') throw new ScInvError('Hanya invoice Disetujui yang bisa dibayar.');
+                if ((int)$inv['contract_id'] !== $contractId) throw new ScInvError('Invoice tidak sesuai kontrak.');
+                
+                $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM subcon_invoice_payments WHERE invoice_id = :id AND status = 'Posted'");
+                $stmt->execute([':id' => $invoiceId]);
+                $paid = (float)$stmt->fetchColumn();
+                $remaining = round((float)$inv['total_amount'] - $paid, 2);
+                
+                if ($amount > $remaining + SC_INV_EPS) {
+                    throw new ScInvError('Jumlah pembayaran melebihi sisa hutang invoice (sisa: ' . number_format($remaining, 2) . ').');
+                }
+                
+                if (!function_exists('CreateRefNo')) throw new Exception('CreateRefNo() tidak tersedia.');
+                $payNo = CreateRefNo('subcon_invoice_payments', 'payment_no', 'PAY-SC');
+                
+                $stmt = $db->prepare("INSERT INTO subcon_invoice_payments (payment_no, invoice_id, contract_id, payment_date,
+                    account_id, payment_method, amount, reference_no, notes, status, created_by)
+                    VALUES (:no, :iid, :cid, CAST(:pdate AS date), :aid, :method, :amt, :ref, :notes, 'Posted', :uid)
+                    RETURNING id");
+                $stmt->execute([':no' => $payNo, ':iid' => $invoiceId, ':cid' => $contractId,
+                    ':pdate' => $paymentDate, ':aid' => $accountId, ':method' => $paymentMethod,
+                    ':amt' => $amount, ':ref' => $referenceNo, ':notes' => $notes, ':uid' => sc_inv_uid()]);
+                $payId = (int)$stmt->fetchColumn();
+                
+                $newPaid = round($paid + $amount, 2);
+                $db->prepare("UPDATE subcon_invoices SET paid_amount = :paid WHERE id = :id")
+                    ->execute([':paid' => $newPaid, ':id' => $invoiceId]);
+                
+                $desc = "Pembayaran invoice subkon {$inv['invoice_no']}";
+                sc_inv_post($db, 'SUBCON_INVOICE_PAY', SC_INV_PAY_REF, $payId, $paymentDate, $amount, $desc, $accountId);
+                
+                $db->commit();
+                sc_inv_send(true, ['id' => $payId, 'payment_no' => $payNo], 'Pembayaran berhasil disimpan & dijurnal.');
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
+            break;
+
+        /* ------------------------------------------------------------------
+         * STEP 2: CANCEL PAYMENT
+         * ------------------------------------------------------------------ */
+        case 'cancel_payment':
+            $id = (int)($_POST['id'] ?? 0);
+            $reason = trim((string)($_POST['reason'] ?? ''));
+            if (strlen($reason) < 5) throw new ScInvError('Alasan pembatalan minimal 5 karakter.');
+            
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT * FROM subcon_invoice_payments WHERE id = :id FOR UPDATE");
+                $stmt->execute([':id' => $id]);
+                $pay = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$pay) throw new ScInvError('Pembayaran tidak ditemukan.');
+                if ($pay['status'] !== 'Posted') throw new ScInvError('Pembayaran sudah dibatalkan.');
+                
+                if (sc_inv_has_journal($db, SC_INV_PAY_REF, $id)) {
+                    ReverseJournalByReference($db, SC_INV_PAY_REF, $id);
+                }
+                
+                $db->prepare("UPDATE subcon_invoice_payments SET status = 'Dibatalkan', cancelled_by = :uid,
+                    cancelled_at = NOW(), cancel_reason = :reason WHERE id = :id")
+                    ->execute([':uid' => sc_inv_uid(), ':reason' => $reason, ':id' => $id]);
+                
+                $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM subcon_invoice_payments 
+                    WHERE invoice_id = :iid AND status = 'Posted'");
+                $stmt->execute([':iid' => $pay['invoice_id']]);
+                $newPaid = (float)$stmt->fetchColumn();
+                $db->prepare("UPDATE subcon_invoices SET paid_amount = :paid WHERE id = :id")
+                    ->execute([':paid' => $newPaid, ':id' => $pay['invoice_id']]);
+                
+                $db->commit();
+                sc_inv_send(true, [], 'Pembayaran dibatalkan.');
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                throw $e;
+            }
+            break;
+
+        default:
+            sc_inv_send(false, [], 'Task tidak dikenali.');
+            break;
+    }
+} catch (ScInvError $e) {
+    sc_inv_send(false, [], $e->getMessage());
+} catch (PDOException $e) {
+    error_log('[subcon.invoiceCRD] PDO: ' . $e->getMessage());
+    sc_inv_send(false, [], 'Database Error: ' . $e->getMessage());
+} catch (Throwable $e) {
+    error_log('[subcon.invoiceCRD] ' . $e->getMessage());
+    sc_inv_send(false, [], 'System Error: ' . $e->getMessage());
+}</code></pre>
+</div>
+
+<!-- FILE 3: Frontend JS (dengan Payment Editor) -->
+<div class="file-block" data-filename="js/subcon.invoice.js" data-path="js/subcon.invoice.js">
+<div class="file-header">
+<div><span class="file-name">📄 subcon.invoice.js</span><span class="file-path">js/subcon.invoice.js</span></div>
+<button class="btn-copy" onclick="copyFile(this)">📋 Copy</button>
+</div>
+<pre><code>/*
+Document      : subcon.invoice.js
+Description   : Modul Invoice & Pembayaran Subkontraktor (2-Step Payment)
+                Step 1: Terima Invoice dari Subkon
+                Step 2: Release Payment (TERMASUK PAYMENT EDITOR)
+Backend       : ../php-crud/subcon.invoiceCRD.php
+*/
+Ext.onReady(function () {
+    Ext.QuickTips.init();
+    document.getElementById("mainHeaderText").innerHTML = "Invoice & Pembayaran <em>Subkontraktor</em>";
+    
+    var CRD = main_url + '/php-crud/subcon.invoiceCRD.php';
+    var ACCESS_ADD = 2;
+    var ACCESS_EDIT = 3;
+    var VEPS = 0.01;
+    
+    var dataRecord = null;
+    var editingId = 0;
+    
+    function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
+    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
+    function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
+    function ymd(d) { return d ? d.dateFormat('Y-m-d') : ''; }
+    function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
+    
+    function statusColor(v) {
+        switch (v) {
+            case 'Draft': return '#999999 !important';
+            case 'Diajukan': return '#e6a817 !important';
+            case 'Disetujui': return '#2bc1e2 !important';
+            case 'Posted': return '#00ff4c !important';
+            case 'Dibatalkan': return '#c0392b !important';
+        }
+        return '#ffffff !important';
+    }
+    
+    function ajax(params, onOk) {
+        Ext.Ajax.request({
+            url: CRD, method: 'POST', params: params,
+            success: function (r) {
+                var o;
+                try { o = Ext.decode(r.responseText); } catch (e) { showErr('Respons server tidak valid.'); return; }
+                onOk(o);
+            },
+            failure: function (r) { showErr('Koneksi ke server gagal (HTTP ' + r.status + ').'); }
+        });
+    }
+    
+    function needAccess(level, msg) {
+        if (getFormAccess() < level) { Ext.Msg.alert('Akses Ditolak', msg); return false; }
+        return true;
+    }
+    
+    // ============================================================
+    // STORES
+    // ============================================================
+    var rdr = function (fields, idp) { return new Ext.data.JsonReader({ root: 'data', idProperty: idp || 'id' }, fields); };
+    
+    var contractDs = new Ext.data.Store({
+        url: CRD, baseParams: { task: 'list_contracts' },
+        reader: rdr([{ name: 'id' }, { name: 'spk_no' }, { name: 'subcontractor_name' }, { name: 'contract_value', type: 'float' }, { name: 'status' }]),
+        listeners: { exception: function() {} }
+    });
+    
+    var progressDs = new Ext.data.Store({
+        url: CRD, baseParams: { task: 'list_progress' },
+        reader: rdr([{ name: 'id' }, { name: 'ref_no' }, { name: 'progress_date' }, { name: 'net_payable', type: 'float' },
+            { name: 'paid_amount', type: 'float' }, { name: 'unpaid_amount', type: 'float' }, { name: 'status' }]),
+        listeners: { exception: function() {} }
+    });
+    
+    var accountDs = new Ext.data.Store({
+        url: CRD, baseParams: { task: 'list_accounts' },
+        reader: rdr([{ name: 'id' }, { name: 'label' }]),
+        listeners: { exception: function() {} }
+    });
+    
+    var invoiceDs = new Ext.data.Store({
+        url: CRD, baseParams: { task: 'list_invoices' },
+        reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, [
+            { name: 'id' }, { name: 'invoice_no' }, { name: 'contract_id' }, { name: 'spk_no' },
+            { name: 'subcontractor_name' }, { name: 'progress_id' }, { name: 'progress_ref_no' },
+            { name: 'invoice_date' }, { name: 'due_date' }, { name: 'total_amount', type: 'float' },
+            { name: 'paid_amount', type: 'float' }, { name: 'unpaid_amount', type: 'float' },
+            { name: 'status' }, { name: 'reference_no' }, { name: 'notes' }, { name: 'created_by_name' }
+        ]),
+        listeners: { exception: function() {} }
+    });
+    
+    invoiceDs.load();
+    
+    // ============================================================
+    // GRID UTAMA
+    // ============================================================
+    var GridMainHeight = maxGridHeight(document.getElementById('divMainGrid'));
+    var mainHeight = Math.round(GridMainHeight * 0.7);
+    
+    var gridMain = new Ext.grid.GridPanel({
+        store: invoiceDs, renderTo: 'divMainGrid', height: mainHeight,
+        columns: [
+            { header: 'No. Invoice', dataIndex: 'invoice_no', width: 120 },
+            { header: 'Tanggal', dataIndex: 'invoice_date', width: 90, align: 'center' },
+            { header: 'No. SPK', dataIndex: 'spk_no', width: 110 },
+            { header: 'Subkontraktor', dataIndex: 'subcontractor_name', width: 180, renderer: CellWrap },
+            { header: 'No. Prestasi', dataIndex: 'progress_ref_no', width: 110 },
+            { header: 'Total Invoice', dataIndex: 'total_amount', width: 120, align: 'right', renderer: function(v) { return '<b>' + fmtAmt(v) + '</b>'; } },
+            { header: 'Sudah Dibayar', dataIndex: 'paid_amount', width: 120, align: 'right', renderer: fmtAmt },
+            { header: 'Sisa Hutang', dataIndex: 'unpaid_amount', width: 120, align: 'right', renderer: function(v) { return '<span style="color:' + (v > 0 ? '#e6a817' : '#27ae60') + ';">' + fmtAmt(v) + '</span>'; } },
+            { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function(v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } },
+            { header: 'Dibuat Oleh', dataIndex: 'created_by_name', width: 120 }
+        ],
+        viewConfig: { forceFit: true }, loadMask: true,
+        listeners: {
+            rowclick: function (grid, rowIndex) {
+                var rec = grid.getStore().getAt(rowIndex);
+                if (rec) {
+                    dataRecord = rec.data;
+                    updateMainButtons();
+                    loadDetailPanel(dataRecord.id);
+                }
+            }
+        }
+    });
+    
+    function updateMainButtons() {
+        mainBtnEnable('#addData');
+        if (dataRecord && dataRecord.status === 'Draft') { mainBtnEnable('#editData'); mainBtnEnable('#deleteData'); }
+        else { mainBtnDisable('#editData'); mainBtnDisable('#deleteData'); }
+    }
+    editDataDisable(); updateMainButtons();
+    
+    // ============================================================
+    // DETAIL PANEL
+    // ============================================================
+    var gridContainer = document.getElementById('divMainGrid');
+    var dtlDiv = document.createElement('div');
+    dtlDiv.id = 'scInvDtlContainer';
+    dtlDiv.className = 'detail-panel-container';
+    dtlDiv.style.display = 'none';
+    dtlDiv.style.maxHeight = Math.round(GridMainHeight - (GridMainHeight * 0.6) - 30);
+    dtlDiv.style.overflowY = 'auto';
+    if (gridContainer && gridContainer.parentNode) { gridContainer.parentNode.insertBefore(dtlDiv, gridContainer.nextSibling); }
+    
+    function loadDetailPanel(invoiceId) {
+        ajax({ task: 'load_invoice', id: invoiceId }, function (res) {
+            if (!res.success) {
+                dtlDiv.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.style.display = 'block';
+                return;
+            }
+            renderDetail(res.data.invoice, res.data.payments || []);
+        });
+    }
+    
+    function renderDetail(inv, payments) {
+        var html = '<h3 class="detail-title">Invoice: ' + enc(inv.invoice_no) + ' <span style="color:' + statusColor(inv.status) + ';">(' + enc(inv.status) + ')</span></h3>' +
+            '<hr class="detail-hr" />' +
+            '<div style="padding:4px 2px 10px 2px;">SPK: <b>' + enc(inv.spk_no) + '</b> | Subkon: <b>' + enc(inv.subcontractor_name) + '</b>' +
+            (inv.npwp_no ? ' (NPWP ' + enc(inv.npwp_no) + ')' : '') + ' | Tanggal: <b>' + enc(inv.invoice_date) + '</b>' +
+            (inv.due_date ? ' | Jatuh Tempo: <b>' + enc(inv.due_date) + '</b>' : '') + '</div>' +
+            '<div style="padding:0 2px 10px 2px;color:#9fc3d1;">Total: <b>' + fmtAmt(inv.total_amount) + '</b> | Dibayar: <b>' + fmtAmt(inv.paid_amount) + '</b> | Sisa: <b>' + fmtAmt(inv.unpaid_amount) + '</b></div>';
+        
+        if (inv.progress_id) {
+            html += '<h4 style="margin:14px 0 4px 0;">Detail Prestasi</h4>' +
+                '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><tbody>' +
+                '<tr><td>Nilai (DPP)</td><td align="right">' + fmtAmt(inv.gross_amount) + '</td></tr>' +
+                '<tr><td>PPN</td><td align="right">' + fmtAmt(inv.ppn_amount) + '</td></tr>' +
+                '<tr><td>PPh</td><td align="right">' + fmtAmt(inv.pph_amount) + '</td></tr>' +
+                '<tr><td>Retensi</td><td align="right">' + fmtAmt(inv.retention_amount) + '</td></tr>' +
+                '<tr><td>Pot. Uang Muka</td><td align="right">' + fmtAmt(inv.dp_recovery) + '</td></tr>' +
+                '<tr><td><b>Nilai Bayar</b></td><td align="right"><b>' + fmtAmt(inv.net_payable) + '</b></td></tr>' +
+                '</tbody></table>';
+        }
+        
+        html += '<h4 style="margin:14px 0 4px 0;">Pembayaran</h4>' +
+            '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
+            '<th>No. Bayar</th><th>Tanggal</th><th>Akun</th><th>Metode</th><th>Jumlah</th><th>Status</th><th></th>' +
+            '</tr></thead><tbody>';
+        
+        if (!payments.length) {
+            html += '<tr><td colspan="7" style="padding:12px;text-align:center;color:#557982;">Belum ada pembayaran.</td></tr>';
+        } else {
+            Ext.each(payments, function (p) {
+                html += '<tr class="data-row"><td>' + enc(p.payment_no) + '</td><td>' + enc(p.payment_date) + '</td>' +
+                    '<td>' + enc(p.account_code + ' ' + p.account_name) + '</td><td>' + enc(p.payment_method) + '</td>' +
+                    '<td align="right">' + fmtAmt(p.amount) + '</td>' +
+                    '<td><span style="color:' + statusColor(p.status) + ';font-weight:bold;">' + enc(p.status) + '</span></td>' +
+                    '<td>' + (p.status === 'Posted' ? '<button class="scInvActBtn" data-act="cancel_payment" data-id="' + p.id + '" style="background:#800020;color:#fff;padding:4px 8px;border:none;border-radius:3px;cursor:pointer;">Batal</button>' : '') + '</td></tr>';
+            });
+        }
+        html += '</tbody></table>';
+        
+        var btns = '';
+        if (inv.status === 'Draft') {
+            btns += '<button class="scInvActBtn" data-act="submit_invoice" data-id="' + inv.id + '" style="background:#066b78;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Ajukan</button>';
+            btns += '<button class="scInvActBtn" data-act="edit_invoice" data-id="' + inv.id + '" style="background:#555555;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Edit</button>';
+            btns += '<button class="scInvActBtn" data-act="cancel_invoice" data-id="' + inv.id + '" style="background:#800020;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Batalkan</button>';
+        } else if (inv.status === 'Diajukan') {
+            btns += '<button class="scInvActBtn" data-act="approve_invoice" data-id="' + inv.id + '" style="background:#066b78;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Setujui</button>';
+        } else if (inv.status === 'Disetujui' && inv.unpaid_amount > VEPS) {
+            btns += '<button class="scInvActBtn" data-act="pay_invoice" data-id="' + inv.id + '" style="background:#2e6da4;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Bayar</button>';
+        }
+        
+        if (btns) html += '<div style="margin-top:15px;text-align:right;">' + btns + '</div>';
+        
+        dtlDiv.innerHTML = html;
+        dtlDiv.style.display = 'block';
+        
+        var btns = dtlDiv.querySelectorAll('.scInvActBtn');
+        for (var i = 0; i < btns.length; i++) {
+            btns[i].onclick = function () { onAction(this.getAttribute('data-act'), parseInt(this.getAttribute('data-id'), 10)); };
+        }
+    }
+    
+    function onAction(act, id) {
+        if (act === 'submit_invoice') {
+            if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+            Ext.Msg.confirm('Ajukan Invoice', 'Ajukan invoice ini untuk disetujui?', function (btn) {
+                if (btn !== 'yes') return;
+                ajax({ task: 'update_invoice_status', id: id, to: 'Diajukan' }, function (res) {
+                    Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                    if (res.success) { invoiceDs.load(); loadDetailPanel(id); }
+                });
+            });
+        } else if (act === 'approve_invoice') {
+            if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+            Ext.Msg.confirm('Setujui Invoice', 'Setujui invoice ini? Jurnal akan diposting.', function (btn) {
+                if (btn !== 'yes') return;
+                ajax({ task: 'approve_invoice', id: id }, function (res) {
+                    Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                    if (res.success) { invoiceDs.load(); loadDetailPanel(id); }
+                });
+            });
+        } else if (act === 'cancel_invoice') {
+            if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+            Ext.Msg.prompt('Batalkan Invoice', 'Alasan (min. 5 karakter):', function (btn, txt) {
+                if (btn !== 'ok') return;
+                if (txt.length < 5) { showErr('Alasan minimal 5 karakter.'); return; }
+                ajax({ task: 'cancel_invoice', id: id, reason: txt }, function (res) {
+                    Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                    if (res.success) { invoiceDs.load(); loadDetailPanel(id); }
+                });
+            });
+        } else if (act === 'edit_invoice') {
+            if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+            openInvoiceEditor(id);
+        } else if (act === 'pay_invoice') {
+            if (!needAccess(ACCESS_ADD, 'Anda tidak memiliki hak akses.')) return;
+            openPaymentEditor(id);
+        } else if (act === 'cancel_payment') {
+            if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+            Ext.Msg.prompt('Batalkan Pembayaran', 'Alasan (min. 5 karakter):', function (btn, txt) {
+                if (btn !== 'ok') return;
+                if (txt.length < 5) { showErr('Alasan minimal 5 karakter.'); return; }
+                ajax({ task: 'cancel_payment', id: id, reason: txt }, function (res) {
+                    Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                    if (res.success) { invoiceDs.load(); loadDetailPanel(dataRecord.id); }
+                });
+            });
+        }
+    }
+    
+    // ============================================================
+    // INVOICE EDITOR (Step 1)
+    // ============================================================
+    function openInvoiceEditor(invoiceId) {
+        var fContract = new myComboField({
+            fieldLabel: 'Kontrak Subkon', store: contractDs, displayField: 'spk_no', valueField: 'id',
+            mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%',
+            listeners: { select: function () { onContractChange(); } }
+        });
+        var fProgress = new myComboField({
+            fieldLabel: 'Prestasi', store: progressDs, displayField: 'ref_no', valueField: 'id',
+            mode: 'local', triggerAction: 'all', forceSelection: false, anchor: '95%', value: 0,
+            listeners: { select: function (c, rec) { if (rec) fAmount.setValue(rec.get('unpaid_amount')); } }
+        });
+        var fInvDate = new Ext.form.DateField({ fieldLabel: 'Tanggal Invoice', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 130 });
+        var fDueDate = new Ext.form.DateField({ fieldLabel: 'Jatuh Tempo', format: 'd/m/Y', width: 130 });
+        var fAmount = new myNumberField({ fieldLabel: 'Total Invoice', decimalPrecision: 2, allowNegative: false, width: 150 });
+        var fRef = new myTextField({ fieldLabel: 'No. Referensi', anchor: '95%' });
+        var fNotes = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+        
+        var win = new Ext.Window({
+            title: (invoiceId ? 'Edit Invoice' : 'Invoice Baru') + ' - Subkontraktor',
+            width: 600, height: 450, modal: true, layout: 'fit',
+            items: new Ext.form.FormPanel({
+                border: false, labelWidth: 130, bodyStyle: 'padding:12px;',
+                items: [fContract, fProgress, fInvDate, fDueDate, fAmount, fRef, fNotes]
+            }),
+            bbar: ['->', { xtype: 'tbtext', text: '<button class="scInvSave" style="background:#066b78;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Simpan</button>' +
+                '<button class="scInvCancel" style="background:#800020;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Batal</button>' }]
+        });
+        
+        contractDs.load({ callback: function () {
+            progressDs.load({ params: { contract_id: 0 } });
+            win.show();
+            
+            if (invoiceId) {
+                ajax({ task: 'load_invoice', id: invoiceId }, function (res) {
+                    if (res.success) {
+                        var inv = res.data.invoice;
+                        fContract.setValue(inv.contract_id);
+                        onContractChange(function () {
+                            fProgress.setValue(inv.progress_id || 0);
+                            fInvDate.setValue(Date.parseDate(inv.invoice_date, 'Y-m-d') || new Date());
+                            fDueDate.setValue(inv.due_date ? Date.parseDate(inv.due_date, 'Y-m-d') : null);
+                            fAmount.setValue(inv.total_amount);
+                            fRef.setValue(inv.reference_no || '');
+                            fNotes.setValue(inv.notes || '');
+                        });
+                    }
+                });
+            }
+            
+            setTimeout(function () {
+                document.querySelector('.scInvSave').onclick = function () {
+                    if (!fContract.getValue()) { showErr('Kontrak wajib dipilih.'); return; }
+                    if (!fInvDate.getValue()) { showErr('Tanggal invoice wajib diisi.'); return; }
+                    if (!(parseFloat(fAmount.getValue()) > 0)) { showErr('Total invoice harus lebih dari 0.'); return; }
+                    
+                    ajax({
+                        task: 'save_invoice', id: invoiceId || 0,
+                        contract_id: fContract.getValue(), progress_id: fProgress.getValue() || 0,
+                        invoice_date: ymd(fInvDate.getValue()), due_date: fDueDate.getValue() ? ymd(fDueDate.getValue()) : '',
+                        total_amount: fAmount.getValue(), reference_no: fRef.getValue(), notes: fNotes.getValue()
+                    }, function (res) {
+                        if (res.success) {
+                            win.close();
+                            Ext.Msg.alert('Sukses', res.message);
+                            invoiceDs.load();
+                            if (res.data && res.data.id) loadDetailPanel(res.data.id);
+                        } else showErr(res.message || 'Gagal.');
+                    });
+                };
+                document.querySelector('.scInvCancel').onclick = function () { win.close(); };
+            }, 100);
+        }});
+    }
+    
+    function onContractChange(cb) {
+        var cid = fContract ? fContract.getValue() : 0;
+        progressDs.load({ params: { contract_id: cid }, callback: function () { if (cb) cb(); } });
+    }
+    
+    // ============================================================
+    // PAYMENT EDITOR (Step 2 - Release Payment)
+    // ============================================================
+    function openPaymentEditor(invoiceId) {
+        ajax({ task: 'load_invoice', id: invoiceId }, function (res) {
+            if (!res.success) { showErr(res.message || 'Gagal memuat invoice.'); return; }
+            var inv = res.data.invoice;
+            if (inv.status !== 'Disetujui') { showErr('Hanya invoice Disetujui yang bisa dibayar.'); return; }
+            if (inv.unpaid_amount <= 0) { showErr('Invoice sudah lunas.'); return; }
+            
+            var fPayDate = new Ext.form.DateField({ fieldLabel: 'Tanggal Bayar', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 130 });
+            var fAccount = new myComboField({ fieldLabel: 'Akun Kas/Bank', store: accountDs, displayField: 'label', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%' });
+            var fMethod = new myComboField({ fieldLabel: 'Metode', store: new Ext.data.ArrayStore({ fields: ['v', 't'], data: [['BANK_TRANSFER', 'Transfer Bank'], ['CASH', 'Tunai'], ['CHEQUE', 'Cek']] }), displayField: 't', valueField: 'v', mode: 'local', triggerAction: 'all', forceSelection: true, value: 'BANK_TRANSFER', anchor: '95%' });
+            var fAmount = new myNumberField({ fieldLabel: 'Jumlah Bayar', decimalPrecision: 2, allowNegative: false, value: inv.unpaid_amount, width: 150 });
+            var fRef = new myTextField({ fieldLabel: 'No. Referensi', anchor: '95%' });
+            var fNotes = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+            
+            var win = new Ext.Window({
+                title: 'Pembayaran Invoice ' + inv.invoice_no, width: 500, height: 380, modal: true, layout: 'fit',
+                items: new Ext.form.FormPanel({
+                    border: false, labelWidth: 130, bodyStyle: 'padding:12px;',
+                    items: [{ xtype: 'displayfield', hideLabel: true, value: 'Sisa hutang: <b>' + fmtAmt(inv.unpaid_amount) + '</b>' },
+                        fPayDate, fAccount, fMethod, fAmount, fRef, fNotes]
+                }),
+                bbar: ['->', { xtype: 'tbtext', text: '<button class="scPaySave" style="background:#066b78;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">Simpan & Posting</button>' +
+                    '<button class="scPayCancel" style="background:#800020;color:#fff;padding:8px 16px;border:none;border-radius:4px;cursor:pointer;font-weight:bold;margin-left:8px;">Batal</button>' }]
+            });
+            
+            accountDs.load({ callback: function () { win.show(); } });
+            
+            setTimeout(function () {
+                document.querySelector('.scPaySave').onclick = function () {
+                    if (!fPayDate.getValue() || !fAccount.getValue()) { showErr('Tanggal dan akun wajib diisi.'); return; }
+                    if (!(parseFloat(fAmount.getValue()) > 0)) { showErr('Jumlah harus > 0.'); return; }
+                    
+                    ajax({
+                        task: 'save_payment', invoice_id: invoiceId, contract_id: inv.contract_id,
+                        payment_date: ymd(fPayDate.getValue()), account_id: fAccount.getValue(),
+                        payment_method: fMethod.getValue(), amount: fAmount.getValue(),
+                        reference_no: fRef.getValue(), notes: fNotes.getValue()
+                    }, function (res) {
+                        if (res.success) {
+                            win.close();
+                            Ext.Msg.alert('Sukses', res.message);
+                            invoiceDs.load();
+                            loadDetailPanel(invoiceId);
+                        } else showErr(res.message || 'Gagal.');
+                    });
+                };
+                document.querySelector('.scPayCancel').onclick = function () { win.close(); };
+            }, 100);
+        });
+    }
+    
+    // ============================================================
+    // ACTION HANDLERS
+    // ============================================================
+    document.getElementById('addData').onclick = function () {
+        if (!needAccess(ACCESS_ADD, 'Anda tidak memiliki hak akses.')) return;
+        openInvoiceEditor(0);
+    };
+    
+    document.getElementById('editData').onclick = function () {
+        if (!dataRecord) { showErr('Pilih invoice terlebih dahulu.'); return; }
+        if (dataRecord.status !== 'Draft') { showErr('Hanya invoice Draft yang bisa diubah.'); return; }
+        if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+        openInvoiceEditor(dataRecord.id);
+    };
+    
+    document.getElementById('deleteData').onclick = function () {
+        if (!dataRecord || dataRecord.status !== 'Draft') { showErr('Pilih invoice Draft.'); return; }
+        if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses.')) return;
+        Ext.Msg.confirm('Hapus Invoice', 'Hapus invoice ' + enc(dataRecord.invoice_no) + '?', function (btn) {
+            if (btn !== 'yes') return;
+            ajax({ task: 'cancel_invoice', id: dataRecord.id, reason: 'Dihapus oleh user' }, function (res) {
+                Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                if (res.success) { dataRecord = null; invoiceDs.load(); dtlDiv.style.display = 'none'; updateMainButtons(); }
+            });
+        });
+    };
+    
+    document.getElementById('popOK').onclick = function () { document.getElementById('popWdw').style.display = 'none'; if (document.getElementById('popCancel')) document.getElementById('popCancel').style.display = 'none'; };
+    document.getElementById('editorWdw').style.display = 'none';
+});</code></pre>
+</div>
+
+<!-- FILE 4: View PHP -->
+<div class="file-block" data-filename="views/subcon.invoice.php" data-path="views/subcon.invoice.php">
+<div class="file-header">
+<div><span class="file-name">📄 subcon.invoice.php</span><span class="file-path">views/subcon.invoice.php</span></div>
+<button class="btn-copy" onclick="copyFile(this)">📋 Copy</button>
+</div>
+<pre><code>&lt;?php
+/*
+Document        : subcon.invoice.php
+Description     : Invoice & Pembayaran Subkontraktor (2-Step Payment)
+File related    : - subcon.invoice.js
+                  - subcon.invoiceCRD.php
+*/
+include "../php-func/user.valid.php";
+include "../includes/many-template-icn.php";
+$B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
+?&gt;
+&lt;html&gt;
+&lt;head&gt;
+&lt;title id="page-title"&gt;Invoice Subkontraktor&lt;/title&gt;
+&lt;link rel="stylesheet" type="text/css" href="&lt;?php echo $B; ?&gt;/ext-3.4.1/resources/css/ext-all.css" /&gt;
+&lt;link rel="stylesheet" type="text/css" href="&lt;?php echo $B; ?&gt;/css/mainCSS.css" /&gt;
+&lt;link rel="stylesheet" type="text/css" href="&lt;?php echo $B; ?&gt;/css/header.black.css" /&gt;
+&lt;link rel="stylesheet" type="text/css" href="&lt;?php echo $B; ?&gt;/css/grddetail.css" /&gt;
+&lt;link rel="stylesheet" type="text/css" href="&lt;?php echo $B; ?&gt;/css/frm.css" /&gt;
+&lt;style&gt;
+#editorForm { top: 50%; width: 90%; height: 85%; }
+#addForm { top: 50%; width: 85%; height: 70%; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+&lt;/body&gt;
+&lt;script type="text/javascript"&gt;
+window.formAccess = &lt;?php echo json_encode(intval($_SESSION["FormAccess"] ?? 0)); ?&gt;;
+&lt;/script&gt;
+&lt;script type="text/javascript" src="../js/subcon.invoice.js"&gt;&lt;/script&gt;
+&lt;script type="text/javascript"&gt;
+if (document.getElementById('menu')) {
+    document.getElementById('menu').innerHTML = &lt;?php echo json_encode($_SESSION["linkMenu"] ?? ''); ?&gt;;
+}
+if (document.getElementById('mainHeaderText')) {
+    document.getElementById("mainHeaderText").innerHTML = "Invoice &amp; Pembayaran &lt;em&gt;Subkontraktor&lt;/em&gt;";
+}
+&lt;/script&gt;
+&lt;/html&gt;</code></pre>
+</div>
+
+<div class="guide">
+<h2>✅ Fitur yang Didapat</h2>
+<ul>
+<li>✅ Grid invoice subkon dengan filter per kontrak</li>
+<li>✅ Create invoice dari prestasi yang sudah disetujui</li>
+<li>✅ Workflow invoice: Draft → Diajukan → Disetujui</li>
+<li>✅ Auto-posting jurnal saat invoice disetujui</li>
+<li>✅ <b>PAYMENT EDITOR</b>: pilih invoice Disetujui → bayar (bisa partial)</li>
+<li>✅ Auto-posting jurnal saat pembayaran</li>
+<li>✅ Cancel invoice & payment dengan alasan</li>
+<li>✅ Detail panel: info invoice + daftar pembayaran</li>
+<li>✅ Kontrol akses (formAccess)</li>
+</ul>
+
+<h2>🎯 Alur Kerja 2-Step Payment</h2>
+<ol>
+<li><b>Step 1 - Terima Invoice</b>: Draft → Diajukan → Disetujui (jurnal otomatis Dr WIP / Cr Hutang Subkon)</li>
+<li><b>Step 2 - Release Payment</b>: Pilih invoice Disetujui → Bayar (bisa partial) → Posted (jurnal Dr Hutang Subkon / Cr Kas-Bank)</li>
+</ol>
+</div>
+
+<script>
+function copyFile(btn) {
+    const block = btn.closest('.file-block');
+    const code = block.querySelector('code').innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        btn.textContent = '✅ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = '📋 Copy';
+            btn.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+function downloadAll() {
+    const zip = new JSZip();
+    const files = document.querySelectorAll('.file-block');
+    
+    files.forEach(file => {
+        const filename = file.getAttribute('data-filename');
+        const code = file.querySelector('code').innerText;
+        zip.file(filename, code);
+    });
+    
+    const readme = `# Modul Invoice & Payment Subkontraktor
+
+## Panduan Implementasi
+
+### Step 1: Jalankan SQL Migration
+\`\`\`bash
+psql -U postgres -d proyekGMN -f sql/2026-11-02.subcon_invoice.sql
+\`\`\`
+
+### Step 2: Upload File
+- php-crud/subcon.invoiceCRD.php → /rab-project/dev/php-crud/
+- js/subcon.invoice.js → /rab-project/dev/js/
+- views/subcon.invoice.php → /rab-project/dev/views/
+
+### Step 3: Daftarkan Menu
+\`\`\`sql
+INSERT INTO m_form_name (group_id, title, php_url, seq, active) 
+VALUES (
+    (SELECT id FROM m_form_group WHERE name = 'SUBKONTRAKTOR'),
+    'INVOICE SUBKON', 'subcon.invoice.php', '04.02', true
+) ON CONFLICT DO NOTHING;
+\`\`\`
+
+### Step 4: Hard Refresh Browser
+Ctrl + Shift + R
+
+## Alur Kerja 2-Step Payment
+
+### Step 1: Terima Invoice
+1. User klik "Tambah Invoice"
+2. Pilih Kontrak Subkon (SPK)
+3. Pilih Prestasi yang sudah disetujui (auto-fill nominal)
+4. Isi tanggal invoice, jatuh tempo, referensi
+5. Simpan → Status: Draft
+6. Klik "Ajukan" → Status: Diajukan
+7. User lain klik "Setujui" → Status: Disetujui
+   → Jurnal otomatis: Dr WIP / Cr Hutang Subkon
+
+### Step 2: Release Payment
+1. User klik "Bayar" pada invoice Disetujui
+2. Pilih akun kas/bank
+3. Pilih metode (Transfer/Cash/Cek)
+4. Input nominal (bisa partial payment)
+5. Simpan → Status: Posted
+   → Jurnal otomatis: Dr Hutang Subkon / Cr Kas-Bank
+6. Invoice paid_amount terupdate
+
+## Fitur
+- Grid invoice subkon dengan filter per kontrak
+- Create invoice dari prestasi yang sudah disetujui
+- Workflow invoice: Draft → Diajukan → Disetujui
+- Auto-posting jurnal saat invoice disetujui
+- Payment editor untuk release payment (bisa partial)
+- Auto-posting jurnal saat pembayaran
+- Cancel invoice & payment dengan alasan
+- Detail panel: info invoice + daftar pembayaran
+- Kontrol akses (formAccess)
+`;
+    zip.file('README.md', readme);
+    
+    zip.generateAsync({type: 'blob'}).then(content => {
+        saveAs(content, 'subcon-invoice-payment-module.zip');
+    });
+}
+</script>
+</div>
+</body>
+</html>

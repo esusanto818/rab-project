@@ -1,7 +1,16 @@
 <?php
 // php-crud/dashboardCRD.php
 // Versi diperbaiki: menggunakan nama tabel/kolom yang sesuai skema DB Anda
-// + tambahan: Material Butuh PO & Proyek Tanpa Material di Action Center
+// [REVISI 2026-10-30] disesuaikan dengan alur proyek:
+//   - Material Out / Performa Keuangan TIDAK lagi menghitung issue Retur Supplier (material_out_header.issue_type = 'SUPPLIER_RETURN').
+//   - Invoice pipeline & Action Center memakai rumus sisa tagihan yang SAMA dengan Aging (paid_amount vs alokasi pembayaran termin).
+//   - Action Center ditulis ulang: daftar dinamis (items) sesuai alur PO -> GRN -> Invoice -> Retur -> Termin -> Subkon -> Opname.
+//     Tabel modul baru (subcon_*, stock_opname_hdr) dicek keberadaannya; bila belum dimigrasi, indikatornya otomatis disembunyikan.
+//   - 'Material Butuh PO' memakai po_items (sebelumnya purchase_order_items yang tidak ada -> selalu 0 / error log).
+//   - 'PO Menunggu Approval' = status Diajukan (bukan Draft) dan ikut filter proyek.
+//   - Profitabilitas dihitung dari biaya riil (material out proyek + pengeluaran + prestasi subkon), bukan kolom projects.spent.
+//   - Aging Hutang (AP) menyertakan hutang prestasi subkon. Milestone menampilkan task terlambat.
+//   - Action baru read_extra: saldo kas & bank, PPN bulan berjalan, ringkasan subkon.
 ini_set('display_errors', '0');
 ob_start();
 header('Content-Type: application/json; charset=utf-8');
@@ -10,6 +19,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
+require_once __DIR__ . '/../php-func/project.analysis.php';     // [AI] mesin analisis bersama (dipakai juga oleh project_paymentCRD.php)
 require_once __DIR__ . '/../cron/fetch_kurs_pajak.php';
 
 function out(array $data, int $flags = 0): void {
@@ -33,8 +43,12 @@ const SRC_FIN_EXPENSE  = true;  // financial_expenses
 const SRC_MATERIAL_OUT = true;  // material_out_items x unit_cost (biaya material ke proyek)
 const SRC_MATERIAL_IN  = false; // material_receipt_items (aktifkan bila ingin pengeluaran dihitung saat barang MASUK)
 
+const SRC_SUBCON       = true;  // subcon_progress (prestasi subkon disetujui = biaya proyek, basis akrual)
+
 $db     = new crud();
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+
 
 switch ($action) {
 
@@ -149,6 +163,19 @@ case 'read_financial_aging':
             AND (h.total_amount - h.paid_amount) > 0.005";
     }
 
+    // [REVISI] hutang prestasi subkon (nilai bayar - yang sudah dibayar) ikut ke Hutang (AP)
+    if (tbl_exists($db, 'subcon_progress') && tbl_exists($db, 'subcon_payments')) {
+        $apInner .= "
+            UNION ALL
+            SELECT (sp.net_payable - COALESCE((SELECT SUM(y.amount) FROM subcon_payments y WHERE y.progress_id = sp.id AND y.status = 'Posted'), 0)) AS os,
+                   (CURRENT_DATE - sp.progress_date) AS age
+            FROM subcon_progress sp
+            JOIN subcon_contracts sc ON sc.id = sp.contract_id
+            WHERE sp.status = 'Disetujui'
+              AND (sp.net_payable - COALESCE((SELECT SUM(y.amount) FROM subcon_payments y WHERE y.progress_id = sp.id AND y.status = 'Posted'), 0)) > 0.005"
+            . ($projectId ? " AND sc.project_id = :pid" : "");
+    }
+
     $fetchBucket = function (string $inner) use ($db, $bucketSql, $projectId) {
         $stmt = $db->prepare(sprintf($bucketSql, $inner));
         if ($projectId) {
@@ -234,8 +261,17 @@ case 'read_financial_performance':
              FROM material_out_items i
              JOIN material_out_header h ON h.id = i.material_out_id
              WHERE h.issue_date >= CAST({$mk($from, $bag)} AS date) AND h.issue_date < CAST({$mk($to, $bag)} AS date)
-             AND h.status = 'posted' AND h.reversed_at IS NULL"
+             AND h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type, 'PROJECT') = 'PROJECT'"
             . ($projectId ? " AND h.project_id = {$mk($projectId, $bag)}" : "")];
+        unset($bag);
+    }
+    if (SRC_SUBCON && tbl_exists($db, 'subcon_progress')) {      // biaya subkon = prestasi disetujui (akrual)
+        $bag = [];
+        $sources[] = ['type' => 'exp', 'name' => 'subcon_progress', 'params' => &$bag, 'sql' =>
+            "SELECT EXTRACT(MONTH FROM sp.progress_date)::int AS bln, sp.gross_amount AS amount
+             FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id
+             WHERE sp.status = 'Disetujui' AND sp.progress_date >= CAST({$mk($from, $bag)} AS date) AND sp.progress_date < CAST({$mk($to, $bag)} AS date)"
+            . ($projectId ? " AND sc.project_id = {$mk($projectId, $bag)}" : "")];
         unset($bag);
     }
     if (SRC_MATERIAL_IN) {
@@ -328,7 +364,7 @@ case 'read_material_monitoring':
 
     $budWhere = "(LOWER(b.category) = 'material' OR b.material_id IS NOT NULL)"
               . ($projectId ? " AND b.project_id = {$P($projectId)}" : "");
-    $outWhere = "h.status = 'posted' AND h.reversed_at IS NULL"
+    $outWhere = "h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type, 'PROJECT') = 'PROJECT'"
               . ($projectId ? " AND h.project_id = {$P($projectId)}" : "");
 
     $sql = "
@@ -428,28 +464,33 @@ case 'read_material_monitoring':
     break;
 
 // ============================================================
-// 7. INVOICE PIPELINE
+// 7. INVOICE PIPELINE (tagihan termin klien) -- rumus sisa SAMA dengan Aging
 // ============================================================
 case 'read_invoice_pipeline':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
     $sql = "
-        SELECT
-            CASE
-                WHEN amount - paid_amount <= 0.005 THEN 'Lunas'
-                WHEN due_date < CURRENT_DATE AND amount - paid_amount > 0.005 THEN 'Jatuh Tempo (Overdue)'
-                WHEN paid_amount > 0.005 THEN 'Sebagian'
-                ELSE 'Belum Bayar'
-            END AS status,
-            COUNT(*) AS count,
-            COALESCE(SUM(amount - paid_amount), 0) AS outstanding_value
-        FROM project_invoices
-        WHERE (:pid = 0 OR project_id = :pid)
-        GROUP BY status
+        SELECT st AS status, COUNT(*) AS count, COALESCE(SUM(os), 0) AS outstanding_value
+        FROM (
+            SELECT " . AR_OS . " AS os,
+                   CASE
+                       WHEN " . AR_OS . " <= 0.005 THEN 'Lunas'
+                       WHEN pinv.due_date IS NOT NULL AND pinv.due_date < CURRENT_DATE THEN 'Jatuh Tempo (Overdue)'
+                       WHEN (pinv.amount - " . AR_OS . ") > 0.005 THEN 'Sebagian'
+                       ELSE 'Belum Bayar'
+                   END AS st
+            FROM project_invoices pinv
+            WHERE (:pid = 0 OR pinv.project_id = :pid)
+        ) t
+        GROUP BY st
     ";
-    $stmt = $db->prepare($sql);
-    $stmt->execute([':pid' => $pid]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':pid' => $pid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log('[dashboardCRD] invoice_pipeline: ' . $e->getMessage());
+        out(['success' => false, 'message' => 'Query invoice pipeline gagal: ' . $e->getMessage()]);
+    }
     $counts = ['Lunas' => 0, 'Jatuh Tempo (Overdue)' => 0, 'Sebagian' => 0, 'Belum Bayar' => 0];
     $values = ['Lunas' => 0, 'Jatuh Tempo (Overdue)' => 0, 'Sebagian' => 0, 'Belum Bayar' => 0];
     foreach ($rows as $r) {
@@ -462,124 +503,316 @@ case 'read_invoice_pipeline':
     break;
 
 // ============================================================
-// 8. ACTION CENTER (termasuk Material Butuh PO & Proyek Tanpa Material)
+// 8. ACTION CENTER -- daftar indikator dinamis sesuai alur proyek
+//    level: danger (harus segera) | warn (menunggu keputusan / dokumen) | info (perlu dilengkapi)
 // ============================================================
 case 'read_action_center':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
+    $items = [];
+    $add = function (string $key, string $label, string $level, string $sql, array $params, string $hint = '') use ($db, &$items) {
+        try {
+            $st = $db->prepare($sql);
+            $st->execute($params);
+            $items[] = ['key' => $key, 'label' => $label, 'level' => $level, 'count' => (int)$st->fetchColumn(), 'hint' => $hint];
+        } catch (Exception $e) {
+            error_log('[dashboardCRD] action_center ' . $key . ': ' . $e->getMessage());
+        }
+    };
+    $P = [':pid' => $pid];
 
-    $overdueInvoices  = 0;
-    $pendingPOs       = 0;
-    $unbilledProjects = 0;
-    $materialNeedPO   = 0;
-    $projectsNoMat    = 0;
+    // --- Penjualan / termin klien
+    $add('inv_overdue', 'Invoice Klien Jatuh Tempo', 'danger',
+        "SELECT COUNT(*) FROM project_invoices pinv WHERE pinv.due_date < CURRENT_DATE AND " . AR_OS . " > 0.005 AND (:pid = 0 OR pinv.project_id = :pid)", $P,
+        'Sisa tagihan termin sudah lewat jatuh tempo');
+    $add('inv_due_soon', 'Invoice Klien Jatuh Tempo 7 Hari', 'warn',
+        "SELECT COUNT(*) FROM project_invoices pinv WHERE pinv.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 AND " . AR_OS . " > 0.005 AND (:pid = 0 OR pinv.project_id = :pid)", $P,
+        'Siapkan penagihan');
+    $add('unbilled', 'Proyek Berjalan Belum Ditagih', 'info',
+        "SELECT COUNT(*) FROM projects p WHERE p.status = 'Berjalan' AND p.contract_value > 0
+            AND NOT EXISTS (SELECT 1 FROM project_invoices WHERE project_id = p.id) AND (:pid = 0 OR p.id = :pid)", $P,
+        'Belum ada termin yang diterbitkan');
+    $add('faktur_missing', 'Faktur Pajak Belum Diisi', 'info',
+        "SELECT (SELECT COUNT(*) FROM project_invoices WHERE COALESCE(ppn_amount,0) > 0 AND COALESCE(faktur_pajak_no,'') = '' AND (:pid = 0 OR project_id = :pid))
+              + (SELECT COUNT(*) FROM purchase_invoice_hdr h WHERE COALESCE(h.ppn_amount,0) > 0 AND COALESCE(h.faktur_pajak_no,'') = ''
+                    AND COALESCE(LOWER(h.status),'') NOT IN ('void','cancelled','canceled','dibatalkan','reversed')
+                    AND (:pid = 0 OR EXISTS (SELECT 1 FROM purchase_invoice_dtl d JOIN grn_hdr g ON g.id = d.grn_hdr_id JOIN purchase_orders po ON po.id = g.po_id
+                                              WHERE d.invoice_hdr_id = h.id AND po.project_id = :pid)))", $P,
+        'Invoice ber-PPN (keluaran & masukan) tanpa nomor faktur pajak');
 
-    // 1. Invoice Overdue
-    try {
-        $st = $db->prepare("SELECT COUNT(*) FROM project_invoices WHERE due_date < CURRENT_DATE AND amount - paid_amount > 0.005 AND (:pid = 0 OR project_id = :pid)");
-        $st->execute([':pid' => $pid]);
-        $overdueInvoices = (int)$st->fetchColumn();
-    } catch (Exception $e) { $overdueInvoices = 0; }
-
-    // 2. PO Menunggu Approval (status Draft/Pending)
-    try {
-        $st = $db->prepare("SELECT COUNT(*) FROM purchase_orders WHERE status IN ('Draft', 'Pending', 'Waiting Approval')");
-        $st->execute();
-        $pendingPOs = (int)$st->fetchColumn();
-    } catch (Exception $e) { $pendingPOs = 0; }
-
-    // 3. Proyek Berjalan yang Belum Ditagih
-    try {
-        $st = $db->prepare("
-            SELECT COUNT(*) FROM projects p
-            WHERE p.status = 'Berjalan'
-              AND p.contract_value > 0
-              AND NOT EXISTS (SELECT 1 FROM project_invoices WHERE project_id = p.id)
-              AND (:pid = 0 OR p.id = :pid)
-        ");
-        $st->execute([':pid' => $pid]);
-        $unbilledProjects = (int)$st->fetchColumn();
-    } catch (Exception $e) { $unbilledProjects = 0; }
-
-    // 4. [BARU] Material yang belum ada PO
-    //    Material di RAB (budget_items) yang belum pernah dipesan di purchase_order_items
-    try {
-        $st = $db->prepare("
-            SELECT COUNT(DISTINCT b.material_id)
-            FROM budget_items b
-            JOIN projects p ON p.id = b.project_id
-            WHERE p.status IN ('Belum Mulai', 'Berjalan')
-              AND (LOWER(b.category) = 'material' OR b.material_id IS NOT NULL)
-              AND b.material_id IS NOT NULL
-              AND b.material_id NOT IN (SELECT DISTINCT item_id FROM purchase_order_items WHERE item_id IS NOT NULL)
-              AND (:pid = 0 OR p.id = :pid)
-        ");
-        $st->execute([':pid' => $pid]);
-        $materialNeedPO = (int)$st->fetchColumn();
-    } catch (Exception $e) {
-        error_log('[dashboardCRD] material_need_po: ' . $e->getMessage());
-        $materialNeedPO = 0;
+    // --- Pembelian: PO -> GRN -> Invoice -> Retur
+    $add('rab_need_po', 'Baris RAB Material Belum di-PO', 'warn',
+        "SELECT COUNT(*) FROM budget_items b JOIN projects p ON p.id = b.project_id
+          WHERE p.status IN ('Belum Mulai', 'Berjalan') AND b.material_id IS NOT NULL AND COALESCE(b.qty_plan,0) > 0
+            AND (LOWER(b.category) = 'material' OR b.material_id IS NOT NULL)
+            AND COALESCE(b.qty_plan,0) - COALESCE((SELECT SUM(i.qty) FROM po_items i JOIN purchase_orders po ON po.id = i.po_id
+                                                   WHERE i.budget_item_id = b.id AND po.status <> 'Dibatalkan'), 0) > 0.0005
+            AND (:pid = 0 OR p.id = :pid)", $P,
+        'Qty RAB belum seluruhnya dipesan lewat PO');
+    $add('po_waiting', 'PO Menunggu Persetujuan', 'warn',
+        "SELECT COUNT(*) FROM purchase_orders WHERE status = 'Diajukan' AND (:pid = 0 OR project_id = :pid)", $P,
+        'Status Diajukan, menunggu disetujui');
+    $add('po_draft', 'PO Masih Draft', 'info',
+        "SELECT COUNT(*) FROM purchase_orders WHERE status = 'Draft' AND (:pid = 0 OR project_id = :pid)", $P,
+        'Belum diajukan');
+    $add('po_unreceived', 'PO Disetujui Belum Diterima', 'info',
+        "SELECT COUNT(*) FROM purchase_orders po WHERE po.status = 'Disetujui' AND (:pid = 0 OR po.project_id = :pid)
+            AND NOT EXISTS (SELECT 1 FROM grn_hdr g WHERE g.po_id = po.id AND COALESCE(LOWER(g.status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed'))", $P,
+        'Belum ada GRN untuk PO ini');
+    $add('grn_uninvoiced', 'GRN Belum Di-invoice Supplier', 'warn',
+        "SELECT COUNT(*) FROM grn_hdr g JOIN purchase_orders po ON po.id = g.po_id
+          WHERE COALESCE(LOWER(g.status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed')
+            AND NOT EXISTS (SELECT 1 FROM purchase_invoice_dtl d WHERE d.grn_hdr_id = g.id)
+            AND (:pid = 0 OR po.project_id = :pid)", $P,
+        'Barang sudah diterima, tagihan supplier belum dicatat');
+    if (tbl_exists($db, 'supplier_return_hdr')) {
+        $add('return_open', 'Retur Supplier Belum Diselesaikan', 'warn',
+            "SELECT COUNT(*) FROM supplier_return_hdr WHERE status = 'Dikirim' AND (:pid = 0 OR project_id = :pid)", $P,
+            'Sudah dikirim, belum diselesaikan (ganti barang / kredit)');
     }
 
-    // 5. [BARU] Proyek yang belum ada pengeluaran material
-    try {
-        $st = $db->prepare("
-            SELECT COUNT(*) FROM projects p
-            WHERE p.status IN ('Belum Mulai', 'Berjalan')
-              AND NOT EXISTS (SELECT 1 FROM material_out_header WHERE project_id = p.id)
-              AND (:pid = 0 OR p.id = :pid)
-        ");
-        $st->execute([':pid' => $pid]);
-        $projectsNoMat = (int)$st->fetchColumn();
-    } catch (Exception $e) { $projectsNoMat = 0; }
+    // --- Subkon & stok (modul baru)
+    if (tbl_exists($db, 'subcon_contracts') && tbl_exists($db, 'subcon_progress')) {
+        $add('subcon_pending', 'SPK / Prestasi Subkon Menunggu Persetujuan', 'warn',
+            "SELECT (SELECT COUNT(*) FROM subcon_contracts WHERE status = 'Diajukan' AND (:pid = 0 OR project_id = :pid))
+                  + (SELECT COUNT(*) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id WHERE sp.status = 'Draft' AND (:pid = 0 OR sc.project_id = :pid))", $P,
+            'SPK Diajukan atau prestasi Draft');
+    }
+    if (tbl_exists($db, 'stock_opname_hdr')) {
+        $add('opname_pending', 'Stock Opname Menunggu Persetujuan', 'warn',
+            "SELECT COUNT(*) FROM stock_opname_hdr WHERE status = 'Diajukan'", [], 'Selisih belum diposting');
+    }
 
-    out(['success' => true, 'data' => [
-        'overdue_invoices'    => $overdueInvoices,
-        'pending_pos'         => $pendingPOs,
-        'unbilled_projects'   => $unbilledProjects,
-        'material_need_po'    => $materialNeedPO,
-        'projects_no_material'=> $projectsNoMat,
-    ]]);
+    // --- Pelaksanaan proyek
+    if (tbl_exists($db, 'project_tasks')) {
+        $add('tasks_late', 'Task Proyek Terlambat', 'danger',
+            "SELECT COUNT(*) FROM project_tasks t JOIN projects p ON p.id = t.project_id
+              WHERE t.end_date < CURRENT_DATE AND COALESCE(t.status,'') NOT IN ('Selesai','Closed','Done') AND p.status = 'Berjalan' AND (:pid = 0 OR t.project_id = :pid)", $P,
+            'Lewat tanggal selesai, belum Selesai');
+    }
+    $add('no_material', 'Proyek Berjalan Belum Ada Pengeluaran Material', 'info',
+        "SELECT COUNT(*) FROM projects p WHERE p.status = 'Berjalan' AND (p.start_date IS NULL OR p.start_date <= CURRENT_DATE)
+            AND NOT EXISTS (SELECT 1 FROM material_out_header h WHERE h.project_id = p.id AND h.status = 'posted' AND COALESCE(h.issue_type,'PROJECT') = 'PROJECT')
+            AND (:pid = 0 OR p.id = :pid)", $P,
+        'Sudah mulai, tetapi belum ada issue material');
+
+    out(['success' => true, 'items' => $items]);
     break;
 
 // ============================================================
-// 9. AI MILESTONES (14 hari ke depan)
+// 9. MILESTONE (task proyek) 14 hari ke depan + yang terlambat
 // ============================================================
 case 'read_upcoming_milestones':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
     $sql = "
-        SELECT p.name AS project_name, t.task_name, t.end_date AS deadline, t.status
+        SELECT p.name AS project_name, t.task_name, t.end_date AS deadline, COALESCE(t.status, '-') AS status,
+               (t.end_date - CURRENT_DATE) AS days_left,
+               (t.end_date < CURRENT_DATE) AS late
         FROM public.project_tasks t
         JOIN public.projects p ON p.id = t.project_id
-        WHERE t.end_date BETWEEN CURRENT_DATE AND CURRENT_DATE + INTERVAL '14 days'
-          AND t.status NOT IN ('Selesai', 'Closed', 'Done')
+        WHERE t.end_date <= CURRENT_DATE + INTERVAL '14 days'
+          AND COALESCE(t.status, '') NOT IN ('Selesai', 'Closed', 'Done')
+          AND p.status = 'Berjalan'
           AND (:pid = 0 OR t.project_id = :pid)
         ORDER BY t.end_date ASC
-        LIMIT 10
+        LIMIT 12
     ";
-    $stmt = $db->prepare($sql);
-    $stmt->execute([':pid' => $pid]);
-    out(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':pid' => $pid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($rows as &$r) { $r['days_left'] = (int)$r['days_left']; $r['late'] = ($r['late'] === true || $r['late'] === 't' || $r['late'] === '1'); }
+        unset($r);
+        out(['success' => true, 'data' => $rows]);
+    } catch (Exception $e) {
+        error_log('[dashboardCRD] milestones: ' . $e->getMessage());
+        out(['success' => false, 'message' => 'Query milestone gagal: ' . $e->getMessage()]);
+    }
     break;
 
 // ============================================================
-// 10. PROFITABILITAS PROYEK
+// 10. PROFITABILITAS PROYEK -- dari biaya riil
+//     biaya = material out proyek (tanpa retur supplier) + pengeluaran (financial_expenses) + prestasi subkon disetujui
+//     kontrak (DPP) = nilai kontrak, dibagi (1 + PPN) bila proyek 'sudah termasuk PPN'
+//     margin = (tertagih DPP - biaya) / tertagih DPP ; biaya/kontrak = biaya / kontrak DPP
 // ============================================================
 case 'read_project_profitability':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
+    $hasSub = tbl_exists($db, 'subcon_progress') && tbl_exists($db, 'subcon_contracts');
+    $subSql = $hasSub
+        ? "COALESCE((SELECT SUM(sp.gross_amount) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id
+                      WHERE sc.project_id = p.id AND sp.status = 'Disetujui'), 0)"
+        : "0";
     $sql = "
-        SELECT p.name, p.contract_value, COALESCE(p.spent, 0) AS spent,
-               (p.contract_value - COALESCE(p.spent, 0)) AS margin_val,
-               CASE WHEN p.contract_value > 0
-                    THEN ((p.contract_value - COALESCE(p.spent, 0)) / p.contract_value) * 100
-                    ELSE 0 END AS margin_pct
-        FROM projects p
-        WHERE p.status = 'Berjalan' AND p.contract_value > 0
-          AND (:pid = 0 OR p.id = :pid)
-        ORDER BY margin_pct ASC
+        SELECT x.*,
+               (x.cost_material + x.cost_expense + x.cost_subcon) AS cost_total
+        FROM (
+            SELECT p.id, p.name, p.status, COALESCE(p.progress, 0) AS progress, p.end_date,
+                   CASE WHEN COALESCE(p.ppn_inclusive, false) AND COALESCE(p.ppn_rate, 0) > 0
+                        THEN p.contract_value / (1 + p.ppn_rate / 100) ELSE p.contract_value END AS contract_dpp,
+                   COALESCE((SELECT SUM(COALESCE(v.dpp_amount, v.amount)) FROM project_invoices v WHERE v.project_id = p.id), 0) AS billed_dpp,
+                   COALESCE((SELECT SUM(ppi.amount_paid) FROM project_payment_items ppi JOIN project_invoices v ON v.id = ppi.invoice_id WHERE v.project_id = p.id), 0) AS collected,
+                   COALESCE((SELECT SUM(i.qty_out * i.unit_cost) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
+                              WHERE h.project_id = p.id AND h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type,'PROJECT') = 'PROJECT'), 0) AS cost_material,
+                   COALESCE((SELECT SUM(e.amount) FROM financial_expenses e WHERE e.project_id = p.id
+                              AND COALESCE(UPPER(e.status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL')), 0) AS cost_expense,
+                   {$subSql} AS cost_subcon
+            FROM projects p
+            WHERE p.status IN ('Berjalan', 'Selesai') AND p.contract_value > 0 AND (:pid = 0 OR p.id = :pid)
+        ) x
+        ORDER BY (x.cost_material + x.cost_expense + x.cost_subcon) / NULLIF(x.contract_dpp, 0) DESC NULLS LAST
     ";
-    $stmt = $db->prepare($sql);
-    $stmt->execute([':pid' => $pid]);
-    out(['success' => true, 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':pid' => $pid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log('[dashboardCRD] profitability: ' . $e->getMessage());
+        out(['success' => false, 'message' => 'Query profitabilitas gagal: ' . $e->getMessage()]);
+    }
+    foreach ($rows as &$r) {
+        $contract = (float)$r['contract_dpp']; $billed = (float)$r['billed_dpp']; $cost = (float)$r['cost_total'];
+        $r['contract_dpp'] = round($contract, 2); $r['billed_dpp'] = round($billed, 2); $r['cost_total'] = round($cost, 2);
+        $r['collected'] = round((float)$r['collected'], 2);
+        foreach (['cost_material', 'cost_expense', 'cost_subcon'] as $k) $r[$k] = round((float)$r[$k], 2);
+        $r['cost_pct']   = $contract > 0 ? round($cost / $contract * 100, 1) : 0;
+        $r['margin_pct'] = $billed > 0 ? round(($billed - $cost) / $billed * 100, 1) : null;     // null = belum ada tagihan
+        $r['progress']   = (int)$r['progress'];
+    }
+    unset($r);
+    out(['success' => true, 'data' => $rows]);
+    break;
+
+// ============================================================
+// 11. RINGKASAN TAMBAHAN: saldo kas & bank, PPN bulan berjalan, subkon
+// ============================================================
+case 'read_extra':
+    $pid = (int)($_REQUEST['project_id'] ?? 0);
+    $res = ['cash' => null, 'ppn' => null, 'subcon' => null];
+    try {      // saldo kas & bank dari jurnal terposting (semua proyek; kas tidak per proyek)
+        $st = $db->query("SELECT COALESCE(SUM(l.debit - l.credit), 0)
+                            FROM journal_lines l
+                            JOIN journal_entries j ON j.id = l.journal_id
+                            JOIN chart_of_accounts a ON a.id = l.account_id
+                           WHERE a.account_type::text IN ('cash', 'bank') AND j.status::text NOT IN ('draft', 'void', 'reversed')");
+        $res['cash'] = (float)$st->fetchColumn();
+    } catch (Exception $e) { error_log('[dashboardCRD] extra cash: ' . $e->getMessage()); }
+    try {      // PPN bulan berjalan menurut tanggal faktur (bila kosong tanggal invoice), sama dengan Laporan PPN
+        $from = date('Y-m-01'); $to = date('Y-m-d', strtotime($from . ' +1 month'));
+        $st = $db->prepare("SELECT COALESCE(SUM(ppn_amount), 0) FROM project_invoices
+                             WHERE ppn_amount > 0 AND COALESCE(faktur_pajak_date, invoice_date) >= CAST(:f AS date) AND COALESCE(faktur_pajak_date, invoice_date) < CAST(:t AS date)
+                               AND (:pid = 0 OR project_id = :pid)");
+        $st->execute([':f' => $from, ':t' => $to, ':pid' => $pid]);
+        $keluaran = (float)$st->fetchColumn();
+        $st = $db->prepare("
+            SELECT COALESCE(SUM(h.ppn_amount * COALESCE(sh.share, 1)), 0)
+              FROM purchase_invoice_hdr h
+              LEFT JOIN (SELECT d.invoice_hdr_id,
+                                SUM(CASE WHEN po.project_id = :pid THEN d.matched_amount ELSE 0 END) / NULLIF(SUM(d.matched_amount), 0) AS share
+                           FROM purchase_invoice_dtl d JOIN grn_hdr g ON g.id = d.grn_hdr_id JOIN purchase_orders po ON po.id = g.po_id
+                          GROUP BY d.invoice_hdr_id) sh ON sh.invoice_hdr_id = h.id
+             WHERE h.ppn_amount > 0 AND COALESCE(LOWER(h.status),'') NOT IN ('void','cancelled','canceled','dibatalkan','reversed')
+               AND COALESCE(h.faktur_pajak_date, h.invoice_date) >= CAST(:f AS date) AND COALESCE(h.faktur_pajak_date, h.invoice_date) < CAST(:t AS date)
+               AND (:pid = 0 OR COALESCE(sh.share, 0) > 0)");
+        $st->execute([':f' => $from, ':t' => $to, ':pid' => $pid]);
+        $masukan = (float)$st->fetchColumn();
+        $res['ppn'] = ['keluaran' => round($keluaran, 2), 'masukan' => round($masukan, 2), 'net' => round($keluaran - $masukan, 2), 'periode' => date('m/Y')];
+    } catch (Exception $e) { error_log('[dashboardCRD] extra ppn: ' . $e->getMessage()); }
+    if (tbl_exists($db, 'subcon_contracts') && tbl_exists($db, 'subcon_progress') && tbl_exists($db, 'subcon_payments')) {
+        try {
+            $st = $db->prepare("
+                SELECT (SELECT COUNT(*) FROM subcon_contracts WHERE status IN ('Disetujui','Selesai') AND (:pid = 0 OR project_id = :pid)) AS spk_aktif,
+                       (SELECT COALESCE(SUM(contract_value),0) FROM subcon_contracts WHERE status IN ('Disetujui','Selesai') AND (:pid = 0 OR project_id = :pid)) AS nilai_spk,
+                       (SELECT COALESCE(SUM(sp.gross_amount),0) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id
+                         WHERE sp.status = 'Disetujui' AND (:pid = 0 OR sc.project_id = :pid)) AS tertagih,
+                       (SELECT COALESCE(SUM(sp.net_payable),0) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id
+                         WHERE sp.status = 'Disetujui' AND (:pid = 0 OR sc.project_id = :pid))
+                       - (SELECT COALESCE(SUM(y.amount),0) FROM subcon_payments y JOIN subcon_contracts sc ON sc.id = y.contract_id
+                           WHERE y.status = 'Posted' AND y.pay_type = 'PROGRESS' AND (:pid = 0 OR sc.project_id = :pid)) AS sisa_hutang");
+            $st->execute([':pid' => $pid]);
+            $r = $st->fetch(PDO::FETCH_ASSOC);
+            $res['subcon'] = ['spk_aktif' => (int)$r['spk_aktif'], 'nilai_spk' => (float)$r['nilai_spk'], 'tertagih' => (float)$r['tertagih'], 'sisa_hutang' => (float)$r['sisa_hutang']];
+        } catch (Exception $e) { error_log('[dashboardCRD] extra subcon: ' . $e->getMessage()); }
+    }
+    out(['success' => true, 'data' => $res]);
+    break;
+
+// ============================================================
+// 12. KESEHATAN PROYEK (kartu dashboard) -- status = angka (gap biaya, indeks biaya CPI, jadwal) + HASIL AI TERAKHIR (ai_variance_logs)
+//     Aturan tunggal: dash_card_level() di php-func/project.analysis.php. Anggaran memakai kurs anggaran (sama dengan modul Project Progress).
+// ============================================================
+case 'read_project_health':
+    $pid = (int)($_REQUEST['project_id'] ?? 0);
+    $hasSub = tbl_exists($db, 'subcon_progress') && tbl_exists($db, 'subcon_contracts');
+    $subSql = $hasSub
+        ? "COALESCE((SELECT SUM(sp.gross_amount) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id
+                      WHERE sc.project_id = p.id AND sp.status = 'Disetujui'), 0)" : "0";
+    $sql = "
+        SELECT p.id, p.name, COALESCE(p.progress, 0) AS progress, p.start_date, p.end_date,
+               COALESCE(NULLIF(p.budget * COALESCE(NULLIF(p.budget_exch_rate, 0), 1), 0),
+                        (SELECT SUM(b.qty_plan * b.unit_price_plan) FROM budget_items b WHERE b.project_id = p.id), 0) AS budget,
+               COALESCE((SELECT SUM(i.qty_out * i.unit_cost) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
+                          WHERE h.project_id = p.id AND h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type,'PROJECT') = 'PROJECT'), 0) AS cost_material,
+               COALESCE((SELECT SUM(e.amount) FROM financial_expenses e WHERE e.project_id = p.id
+                          AND COALESCE(UPPER(e.status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL')), 0) AS cost_expense,
+               {$subSql} AS cost_subcon
+        FROM projects p
+        WHERE p.status = 'Berjalan' AND (:pid = 0 OR p.id = :pid)
+    ";
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute([':pid' => $pid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        error_log('[dashboardCRD] project_health: ' . $e->getMessage());
+        out(['success' => false, 'message' => 'Query kesehatan proyek gagal: ' . $e->getMessage()]);
+    }
+    $aiMap = [];       // hasil AI terbaru per proyek (hanya baris format baru, masih berlaku AI_CARD_VALID_DAYS hari)
+    if (avl_has_cols($db)) {
+        try {
+            $st = $db->prepare("SELECT DISTINCT ON (project_id) project_id, risk_level, created_at FROM ai_variance_logs
+                                 WHERE analysis IS NOT NULL AND created_at > NOW() - (:d || ' days')::interval
+                                 ORDER BY project_id, created_at DESC, id DESC");
+            $st->execute([':d' => (string)AI_CARD_VALID_DAYS]);
+            foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $aiMap[(int)$r['project_id']] = $r;
+        } catch (Exception $e) { error_log('[dashboardCRD] health ai map: ' . $e->getMessage()); }
+    }
+    $data = [];
+    foreach ($rows as $r) {
+        $id = (int)$r['id']; $progress = (int)$r['progress']; $budget = (float)$r['budget'];
+        $cm = (float)$r['cost_material']; $ce = (float)$r['cost_expense']; $cs = (float)$r['cost_subcon'];
+        $cost = $cm + $ce + $cs;
+        $lv = dash_card_level($progress, $budget, $cost, $r['end_date'], $aiMap[$id]['risk_level'] ?? null);
+        $elapsed = null;
+        if ($r['start_date'] && $r['end_date']) {
+            $sd = new DateTime($r['start_date']); $ed = new DateTime($r['end_date']); $span = (int)$sd->diff($ed)->format('%r%a');
+            if ($span > 0) $elapsed = max(0, min(100, ((int)$sd->diff(new DateTime('today'))->format('%r%a')) / $span * 100));
+        }
+        $data[] = ['id' => $id, 'name' => $r['name'], 'progress' => $progress, 'usage_pct' => $lv['usage'], 'gap' => $lv['gap'], 'level' => $lv['level'],
+                   'reasons' => $lv['reasons'], 'cpi' => $lv['cpi'], 'late_days' => $lv['late_days'],
+                   'ai_risk' => $aiMap[$id]['risk_level'] ?? null, 'ai_at' => $aiMap[$id]['created_at'] ?? null,
+                   'budget' => round($budget, 2), 'cost_total' => round($cost, 2), 'cost_material' => round($cm, 2), 'cost_expense' => round($ce, 2),
+                   'cost_subcon' => round($cs, 2), 'elapsed_pct' => $elapsed === null ? null : round($elapsed, 1)];
+    }
+    $order = ['KRITIS' => 0, 'WASPADA' => 1, 'NA' => 2, 'NORMAL' => 3];
+    usort($data, function ($a, $b) use ($order) { return ($order[$a['level']] <=> $order[$b['level']]) ?: (($b['gap'] ?? -999) <=> ($a['gap'] ?? -999)); });
+    out(['success' => true, 'data' => $data, 'thresholds' => ['warn' => HEALTH_WARN_GAP, 'crit' => HEALTH_CRIT_GAP, 'cpi_red' => 0.80, 'cpi_yellow' => 0.90]]);
+    break;
+
+// ============================================================
+// 13. REKOMENDASI AI PER PROYEK (dipanggil saat kartu Kesehatan Proyek diklik / Analisis Ulang)
+//     Param: project_id (wajib), refresh=1 (analisis ulang). Hasil SELALU disimpan ke ai_variance_logs (sumber tunggal dashboard + Pembayaran Termin).
+// ============================================================
+case 'read_project_ai':
+    $pid = (int)($_REQUEST['project_id'] ?? 0);
+    $refresh = (int)($_REQUEST['refresh'] ?? 0) === 1;
+    if ($pid <= 0) out(['success' => false, 'message' => 'project_id wajib diisi.']);
+    try {
+        $result = dash_run_analysis($db, $pid, $refresh, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+        out(['success' => true, 'data' => $result]);
+    } catch (Exception $e) {
+        error_log('[dashboardCRD] project_ai: ' . $e->getMessage());
+        out(['success' => false, 'message' => 'Analisis proyek gagal: ' . $e->getMessage()]);
+    }
     break;
 
 // ============================================================

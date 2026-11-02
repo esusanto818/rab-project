@@ -55,7 +55,7 @@ Ext.onReady(function () {
             return;
         }
         
-        Ext.MessageBox.wait('AI sedang menganalisis varian anggaran & pengeluaran proyek...', 'Mohon Tunggu');
+        Ext.MessageBox.wait('AI sedang menganalisis biaya, progres, jadwal, penagihan, pembelian & subkon proyek...', 'Mohon Tunggu');
 
         ajax({ task: 'analyze_project_variance', project_id: projectId }, function (res) {
             Ext.MessageBox.hide();
@@ -75,6 +75,8 @@ Ext.onReady(function () {
         });
     }
 
+    // [AI-VARIANCE 2026-11-01] Panel ini kini menampilkan analisis yang SAMA dengan panel AI & kartu Kesehatan Proyek di dashboard
+    // (mesin bersama php-func/project.analysis.php, tabel ai_variance_logs): headline, ringkasan, tindakan, hal yang perlu dikonfirmasi, temuan sistem.
     function renderAiResultPanel(d, projectName, append) {
         var risk = String(d.risk_level || 'BELUM DIKETAHUI').toUpperCase();
         var riskColor = '#2e9e4f'; // LOW
@@ -89,19 +91,41 @@ Ext.onReady(function () {
         } else {
             recHtml = '<li>Tidak ada rekomendasi khusus.</li>';
         }
+        var qHtml = '';
+        Ext.each(d.questions || [], function (q) { qHtml += '<li style="margin-bottom:4px;">' + enc(q) + '</li>'; });
+        var findHtml = '';
+        var sevColor = { high: '#e05353', medium: '#e6a817', low: '#2bc1e2' };
+        Ext.each(d.findings || [], function (f) {
+            findHtml += '<div style="border-left:4px solid ' + (sevColor[f.sev] || '#2bc1e2') + '; background:#0b141b; padding:4px 8px; margin-bottom:4px;">' +
+                        '<div style="font-size:12px; font-weight:bold;">' + enc(f.title) + '</div>' +
+                        '<div style="font-size:11px; color:#b7c6cc;">' + enc(f.evidence) + '</div></div>';
+        });
+        var m = d.metrics || {};
+        var metricLine = (m.budget !== undefined && m.budget !== null)
+            ? '<div style="font-size:12px; color:#b7c6cc; margin-bottom:10px;">Budget <b>' + Ext.util.Format.number(m.budget, '0,000') + '</b> &nbsp;|&nbsp; Biaya riil <b>' +
+              Ext.util.Format.number(m.cost_total, '0,000') + '</b> (material ' + Ext.util.Format.number(m.cost_material, '0,000') + ', pengeluaran ' + Ext.util.Format.number(m.cost_expense, '0,000') +
+              ', subkon ' + Ext.util.Format.number(m.cost_subcon, '0,000') + ') &nbsp;|&nbsp; Progres <b>' + enc(m.progress) + '%</b>' +
+              (m.usage_pct !== null && m.usage_pct !== undefined ? ' &nbsp;|&nbsp; Pemakaian <b>' + enc(m.usage_pct) + '%</b>' : '') + '</div>'
+            : '';
+        var srcChip = d.legacy ? 'Format lama (jalankan Analisis Varian AI untuk memperbarui)' : (d.ai_used ? 'Gemini' : 'Analisis sistem') + (d.source ? ' &bull; dari ' + enc(d.source) : '');
 
         var html = '<div class="pp-ai-project" style="margin-top:15px; margin-bottom:20px; background:#111b24; border:1px solid #00bcd4; border-radius:6px; padding:18px; color:#ffffff !important;">' +
                    (projectName ? '<div style="font-weight:bold; color:#b7dce2; margin-bottom:8px;">Proyek: ' + enc(projectName) + '</div>' : '') +
                    '<div style="font-weight:bold; font-size:15px; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">' +
-                   '<span>&#9881; AI Cost &amp; Schedule Variance Analysis</span>' +
+                   '<span>&#9881; AI Cost &amp; Schedule Variance Analysis <span style="font-size:11px; color:#b7c6cc; font-weight:normal;">(' + srcChip + ')</span></span>' +
                    '<span style="background:' + riskColor + '; color:#fff; padding:3px 10px; border-radius:3px; font-size:13px;">RISK: ' + enc(risk) + '</span>' +
                    '</div>' +
+                   (d.headline ? '<div style="font-size:15px; font-style:italic; color:' + riskColor + '; margin-bottom:8px;">' + enc(d.headline) + '</div>' : '') +
+                   metricLine +
                    '<div style="font-size:14px; line-height:22px; margin-bottom:12px; color:#ffffff !important;">' +
                    '<b style="color:#00bcd4;">Ringkasan Eksekutif:</b> ' + enc(d.ai_summary || '-') +
                    '</div>' +
                    '<div style="font-size:14px; line-height:22px; color:#ffffff !important;">' +
                    '<b style="color:#00bcd4;">Rekomendasi Mitigasi:</b>' +
                    '<ul style="margin:6px 0 0 18px; padding:0; color:#ffffff !important;">' + recHtml + '</ul>' +
+                   (qHtml ? '<div style="margin-top:10px;"><b style="color:#e6a817;">Perlu dikonfirmasi:</b><ul style="margin:6px 0 0 18px; padding:0; color:#ffffff !important;">' + qHtml + '</ul></div>' : '') +
+                   (findHtml ? '<div style="margin-top:12px;"><b style="color:#b7c6cc;">Temuan sistem (' + (d.findings || []).length + '):</b><div style="margin-top:6px;">' + findHtml + '</div></div>' : '') +
+                   (d.ai_note ? '<div style="font-size:11px; color:#e6a817; margin-top:8px;">' + enc(d.ai_note) + '</div>' : '') +
                    (d.created_at ? '<div style="font-size:11px; color:#b7c6cc; margin-top:10px;">Analisis terakhir: ' + enc(d.created_at) + '</div>' : '') +
                    '</div></div>';
 

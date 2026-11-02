@@ -1,28 +1,25 @@
 /*
-  Document      : subcon.js
-  Description   : Subkontraktor. Grid utama = daftar SPK; klik baris -> panel detail di bawah grid (ringkasan keuangan, task, prestasi,
-                   pembayaran, jurnal, jejak audit, tombol aksi). Add/Edit membuka editor SPK (header + pembagian nilai ke task proyek).
-                   Prestasi, pembayaran, dan subkon baru memakai dialog (tombol HTML gaya standar).
-                   Alur SPK: Draft -> Diajukan -> Disetujui -> Selesai (Dibatalkan selama belum ada prestasi / pembayaran).
-                   Prestasi : progres kumulatif % per task -> nilai periode - PPh - retensi - potongan uang muka + PPN = nilai bayar.
-                   Edit & Delete SPK hanya untuk status Draft. Dokumen turunan tidak dihapus, hanya Dibatalkan (alasan wajib).
-  Backend       : ../php-crud/subconCRD.php
+Document      : subcon.js
+Description   : Subkontraktor. Grid utama = daftar SPK; klik baris -> panel detail di bawah grid (ringkasan keuangan, task, prestasi,
+pembayaran, jurnal, jejak audit, tombol aksi). Add/Edit membuka editor SPK (header + pembagian nilai ke task proyek).
+Prestasi, pembayaran, dan subkon baru memakai dialog (tombol HTML gaya standar).
+Alur SPK: Draft -> Diajukan -> Disetujui -> Selesai (Dibatalkan selama belum ada prestasi / pembayaran).
+Prestasi : progres kumulatif % per task -> nilai periode - PPh - retensi - potongan uang muka + PPN = nilai bayar.
+Edit  & Delete SPK hanya untuk status Draft. Dokumen turunan tidak dihapus, hanya Dibatalkan (alasan wajib).
+Backend       : ../php-crud/subconCRD.php
 */
 Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Sub<em>kontraktor</em>";
-
     var CRD = main_url + '/php-crud/subconCRD.php';
-
-    var ACCESS_ADD = 2;          // level akses minimal: buat SPK / prestasi / pembayaran
-    var ACCESS_EDIT = 3;         // level akses minimal: ubah, hapus, ganti status, setujui, batalkan
+    var ACCESS_ADD = 2;
+    var ACCESS_EDIT = 3;
     var VEPS = 0.01;
-    var PPN_DEFAULT = 11;        // tarif PPN default bila subkon PKP
-
+    var PPN_DEFAULT = 11;
     var dataRecord = null, editingId = 0, hdrForm = null, hdrForm2 = null;
-    var curDetail = null;        // hasil load_contract terakhir (dipakai dialog)
+    var curDetail = null;
     var fProject, fSub, fTitle, fBud, fValue, fPpn, fPph, fRet, fDp, fStart, fEnd, fScope, fNotes;
-
+    
     function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
     function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
     function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
@@ -30,16 +27,20 @@ Ext.onReady(function () {
     function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
     function ymd(d) { return d ? d.dateFormat('Y-m-d') : ''; }
     function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
+    
     function storeError(proxy, type, action, opt, res) {
         var m = 'Gagal memuat data dari server.';
         if (res && res.message) { m = res.message; } else if (res && res.status) { m += ' (HTTP ' + res.status + ')'; }
         showErr(m);
     }
-    function uiBtn(cls, label, bg, attrs) {      // tombol HTML gaya standar UI (putih tebal, 8px 20px, radius 4px)
+    
+    function uiBtn(cls, label, bg, attrs) {
         return '<button type="button" class="' + cls + '" ' + (attrs || '') + ' style="margin-left:8px;padding:8px 20px;background:' + bg +
                ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;">' + label + '</button>';
     }
+    
     var TEAL = '#066b78', GREY = '#555555', BURG = '#800020';
+    
     function statusColor(v) {
         switch (v) {
             case 'Draft': return '#999999 !important';
@@ -51,8 +52,9 @@ Ext.onReady(function () {
         }
         return '#ffffff !important';
     }
+    
     var ACTION_LABEL = { Diajukan: 'Ajukan', Disetujui: 'Setujui SPK', Draft: 'Kembalikan ke Draft', Selesai: 'Tutup SPK (Selesai)', Dibatalkan: 'Batalkan SPK' };
-
+    
     function ajax(params, onOk) {
         Ext.Ajax.request({
             url: CRD, method: 'POST', params: params,
@@ -64,14 +66,16 @@ Ext.onReady(function () {
             failure: function (r) { showErr('Koneksi ke server gagal (HTTP ' + r.status + ').'); }
         });
     }
+    
     function needAccess(level, msg) {
         if (getFormAccess() < level) { Ext.Msg.alert('Akses Ditolak', msg); return false; }
         return true;
     }
+    
     function reasonPrompt(title, fn) {
         Ext.Msg.prompt(title, 'Alasan (wajib, min. 5 karakter):', function (btn, txt) { if (btn === 'ok') fn(txt); }, this, true);
     }
-
+    
     // ------------------------------------------------------------
     // 0. Panel detail
     // ------------------------------------------------------------
@@ -84,7 +88,7 @@ Ext.onReady(function () {
     dtlDiv.style.overflowY = 'auto';
     var gridContainer = document.getElementById('divMainGrid');
     if (gridContainer && gridContainer.parentNode) { gridContainer.parentNode.insertBefore(dtlDiv, gridContainer.nextSibling); }
-
+    
     function loadDetailPanel(id) {
         ajax({ task: 'load_contract', id: id }, function (res) {
             if (!res.success) { dtlDiv.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message || 'Gagal memuat detail SPK.') + '</div>'; dtlDiv.style.display = 'block'; return; }
@@ -92,10 +96,10 @@ Ext.onReady(function () {
             renderDetail(res.data);
         });
     }
-
+    
     function th(label, align) { return '<th align="' + (align || 'left') + '">' + label + '</th>'; }
     function td(v, align, style) { return '<td align="' + (align || 'left') + '"' + (style ? ' style="' + style + '"' : '') + '>' + v + '</td>'; }
-
+    
     function renderDetail(d) {
         var h = d.header, t = d.totals, tasks = d.tasks || [], prog = d.progress || [], pays = d.payments || [], jr = d.journals || [];
         var html = '<h3 class="detail-title">SPK: ' + enc(h.spk_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3><hr class="detail-hr" />' +
@@ -105,8 +109,7 @@ Ext.onReady(function () {
             ' &nbsp;|&nbsp; Jadwal: ' + enc(h.start_date || '-') + ' s/d ' + enc(h.end_date || '-') + '</div>' +
             '<div style="padding:0 2px 10px 2px;color:#9fc3d1;">PPN ' + h.ppn_rate + '% &nbsp;|&nbsp; PPh final ' + h.pph_rate + '% &nbsp;|&nbsp; Retensi ' + h.retention_pct + '% &nbsp;|&nbsp; Uang muka ' + h.dp_pct + '%' +
             (h.scope ? ' &nbsp;|&nbsp; Lingkup: ' + enc(h.scope) : '') + '</div>';
-
-        // ringkasan keuangan
+        
         html += '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('Nilai Kontrak (DPP)', 'right') + th('Progres Tertagih', 'right') + th('Tertagih (DPP)', 'right') + th('Hutang Prestasi', 'right') + th('Sudah Dibayar', 'right') + th('Sisa Hutang', 'right') +
             th('Uang Muka (bayar / potong / sisa)', 'right') + th('Retensi (ditahan / sisa)', 'right') + '</tr></thead><tbody><tr class="data-row">' +
@@ -114,8 +117,7 @@ Ext.onReady(function () {
             td('<b>' + fmtAmt(t.payable_balance) + '</b>', 'right') +
             td(fmtAmt(t.dp_paid) + ' / ' + fmtAmt(t.dp_recovered) + ' / <b>' + fmtAmt(t.dp_balance) + '</b>', 'right') +
             td(fmtAmt(t.retention) + ' / <b>' + fmtAmt(t.retention_balance) + '</b>', 'right') + '</tr></tbody></table>';
-
-        // task
+        
         html += '<h4 style="margin:14px 0 4px 0;">Pembagian Pekerjaan per Task</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('Task') + th('Jadwal task') + th('Nilai Task (DPP)', 'right') + th('Progres Disetujui', 'right') + th('Nilai Tertagih', 'right') + '</tr></thead><tbody>';
         Ext.each(tasks, function (x) {
@@ -123,8 +125,7 @@ Ext.onReady(function () {
                     td(fmtAmt(x.task_value), 'right') + td(fmtPct(x.cum_pct), 'right') + td(fmtAmt(x.billed_amount), 'right') + '</tr>';
         });
         html += '</tbody></table>';
-
-        // prestasi
+        
         html += '<h4 style="margin:14px 0 4px 0;">Prestasi</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('No.') + th('Tanggal') + th('Progres Kum.', 'right') + th('Nilai (DPP)', 'right') + th('PPN', 'right') + th('PPh', 'right') + th('Retensi', 'right') + th('Pot. Uang Muka', 'right') +
             th('Nilai Bayar', 'right') + th('Dibayar', 'right') + th('Status') + th('Jejak') + th('') + '</tr></thead><tbody>';
@@ -141,8 +142,7 @@ Ext.onReady(function () {
                    (p.cancel_reason ? '<br/>batal: ' + enc(p.cancel_reason) : '') + '</span>') + td(acts, 'right') + '</tr>';
         });
         html += '</tbody></table>';
-
-        // pembayaran
+        
         html += '<h4 style="margin:14px 0 4px 0;">Pembayaran</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('No.') + th('Tanggal') + th('Jenis') + th('Prestasi') + th('Akun Kas/Bank') + th('Referensi') + th('Jumlah', 'right') + th('Status') + th('Jejak') + th('') + '</tr></thead><tbody>';
         if (!pays.length) html += '<tr><td colspan="10" style="padding:12px;text-align:center;color:#557982;">Belum ada pembayaran.</td></tr>';
@@ -155,16 +155,14 @@ Ext.onReady(function () {
                 td(y.status === 'Posted' ? uiBtn('scAct', 'Batal', BURG, 'data-act="cancel_payment" data-id="' + y.id + '"') : '', 'right') + '</tr>';
         });
         html += '</tbody></table>';
-
-        // jejak
+        
         var trail = ['Dibuat: <b>' + enc(h.created_by_name || '-') + '</b> (' + enc(h.created_at) + ')'];
         if (h.approved_at) trail.push('Disetujui: <b>' + enc(h.approved_by_name || '-') + '</b> (' + enc(h.approved_at) + ')');
         if (h.closed_at) trail.push('Ditutup: <b>' + enc(h.closed_by_name || '-') + '</b> (' + enc(h.closed_at) + ')');
         if (h.cancelled_at) trail.push('Dibatalkan: <b>' + enc(h.cancelled_by_name || '-') + '</b> (' + enc(h.cancelled_at) + ') - ' + enc(h.cancel_reason || ''));
         html += '<div style="margin-top:12px;color:#9fc3d1;">' + trail.join(' &nbsp;|&nbsp; ') + '</div>';
         if (jr.length) html += '<div style="margin-top:6px;color:#9fc3d1;">Jurnal terkait: ' + Ext.pluck(jr, 'ref_no').join(', ') + '</div>';
-
-        // tombol aksi
+        
         var btns = '';
         Ext.each(d.allowed_actions || [], function (to) {
             btns += uiBtn('scAct', enc(ACTION_LABEL[to] || to), to === 'Dibatalkan' ? BURG : (to === 'Draft' ? GREY : TEAL), 'data-act="status" data-to="' + enc(to) + '"');
@@ -175,7 +173,7 @@ Ext.onReady(function () {
         if ((h.status === 'Disetujui' || h.status === 'Selesai') && t.payable_balance > VEPS) btns += uiBtn('scAct', 'Bayar Prestasi', GREY, 'data-act="pay_progress"');
         if (h.status === 'Selesai' && t.retention_balance > VEPS) btns += uiBtn('scAct', 'Lepas Retensi', GREY, 'data-act="pay_retention"');
         if (btns) html += '<div style="margin-top:15px;text-align:right;">' + btns + '</div>';
-
+        
         dtlDiv.innerHTML = html;
         dtlDiv.style.display = 'block';
         var els = dtlDiv.querySelectorAll('.scAct');
@@ -183,9 +181,9 @@ Ext.onReady(function () {
             els[i].onclick = function () { onAction(this.getAttribute('data-act'), parseInt(this.getAttribute('data-id'), 10) || 0, this.getAttribute('data-to')); };
         }
     }
-
+    
     function refreshAll(id) { mainDs.load(); loadDetailPanel(id); updateMainButtons(); }
-
+    
     function onAction(act, id, to) {
         var h = curDetail.header;
         if (act === 'status') {
@@ -222,7 +220,7 @@ Ext.onReady(function () {
             if (needAccess(ACCESS_ADD, 'Anda tidak memiliki hak akses untuk membuat pembayaran.')) openPayment(act === 'pay_dp' ? 'DP' : (act === 'pay_progress' ? 'PROGRESS' : 'RETENSI'));
         }
     }
-
+    
     // ------------------------------------------------------------
     // 1. Stores & grid utama
     // ------------------------------------------------------------
@@ -240,8 +238,7 @@ Ext.onReady(function () {
         reader: rdr([{ name: 'id' }, { name: 'label' }, { name: 'remaining', type: 'float' }]), listeners: { exception: storeError }
     });
     var accDs = new Ext.data.Store({ url: CRD, baseParams: { task: 'list_accounts' }, reader: rdr([{ name: 'id' }, { name: 'label' }]), listeners: { exception: storeError } });
-
-    mainDs = new Ext.data.Store({       // assignment polos (konvensi search box template)
+    mainDs = new Ext.data.Store({
         url: CRD, baseParams: { task: 'list_contracts' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, [
             { name: 'id' }, { name: 'spk_no' }, { name: 'project_id' }, { name: 'project_name' }, { name: 'subcontractor_name' }, { name: 'title' }, { name: 'status' },
@@ -251,7 +248,7 @@ Ext.onReady(function () {
         listeners: { exception: storeError }
     });
     mainDs.load();
-
+    
     var mainHeight = Math.round(GridMainHeight * 0.6);
     var gridMain = new Ext.grid.GridPanel({
         store: mainDs, renderTo: 'divMainGrid', height: mainHeight,
@@ -280,7 +277,7 @@ Ext.onReady(function () {
             }
         }
     });
-
+    
     function updateMainButtons() {
         mainBtnEnable('#addData');
         if (dataRecord && dataRecord.status === 'Draft') { mainBtnEnable('#editData'); mainBtnEnable('#deleteData'); }
@@ -288,7 +285,7 @@ Ext.onReady(function () {
     }
     editDataDisable();
     updateMainButtons();
-
+    
     // ------------------------------------------------------------
     // 2. Editor SPK: header + pembagian ke task
     // ------------------------------------------------------------
@@ -296,7 +293,6 @@ Ext.onReady(function () {
     var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, taskField) });
     var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });
     itemDs.on('remove', function () { updateSummary(); });
-
     var itemGrid = new stdGridEditor({
         selModel: editorDeleter, store: itemDs, renderTo: 'editorFormGrid',
         viewConfig: { forceFit: true, scrollOffset: 0 }, height: 240,
@@ -320,7 +316,7 @@ Ext.onReady(function () {
         listeners: { afteredit: function () { updateSummary(); } }
     });
     itemGrid.addClass('x-grid3-gridEditor');
-
+    
     (function injectExtraUI() {
         var g = document.getElementById('editorFormGrid');
         if (!g || document.getElementById('scHdrForm')) return;
@@ -333,7 +329,7 @@ Ext.onReady(function () {
         sum.style.cssText = 'padding:10px 14px;margin-top:8px;font-size:13px;text-align:right;background:#1f2d3a;color:#ffffff !important;border-radius:4px;';
         g.parentNode.insertBefore(sum, g.nextSibling);
     })();
-
+    
     function updateSummary() {
         var el = document.getElementById('scSummary');
         if (!el || !fValue) return;
@@ -343,13 +339,13 @@ Ext.onReady(function () {
         el.innerHTML = 'Nilai kontrak (DPP) <b>' + fmtAmt(val) + '</b> &nbsp;|&nbsp; PPN <b>' + fmtAmt(ppn) + '</b> &nbsp;|&nbsp; Total + PPN <b>' + fmtAmt(val + ppn) + '</b> &nbsp;|&nbsp; ' +
             'Terbagi ke task <b>' + fmtAmt(sum) + '</b> &nbsp;|&nbsp; Selisih <b style="color:' + (ok ? '#7fe0a0' : '#ff6b5e') + ';">' + fmtAmt(diff) + (ok ? ' (OK)' : ' (harus 0)') + '</b>';
     }
-
+    
     function ensureForm() {
         if (hdrForm) { hdrForm.doLayout(); hdrForm2.doLayout(); return; }
         fProject = new myComboField({ fieldLabel: 'Proyek', store: projectDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%',
             listeners: { select: function () { onProjectChange(); } } });
         fSub = new myComboField({ fieldLabel: 'Subkontraktor', store: subDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%',
-            listeners: { select: function (c, rec) {      // default tarif dari master subkon: PPh dari master, PPN 11% bila PKP
+            listeners: { select: function (c, rec) {
                 fPph.setValue(rec.get('pph_rate'));
                 var pkp = rec.get('is_pkp'); fPpn.setValue((pkp === true || pkp === 't' || pkp === 'true') ? PPN_DEFAULT : 0);
                 updateSummary();
@@ -370,17 +366,17 @@ Ext.onReady(function () {
             items: [col(0.36, [fProject, fSub, fTitle, fBud]), col(0.30, [fValue, fPpn, fPph]), col(0.34, [fRet, fDp, fStart, fEnd])] });
         hdrForm2 = new Ext.form.FormPanel({ renderTo: 'scHdrForm2', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:0 2px 4px 2px;',
             items: [col(0.5, [fScope]), col(0.5, [fNotes])] });
-
         var bar = document.getElementById('scAddBar');
         bar.getElementsByClassName('scBtnAddRow')[0].onclick = function () { itemDs.add(newTaskRec()); updateSummary(); };
         bar.getElementsByClassName('scBtnSplit')[0].onclick = splitEvenly;
         bar.getElementsByClassName('scBtnNewSub')[0].onclick = openSubcontractor;
     }
-
+    
     function newTaskRec(cfg) {
         var Rec = itemDs.recordType || Ext.data.Record.create(taskField);
         return new Rec(Ext.apply({ task_id: null, task_name: '', task_value: 0, jadwal: '', notes: '' }, cfg || {}));
     }
+    
     function splitEvenly() {
         var n = itemDs.getCount(), val = parseFloat(fValue.getValue()) || 0;
         if (!n || val <= 0) { showErr('Isi nilai kontrak dan tambahkan baris task terlebih dahulu.'); return; }
@@ -388,6 +384,7 @@ Ext.onReady(function () {
         itemDs.each(function (r, i) { var v = (i === n - 1) ? round2(val - used) : each; used += v; r.set('task_value', v); });
         updateSummary();
     }
+    
     function onProjectChange() {
         itemDs.removeAll(); fBud.clearValue(); fBud.setValue(0);
         var pid = fProject.getValue();
@@ -396,15 +393,19 @@ Ext.onReady(function () {
         budDs.load({ params: { project_id: pid, contract_id: editingId || 0 } });
         updateSummary();
     }
+    
     function showEditor(title) {
         var addWdw = document.getElementById('addWdw'); if (addWdw) addWdw.style.display = 'none';
         document.getElementById('editorWdw').style.display = 'block';
         document.getElementById('editorFormHeaderText').innerHTML = '&nbsp;&nbsp;' + enc(title);
         ensureForm();
     }
+    
     function loadMasters(cb) { projectDs.load({ callback: function () { subDs.load({ callback: cb }); } }); }
-
-    // ---- dialog subkontraktor baru
+    
+    // ============================================================
+    // [FIX] DIALOG SUBKONTRAKTOR BARU - PERBAIKAN TOMBOL SIMPAN
+    // ============================================================
     function openSubcontractor() {
         var fN = new Ext.form.TextField({ fieldLabel: 'Nama', anchor: '95%', allowBlank: false });
         var fNp = new Ext.form.TextField({ fieldLabel: 'NPWP', anchor: '95%' });
@@ -413,25 +414,83 @@ Ext.onReady(function () {
         var fBn = new Ext.form.TextField({ fieldLabel: 'Bank', anchor: '95%' });
         var fBa = new Ext.form.TextField({ fieldLabel: 'No. Rekening', anchor: '95%' });
         var fPp = new Ext.form.NumberField({ fieldLabel: 'PPh Final default (%)', decimalPrecision: 2, value: 2.65, width: 90 });
+        
         var win = new Ext.Window({
             title: 'Subkontraktor Baru', width: 460, height: 380, modal: true, layout: 'fit',
             items: new Ext.form.FormPanel({ border: false, labelWidth: 130, bodyStyle: 'padding:12px;', items: [fN, fNp, fPk, fPh, fBn, fBa, fPp] }),
             bbar: ['->', { xtype: 'tbtext', text: uiBtn('scSubSave', 'Simpan', TEAL) + uiBtn('scSubCancel', 'Batal', BURG) }]
         });
         win.show();
-        document.getElementById('scSubCancel').onclick = function () { win.close(); };
-        document.getElementById('scSubSave').onclick = function () {
-            var p = { task: 'save_subcontractor', name: fN.getValue(), npwp_no: fNp.getValue(), is_pkp: fPk.getValue(), phone: fPh.getValue(),
-                      bank_name: fBn.getValue(), bank_account_no: fBa.getValue(), pph_rate: fPp.getValue() || 0 };
-            if (!p.name) { showErr('Nama subkontraktor wajib diisi.'); return; }
-            ajax(p, function (res) {
-                if (!res.success) { showErr(res.message || 'Gagal menyimpan subkontraktor.'); return; }
-                win.close();
-                subDs.load({ callback: function () { if (fSub) { fSub.setValue(res.data.id); var r = subDs.getById(res.data.id); if (r) { fPph.setValue(r.get('pph_rate')); } } } });
-            });
-        };
+        
+        // [FIX] Gunakan querySelector (class) bukan getElementById (id)
+        // Karena uiBtn() membuat tombol dengan class, bukan id
+        setTimeout(function() {
+            var btnSave = document.querySelector('.scSubSave');
+            var btnCancel = document.querySelector('.scSubCancel');
+            
+            if (btnCancel) {
+                btnCancel.onclick = function () { win.close(); };
+            } else {
+                console.error('[Subcon] Tombol Batal tidak ditemukan di DOM!');
+            }
+            
+            if (btnSave) {
+                btnSave.onclick = function () {
+                    var name = fN.getValue();
+                    var npwp = fNp.getValue();
+                    var pkp = fPk.getValue();
+                    var phone = fPh.getValue();
+                    var bankName = fBn.getValue();
+                    var bankAcc = fBa.getValue();
+                    var pphRate = fPp.getValue() || 0;
+                    
+                    // Validasi
+                    if (!name || name.trim() === '') {
+                        showErr('Nama subkontraktor wajib diisi.');
+                        return;
+                    }
+                    
+                    // Kirim ke backend
+                    var params = { 
+                        task: 'save_subcontractor', 
+                        name: name.trim(), 
+                        npwp_no: npwp ? npwp.trim() : '', 
+                        is_pkp: pkp, 
+                        phone: phone ? phone.trim() : '',
+                        bank_name: bankName ? bankName.trim() : '', 
+                        bank_account_no: bankAcc ? bankAcc.trim() : '', 
+                        pph_rate: pphRate 
+                    };
+                    
+                    console.log('[Subcon] Menyimpan subkontraktor:', params);
+                    
+                    ajax(params, function (res) {
+                        console.log('[Subcon] Response:', res);
+                        if (!res.success) { 
+                            showErr(res.message || 'Gagal menyimpan subkontraktor.'); 
+                            return; 
+                        }
+                        win.close();
+                        // Reload store subkontraktor dan auto-select yang baru
+                        subDs.load({ 
+                            callback: function () { 
+                                if (fSub && res.data && res.data.id) { 
+                                    fSub.setValue(res.data.id); 
+                                    var r = subDs.getById(res.data.id); 
+                                    if (r) { 
+                                        fPph.setValue(r.get('pph_rate')); 
+                                    } 
+                                } 
+                            } 
+                        });
+                    });
+                };
+            } else {
+                console.error('[Subcon] Tombol Simpan tidak ditemukan di DOM!');
+            }
+        }, 100);
     }
-
+    
     // ------------------------------------------------------------
     // 3. Dialog prestasi
     // ------------------------------------------------------------
@@ -444,7 +503,7 @@ Ext.onReady(function () {
         if (net < 0) { dp = Math.max(0, round2(dp + net)); net = round2(gross + ppn - pph - ret - dp); }
         return { ppn: ppn, pph: pph, ret: ret, dp: dp, net: net };
     }
-
+    
     function openProgress(contractId, progressId) {
         ajax({ task: 'progress_prepare', contract_id: contractId, progress_id: progressId }, function (res) {
             if (!res.success) { showErr(res.message || 'Gagal memuat data prestasi.'); return; }
@@ -455,12 +514,10 @@ Ext.onReady(function () {
             pds.loadData(res);
             pds.each(function (r) { r.set('amount', round2(r.get('task_value') * (r.get('cum_pct') - r.get('prev_pct')) / 100)); });
             pds.commitChanges();
-
             var fDt = new Ext.form.DateField({ fieldLabel: 'Tanggal Prestasi', format: 'd/m/Y', width: 130, allowBlank: false,
                 value: existing ? Date.parseDate(existing.progress_date, 'Y-m-d') : new Date() });
             var fEv = new Ext.form.TextField({ fieldLabel: 'Bukti (no. BA / foto / link)', anchor: '95%', value: existing ? (existing.evidence_ref || '') : '' });
             var fRm = new Ext.form.TextField({ fieldLabel: 'Catatan', anchor: '95%', value: existing ? (existing.remark || '') : '' });
-
             function recalc() {
                 var gross = 0, weighted = 0;
                 pds.each(function (r) { gross += r.get('amount'); weighted += r.get('task_value') * r.get('cum_pct') / 100; });
@@ -518,7 +575,7 @@ Ext.onReady(function () {
             };
         });
     }
-
+    
     // ------------------------------------------------------------
     // 4. Dialog pembayaran
     // ------------------------------------------------------------
@@ -529,7 +586,6 @@ Ext.onReady(function () {
         var progOpts = [];
         Ext.each(d.progress, function (p) { if (p.status === 'Disetujui' && round2(p.net_payable - p.paid_amount) > VEPS) progOpts.push([p.id, p.ref_no + ' - sisa ' + fmtAmt(round2(p.net_payable - p.paid_amount)), round2(p.net_payable - p.paid_amount)]); });
         if (type === 'PROGRESS' && !progOpts.length) { showErr('Tidak ada prestasi disetujui yang masih punya sisa hutang.'); return; }
-
         var fDt = new Ext.form.DateField({ fieldLabel: 'Tanggal Bayar', format: 'd/m/Y', width: 130, allowBlank: false, value: new Date() });
         var fAc = new Ext.form.ComboBox({ fieldLabel: 'Akun Kas / Bank', store: accDs, displayField: 'label', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%' });
         var fPr = new Ext.form.ComboBox({ fieldLabel: 'Prestasi', store: new Ext.data.ArrayStore({ fields: ['id', 'label', 'sisa'], data: progOpts }), displayField: 'label', valueField: 'id',
@@ -561,7 +617,7 @@ Ext.onReady(function () {
             };
         } });
     }
-
+    
     // ------------------------------------------------------------
     // 5. Handler tombol template
     // ------------------------------------------------------------
@@ -570,14 +626,14 @@ Ext.onReady(function () {
         fRet.setValue(0); fDp.setValue(0); fStart.setValue(''); fEnd.setValue(''); fScope.setValue(''); fNotes.setValue('');
         taskDs.removeAll(); budDs.removeAll(); itemDs.removeAll(); updateSummary();
     }
-
+    
     document.getElementById('addData').onclick = function () {
         if (!needAccess(ACCESS_ADD, 'Anda tidak memiliki hak akses untuk membuat SPK.')) return;
         editingId = 0;
         showEditor('SPK Subkontraktor Baru');
         loadMasters(function () { fillEmpty(); itemDs.add(newTaskRec()); });
     };
-
+    
     document.getElementById('editData').onclick = function () {
         if (!dataRecord) { showErr('Pilih SPK terlebih dahulu dari tabel.'); return; }
         if (dataRecord.status !== 'Draft') { showErr('Hanya SPK berstatus Draft yang dapat diubah.'); return; }
@@ -607,7 +663,7 @@ Ext.onReady(function () {
             });
         });
     };
-
+    
     document.getElementById('saveEdit').onclick = function () {
         if (!fProject.getValue()) { showErr('Proyek wajib dipilih.'); return; }
         if (!fSub.getValue()) { showErr('Subkontraktor wajib dipilih.'); return; }
@@ -617,7 +673,7 @@ Ext.onReady(function () {
         var arr = [], sum = 0;
         itemDs.each(function (r) {
             var v = parseFloat(r.get('task_value')) || 0;
-            if (v <= 0 && !r.get('task_id') && !r.get('task_name')) return;      // baris kosong diabaikan
+            if (v <= 0 && !r.get('task_id') && !r.get('task_name')) return;
             sum += v;
             arr.push({ task_id: r.get('task_id') || 0, task_name: r.get('task_name') || '', task_value: v, notes: r.get('notes') || '' });
         });
@@ -626,7 +682,7 @@ Ext.onReady(function () {
             task: 'save_contract', id: editingId, project_id: fProject.getValue(), subcontractor_id: fSub.getValue(), title: fTitle.getValue(),
             budget_item_id: fBud.getValue() || 0, contract_value: val, ppn_rate: fPpn.getValue() || 0, pph_rate: fPph.getValue() || 0,
             retention_pct: fRet.getValue() || 0, dp_pct: fDp.getValue() || 0, start_date: ymd(fStart.getValue()), end_date: ymd(fEnd.getValue()),
-            scope: fScope.getValue(), notes: fNotes.getValue(), tasks: Ext.util.JSON.encode(arr)     // detail bertingkat -> JSON via POST
+            scope: fScope.getValue(), notes: fNotes.getValue(), tasks: Ext.util.JSON.encode(arr)
         }, function (res) {
             if (res.success) {
                 document.getElementById('editorWdw').style.display = 'none';
@@ -638,7 +694,7 @@ Ext.onReady(function () {
             }
         });
     };
-
+    
     document.getElementById('deleteData').onclick = function () {
         if (!dataRecord || dataRecord.status !== 'Draft') { showErr('Pilih SPK berstatus Draft terlebih dahulu. SPK lain dapat dibatalkan dari panel detail.'); return; }
         if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses untuk menghapus SPK.')) return;
@@ -650,10 +706,11 @@ Ext.onReady(function () {
             });
         });
     };
-
+    
     document.getElementById('popOK').onclick = function () {
         document.getElementById('popWdw').style.display = 'none';
         if (document.getElementById('popCancel')) { document.getElementById('popCancel').style.display = 'none'; }
     };
+    
     document.getElementById('editorWdw').style.display = 'none';
 });

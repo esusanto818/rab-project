@@ -2,11 +2,7 @@
   Document      : bin.location.js
   Description   : Master Bin Location (Lokasi Rak per Gudang) - WMS
                   Cascading Store & Filter Bin Location base on Warehouse
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/bin.locationCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/bin.locationCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -55,11 +51,7 @@ Ext.onReady(function () {
 
     // Store Warehouse Master
     var warehouseDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-        url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [{ name: 'id' }, { name: 'name' }])
     });
@@ -67,11 +59,7 @@ Ext.onReady(function () {
 
     // Store Bin Location Cascading (Filtered by Warehouse)
     var binByWarehouseDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-        url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_bin_by_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
             { name: 'id' }, { name: 'code' }, { name: 'name' }, { name: 'zone' }, { name: 'rack' }, { name: 'level' }
@@ -80,11 +68,7 @@ Ext.onReady(function () {
 
     // Main Store Grid
     var mainDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-        url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
         idProperty: 'id',
         baseParams: { task: 'read' },
         reader: new Ext.data.JsonReader({ root: 'data' }, binField)
@@ -146,11 +130,7 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     function loadBinDetail(binId, binCode, warehouseName) {
         Ext.Ajax.request({
-<<<<<<< Updated upstream
             url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-            url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
             method: 'POST',
             params: { task: 'read_bin_detail', bin_id: binId },
             success: function (response) {
@@ -340,11 +320,7 @@ Ext.onReady(function () {
                 Ext.Msg.confirm('Konfirmasi Hapus', "Hapus Bin Location '" + dataRecord.code + "'?", function (btn) {
                     if (btn === 'yes') {
                         Ext.Ajax.request({
-<<<<<<< Updated upstream
                             url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-                            url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
                             method: 'POST',
                             params: { task: 'delete', id: dataRecord.id },
                             success: function (response) {
@@ -382,11 +358,7 @@ Ext.onReady(function () {
             var currentId = (task === 'update' && dataRecord) ? dataRecord.id : null;
 
             Ext.Ajax.request({
-<<<<<<< Updated upstream
                 url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-                url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
                 method: 'POST',
                 params: {
                     task: task,

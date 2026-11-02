@@ -1,11 +1,7 @@
 /*
   Document      : m.fiscalconfig.js
   Description   : Fiscal Config - Grid + Detail View + Editor Form
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/fiscalconfigCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/fiscalconfigCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {

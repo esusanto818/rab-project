@@ -707,3 +707,67 @@ function RecalcGrnStatus($grn_hdr_id) {
 
     return $status;
 }
+function mpCallChatGPT($prompt, $timeout = 30) {
+    // 1. Masukkan API Key OpenAI Anda di sini (atau via Environment Variable)
+    $apiKey = getenv('OPENAI_API_KEY') ?: 'sk-proj-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Morbi quis orci molestie elit scelerisque cursus.';
+    
+    // 2. Pilih model ChatGPT (gpt-4o-mini sangat cepat, murah, dan pintar)
+    $model = 'gpt-4o-mini'; 
+    
+    // 3. Endpoint Resmi OpenAI
+    $apiUrl = "https://api.openai.com/v1/chat/completions";
+
+    // 4. Payload dengan System Prompt yang MEMAKSA Bahasa Indonesia
+    $payload = [
+        'model' => $model,
+        'messages' => [
+            [
+                'role' => 'system',
+                'content' => 'Anda adalah asisten AI ahli manajemen proyek konstruksi di Indonesia. ATURAN WAJIB: 1) Berikan SELURUH respons dalam BAHASA INDONESIA yang baik dan benar. 2) Jangan gunakan bahasa Mandarin atau Inggris. 3) Selalu berikan respons dalam format JSON yang valid tanpa teks pembuka/penutup di luar JSON.'
+            ],
+            [
+                'role' => 'user',
+                'content' => $prompt
+            ]
+        ],
+        // Memaksa model untuk mengeluarkan output JSON murni
+        'response_format' => [
+            'type' => 'json_object'
+        ],
+        'temperature' => 0.3 // Rendah agar hasil analisis lebih konsisten dan faktual
+    ];
+
+    $ch = curl_init($apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $apiKey
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    // 5. Handle Error
+    if ($httpCode !== 200) {
+        $errorMsg = $curlError ? $curlError : $response;
+        throw new Exception("Gagal terhubung ke OpenAI API (HTTP {$httpCode}): {$errorMsg}");
+    }
+
+    // 6. Parse Respons
+    $apiResult = json_decode($response, true);
+    
+    if (isset($apiResult['choices'][0]['message']['content'])) {
+        $raw = $apiResult['choices'][0]['message']['content'];
+        // Bersihkan tag markdown ```json ... ``` jika model tetap mengeluarkannya
+        return trim(str_replace(['```json', '```'], '', $raw));
+    }
+
+    // Fallback jika struktur respons berubah atau ada error dari sisi OpenAI
+    $errMsg = $apiResult['error']['message'] ?? 'Format respons tidak dikenali';
+    throw new Exception("Error dari OpenAI API: {$errMsg}");
+}

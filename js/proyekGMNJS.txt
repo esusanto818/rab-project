@@ -4,11 +4,7 @@
 /*
   Document      : financial_balance_sheet.js
   Description   : Balance Sheet (Neraca Keuangan) - Read-only report
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/balancesheetCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/balancesheetCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -198,11 +194,7 @@ Ext.onReady(function () {
   Document      : bin.location.js
   Description   : Master Bin Location (Lokasi Rak per Gudang) - WMS
                   Cascading Store & Filter Bin Location base on Warehouse
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/bin.locationCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/bin.locationCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -251,11 +243,7 @@ Ext.onReady(function () {
 
     // Store Warehouse Master
     var warehouseDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-        url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [{ name: 'id' }, { name: 'name' }])
     });
@@ -263,11 +251,7 @@ Ext.onReady(function () {
 
     // Store Bin Location Cascading (Filtered by Warehouse)
     var binByWarehouseDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-        url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_bin_by_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
             { name: 'id' }, { name: 'code' }, { name: 'name' }, { name: 'zone' }, { name: 'rack' }, { name: 'level' }
@@ -276,11 +260,7 @@ Ext.onReady(function () {
 
     // Main Store Grid
     var mainDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-        url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
         idProperty: 'id',
         baseParams: { task: 'read' },
         reader: new Ext.data.JsonReader({ root: 'data' }, binField)
@@ -342,11 +322,7 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     function loadBinDetail(binId, binCode, warehouseName) {
         Ext.Ajax.request({
-<<<<<<< Updated upstream
             url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-            url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
             method: 'POST',
             params: { task: 'read_bin_detail', bin_id: binId },
             success: function (response) {
@@ -536,11 +512,7 @@ Ext.onReady(function () {
                 Ext.Msg.confirm('Konfirmasi Hapus', "Hapus Bin Location '" + dataRecord.code + "'?", function (btn) {
                     if (btn === 'yes') {
                         Ext.Ajax.request({
-<<<<<<< Updated upstream
                             url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-                            url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
                             method: 'POST',
                             params: { task: 'delete', id: dataRecord.id },
                             success: function (response) {
@@ -578,11 +550,7 @@ Ext.onReady(function () {
             var currentId = (task === 'update' && dataRecord) ? dataRecord.id : null;
 
             Ext.Ajax.request({
-<<<<<<< Updated upstream
                 url: '/rab-project/dev/php-crud/bin.locationCRD.php',
-=======
-                url: '/rab-project/live/php-crud/bin.locationCRD.php',
->>>>>>> Stashed changes
                 method: 'POST',
                 params: {
                     task: task,
@@ -622,11 +590,7 @@ Ext.onReady(function () {
   Document      : stock.transfer.js
   Description   : Stock Transfer (Pindah Stok Antar Gudang/Bin) - WMS
                   Perbaikan: Buang BBar, Detail View Panel di Bawah, Header Angka Rata Kanan.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/stock.transferCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/stock.transferCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -673,11 +637,7 @@ Ext.onReady(function () {
 
     function loadTransferDetail(transferId, transferNo) {
         Ext.Ajax.request({
-<<<<<<< Updated upstream
             url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-            url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
             method: 'POST',
             params: { task: 'read_detail_items', transfer_id: transferId },
             success: function (response) {
@@ -760,52 +720,32 @@ Ext.onReady(function () {
     var itemComboField = [{ name: 'id' }, { name: 'name' }];
 
     var warehouseDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-        url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, warehouseField)
     });
     warehouseDs.load();
 
     var binFromDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-        url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_bin_by_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, binField)
     });
     var binToDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-        url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_bin_by_warehouse' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, binField)
     });
 
     var gradeDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-        url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_grade' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, gradeField)
     });
     gradeDs.load();
 
     var itemComboDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-        url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
         baseParams: { task: 'read_item_combo' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, itemComboField)
     });
@@ -815,11 +755,7 @@ Ext.onReady(function () {
     });
 
     var mainDs = new Ext.data.Store({
-<<<<<<< Updated upstream
         url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-        url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
         idProperty: 'id',
         baseParams: { task: 'read' },
         reader: new Ext.data.JsonReader({ root: 'data' }, transferField)
@@ -972,11 +908,7 @@ Ext.onReady(function () {
         var itemId = record.get('item_id');
         if (!itemId || !fldWarehouseFrom.getValue()) return;
         Ext.Ajax.request({
-<<<<<<< Updated upstream
             url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-            url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
             method: 'POST',
             params: {
                 task: 'check_stock',
@@ -1006,11 +938,7 @@ Ext.onReady(function () {
 
         itemGrid.el.mask('Memuat stok lokasi asal...', 'x-mask-loading');
         Ext.Ajax.request({
-<<<<<<< Updated upstream
             url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-            url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
             method: 'POST',
             params: {
                 task: 'read_stock_by_location',
@@ -1152,11 +1080,7 @@ Ext.onReady(function () {
                 Ext.Msg.confirm('Konfirmasi Hapus', "Hapus transfer '" + dataRecord.transfer_no + "'? Stok akan dikembalikan ke lokasi asal.", function (btn) {
                     if (btn === 'yes') {
                         Ext.Ajax.request({
-<<<<<<< Updated upstream
                             url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-                            url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
                             method: 'POST',
                             params: { task: 'delete', id: dataRecord.id },
                             success: function (response) {
@@ -1213,11 +1137,7 @@ Ext.onReady(function () {
             }
 
             frmEditor.getForm().submit({
-<<<<<<< Updated upstream
                 url: '/rab-project/dev/php-crud/stock.transferCRD.php',
-=======
-                url: '/rab-project/live/php-crud/stock.transferCRD.php',
->>>>>>> Stashed changes
                 method: 'POST',
                 params: {
                     task: 'create',
@@ -1267,11 +1187,7 @@ Ext.onReady(function () {
                                           jenis kurs default, dasar kurs laba rugi, awal tahun fiskal, desimal
                    4. Dokumen           : footer & penandatangan + pratinjau kop dokumen
                   Transaksi (RAB, PO, dst) boleh multi currency; laporan keuangan final mengacu ke tab Keuangan.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/settingsCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/settingsCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -2614,11 +2530,7 @@ Ext.onReady(function() {
 /*
   Document      : stock_card.js
   Description   : Monitoring Kartu Stok (Stock Card) - Read-only report
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/stock.cardCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/stock.cardCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -3071,11 +2983,7 @@ Ext.onReady(function () {
   Document      : m.trialbalance.js
   Description   : Trial Balance - Rekap saldo semua akun per periode,
                    dengan indikator total Debit = Kredit.
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/trialbalanceCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/trialbalanceCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -4370,11 +4278,7 @@ Ext.onReady(function() {
 /*
   Document      : m.fiscalperiod.js
   Description   : Fiscal Period - Grid + Add Form + Close/Reopen action
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/m.fiscalperiodCRD.php (tabel accounting_periods)
-=======
-  Backend       : /rab-project/live/php-crud/m.fiscalperiodCRD.php (tabel accounting_periods)
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -5576,11 +5480,7 @@ Ext.onReady(function() {
 /*
   Document      : m.fiscalconfig.js
   Description   : Fiscal Config - Grid + Detail View + Editor Form
-<<<<<<< Updated upstream
   Backend       : /rab-project/dev/php-crud/fiscalconfigCRD.php
-=======
-  Backend       : /rab-project/live/php-crud/fiscalconfigCRD.php
->>>>>>> Stashed changes
 */
 
 Ext.onReady(function () {
@@ -5901,11 +5801,7 @@ Ext.onReady(function () {
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
 =======
         <link rel="stylesheet" type="text/css" href="/rab-project/live/css/header.black.css" />
->>>>>>> Stashed changes
         <style>
-            #editorForm {top: 50%; width: 90%; height: auto !important; min-height: 480px !important; max-height: 85vh !important; overflow-y: auto !important;}
-            #addFormHeaderText, #editorFormHeaderText{font-size: 1.3rem;text-align: center;}
-        </style>
 <<<<<<< Updated upstream
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
 =======

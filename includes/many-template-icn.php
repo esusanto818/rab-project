@@ -1,6 +1,11 @@
-<?php $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/"); ?>
-<link rel="shortcut icon" href="<?=$B?>/assets/logo512.png" type="image/x-icon">
-<link rel="icon" href="<?=$B?>/favicon.ico" type="image/x-icon">
+<?php 
+$B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");  
+$favVer = date('YmdHis');
+
+?>
+<link rel="shortcut icon" href="<?=$B?>/favicon.ico?v=<?=$favVer?>" type="image/x-icon">
+<link rel="icon" href="<?=$B?>/favicon.ico?v=<?=$favVer?>" type="image/x-icon">
+<link rel="apple-touch-icon" href="<?=$B?>/favicon.ico?v=<?=$favVer?>">
 <link rel="stylesheet" type="text/css" href="<?=$B?>/ext-3.4.1/resources/css/ext-all.css">
 <!-- <link rel="stylesheet" type="text/css" href="<?=$B?>/css/ext-all.css"> -->
 <link rel="stylesheet" type="text/css" href="<?=$B?>/css/ButtonColumn.css">

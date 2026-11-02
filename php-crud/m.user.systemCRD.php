@@ -17,8 +17,6 @@ $dataArray     = json2Array($itemInfoParam);
 $CheckItemNum  = (empty($dataArray)) ? "[0]" : "[" . $dataArray . "]";
 $CheckItemChar = (empty($dataArray)) ? "['0']" : "[" . $dataArray . "]";
 
-
-
 // Tangkap task secara fleksibel dari POST maupun REQUEST
 $task = $_POST['task'] ?? $_REQUEST['task'] ?? '';
 $db   = new crud();
@@ -169,7 +167,6 @@ switch ($task) {
     case ('add'):
         $employeeId = intval($_POST["employee_id"] ?? $_POST["name"] ?? 0);
 
-        // Validasi Foreign Key Karyawan
         if ($employeeId <= 0) {
             echo json_encode([
                 "success" => "false", 
@@ -179,12 +176,15 @@ switch ($task) {
             exit;
         }
 
+        $rawPassword = trim($_POST["password"] ?? '');
+        $hashedPassword = !empty($rawPassword) ? password_hash($rawPassword, PASSWORD_DEFAULT, ['cost' => 12]) : '';
+
         $queryC = '';
         $table  = "m_user_system";
         $data   = array(
             "login_name"  => checksinglequote($_POST["login_name"] ?? ''),
             "employee_id" => $employeeId,
-            "password"    => EncodeData($_POST["password"] ?? ''),
+            "password"    => $hashedPassword,
             "active"      => ($_POST["u_active"] === 'true' || $_POST["active"] === 'true') ? 'true' : 'false'
         );
         $queryC .= insertQ($table, $data) . ";";
@@ -193,11 +193,9 @@ switch ($task) {
         $data  = array("user_id" => "currval('m_user_system_id_seq'::regclass)");
         $queryC .= insertQ($table, $data) . ";";
 
-        // Insert Detail Hak Akses Menu (baris dari gridEditor saat New User)
         $formAccessPayload = $_POST['form_access'] ?? $_POST['arrForm'] ?? null;
 
         if (!empty($formAccessPayload)) {
-            // Bersihkan quote escape dari ExtJS
             $cleanJson = stripslashes($formAccessPayload);
             $dataForm  = json_decode($cleanJson, true);
 
@@ -233,7 +231,6 @@ switch ($task) {
         $employeeId = intval($_POST["employee_id"] ?? $_POST["name"] ?? 0);
 
         if ($userId > 0) {
-            // Proteksi Fallback: Ambil employee_id dari DB jika nilainya 0
             if ($employeeId <= 0) {
                 $checkStmt = $db->prepare("SELECT employee_id FROM m_user_system WHERE id = :id");
                 $checkStmt->execute(['id' => $userId]);
@@ -252,7 +249,6 @@ switch ($task) {
                 exit;
             }
 
-            // A. Update Master Header User System
             $table = "m_user_system";
             $data  = array(
                 "login_name"  => checksinglequote($_POST["login_name"] ?? ''),
@@ -261,17 +257,15 @@ switch ($task) {
             );
             
             if (!empty($_POST["password"])) {
-                $data["password"] = EncodeData($_POST["password"]);
+                $data["password"] = password_hash(trim($_POST["password"]), PASSWORD_DEFAULT, ['cost' => 12]);
             }
 
             $where = "id = " . $userId;
             $queryC .= updateQ($table, $data, $where) . ";";
 
-            // B. Update / Insert Detail Hak Akses Menu
             $formAccessPayload = $_POST['form_access'] ?? $_POST['arrForm'] ?? null;
 
             if (!empty($formAccessPayload)) {
-                // Bersihkan quote escape dari ExtJS
                 $cleanJson = stripslashes($formAccessPayload);
                 $dataForm  = json_decode($cleanJson, true);
 
@@ -284,18 +278,12 @@ switch ($task) {
                         $accessLvl = intval($row['access_level'] ?? 1);
 
                         if ($accessId > 0) {
-                            // Update Detail Hak Akses Eksisting
                             $keepAccessIds[] = $accessId;
                             $tableD = "m_user_access_menu";
                             $dataD  = array("access_level" => $accessLvl);
                             $whereD = "id = " . $accessId;
                             $queryC .= updateQ($tableD, $dataD, $whereD) . ";";
                         } else if ($formId > 0) {
-                            // Insert Detail Hak Akses Baru
-                            // PENTING: dieksekusi langsung (di luar batch $queryC) dengan RETURNING id,
-                            // supaya id barunya diketahui dan bisa dimasukkan ke $keepAccessIds SEBELUM
-                            // statement DELETE cleanup di bawah dibangun. Kalau tidak, baris baru ini
-                            // akan langsung ikut terhapus oleh DELETE ... id NOT IN (...) pada batch yang sama.
                             $insStmt = $db->prepare(
                                 "INSERT INTO m_user_access_menu (user_id, form_id, access_level) VALUES (:uid, :fid, :lvl) RETURNING id"
                             );
@@ -311,7 +299,6 @@ switch ($task) {
                         }
                     }
 
-                    // Hapus Detail Menu yang Dibuang/Dihapus pada Grid Editor
                     if (!empty($keepAccessIds)) {
                         $idsString = implode(',', $keepAccessIds);
                         $queryC .= "DELETE FROM m_user_access_menu WHERE user_id = " . $userId . " AND id NOT IN (" . $idsString . ");";

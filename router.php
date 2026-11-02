@@ -167,8 +167,11 @@ try {
         echo $htmlOutput;
         exit;
     } else {
-        http_response_code(404);
-        die("Error 404: File <b>" . htmlspecialchars($cleanFileName) . "</b> tidak ditemukan pada lokasi server.");
+        //http_response_code(404);
+        //die("Error 404: File <b>" . htmlspecialchars($cleanFileName) . "</b> tidak ditemukan pada lokasi server.");
+         // Alihkan langsung ke index.html jika file view tidak ditemukan
+        header("Location: /rab-project/dev/index.php");
+        exit;
     }
 
 } catch (Exception $e) {
