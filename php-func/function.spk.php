@@ -55,7 +55,18 @@ function SpkMaterialQuota($projectId, $excludeSpkId = 0) {
                      GROUP BY i.material_id", array($projectId, $excludeSpkId)) as $r) { $oth[(int)$r['material_id']] = (float)$r['q']; }
 
     // Stok fisik inventory: saldo IN - OUT pada seluruh gudang aktif.
-    // Batas qty SPK tidak boleh melampaui kuota pembayaran/RAB maupun stok fisik yang tersedia.
+    // Kurangi sisa qty yang sudah dipesan oleh SPK aktif lain agar satu stok tidak dihitung berulang.
+    $stockReserved = array();
+    foreach (WhRows("SELECT si.material_id, SUM(GREATEST(si.qty - COALESCE(u.used_qty,0),0)) AS reserved_qty
+                     FROM spk_items si JOIN spk s ON s.id=si.spk_id
+                     LEFT JOIN (SELECT h.spk_id, i.material_id, SUM(i.qty_out) AS used_qty
+                                FROM material_out_items i JOIN material_out_header h ON h.id=i.material_out_id
+                                WHERE h.status='posted' AND h.spk_id IS NOT NULL GROUP BY h.spk_id, i.material_id) u
+                       ON u.spk_id=s.id AND u.material_id=si.material_id
+                     WHERE s.project_id=$1 AND s.status='Diterbitkan' AND s.id<>$2
+                     GROUP BY si.material_id", array($projectId, $excludeSpkId)) as $rr) {
+        $stockReserved[(int)$rr['material_id']] = (float)$rr['reserved_qty'];
+    }
     $stock = array();
     foreach (WhRows("SELECT bal.item_id AS material_id, SUM(GREATEST(bal.onhand,0)) AS onhand
                      FROM (SELECT sm.item_id, sm.warehouse_id,
@@ -74,10 +85,13 @@ function SpkMaterialQuota($projectId, $excludeSpkId = 0) {
         $cap = round($rq * $pay['allowed_pct'] / 100.0, 4);
         $a = isset($act[$mid]) ? $act[$mid] : 0.0; $o = isset($oth[$mid]) ? $oth[$mid] : 0.0;
         $quotaAvailable = max(0, round($cap - $a - $o, 4));
-        $stockAvailable = isset($stock[$mid]) ? round($stock[$mid], 4) : 0.0;
+        $stockOnHand = isset($stock[$mid]) ? (float)$stock[$mid] : 0.0;
+        $reservedStock = isset($stockReserved[$mid]) ? (float)$stockReserved[$mid] : 0.0;
+        $stockAvailable = max(0, round($stockOnHand - $reservedStock, 4));
         $out[$mid] = array('material_id' => $mid, 'material_code' => $r['material_code'], 'material_name' => $r['material_name'],
                            'unit' => $r['unit'], 'rab_qty' => round($rq, 4), 'cap_qty' => $cap,
                            'spk_active' => round($a, 4), 'issued_other' => round($o, 4),
+                           'stock_onhand' => round($stockOnHand, 4), 'stock_reserved' => round($reservedStock, 4),
                            'stock_available' => $stockAvailable,
                            'quota_available' => $quotaAvailable,
                            'available' => min($quotaAvailable, $stockAvailable));
