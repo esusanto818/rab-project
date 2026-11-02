@@ -57,14 +57,16 @@ function SpkMaterialQuota($projectId, $excludeSpkId = 0) {
     // Stok fisik inventory: saldo IN - OUT pada seluruh gudang aktif.
     // Kurangi sisa qty yang sudah dipesan oleh SPK aktif lain agar satu stok tidak dihitung berulang.
     $stockReserved = array();
-    foreach (WhRows("SELECT si.material_id, SUM(GREATEST(si.qty - COALESCE(u.used_qty,0),0)) AS reserved_qty
-                     FROM spk_items si JOIN spk s ON s.id=si.spk_id
+    foreach (WhRows("SELECT r.material_id, SUM(GREATEST(r.reserved_qty - COALESCE(u.used_qty,0),0)) AS reserved_qty
+                     FROM (SELECT s.id AS spk_id, s.project_id, si.material_id, SUM(si.qty) AS reserved_qty
+                           FROM spk_items si JOIN spk s ON s.id=si.spk_id
+                           WHERE s.project_id=$1 AND s.status='Diterbitkan' AND s.id<>$2
+                           GROUP BY s.id, s.project_id, si.material_id) r
                      LEFT JOIN (SELECT h.spk_id, i.material_id, SUM(i.qty_out) AS used_qty
                                 FROM material_out_items i JOIN material_out_header h ON h.id=i.material_out_id
                                 WHERE h.status='posted' AND h.spk_id IS NOT NULL GROUP BY h.spk_id, i.material_id) u
-                       ON u.spk_id=s.id AND u.material_id=si.material_id
-                     WHERE s.project_id=$1 AND s.status='Diterbitkan' AND s.id<>$2
-                     GROUP BY si.material_id", array($projectId, $excludeSpkId)) as $rr) {
+                       ON u.spk_id=r.spk_id AND u.material_id=r.material_id
+                     GROUP BY r.material_id", array($projectId, $excludeSpkId)) as $rr) {
         $stockReserved[(int)$rr['material_id']] = (float)$rr['reserved_qty'];
     }
     $stock = array();
