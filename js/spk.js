@@ -91,7 +91,7 @@ Ext.onReady(function () {
     }
 
     function renderDetailPanel(d) {
-        var h = d.header, pay = d.pay, items = d.items || [];
+        var h = d.header, pay = d.pay, items = d.items || [], tasks = d.tasks || [];
         var btns = actionBtn('spkPrintBtn', 'Cetak SPK', '#2e6da4');
         if (h.status === 'Draft') { btns += actionBtn('spkIssueBtn', 'Terbitkan SPK', '#03615e'); }
         if (h.status === 'Diterbitkan') { btns += actionBtn('spkCloseBtn', 'Tutup SPK (Selesai)', '#555555'); }
@@ -103,6 +103,9 @@ Ext.onReady(function () {
                    '<div style="padding:4px 2px 6px 2px;">Tanggal: <b>' + enc(h.spk_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Klien: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Mandor: <b>' + enc(h.foreman || '-') + '</b>' +
                    (h.description ? ' &nbsp;|&nbsp; Uraian: ' + enc(h.description) : '') + '</div>' +
+                   '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;"><b>Task Proyek dalam SPK</b><ul style="margin:6px 0 2px 18px;">' +
+                   (tasks.length ? tasks.map(function(t){ return '<li>' + enc(t.task_name) + ' <span style="color:#9fc3d1;">(' + enc(t.status || 'Belum Mulai') + ')</span></li>'; }).join('') : '<li>Belum ada task terhubung.</li>') +
+                   '</ul></div>' +
                    '<div style="padding:4px 10px; margin-bottom:8px; background:rgba(15,113,194,0.18); border-radius:3px;">Pembayaran proyek: <b>' + fmtAmt(pay.paid_amount) +
                    '</b> dari kontrak <b>' + fmtAmt(pay.contract_value) + '</b> (<b>' + fmtPct(pay.paid_pct) + '</b>) &rarr; batas material saat ini <b>' + fmtPct(pay.allowed_pct) +
                    '</b> dari qty RAB (dibayar x 2).</div>' +
