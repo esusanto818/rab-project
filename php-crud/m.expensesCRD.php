@@ -8,11 +8,23 @@ Description   : Backend CRUD Master Expense (sama pola dengan m.materialsCRD.php
                 - delete: soft-delete (set active=false)
 Backend class : crud (PDO wrapper)
 */
-require_once __DIR__ . '/../php-func/function.all.php';
+// Gunakan pemeriksaan login dan hak akses menu yang sama dengan modul lain.
+require_once __DIR__ . '/../php-func/user.valid.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
+
+$access = (int)($_SESSION['FormAccess'] ?? 0);
+
+function exp_require_access($minimum, $message) {
+    $current = (int)($_SESSION['FormAccess'] ?? 0);
+    if ($current < $minimum) {
+        exp_send(false, [], $message);
+    }
+}
 
 $task = $_REQUEST['task'] ?? '';
 $db = new crud();
@@ -107,12 +119,16 @@ try {
         case 'save':
         case 'create':
             $id = (int)($_POST['id'] ?? 0);
+            exp_require_access($id > 0 ? 3 : 2, $id > 0
+                ? 'Anda tidak memiliki hak akses untuk mengubah Master Expense.'
+                : 'Anda tidak memiliki hak akses untuk menambah Master Expense.');
             $code = trim((string)($_POST['expense_code'] ?? ''));
             $name = trim((string)($_POST['expense_name'] ?? ''));
             $category = trim((string)($_POST['category'] ?? ''));
             $unit = trim((string)($_POST['unit'] ?? ''));
             $price = round((float)($_POST['default_price'] ?? 0), 2);
-            $active = ($_POST['is_active'] === 'true' || $_POST['is_active'] === '1' || $_POST['is_active'] === true);
+            $rawActive = $_POST['is_active'] ?? 'false';
+            $active = in_array((string)$rawActive, ['true', '1', 't', 'on'], true);
 
             // Validasi
             if ($code === '') exp_send(false, [], 'Kode Expense wajib diisi.');
@@ -174,6 +190,7 @@ try {
          * DELETE - Soft delete (set active = false)
          * -------------------------------------------------------------- */
         case 'delete':
+            exp_require_access(4, 'Anda tidak memiliki hak akses untuk menonaktifkan Master Expense.');
             $id = (int)($_POST['id'] ?? 0);
             if ($id <= 0) exp_send(false, [], 'ID expense tidak valid.');
 
