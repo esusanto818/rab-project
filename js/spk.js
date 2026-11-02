@@ -385,7 +385,7 @@ Ext.onReady(function () {
                 if (avail <= 0) { skippedNoQuota++; return; }
                 itemDs.add(new itemDs.recordType({
                     material_id: m.material_id, material_code: m.material_code, material_name: m.material_name, unit: m.unit,
-                    rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, available: avail, qty: avail, notes: ''
+                    rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, stock_available: parseFloat(m.stock_available) || 0, quota_available: parseFloat(m.quota_available) || 0, available: avail, qty: avail, notes: ''
                 }));
                 added++;
             });
