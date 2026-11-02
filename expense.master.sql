@@ -16,6 +16,12 @@ CREATE TABLE IF NOT EXISTS expense_master (
     updated_at TIMESTAMP
 );
 
+/* Audit columns used by php-crud/m.expensesCRD.php.
+   Safe for existing installations: rerunning this migration is idempotent. */
+ALTER TABLE expense_master
+    ADD COLUMN IF NOT EXISTS created_by INTEGER,
+    ADD COLUMN IF NOT EXISTS updated_by INTEGER;
+
 CREATE INDEX idx_expense_master_category ON expense_master(category);
 CREATE INDEX idx_expense_master_active ON expense_master(active);
 
