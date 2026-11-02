@@ -1,10 +1,15 @@
 (function () {
 'use strict';
-<<<<<<< Updated upstream
-var endpoint = '/rab-project/dev/php-crud/m.proyekCRD.php';
-=======
-var endpoint = '/rab-project/live/php-crud/m.proyekCRD.php';
->>>>>>> Stashed changes
+var path = window.location.pathname || '';
+var marker = path.indexOf('/views/');
+var appBase = marker >= 0 ? path.substring(0, marker) : '';
+if (!appBase) {
+    var scriptSrc = (document.currentScript && document.currentScript.src) || '';
+    var scriptPath = scriptSrc.replace(window.location.origin, '');
+    var scriptMarker = scriptPath.indexOf('/views/');
+    appBase = scriptMarker >= 0 ? scriptPath.substring(0, scriptMarker) : '';
+}
+var endpoint = appBase + '/php-crud/m.proyekCRD.php';
 var mode = window.PROJECT_PRINT_MODE || 'projects';
 var projectId = parseInt(window.PROJECT_PRINT_ID, 10) || 0;
 var content = document.getElementById('content');
