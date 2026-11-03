@@ -714,7 +714,7 @@ BEGIN
                 qty_origin, qty_available, unit, condition_note, storage_location,
                 status, detected_date, created_by, parent_lot_id
             ) VALUES (
-                left(NEW.transaction_no || '-LOT', 50),
+                left(NEW.transaction_no, 25) || '-' || NEW.id::text || '-LOT',
                 v_lot.project_id, v_lot.spk_id, v_lot.work_item_id, v_lot.supply_id, v_lot.material_id,
                 v_lot.source_owner_type, v_lot.source_subcontractor_id,
                 v_new_owner, v_new_subcon,
