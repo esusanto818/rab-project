@@ -329,7 +329,7 @@ Ext.onReady(function () {
             var row = null;
             rabItemDs.each(function (r) { if (String(r.id) === String(rowKey)) row = r; });
             if (!row) return;
-            var idx = expenseDs.find('id', target.value);
+            var idx = expenseDs.findBy(function (rec) { return String(rec.get('id')) === String(target.value); });
             if (idx < 0) return;
             var ex = expenseDs.getAt(idx);
             row.set('expense_id', parseInt(ex.get('id'), 10));
