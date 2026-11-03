@@ -1,30 +1,51 @@
-# DDL Subcontract Management
+# DDL Subcontract Management — schema aktual
 
-## Isi
-File `database/subcontract_management_ddl.sql` adalah migrasi additive untuk fondasi database Subcontract Management.
+## Basis
+Disesuaikan dengan tiga export database yang diberikan pada 3 November 2026:
+- `rab-schema.md`
+- `columns_202611030804.csv`
+- `vw_table_relations_202611030759.csv`
 
-## Urutan
-1. Backup database dan restore ke staging.
-2. Pastikan migration SPK/RAB Task Allocation PR #4 sudah diputuskan. DDL ini mereferensikan `project_tasks` dan `budget_items`; jika PR #4 belum diterapkan, jalankan dan uji migration PR #4 terlebih dahulu.
-3. Jalankan file DDL ini pada staging.
-4. Jalankan pemeriksaan pasca-migrasi yang tercantum di bagian akhir SQL.
-5. Isi relasi `subcon_contracts.spk_id` untuk kontrak lama setelah pemetaan SPK diverifikasi manual.
-6. Uji SPK INTERNAL tanpa material, SPK SUBCON, klaim kuantitas, inspeksi parsial, sertifikat, invoice, dan transaksi material sisa.
-7. Jangan jalankan di production sebelum export schema aktual dan uji integrasi PHP/inventory/journal selesai.
+## File utama
+`database/subcontract_management_ddl.sql`
 
-## Keputusan desain yang diterapkan
-- Satu master SPK untuk INTERNAL dan SUBCON.
-- `spk_items` tidak diubah; tetap untuk izin pengeluaran material gudang.
-- `spk_work_items` menjadi lingkup pekerjaan dan kuantitas kontrak.
-- Klaim kuantitas dipisahkan dari hasil inspeksi.
-- Pembayaran hanya boleh berasal dari kuantitas yang lolos inspeksi dan disetujui.
-- Invoice ditautkan ke sertifikat pembayaran.
-- Material sisa mempertahankan pemilik asal; perpindahan kepemilikan harus melalui transaksi pembelian/penjualan terdokumentasi.
+## Penyesuaian terhadap schema aktual
+- ID `spk`, `projects`, `project_tasks`, `budget_items`, `subcontractors`, dan tabel Subcon existing menggunakan `integer`; kolom relasi baru mengikuti tipe tersebut.
+- Menggunakan tabel existing `spk_tasks` sebagai relasi SPK-task yang sudah tersedia. `spk_work_items` adalah detail kuantitas dan harga lingkup pekerjaan, bukan pengganti `spk_tasks`.
+- `subcon_contract_tasks` dipertahankan dan ditautkan ke `spk_work_items` melalui `work_item_id`; kolom legacy tidak dihapus.
+- `subcon_progress` tetap menjadi header klaim; detail klaim kuantitas baru ditambahkan di `subcon_progress_qty_items`.
+- `subcon_invoices` tetap dipakai dan ditautkan ke payment certificate. Dua tabel pembayaran existing tidak diubah agar tidak mencampur dua jalur posting sebelum rekonsiliasi.
+- `material_leftover_header/items` adalah dokumen inventory existing. Register kepemilikan material sisa dibuat terpisah pada `spk_material_leftover_lots` dan `spk_material_leftover_transactions`; ini mencegah material milik Subcon otomatis masuk stok perusahaan.
+- `spk_items` tidak diubah dan tetap untuk otorisasi issue material gudang. Relasi `material_out_header.spk_id` tetap dipertahankan.
 
-## Batasan yang masih harus divalidasi
-DDL ini dibuat dari definisi SQL yang ada di repository, bukan hasil dump schema database production. ID type dan relasi mengikuti file migration yang diperiksa. Sebelum production, cocokkan dengan schema export aktual, terutama tabel `project_tasks`, `budget_items`, `materials`, `subcontractors`, `subcon_progress`, dan `subcon_invoices`.
+## Urutan pelaksanaan
+1. Backup database, lalu restore ke staging.
+2. Pastikan branch/migration SPK Task Allocation yang relevan sudah dipasang dan diuji. Schema export sudah menunjukkan `spk_tasks` tersedia.
+3. Jalankan SQL dalam satu transaksi di staging.
+4. Jalankan query pemeriksaan di akhir SQL.
+5. Mapping data kontrak lama: isi `subcon_contracts.spk_id` setelah SPK, proyek, dan Subcon diverifikasi.
+6. Mapping setiap `subcon_contract_tasks` ke `spk_work_items` melalui `work_item_id`.
+7. Uji SPK INTERNAL tanpa material, SPK SUBCON, klaim qty, inspeksi parsial, sertifikat, invoice, dan transaksi material sisa.
+8. Uji posting inventory dan jurnal melalui workflow aplikasi existing; jangan membuat stock movement/jurnal kedua.
+9. Baru setelah lulus staging, siapkan rencana deployment production dan rollback.
 
-DDL belum membuat jurnal atau mutasi stok secara otomatis. Ini disengaja agar tidak membuat jurnal ganda atau melewati mekanisme inventory yang sudah berjalan. Aturan agregat lintas baris (akumulasi qty, batas sertifikasi, invoice dan pembayaran) harus dikunci dan divalidasi di layer transaksi aplikasi; trigger tambahan dibuat setelah skema production dikonfirmasi.
+## Alur data yang didukung
+1. SPK INTERNAL atau SUBCON dibuat pada master `spk`.
+2. Lingkup pekerjaan, volume, harga, task, dan item RAB disimpan pada `spk_work_items`.
+3. Kontrak Subcon ditautkan ke SPK melalui `subcon_contracts.spk_id`; rincian kontrak lama ditautkan melalui `subcon_contract_tasks.work_item_id`.
+4. Progress Subcon diajukan dalam kuantitas melalui `subcon_progress_qty_items`.
+5. Inspeksi menyimpan qty diperiksa, lolos, ditolak, dan rework.
+6. Sertifikat hanya boleh mengambil kuantitas dari inspeksi berstatus APPROVED.
+7. Invoice existing ditautkan ke sertifikat yang sudah APPROVED.
+8. Pembayaran tetap melalui jalur existing setelah dipilih dan direkonsiliasi oleh implementasi aplikasi.
+9. Material sisa dicatat per lot dengan pemilik asal dan pemilik saat ini. Perubahan kepemilikan dicatat melalui transaksi BUY_FROM_SUBCON atau SELL_TO_CLIENT.
+
+## Batasan dan kontrol wajib
+- SQL ini bersifat additive dan tidak menghapus tabel atau kolom existing.
+- Belum memindahkan data historis progress berbasis persen ke kuantitas.
+- Belum memilih salah satu dari `subcon_payments` dan `subcon_invoice_payments` sebagai satu-satunya jalur pembayaran. Keduanya harus direkonsiliasi lebih dahulu.
+- Trigger ownership mengubah register lot ketika transaksi berubah ke POSTED; posting penerimaan/pengeluaran stok harus dilakukan aplikasi melalui modul inventory existing dalam transaksi database yang sama.
+- Trigger dasar memvalidasi referensi dan batas per baris. Agregasi kumulatif lintas klaim, approval certificate header, invoice balance, payment balance, dan concurrency perlu validasi aplikasi serta pengujian transaksi sebelum production.
 
 ## Status
-Draft DDL untuk staging review. Belum dijalankan pada database, belum diuji runtime PostgreSQL, dan belum mengubah branch `main`.
+Revisi berbasis schema export aktual. Belum dieksekusi pada database dan belum diuji runtime PostgreSQL. Tetap di branch terpisah; tidak mengubah `main`.
