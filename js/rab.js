@@ -27,7 +27,7 @@ Ext.onReady(function () {
     
     // Category tabs
     var CATEGORIES = ['Material', 'Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];
-    var CATEGORY_ICONS = { 'Material': '📦', 'Upah': '👷', 'Peralatan': '🔧', 'Transport': '🚛', 'Lain-lain': '📋' };
+    var CATEGORY_ICONS = { 'Material': '📦', 'Upah': '👷', 'Peralatan': '🔧', 'Transport': '🚛', 'Konsumsi': '🍱', 'Lain-lain': '📋' };
     
     // Container
     var gridContainer = document.getElementById('divMainGrid');
@@ -510,6 +510,7 @@ Ext.onReady(function () {
             if (cat === 'Material' && (!materialId && qty <= 0)) return;
             if (cat !== 'Material' && qty <= 0) return;
             if (cat === 'Material' && (!materialId || qty <= 0)) { hasInvalidRow = true; return; }
+            if (cat !== 'Material' && !(parseInt(r.get('expense_id'), 10) > 0)) { hasInvalidRow = true; return; }
             if (cat === 'Material') {
                 if (materialSet[materialId]) duplicateFound = true; else materialSet[materialId] = true;
             }
@@ -521,7 +522,7 @@ Ext.onReady(function () {
             if (isUp) flagged.push(item);
             arrItems.push(item);
         });
-        if (hasInvalidRow) { Ext.Msg.alert('Peringatan', 'Ada baris Material yang belum lengkap.'); return; }
+        if (hasInvalidRow) { Ext.Msg.alert('Peringatan', 'Ada baris Material atau Expense yang belum dipilih lengkap. Pilih item dari Master Expense untuk kategori non-Material.'); return; }
         if (duplicateFound) { Ext.Msg.alert('Peringatan', 'Terdapat duplikasi material.'); return; }
         var chk = plafonCheck(total);
         if (chk.block) { Ext.Msg.alert('Melebihi Plafon', chk.block); return; }
