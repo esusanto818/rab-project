@@ -654,3 +654,75 @@ COMMIT;
 -- 4. Aggregate cumulative claims/accepted quantities, certificate header totals,
 --    invoice balance and payment balance still require transactional application
 --    validation and concurrency tests before production.
+
+
+-- ================================================================
+-- 10. Ownership transfer lot-splitting correction.
+-- A partial purchase/sale must transfer ONLY the transacted quantity.
+-- The untransferred balance keeps its current owner. A child lot records
+-- the transferred quantity and retains the original source owner.
+-- ================================================================
+ALTER TABLE public.spk_material_leftover_lots
+    ADD COLUMN IF NOT EXISTS parent_lot_id bigint;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='fk_spk_leftover_parent_lot') THEN
+        ALTER TABLE public.spk_material_leftover_lots
+            ADD CONSTRAINT fk_spk_leftover_parent_lot
+            FOREIGN KEY (parent_lot_id)
+            REFERENCES public.spk_material_leftover_lots(id) ON DELETE RESTRICT;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS ix_spk_leftover_parent_lot
+    ON public.spk_material_leftover_lots(parent_lot_id);
+
+CREATE OR REPLACE FUNCTION public.fn_post_spk_leftover_transaction()
+RETURNS trigger AS $$
+DECLARE
+    v_lot public.spk_material_leftover_lots%ROWTYPE;
+    v_new_owner varchar(10);
+    v_new_subcon integer;
+BEGIN
+    IF NEW.status='POSTED' AND OLD.status IS DISTINCT FROM 'POSTED' THEN
+        SELECT * INTO v_lot
+          FROM public.spk_material_leftover_lots
+         WHERE id=NEW.leftover_lot_id
+         FOR UPDATE;
+
+        IF NOT FOUND OR v_lot.qty_available < NEW.qty THEN
+            RAISE EXCEPTION 'Qty lot tidak cukup atau sudah berubah.';
+        END IF;
+
+        UPDATE public.spk_material_leftover_lots
+           SET qty_available = qty_available - NEW.qty,
+               status = CASE
+                   WHEN qty_available - NEW.qty = 0 THEN 'EXHAUSTED'
+                   ELSE 'PARTIAL'
+               END
+         WHERE id=NEW.leftover_lot_id;
+
+        IF NEW.transaction_type IN ('BUY_FROM_SUBCON','SELL_TO_CLIENT') THEN
+            v_new_owner := NEW.buyer_type;
+            v_new_subcon := NEW.buyer_subcontractor_id;
+
+            INSERT INTO public.spk_material_leftover_lots (
+                lot_no, project_id, spk_id, work_item_id, supply_id, material_id,
+                source_owner_type, source_subcontractor_id,
+                current_owner_type, current_subcontractor_id,
+                qty_origin, qty_available, unit, condition_note, storage_location,
+                status, detected_date, created_by, parent_lot_id
+            ) VALUES (
+                left(NEW.transaction_no || '-LOT', 50),
+                v_lot.project_id, v_lot.spk_id, v_lot.work_item_id, v_lot.supply_id, v_lot.material_id,
+                v_lot.source_owner_type, v_lot.source_subcontractor_id,
+                v_new_owner, v_new_subcon,
+                NEW.qty, NEW.qty, v_lot.unit, v_lot.condition_note, v_lot.storage_location,
+                'AVAILABLE', NEW.transaction_date, NEW.posted_by, v_lot.id
+            );
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
