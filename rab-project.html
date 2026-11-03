@@ -1,0 +1,408 @@
+<?php
+// index.php - RAB-PROJECT ERP Landing Page
+?>
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAB-PROJECT | Sistem ERP Proyek Konstruksi & Pengendalian Biaya Real-Time</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#0f172a',
+                            darker: '#020617',
+                            cyan: '#22d3ee',
+                            blue: '#3b82f6',
+                            purple: '#a855f7',
+                            pink: '#ec4899',
+                            green: '#10b981',
+                            orange: '#f97316'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        .gradient-text {
+            background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 50%, #a855f7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text-2 {
+            background: linear-gradient(135deg, #10b981 0%, #22d3ee 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .mockup-window {
+            background: #090d16;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+        .mockup-titlebar {
+            background: #0f172a;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .mockup-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .mockup-dot.red { background: #ef4444; }
+        .mockup-dot.yellow { background: #f59e0b; }
+        .mockup-dot.green { background: #10b981; }
+        .mockup-title {
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-left: 8px;
+        }
+        .mock-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        .mock-table th {
+            background: rgba(30, 41, 59, 0.6);
+            color: #94a3b8;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .mock-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            color: #cbd5e1;
+        }
+        .badge-aktif {
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-size: 9px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body class="bg-brand-darker text-slate-100 font-sans antialiased overflow-x-hidden">
+
+    <!-- Navbar -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-cyan to-brand-blue flex items-center justify-center font-bold text-slate-900 font-display text-xl">R</div>
+                <span class="font-display font-bold text-xl tracking-wider text-white">RAB-<span class="text-brand-cyan">PROJECT</span></span>
+            </div>
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+                <a href="#hero" class="hover:text-brand-cyan transition">Beranda</a>
+                <a href="#dashboard" class="hover:text-brand-cyan transition">Dashboard</a>
+                <a href="#features" class="hover:text-brand-cyan transition">Fitur AI</a>
+                <a href="#financial" class="hover:text-brand-cyan transition">Keuangan</a>
+                <a href="#comparison" class="hover:text-brand-cyan transition">Perbandingan</a>
+            </nav>
+            <div class="flex items-center gap-4">
+                <a href="#contact" class="bg-gradient-to-r from-brand-cyan to-brand-blue hover:opacity-90 text-slate-950 font-bold px-5 py-2.5 rounded-lg text-sm transition transform hover:scale-105">Konsultasi Demo</a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="hero" class="pt-32 pb-20 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-6 text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-brand-cyan text-xs font-semibold uppercase tracking-wider mb-8 border border-brand-cyan/20">
+                <span class="w-2 h-2 rounded-full bg-brand-cyan animate-ping"></span>
+                ERP Konstruksi Generasi Baru dengan AI
+            </div>
+            <h1 class="font-display text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
+                Kendalikan <span class="gradient-text">Biaya Proyek</span>,<br>
+                Cegah Kebocoran Anggaran Real-Time.
+            </h1>
+            <p class="text-slate-400 text-lg md:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
+                Platform terpadu untuk Manajemen RAB, Pengadaan Material, Monitoring Milestone, hingga Laporan Keuangan Otomatis. Dilengkapi kecerdasan AI untuk analisis risiko kebocoran stok & biaya.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#dashboard" class="bg-gradient-to-r from-brand-cyan to-brand-blue text-slate-950 font-bold px-8 py-4 rounded-xl shadow-lg hover:shadow-brand-cyan/20 transition transform hover:-translate-y-1">Lihat Dashboard Preview</a>
+                <a href="#comparison" class="glass hover:bg-slate-800 text-white font-semibold px-8 py-4 rounded-xl border border-slate-700 transition">Mengapa Pilih RAB-PROJECT?</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- DASHBOARD PREVIEW SECTION -->
+    <section id="dashboard" class="py-20 bg-gradient-to-b from-brand-darker to-brand-dark">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-brand-cyan text-sm font-bold tracking-widest mb-3">DASHBOARD MONITORING</div>
+                <h2 class="font-display text-3xl md:text-5xl font-bold mb-4">
+                    Satu Layar untuk <span class="gradient-text">Semua Keputusan</span>
+                </h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Dashboard eksekutif real-time yang menggabungkan financial aging, profitabilitas, monitoring material, dan AI milestone dalam satu tampilan.</p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8 mb-8">
+                <!-- Financial Aging Analysis -->
+                <div class="mockup-window">
+                    <div class="mockup-titlebar">
+                        <div class="mockup-dot red"></div><div class="mockup-dot yellow"></div><div class="mockup-dot green"></div>
+                        <div class="mockup-title">FINANCIAL AGING ANALYSIS</div>
+                    </div>
+                    <div class="p-4">
+                        <table class="mock-table">
+                            <thead>
+                                <tr><th>Kategori</th><th>&lt;30 Hari</th><th>31-60</th><th>61-90</th><th>&gt;90</th><th>Total</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="color: #a855f7; font-weight: bold;">Piutang (AR)</td>
+                                    <td>265.000.000</td><td style="color: #f39c12;">0</td><td style="color: #f39c12;">0</td><td style="color: #ef4444;">0</td>
+                                    <td style="color: #10b981; font-weight: bold;">265.000.000</td>
+                                </tr>
+                                <tr>
+                                    <td style="color: #ec4899; font-weight: bold;">Hutang (AP)</td>
+                                    <td>274.336.500</td><td style="color: #f39c12;">0</td><td style="color: #f39c12;">0</td><td style="color: #ef4444;">0</td>
+                                    <td style="color: #f39c12; font-weight: bold;">274.336.500</td>
+                                </tr>
+                                <tr style="background: rgba(34, 211, 238, 0.05);">
+                                    <td style="font-weight: bold;">Netto (AR-AP)</td>
+                                    <td>-9.336.500</td><td>0</td><td>0</td><td>0</td>
+                                    <td style="font-weight: bold;">-9.336.500</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="text-center mt-3 text-xs text-slate-500">Umur dihitung otomatis dari tanggal tempo invoice</div>
+                    </div>
+                </div>
+
+                <!-- Profitabilitas Proyek -->
+                <div class="mockup-window">
+                    <div class="mockup-titlebar">
+                        <div class="mockup-dot red"></div><div class="mockup-dot yellow"></div><div class="mockup-dot green"></div>
+                        <div class="mockup-title">PROFITABILITAS PROYEK (MARGIN)</div>
+                    </div>
+                    <div class="p-4">
+                        <table class="mock-table">
+                            <thead>
+                                <tr><th>Proyek</th><th>Kontrak</th><th>Spent</th><th>Margin %</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td>Renovasi Gedung Kantor Pusat</td><td>Rp 1.250.000.000</td><td>Rp 1.150.000.000</td><td style="color: #ef4444; font-weight: bold;">8.0%</td></tr>
+                                <tr><td>Pembangunan Ruko Grand Blok C</td><td>Rp 900.000.000</td><td>Rp 320.000.000</td><td style="color: #10b981; font-weight: bold;">64.4%</td></tr>
+                                <tr><td>Pembangunan Gudang Logistik Sidoarjo</td><td>Rp 900.000.000</td><td>Rp 0</td><td style="color: #10b981; font-weight: bold;">100.0%</td></tr>
+                            </tbody>
+                        </table>
+                        <div class="text-center mt-3 text-xs text-slate-500">Real-time update dari transaksi pengeluaran material & upah</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI FEATURES SECTION -->
+    <section id="features" class="py-20 bg-brand-dark">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-brand-purple text-sm font-bold tracking-widest mb-3">KECERDASAN BUATAN</div>
+                <h2 class="font-display text-3xl md:text-5xl font-bold mb-4">
+                    AI Assistant untuk <span class="gradient-text">Efisiensi Lapangan</span>
+                </h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Otomatisasi pembuatan sub-task, deteksi kejanggalan stok, dan rekomendasi mitigasi risiko proyek secara akurat.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="glass p-8 rounded-2xl hover:border-brand-cyan/50 transition group">
+                    <div class="w-12 h-12 rounded-xl bg-brand-cyan/10 text-brand-cyan flex items-center justify-center font-bold text-2xl mb-6 group-hover:scale-110 transition">⚡</div>
+                    <h3 class="font-heading text-xl font-bold text-white mb-3">AI Milestone Generator</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Secara otomatis memecah RAB pekerjaan besar menjadi urutan milestone & task teknis beserta estimasi durasinya.</p>
+                </div>
+                <div class="glass p-8 rounded-2xl hover:border-brand-purple/50 transition group">
+                    <div class="w-12 h-12 rounded-xl bg-brand-purple/10 text-brand-purple flex items-center justify-center font-bold text-2xl mb-6 group-hover:scale-110 transition">🛡️</div>
+                    <h3 class="font-heading text-xl font-bold text-white mb-3">Progress-Gated Issue System</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Pengeluaran material dari gudang terkunci otomatis jika progres fisik dilapangan belum memenuhi batas persentase minimal.</p>
+                </div>
+                <div class="glass p-8 rounded-2xl hover:border-brand-pink/50 transition group">
+                    <div class="w-12 h-12 rounded-xl bg-brand-pink/10 text-brand-pink flex items-center justify-center font-bold text-2xl mb-6 group-hover:scale-110 transition">📊</div>
+                    <h3 class="font-heading text-xl font-bold text-white mb-3">Deteksi Anomalinya Material</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">Sistem mendeteksi lonjakan pemakaian material tidak wajar dibandingkan estimasi volume awal RAB.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FINANCIAL MODULE SECTION -->
+    <section id="financial" class="py-20 bg-gradient-to-b from-brand-dark to-brand-darker">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-brand-green text-sm font-bold tracking-widest mb-3">MODUL KEUANGAN LENGKAP</div>
+                <h2 class="font-display text-3xl md:text-5xl font-bold mb-4">
+                    Dari <span class="gradient-text">Jurnal Otomatis</span> hingga <span class="gradient-text-2">Laporan Keuangan</span>
+                </h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">Auto-posting jurnal untuk setiap transaksi, fiscal config yang dapat dikustomisasi, dan laporan keuangan real-time.</p>
+            </div>
+
+            <div class="grid lg:grid-cols-2 gap-8">
+                <!-- Fiscal Config -->
+                <div class="mockup-window">
+                    <div class="mockup-titlebar">
+                        <div class="mockup-dot red"></div><div class="mockup-dot yellow"></div><div class="mockup-dot green"></div>
+                        <div class="mockup-title">FISCAL CONFIG — AUTO POSTING RULES</div>
+                    </div>
+                    <div class="p-4">
+                        <table class="mock-table">
+                            <thead><tr><th>Rule Code</th><th>Nama Rule</th><th>Debit</th><th>Kredit</th><th>Status</th></tr></thead>
+                            <tbody>
+                                <tr><td style="font-family: monospace; color: #22d3ee;">ISSUE_PROJECT</td><td>Issue material ke proyek</td><td>1700 - WIP Proyek</td><td>1500 - Persediaan</td><td><span class="badge-aktif">Aktif</span></td></tr>
+                                <tr><td style="font-family: monospace; color: #22d3ee;">WIP_RELEASE</td><td>Pelepasan WIP ke HPP</td><td>5100 - Beban Pokok</td><td>1700 - WIP Proyek</td><td><span class="badge-aktif">Aktif</span></td></tr>
+                                <tr><td style="font-family: monospace; color: #22d3ee;">PROJECT_INVOICE</td><td>Tagihan Termin Proyek</td><td>1200 - Piutang Usaha</td><td>4300 - Pendapatan</td><td><span class="badge-aktif">Aktif</span></td></tr>
+                            </tbody>
+                        </table>
+                        <div class="mt-4 text-xs text-brand-green font-semibold">✓ 25+ rule auto-posting siap pakai khusus industri konstruksi</div>
+                    </div>
+                </div>
+
+                <!-- Financial Report -->
+                <div class="mockup-window">
+                    <div class="mockup-titlebar">
+                        <div class="mockup-dot red"></div><div class="mockup-dot yellow"></div><div class="mockup-dot green"></div>
+                        <div class="mockup-title">FINANCIAL REPORT — REAL-TIME</div>
+                    </div>
+                    <div class="p-6">
+                        <h4 class="text-sm font-bold text-brand-cyan mb-3 uppercase tracking-wider">Neraca & Laba Rugi Otomatis</h4>
+                        <p class="text-slate-300 text-sm leading-relaxed mb-4">
+                            Sistem secara otomatis mengalkulasi Neraca (Aset, Liabilitas, Ekuitas) dan Laporan Laba Rugi setiap kali transaksi stok atau pembayaran termin divalidasi oleh Auditor Head Office tanpa perlu rekonsiliasi manual yang memakan waktu.
+                        </p>
+                        <ul class="text-xs text-slate-400 space-y-2">
+                            <li class="flex items-center gap-2"><span class="text-brand-green">✓</span> Penelusuran audit trail lengkap dari transaksi fisik hingga buku besar</li>
+                            <li class="flex items-center gap-2"><span class="text-brand-green">✓</span> Penyesuaian pajak PPN & PPh Final Konstruksi otomatis</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- COMPARISON MATRIX SECTION -->
+    <section id="comparison" class="py-20 bg-gradient-to-b from-brand-darker to-brand-dark">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16">
+                <div class="text-brand-orange text-sm font-bold tracking-widest mb-3">PERBANDINGAN</div>
+                <h2 class="font-display text-3xl md:text-5xl font-bold mb-4">
+                    Mengapa <span class="gradient-text">Bukan ERP Lain?</span>
+                </h2>
+                <p class="text-slate-400 max-w-2xl mx-auto">ERP generik butuh kustomisasi mahal. App PM biasa tidak memiliki kontrol material. RAB-PROJECT dirancang khusus untuk kontraktor.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full glass rounded-xl overflow-hidden text-left">
+                    <thead>
+                        <tr class="bg-brand-darker/60 border-b border-slate-700">
+                            <th class="p-4 font-heading text-lg text-white">Fitur Evaluasi</th>
+                            <th class="p-4 font-heading text-lg text-brand-cyan text-center">RAB-PROJECT</th>
+                            <th class="p-4 font-heading text-lg text-slate-400 text-center">ERP Generik<br><span class="text-xs font-normal">(Odoo/SAP)</span></th>
+                            <th class="p-4 font-heading text-lg text-slate-400 text-center">App PM<br><span class="text-xs font-normal">(Trello/Asana)</span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-800 text-sm">
+                        <tr>
+                            <td class="p-4 font-semibold text-white">Kontrol Issue Material vs Progres</td>
+                            <td class="p-4 text-center font-bold text-brand-green bg-brand-green/5">✓ Progress-Gated (Ketat)</td>
+                            <td class="p-4 text-center text-yellow-400">⚠ Kustomisasi Mahal</td>
+                            <td class="p-4 text-center text-red-400">✗ Tidak Ada</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-semibold text-white">Plafon Kontrak (Hard Lock)</td>
+                            <td class="p-4 text-center font-bold text-brand-green bg-brand-green/5">✓ Otomatis Berhenti</td>
+                            <td class="p-4 text-center text-yellow-400">⚠ Setup Manual Complex</td>
+                            <td class="p-4 text-center text-red-400">✗ Tidak Ada</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-semibold text-white">AI Milestone & Breakdown Task</td>
+                            <td class="p-4 text-center font-bold text-brand-green bg-brand-green/5">✓ Bawaan Sistem</td>
+                            <td class="p-4 text-center text-red-400">✗ Tidak Ada</td>
+                            <td class="p-4 text-center text-red-400">✗ Tidak Ada</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-semibold text-white">Akuntansi Konstruksi & WIP</td>
+                            <td class="p-4 text-center font-bold text-brand-green bg-brand-green/5">✓ Auto-Posting Spesifik</td>
+                            <td class="p-4 text-center text-yellow-400">⚠ Perlu Mapping Ulang</td>
+                            <td class="p-4 text-center text-red-400">✗ Tidak Ada</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- BENEFITS & SYSTEM COMMITMENT SECTION -->
+    <section id="benefits" class="py-20 bg-brand-dark">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="glass rounded-2xl p-8 md:p-12 border border-brand-cyan/30">
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                        <h3 class="font-heading text-2xl font-bold text-white mb-6">💼 Cocok Digunakan Oleh:</h3>
+                        <ul class="space-y-4 text-sm text-slate-300">
+                            <li class="flex items-start gap-3">
+                                <span class="text-brand-cyan text-base">✓</span>
+                                <span><strong>Kontraktor Bangunan & Sipil:</strong> Mengontrol biaya proyek dari skala kecil hingga menengah.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="text-brand-cyan text-base">✓</span>
+                                <span><strong>Sub-Kontraktor MEP & Interior:</strong> Memastikan pengeluaran material presisi sesuai spesifikasi.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="text-brand-cyan text-base">✓</span>
+                                <span><strong>Developer Perumahan:</strong> Monitoring progres proyek multi-unit dan pencairan dana termin.</span>
+                            </li>
+                            <li class="flex items-start gap-3">
+                                <span class="text-brand-cyan text-base">✓</span>
+                                <span><strong>Project Management Office (PMO):</strong> Visibilitas eksekutif real-time untuk multi-site proyek.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-brand-darker/80 rounded-xl p-8 border border-brand-orange/30">
+                        <div class="text-brand-orange text-xs font-bold tracking-widest uppercase mb-3">🎯 KOMITMEN & FOKUS KAMI</div>
+                        <p class="text-slate-300 text-sm leading-relaxed italic mb-6">
+                            "RAB-PROJECT dibangun dari pengalaman nyata dalam mengelola kompleksitas pekerjaan lapangan. Kami fokus memberikan sistem pertahanan keuangan proyek yang andal, transparan, dan mudah digunakan oleh seluruh tim lapangan hingga jajaran direksi."
+                        </p>
+                        <div class="text-xs text-slate-400 font-semibold">— Tim Tim Pengembang RAB-PROJECT</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA & FOOTER -->
+    <footer id="contact" class="py-16 bg-brand-darker border-t border-slate-800">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <h2 class="font-display text-3xl md:text-4xl font-bold text-white mb-4">Siap Mengamankan Margin Proyek Anda?</h2>
+            <p class="text-slate-400 max-w-xl mx-auto mb-8">Hubungi tim kami untuk konsultasi dan uji coba sistem RAB-PROJECT secara langsung.</p>
+            <a href="#" class="inline-block bg-gradient-to-r from-brand-cyan to-brand-blue text-slate-950 font-bold px-8 py-4 rounded-xl shadow-lg transition transform hover:scale-105">Hubungi Kami Sekarang</a>
+            <div class="mt-16 text-xs text-slate-500">
+                &copy; <?php echo date("Y"); ?> RAB-PROJECT ERP System. All Rights Reserved.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

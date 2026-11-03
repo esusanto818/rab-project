@@ -252,7 +252,15 @@ Ext.onReady(function () {
                         var row = itemGrid.getSelectionModel().getSelected();
                         if (row) {
                             row.set('category', record.get('v'));
-                            row.set('expense_id', null);\n                            if (record.get('v') !== 'Material') { row.set('material_id', null); row.set('material_name', ''); row.set('material_code', ''); row.set('item_name', ''); }\n                            else { row.set('item_name', ''); }
+                            row.set('expense_id', null);
+                            if (record.get('v') !== 'Material') { 
+                                row.set('material_id', null); 
+                                row.set('material_name', ''); 
+                                row.set('material_code', ''); 
+                                row.set('item_name', ''); 
+                            } else { 
+                                row.set('item_name', ''); 
+                            }
                             updateRabTotalLabel();
                         }
                     } }

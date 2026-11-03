@@ -41,7 +41,7 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 /* [REVISI 2026-10-30] Mega menu: dropdown dikaitkan ke <header> (selebar layar), BUKAN ke <li> yang sempit.
    Kolom grup tersusun ke SAMPING; baru turun ke baris berikutnya bila tidak muat. Lebar maksimum = lebar layar. */
 .nav-item { position: static; }
-.nav-item:hover .dropdown-menu, .nav-item:focus-within .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.nav-item:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
 .dropdown-menu {
     position: absolute; top: 100%; left: 0;
     width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
@@ -463,7 +463,12 @@ async function initDashboard() {
     loadMaterialMonitoring();
     initMegaMenu();
 }
-
+document.querySelectorAll('.dropdown-menu a').forEach(link => {
+    link.addEventListener('click', () => {
+        // Membuang fokus dari elemen agar dropdown langsung tersembunyi
+        document.activeElement.blur();
+    });
+});
 async function loadProjects() {
     try {
         const res = await fetch(`${API_ENDPOINT}?action=get_projects`);
