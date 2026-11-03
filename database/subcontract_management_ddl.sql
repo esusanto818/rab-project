@@ -996,3 +996,107 @@ DROP TRIGGER IF EXISTS trg_post_spk_leftover_transaction ON public.spk_material_
 CREATE TRIGGER trg_post_spk_leftover_transaction
 AFTER INSERT OR UPDATE OF status ON public.spk_material_leftover_transactions
 FOR EACH ROW EXECUTE PROCEDURE public.fn_post_spk_leftover_transaction();
+
+
+-- 12. Aggregate inspection guard: repeated inspections of the same claim
+-- cannot inspect more than the claimed quantity in total.
+CREATE OR REPLACE FUNCTION public.fn_validate_inspection_item()
+RETURNS trigger AS $$
+DECLARE
+    v_claimed numeric(18,4);
+    v_progress_id integer;
+    v_inspection_progress_id integer;
+    v_prior_inspected numeric(18,4);
+BEGIN
+    SELECT qty_claimed, progress_id
+      INTO v_claimed, v_progress_id
+      FROM public.subcon_progress_qty_items
+     WHERE id=NEW.progress_qty_item_id
+     FOR UPDATE;
+
+    SELECT progress_id INTO v_inspection_progress_id
+      FROM public.subcon_inspections WHERE id=NEW.inspection_id;
+
+    IF v_claimed IS NULL OR v_progress_id IS DISTINCT FROM v_inspection_progress_id THEN
+        RAISE EXCEPTION 'Detail inspeksi dan klaim progres tidak cocok.';
+    END IF;
+
+    SELECT COALESCE(sum(qty_inspected),0)
+      INTO v_prior_inspected
+      FROM public.subcon_inspection_items
+     WHERE progress_qty_item_id=NEW.progress_qty_item_id
+       AND (TG_OP='INSERT' OR id<>NEW.id);
+
+    IF v_prior_inspected + NEW.qty_inspected > v_claimed THEN
+        RAISE EXCEPTION 'Akumulasi qty inspeksi tidak boleh melebihi qty klaim.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_inspection_item ON public.subcon_inspection_items;
+CREATE TRIGGER trg_validate_inspection_item
+BEFORE INSERT OR UPDATE OF inspection_id, progress_qty_item_id, qty_inspected, qty_passed, qty_rejected, qty_rework
+ON public.subcon_inspection_items
+FOR EACH ROW EXECUTE PROCEDURE public.fn_validate_inspection_item();
+
+-- 13. Approved certificate header totals must reconcile to its detail rows.
+-- gross_amount = certified line total; net_payable = gross + PPN - PPh -
+-- retention - DP recovery - other deductions.
+CREATE OR REPLACE FUNCTION public.fn_validate_certificate_approval()
+RETURNS trigger AS $$
+DECLARE
+    v_items_total numeric(18,2);
+    v_expected_net numeric(18,2);
+BEGIN
+    IF NEW.status='APPROVED' AND OLD.status IS DISTINCT FROM 'APPROVED' THEN
+        SELECT COALESCE(sum(amount_certified),0)
+          INTO v_items_total
+          FROM public.subcon_payment_certificate_items
+         WHERE certificate_id=NEW.id;
+
+        IF v_items_total <= 0 OR NEW.gross_amount <> v_items_total THEN
+            RAISE EXCEPTION 'Gross certificate harus sama dengan total detail qty tersertifikasi.';
+        END IF;
+
+        v_expected_net := NEW.gross_amount + NEW.ppn_amount - NEW.pph_amount
+                          - NEW.retention_amount - NEW.dp_recovery - NEW.other_deduction;
+        IF v_expected_net < 0 OR NEW.net_payable <> v_expected_net THEN
+            RAISE EXCEPTION 'Net payable certificate tidak sesuai gross, pajak, retention dan potongan.';
+        END IF;
+
+        IF NOT EXISTS (
+            SELECT 1 FROM public.subcon_inspections i
+             WHERE i.id=NEW.inspection_id
+               AND i.progress_id=NEW.progress_id
+               AND i.status='APPROVED'
+        ) THEN
+            RAISE EXCEPTION 'Payment certificate hanya dapat disetujui dari inspeksi APPROVED.';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_certificate_approval ON public.subcon_payment_certificates;
+CREATE TRIGGER trg_validate_certificate_approval
+BEFORE UPDATE OF status ON public.subcon_payment_certificates
+FOR EACH ROW EXECUTE PROCEDURE public.fn_validate_certificate_approval();
+
+-- 14. Safer trigger return for posted ownership transaction immutability.
+CREATE OR REPLACE FUNCTION public.fn_block_posted_leftover_transaction_change()
+RETURNS trigger AS $$
+BEGIN
+    IF TG_OP='DELETE' THEN
+        IF OLD.status='POSTED' THEN
+            RAISE EXCEPTION 'Transaksi material sisa POSTED tidak boleh dihapus; gunakan transaksi koreksi.';
+        END IF;
+        RETURN OLD;
+    END IF;
+
+    IF OLD.status='POSTED' THEN
+        RAISE EXCEPTION 'Transaksi material sisa POSTED tidak boleh diubah; gunakan transaksi koreksi.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
