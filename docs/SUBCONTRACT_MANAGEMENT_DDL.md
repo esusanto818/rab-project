@@ -53,3 +53,24 @@ Revisi berbasis schema export aktual. Belum dieksekusi pada database dan belum d
 
 ## Catatan transaksi material sisa
 Versi DDL terbaru memecah lot ketika transaksi BUY_FROM_SUBCON atau SELL_TO_CLIENT diposting. Kuantitas yang berpindah dibuat sebagai lot turunan dengan pemilik baru, sedangkan sisa kuantitas pada lot asal tetap dimiliki pemilik sebelumnya. Ini penting untuk transaksi sebagian agar kepemilikan tidak berpindah untuk seluruh sisa material.
+
+
+## Hasil validasi statis DDL (3 November 2026)
+Revisi lanjutan menambahkan:
+- Relasi opsional `spk_work_items.spk_task_id` ke `spk_tasks.id`, dengan validasi SPK dan task harus cocok.
+- Validasi bahwa work item kontrak Subcon harus berasal dari SPK SUBCON untuk proyek dan Subcon yang sama.
+- Akumulasi qty inspeksi untuk satu item klaim tidak boleh melebihi qty klaim.
+- Approval payment certificate memeriksa total detail terhadap `gross_amount`, rumus `net_payable`, serta status inspeksi APPROVED.
+- Transaksi material sisa POSTED tidak dapat diedit/dihapus; gunakan dokumen koreksi.
+- Transaksi material sisa yang diposting harus merujuk dokumen inventory POSTED yang tepat: penerimaan menggunakan `material_leftover_header/items`, penjualan menggunakan `material_out_header/items`.
+- Total kuantitas transaksi yang ditautkan ke satu dokumen inventory tidak boleh melebihi kuantitas dokumen. Posting langsung dengan status POSTED juga diproses oleh trigger, bukan hanya perubahan DRAFT ke POSTED.
+- Transfer sebagian material sisa memecah lot sehingga sisa lot asal tetap memiliki pemilik lama.
+
+## Temuan yang masih harus ditutup sebelum production
+1. Export schema yang diberikan adalah metadata tabel/relasi, bukan dump lengkap definisi constraint, trigger, function, dan index. Nama kolom sudah dicocokkan, tetapi potensi trigger existing yang bertabrakan belum bisa disingkirkan.
+2. Akumulasi total qty PASSED antar seluruh inspeksi APPROVED untuk satu work item belum dijaga sebagai satu invariant database lintas semua header inspeksi. Aplikasi perlu mengunci work item saat approval, atau tambahkan prosedur approval terpusat sebelum produksi.
+3. Invoice dan dua tabel pembayaran lama (`subcon_payments`, `subcon_invoice_payments`) belum direkonsiliasi. Jangan mengaktifkan dua jalur pembayaran bersamaan.
+4. Pencatatan stok harus dilakukan oleh workflow inventory existing dalam transaksi database yang sama. DDL ini hanya mewajibkan referensi dokumen inventory yang sudah POSTED dan mencocokkan kuantitas; tidak membuat jurnal atau stock movement sendiri.
+5. Validasi eksekusi PostgreSQL, skenario konkurensi, rollback, serta integrasi PHP/JS belum dilakukan.
+
+**Kesimpulan:** DDL telah melalui review statis dan beberapa guard penting sudah diperbaiki, tetapi statusnya masih *staging candidate*, bukan production-ready.
