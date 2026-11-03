@@ -1100,3 +1100,98 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- 15. Prevent reusing one posted warehouse document to back multiple
+-- ownership transactions beyond the actual document quantity.
+CREATE OR REPLACE FUNCTION public.fn_validate_spk_leftover_transaction()
+RETURNS trigger AS $$
+DECLARE
+    v_lot public.spk_material_leftover_lots%ROWTYPE;
+    v_doc_project integer;
+    v_doc_qty numeric(18,4);
+    v_already_linked numeric(18,4);
+BEGIN
+    SELECT * INTO v_lot
+      FROM public.spk_material_leftover_lots
+     WHERE id=NEW.leftover_lot_id
+     FOR UPDATE;
+
+    IF NOT FOUND THEN RAISE EXCEPTION 'Lot material sisa tidak ditemukan.'; END IF;
+    IF NEW.qty > v_lot.qty_available THEN
+        RAISE EXCEPTION 'Qty transaksi melebihi qty sisa tersedia.';
+    END IF;
+
+    IF NEW.transaction_type='RETURN_COMPANY' THEN
+        IF v_lot.current_owner_type<>'COMPANY'
+           OR NEW.seller_type<>'COMPANY' OR NEW.buyer_type<>'COMPANY' THEN
+            RAISE EXCEPTION 'RETURN_COMPANY hanya untuk material milik perusahaan.';
+        END IF;
+    ELSIF NEW.transaction_type='BUY_FROM_SUBCON' THEN
+        IF v_lot.current_owner_type<>'SUBCON'
+           OR NEW.seller_type<>'SUBCON' OR NEW.buyer_type<>'COMPANY'
+           OR NEW.seller_subcontractor_id IS DISTINCT FROM v_lot.current_subcontractor_id THEN
+            RAISE EXCEPTION 'BUY_FROM_SUBCON harus membeli dari Subcon pemilik material saat ini.';
+        END IF;
+    ELSIF NEW.transaction_type='SELL_TO_CLIENT' THEN
+        IF v_lot.current_owner_type<>'COMPANY'
+           OR NEW.seller_type<>'COMPANY' OR NEW.buyer_type<>'CLIENT' THEN
+            RAISE EXCEPTION 'SELL_TO_CLIENT hanya untuk material milik perusahaan.';
+        END IF;
+    END IF;
+
+    IF NEW.status='POSTED' THEN
+        IF NEW.transaction_type IN ('RETURN_COMPANY','BUY_FROM_SUBCON') THEN
+            IF NEW.inventory_doc_id IS NULL OR NEW.inventory_out_doc_id IS NOT NULL THEN
+                RAISE EXCEPTION 'Transaksi penerimaan/return wajib memakai dokumen material_leftover_header saja.';
+            END IF;
+
+            SELECT project_id INTO v_doc_project
+              FROM public.material_leftover_header
+             WHERE id=NEW.inventory_doc_id AND lower(status)='posted';
+            IF v_doc_project IS DISTINCT FROM v_lot.project_id THEN
+                RAISE EXCEPTION 'Dokumen penerimaan inventory harus POSTED dan berasal dari proyek yang sama.';
+            END IF;
+
+            SELECT COALESCE(sum(li.qty),0) INTO v_doc_qty
+              FROM public.material_leftover_items li
+             WHERE li.header_id=NEW.inventory_doc_id
+               AND li.material_id=v_lot.material_id;
+            SELECT COALESCE(sum(t.qty),0) INTO v_already_linked
+              FROM public.spk_material_leftover_transactions t
+             WHERE t.inventory_doc_id=NEW.inventory_doc_id
+               AND t.status='POSTED'
+               AND t.id<>NEW.id;
+            IF v_already_linked + NEW.qty > v_doc_qty THEN
+                RAISE EXCEPTION 'Total transaksi yang ditautkan melebihi qty dokumen penerimaan inventory.';
+            END IF;
+
+        ELSE
+            IF NEW.inventory_out_doc_id IS NULL OR NEW.inventory_doc_id IS NOT NULL THEN
+                RAISE EXCEPTION 'Penjualan ke client wajib memakai dokumen material_out_header saja.';
+            END IF;
+
+            SELECT project_id INTO v_doc_project
+              FROM public.material_out_header
+             WHERE id=NEW.inventory_out_doc_id AND lower(status)='posted';
+            IF v_doc_project IS DISTINCT FROM v_lot.project_id THEN
+                RAISE EXCEPTION 'Dokumen issue inventory harus POSTED dan berasal dari proyek yang sama.';
+            END IF;
+
+            SELECT COALESCE(sum(oi.qty_out),0) INTO v_doc_qty
+              FROM public.material_out_items oi
+             WHERE oi.material_out_id=NEW.inventory_out_doc_id
+               AND oi.material_id=v_lot.material_id;
+            SELECT COALESCE(sum(t.qty),0) INTO v_already_linked
+              FROM public.spk_material_leftover_transactions t
+             WHERE t.inventory_out_doc_id=NEW.inventory_out_doc_id
+               AND t.status='POSTED'
+               AND t.id<>NEW.id;
+            IF v_already_linked + NEW.qty > v_doc_qty THEN
+                RAISE EXCEPTION 'Total transaksi yang ditautkan melebihi qty dokumen issue inventory.';
+            END IF;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
