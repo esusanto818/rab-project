@@ -111,6 +111,7 @@ DECLARE
     v_budget_project INTEGER;
     v_category VARCHAR(50);
     v_material_id INTEGER;
+    v_expense_id INTEGER;
     v_budget_qty NUMERIC(18,4);
     v_budget_amount NUMERIC(18,2);
     v_allocated NUMERIC(18,4);
@@ -121,10 +122,10 @@ BEGIN
         RAISE EXCEPTION 'Task proyek tidak ditemukan.';
     END IF;
 
-    SELECT project_id, category, material_id,
+    SELECT project_id, category, material_id, expense_id,
            COALESCE(qty_plan,0),
            COALESCE(qty_plan,0) * COALESCE(unit_price_plan,0)
-      INTO v_budget_project, v_category, v_material_id, v_budget_qty, v_budget_amount
+      INTO v_budget_project, v_category, v_material_id, v_expense_id, v_budget_qty, v_budget_amount
       FROM public.budget_items
      WHERE id = NEW.budget_item_id
      FOR UPDATE;
@@ -148,8 +149,8 @@ BEGIN
             RAISE EXCEPTION 'Total alokasi Task material melebihi Qty RAB.';
         END IF;
     ELSE
-        IF v_category = 'Material' OR v_category IS NULL THEN
-            RAISE EXCEPTION 'Alokasi expense hanya boleh menggunakan item RAB non-Material.';
+        IF v_category = 'Material' OR v_category IS NULL OR v_expense_id IS NULL THEN
+            RAISE EXCEPTION 'Alokasi expense harus menggunakan item RAB non-Material yang terhubung ke Master Expense.';
         END IF;
         SELECT COALESCE(SUM(amount_budget),0) INTO v_allocated
           FROM public.task_expenses
@@ -353,7 +354,7 @@ BEGIN
       JOIN public.project_tasks t ON t.id = te.task_id
      WHERE te.id = NEW.task_expense_id;
     IF v_task_id IS NULL THEN RAISE EXCEPTION 'Alokasi RAB expenses untuk Task tidak ditemukan.'; END IF;
-    IF v_expense_project IS NOT NULL AND v_expense_project <> v_task_project THEN
+    IF v_expense_project IS DISTINCT FROM v_task_project THEN
         RAISE EXCEPTION 'Transaksi expense dan Task harus berasal dari proyek yang sama.';
     END IF;
 
