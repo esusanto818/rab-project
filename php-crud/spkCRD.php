@@ -128,11 +128,10 @@ function SpkLookupProjects() {
 function SpkLookupTasks() {
     $pid = (int)WhReq('project_id'); $exclude = (int)WhReq('exclude_id');
     if ($pid < 1 || !WhRow('SELECT 1 FROM projects WHERE id=$1', array($pid))) { throw new WhException('Pilih proyek yang valid.'); }
+    // Task boleh digunakan pada beberapa SPK. Kuantitas per Task dikontrol melalui tabel alokasi.
     $rows = WhRows("SELECT t.id, t.task_name, COALESCE(t.description,'') AS description, t.start_date, t.end_date, COALESCE(t.status,'') AS status
                     FROM public.project_tasks t WHERE t.project_id=$1
-                      AND NOT EXISTS (SELECT 1 FROM spk_tasks st JOIN spk s ON s.id=st.spk_id
-                                      WHERE st.task_id=t.id AND s.id<>$2 AND s.status NOT IN ('Dibatalkan','Selesai'))
-                    ORDER BY t.start_date NULLS LAST, t.id", array($pid, $exclude));
+                    ORDER BY t.start_date NULLS LAST, t.id", array($pid));
     WhJson(array('success'=>true,'totalCount'=>count($rows),'data'=>$rows));
 }
 
@@ -197,9 +196,7 @@ function SpkSave() {
         if (!WhRow('SELECT 1 FROM public.project_tasks WHERE id=$1 AND project_id=$2 FOR UPDATE', array($tid, $projectId))) {
             throw new WhException('Task yang dipilih bukan bagian dari proyek ini.');
         }
-        if (WhRow("SELECT 1 FROM spk_tasks st JOIN spk s ON s.id=st.spk_id WHERE st.task_id=$1 AND s.id<>$2 AND s.status NOT IN ('Dibatalkan','Selesai') LIMIT 1", array($tid, $id))) {
-            throw new WhException('Task sudah terikat pada SPK aktif lain.');
-        }
+        // Task dapat dibagi ke beberapa SPK; validasi kuantitas dilakukan pada alokasi Task.
         $taskIds[$tid] = true;
     }
     $qt = SpkMaterialQuota($projectId, $id);
