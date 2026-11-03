@@ -26,7 +26,7 @@ Ext.onReady(function () {
     }
     
     // Category tabs
-    var CATEGORIES = ['Material', 'Upah', 'Peralatan', 'Transport', 'Lain-lain'];
+    var CATEGORIES = ['Material', 'Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];
     var CATEGORY_ICONS = { 'Material': '📦', 'Upah': '👷', 'Peralatan': '🔧', 'Transport': '🚛', 'Lain-lain': '📋' };
     
     // Container
@@ -171,7 +171,7 @@ Ext.onReady(function () {
         { name: 'estimated_price', type: 'float' }
     ];
     var rabItemField = [
-        { name: 'id' }, { name: 'material_id' }, { name: 'material_code' }, { name: 'material_name' },
+        { name: 'id' }, { name: 'material_id' }, { name: 'expense_id' }, { name: 'material_code' }, { name: 'material_name' },
         { name: 'unit' }, { name: 'category' }, { name: 'item_name' },
         { name: 'budget_qty', type: 'float' }, { name: 'unit_price', type: 'float' },
         { name: 'tolerance_pct', type: 'float' },
@@ -186,6 +186,18 @@ Ext.onReady(function () {
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, materialField)
     });
     materialDs.load();
+
+    var expenseField = [
+        { name: 'id' }, { name: 'expense_code' }, { name: 'expense_name' },
+        { name: 'category' }, { name: 'unit' }, { name: 'default_price', type: 'float' }
+    ];
+    var expenseDs = new Ext.data.Store({
+        url: '../dev/php-crud/rabCRD.php',
+        baseParams: { task: 'list_expense_options', category: 'All' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, expenseField),
+        listeners: { load: function () { if (itemGrid) itemGrid.getView().refresh(); } }
+    });
+    expenseDs.load();
     
     var currencyDs = new Ext.data.Store({
         url: '../dev/php-crud/rabCRD.php', baseParams: { task: 'list_currencies' },
@@ -240,7 +252,7 @@ Ext.onReady(function () {
                         var row = itemGrid.getSelectionModel().getSelected();
                         if (row) {
                             row.set('category', record.get('v'));
-                            if (record.get('v') !== 'Material') { row.set('material_id', null); row.set('material_name', ''); row.set('material_code', ''); }
+                            row.set('expense_id', null);\n                            if (record.get('v') !== 'Material') { row.set('material_id', null); row.set('material_name', ''); row.set('material_code', ''); row.set('item_name', ''); }\n                            else { row.set('item_name', ''); }
                             updateRabTotalLabel();
                         }
                     } }
@@ -268,7 +280,17 @@ Ext.onReady(function () {
                 }),
                 renderer: function (v, meta, record) {
                     if (record.get('category') !== 'Material') {
-                        return '<input type="text" class="rab-item-name-input" data-row="' + record.id + '" value="' + Ext.util.Format.htmlEncode(record.get('item_name') || '') + '" placeholder="Nama item..." style="width:100%; background:#0d2133; color:#fff; border:1px solid #1a4f5c; border-radius:3px; padding:3px;" />';
+                        var cat = record.get('category') || '';
+                        var selectedExpense = String(record.get('expense_id') || '');
+                        var options = '<option value="">Pilih ' + Ext.util.Format.htmlEncode(cat || 'Expense') + '...</option>';
+                        expenseDs.each(function (ex) {
+                            if (ex.get('category') === cat) {
+                                var exId = String(ex.get('id'));
+                                options += '<option value="' + exId + '"' + (exId === selectedExpense ? ' selected="selected"' : '') + '>' +
+                                    Ext.util.Format.htmlEncode(ex.get('expense_code') + ' - ' + ex.get('expense_name')) + '</option>';
+                            }
+                        });
+                        return '<select class="rab-expense-select" data-row="' + record.id + '" style="width:100%;max-width:100%;background:#0d2133;color:#fff;border:1px solid #1a4f5c;border-radius:3px;padding:3px;">' + options + '</select>';
                     }
                     var rec = materialDs.getById(v);
                     if (rec) return Ext.util.Format.htmlEncode(rec.get('material_name'));
@@ -294,6 +316,30 @@ Ext.onReady(function () {
         }
     });
     itemGrid.addClass('x-grid3-gridEditor');
+
+    // Delegated handler for Expense Master selector in non-material RAB rows.
+    (function bindExpenseSelector() {
+        var el = document.getElementById('editorFormGrid');
+        if (!el || el._rabExpenseSelectorBound) return;
+        el._rabExpenseSelectorBound = true;
+        el.addEventListener('change', function (evt) {
+            var target = evt.target || evt.srcElement;
+            if (!target || !target.className || String(target.className).indexOf('rab-expense-select') < 0) return;
+            var rowKey = target.getAttribute('data-row');
+            var row = null;
+            rabItemDs.each(function (r) { if (String(r.id) === String(rowKey)) row = r; });
+            if (!row) return;
+            var idx = expenseDs.find('id', target.value);
+            if (idx < 0) return;
+            var ex = expenseDs.getAt(idx);
+            row.set('expense_id', parseInt(ex.get('id'), 10));
+            row.set('item_name', ex.get('expense_name') || '');
+            row.set('unit', ex.get('unit') || 'Unit');
+            if (!(parseFloat(row.get('unit_price')) > 0)) row.set('unit_price', parseFloat(ex.get('default_price')) || 0);
+            itemGrid.getView().refresh();
+            updateRabTotalLabel();
+        });
+    })();
     
     // Inject UI
     (function injectExtraUI() {
@@ -415,7 +461,7 @@ Ext.onReady(function () {
     
     function addBlankRow() {
         var RabRecord = rabItemDs.recordType || Ext.data.Record.create(rabItemField);
-        rabItemDs.add(new RabRecord({ id: 0, material_id: null, material_code: '', material_name: '', unit: 'Unit', category: currentCategory, item_name: '', budget_qty: 0, unit_price: 0, tolerance_pct: 0, total_qty_out: 0, remaining_qty: 0, usage_pct: 0, status: 'ON TRACK', orig_qty: 0, orig_price: 0, is_addendum: false, addendum_reason: '' }));
+        rabItemDs.add(new RabRecord({ id: 0, material_id: null, expense_id: null, material_code: '', material_name: '', unit: 'Unit', category: currentCategory, item_name: '', budget_qty: 0, unit_price: 0, tolerance_pct: 0, total_qty_out: 0, remaining_qty: 0, usage_pct: 0, status: 'ON TRACK', orig_qty: 0, orig_price: 0, is_addendum: false, addendum_reason: '' }));
         updateRabTotalLabel();
     }
     
@@ -471,7 +517,7 @@ Ext.onReady(function () {
             var origVal = origQty * (parseFloat(r.get('orig_price')) || 0);
             var isUp = origQty <= 0 || qty > origQty + 0.00005 || qty * price > origVal + 0.005;
             total += Math.round(qty * price * 100) / 100;
-            var item = { id: r.get('id') || 0, material_id: cat === 'Material' ? materialId : 0, category: cat, item_name: itemName, unit: r.get('unit') || 'Unit', budget_qty: qty, unit_price: price, tolerance_pct: parseFloat(r.get('tolerance_pct')) || 0, addendum_reason: '' };
+            var item = { id: r.get('id') || 0, material_id: cat === 'Material' ? materialId : 0, expense_id: cat === 'Material' ? 0 : (parseInt(r.get('expense_id'), 10) || 0), category: cat, item_name: itemName, unit: r.get('unit') || 'Unit', budget_qty: qty, unit_price: price, tolerance_pct: parseFloat(r.get('tolerance_pct')) || 0, addendum_reason: '' };
             if (isUp) flagged.push(item);
             arrItems.push(item);
         });
