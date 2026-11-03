@@ -1,32 +1,57 @@
-# Upgrade SPK: Task Proyek & Batas Inventory
+# Upgrade SPK, Task, Material, dan Expenses
 
-## Cakupan
-- SPK yang sudah ada tetap digunakan; alur status material lama tidak diganti.
-- Setiap SPK baru / draft yang disimpan wajib memiliki minimal satu Task Proyek.
-- Task harus berasal dari proyek yang sama dan tidak boleh sedang terikat pada SPK aktif lain.
-- Item material SPK harus merupakan item Material pada RAB proyek.
-- Qty default di editor menggunakan nilai tersedia dari kalkulasi server.
-- Batas tersedia mengambil nilai terendah antara kuota RAB/pembayaran dan stok fisik setelah dikurangi sisa alokasi SPK aktif lain.
-- Server memvalidasi ulang saat menyimpan Draft dan saat menerbitkan SPK.
-- Kolom hapus baris menggunakan ikon trash merah pada header dan setiap baris.
+## Model bisnis yang diterapkan
+- Satu proyek memiliki banyak Task dan banyak item RAB.
+- Satu SPK dapat mengikat banyak Task.
+- Satu Task dapat digunakan oleh beberapa SPK (pekerjaan bertahap / beberapa kontraktor).
+- Item RAB boleh belum dialokasikan ke Task saat RAB disusun.
+- Sebelum material/expense digunakan pada SPK, item RAB harus dialokasikan ke Task.
+- Material mengikuti Qty RAB dan kontrol stok Inventory.
+- Expenses mengikuti plafon nilai RAB dan realisasi biaya; tidak menggunakan perhitungan stok.
 
-## Penerapan
+## Perubahan pada branch ini
+- SPK lookup dan validasi backend tidak lagi menolak Task yang sudah dipakai SPK aktif lain.
+- Task tetap wajib berasal dari proyek yang sama dengan SPK.
+- RAB editor menyediakan pilihan Master Expense untuk kategori non-Material dan mengirimkan `expense_id` saat menyimpan.
+- Kategori Konsumsi tersedia pada editor RAB.
+- Migration SPK-Task yang sudah ada: `database/spk_task_link.sql`.
+- Migration fondasi alokasi Task/RAB/SPK/Expenses: `database/task_material_expense_allocation.sql`.
+
+## Tabel alokasi baru
+| Tabel | Fungsi |
+|---|---|
+| `task_materials` | Alokasi Qty item RAB Material ke Task |
+| `task_expenses` | Alokasi nilai item RAB non-Material ke Task |
+| `spk_task_materials` | Pembagian Qty material SPK per Task |
+| `spk_task_expenses` | Pembagian nilai expenses SPK per Task |
+| `financial_expense_allocations` | Pembagian transaksi biaya aktual ke Task/Expense RAB dan opsional SPK |
+
+Trigger PostgreSQL memvalidasi kesamaan proyek, kategori item, total alokasi RAB, total alokasi SPK per Task, dan agar total alokasi transaksi aktual tidak melebihi nilai transaksi sumber.
+
+## Penting: batas cakupan
+Migration ini menyiapkan struktur dan perlindungan database. Migration TIDAK menebak pembagian Task untuk SPK lama dan TIDAK mengisi otomatis alokasi RAB lama. Data SPK/RAB yang sudah ada tetap tersimpan.
+UI untuk mengalokasikan setiap item RAB ke Task, membagi material/expenses per Task pada SPK, serta mengalokasikan transaksi financial expense ke Task perlu diselesaikan dan diuji sebagai tahap aplikasi berikutnya. Sampai UI tersebut tersedia, jangan menerbitkan SPK baru dengan asumsi pembagian per Task sudah tercatat.
+
+## Urutan migration staging
 1. Backup database.
-2. Jalankan `database/spk_task_link.sql` pada database PostgreSQL.
-3. Deploy `php-func/function.spk.php`, `php-crud/spkCRD.php`, dan `js/spk.js`.
-4. Hard refresh browser / bersihkan cache JavaScript.
+2. Jalankan `database/spk_task_link.sql` jika tabel `spk_tasks` belum tersedia.
+3. Jalankan `database/task_material_expense_allocation.sql`.
+4. Deploy kode PHP/JS dari branch ini.
+5. Uji semua skenario di bawah pada staging.
 
 ## Checklist pengujian staging
-- SPK baru: pilih proyek, pilih satu atau lebih task dari proyek tersebut.
-- Task dari proyek lain tidak dapat dipilih atau disimpan.
-- Task yang sudah terikat ke SPK aktif tidak dapat dipakai pada SPK lain.
-- Material default qty = nilai available yang dikirim server.
-- Qty melebihi available ditolak di browser dan backend.
-- Qty melebihi available melalui request langsung juga ditolak.
-- Dua SPK aktif tidak dapat mengalokasikan stok fisik yang sama dua kali.
-- Perubahan stok setelah Draft disimpan diuji: penerbitan harus menolak qty yang sudah tidak tersedia.
-- Tombol hapus baris dan ikon trash header terlihat dan berfungsi.
-- Warehouse Issuing lama tetap dapat memilih SPK dan mengeluarkan material sesuai sisa SPK.
+- Task dari proyek lain ditolak pada SPK.
+- Task yang sama dapat dipilih pada dua SPK berbeda.
+- Master Expense muncul sesuai kategori pada editor RAB.
+- Expense tanpa pilihan Master Expense ditolak sebelum simpan.
+- Simpan/edit RAB Material dan Expense tidak mengubah item kategori lain.
+- Item RAB yang sudah dialokasikan ke Task tidak dapat dihapus atau diturunkan di bawah alokasi.
+- Total alokasi Task tidak melebihi Qty/nilai item RAB.
+- Total alokasi material SPK untuk Task tidak melebihi alokasi Task dan Qty material pada SPK.
+- Total alokasi expenses SPK tidak melebihi anggaran expenses Task.
+- Total alokasi transaksi financial expense tidak melebihi nilai transaksi.
+- Warehouse Issuing lama tetap berfungsi dan menghitung sisa SPK dengan benar.
+- SPK lama dan RAB lama tetap dapat dibuka tanpa alokasi baru.
 
-## Catatan
-Pemeriksaan kode statis saja belum membuktikan perilaku runtime. Migration, browser, database, dan regresi Warehouse Issuing wajib diuji pada staging sebelum merge ke main.
+## Status verifikasi
+Review statis saja belum membuktikan runtime. Migration PostgreSQL, PHP, ExtJS, transaksi konkuren, dan regresi Warehouse Issuing belum dijalankan pada database/browser pengguna. Jangan merge ke `main` sebelum pengujian staging selesai.
