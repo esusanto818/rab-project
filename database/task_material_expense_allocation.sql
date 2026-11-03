@@ -80,6 +80,28 @@ CREATE INDEX IF NOT EXISTS ix_fin_exp_alloc_task_expense
 CREATE INDEX IF NOT EXISTS ix_fin_exp_alloc_spk_task
     ON public.financial_expense_allocations(spk_task_id);
 
+-- Ensure each SPK-Task link uses a task from the same project as its SPK.
+CREATE OR REPLACE FUNCTION public.fn_validate_spk_task_project()
+RETURNS TRIGGER AS $
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+          FROM public.spk s
+          JOIN public.project_tasks t ON t.id = NEW.task_id
+         WHERE s.id = NEW.spk_id
+           AND s.project_id = t.project_id
+    ) THEN
+        RAISE EXCEPTION 'SPK dan Task harus berasal dari proyek yang sama.';
+    END IF;
+    RETURN NEW;
+END;
+$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_spk_task_project ON public.spk_tasks;
+CREATE TRIGGER trg_validate_spk_task_project
+BEFORE INSERT OR UPDATE ON public.spk_tasks
+FOR EACH ROW EXECUTE PROCEDURE public.fn_validate_spk_task_project();
+
 -- Validate that RAB budget lines are allocated only to tasks of the same project
 -- and to the matching item category.
 CREATE OR REPLACE FUNCTION public.fn_validate_task_budget_allocation()
@@ -232,9 +254,11 @@ BEGIN
         RAISE EXCEPTION 'SPK dan Task material harus berasal dari proyek yang sama.';
     END IF;
 
+    PERFORM 1 FROM public.spk_items
+     WHERE spk_id = v_spk_id AND material_id = v_material_id
+     FOR UPDATE;
     SELECT COALESCE(SUM(qty),0) INTO v_spk_material_qty
-      FROM public.spk_items WHERE spk_id = v_spk_id AND material_id = v_material_id
-      FOR UPDATE;
+      FROM public.spk_items WHERE spk_id = v_spk_id AND material_id = v_material_id;
     IF v_spk_material_qty <= 0 THEN
         RAISE EXCEPTION 'Material belum tercantum pada detail SPK.';
     END IF;
