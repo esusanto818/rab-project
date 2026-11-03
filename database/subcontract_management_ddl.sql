@@ -726,3 +726,273 @@ BEGIN
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+
+-- ================================================================
+-- 11. VALIDATION HARDENING (static review findings)
+-- ================================================================
+
+-- A work item can point to the existing SPK-task assignment.
+ALTER TABLE public.spk_work_items
+    ADD COLUMN IF NOT EXISTS spk_task_id bigint;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='fk_spk_work_item_spk_task') THEN
+        ALTER TABLE public.spk_work_items
+            ADD CONSTRAINT fk_spk_work_item_spk_task
+            FOREIGN KEY (spk_task_id) REFERENCES public.spk_tasks(id) ON DELETE RESTRICT;
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS ix_spk_work_items_spk_task ON public.spk_work_items(spk_task_id);
+
+CREATE OR REPLACE FUNCTION public.fn_validate_spk_work_item_project()
+RETURNS trigger AS $$
+DECLARE
+    v_project_id integer;
+    v_assigned_spk integer;
+    v_assigned_task integer;
+BEGIN
+    SELECT project_id INTO v_project_id FROM public.spk WHERE id=NEW.spk_id;
+    IF v_project_id IS NULL THEN
+        RAISE EXCEPTION 'SPK % tidak ditemukan.', NEW.spk_id;
+    END IF;
+
+    IF NEW.project_task_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM public.project_tasks t
+         WHERE t.id=NEW.project_task_id AND t.project_id=v_project_id
+    ) THEN
+        RAISE EXCEPTION 'Task harus berasal dari proyek yang sama dengan SPK.';
+    END IF;
+
+    IF NEW.budget_item_id IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM public.budget_items b
+         WHERE b.id=NEW.budget_item_id AND b.project_id=v_project_id
+    ) THEN
+        RAISE EXCEPTION 'Item RAB harus berasal dari proyek yang sama dengan SPK.';
+    END IF;
+
+    IF NEW.spk_task_id IS NOT NULL THEN
+        SELECT st.spk_id, st.task_id
+          INTO v_assigned_spk, v_assigned_task
+          FROM public.spk_tasks st
+         WHERE st.id=NEW.spk_task_id;
+        IF v_assigned_spk IS DISTINCT FROM NEW.spk_id
+           OR (NEW.project_task_id IS NOT NULL AND v_assigned_task IS DISTINCT FROM NEW.project_task_id) THEN
+            RAISE EXCEPTION 'Mapping SPK task tidak cocok dengan SPK/task pada work item.';
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_spk_work_item_project ON public.spk_work_items;
+CREATE TRIGGER trg_validate_spk_work_item_project
+BEFORE INSERT OR UPDATE OF spk_id, project_task_id, budget_item_id, spk_task_id
+ON public.spk_work_items
+FOR EACH ROW EXECUTE PROCEDURE public.fn_validate_spk_work_item_project();
+
+-- Enforce that a Subcon contract task belongs to the same subcontractor
+-- as the execution party of the linked SPK, not merely the same project.
+CREATE OR REPLACE FUNCTION public.fn_validate_subcon_task_work_item()
+RETURNS trigger AS $$
+DECLARE
+    v_contract_project integer;
+    v_contract_subcontractor integer;
+    v_spk_project integer;
+    v_spk_type varchar(12);
+    v_spk_subcontractor integer;
+BEGIN
+    IF NEW.work_item_id IS NULL THEN RETURN NEW; END IF;
+
+    SELECT c.project_id, c.subcontractor_id
+      INTO v_contract_project, v_contract_subcontractor
+      FROM public.subcon_contracts c WHERE c.id=NEW.contract_id;
+
+    SELECT s.project_id, s.spk_type, s.execution_subcontractor_id
+      INTO v_spk_project, v_spk_type, v_spk_subcontractor
+      FROM public.spk_work_items wi JOIN public.spk s ON s.id=wi.spk_id
+     WHERE wi.id=NEW.work_item_id;
+
+    IF v_contract_project IS NULL
+       OR v_spk_project IS DISTINCT FROM v_contract_project
+       OR v_spk_type IS DISTINCT FROM 'SUBCON'
+       OR v_spk_subcontractor IS DISTINCT FROM v_contract_subcontractor THEN
+        RAISE EXCEPTION 'Work item harus berasal dari SPK SUBCON dengan proyek dan Subcon yang sama.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_subcon_task_work_item ON public.subcon_contract_tasks;
+CREATE TRIGGER trg_validate_subcon_task_work_item
+BEFORE INSERT OR UPDATE OF contract_id, work_item_id
+ON public.subcon_contract_tasks
+FOR EACH ROW EXECUTE PROCEDURE public.fn_validate_subcon_task_work_item();
+
+-- Correct stock document reference by direction: receipts use
+-- material_leftover_header; sales/issue to client use material_out_header.
+ALTER TABLE public.spk_material_leftover_transactions
+    ADD COLUMN IF NOT EXISTS inventory_out_doc_id integer
+        REFERENCES public.material_out_header(id) ON DELETE RESTRICT;
+
+CREATE OR REPLACE FUNCTION public.fn_validate_spk_leftover_transaction()
+RETURNS trigger AS $$
+DECLARE
+    v_lot public.spk_material_leftover_lots%ROWTYPE;
+    v_doc_project integer;
+BEGIN
+    SELECT * INTO v_lot
+      FROM public.spk_material_leftover_lots
+     WHERE id=NEW.leftover_lot_id
+     FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Lot material sisa tidak ditemukan.';
+    END IF;
+    IF NEW.qty > v_lot.qty_available THEN
+        RAISE EXCEPTION 'Qty transaksi melebihi qty sisa tersedia.';
+    END IF;
+
+    IF NEW.transaction_type='RETURN_COMPANY' THEN
+        IF v_lot.current_owner_type<>'COMPANY'
+           OR NEW.seller_type<>'COMPANY' OR NEW.buyer_type<>'COMPANY' THEN
+            RAISE EXCEPTION 'RETURN_COMPANY hanya untuk material milik perusahaan.';
+        END IF;
+    ELSIF NEW.transaction_type='BUY_FROM_SUBCON' THEN
+        IF v_lot.current_owner_type<>'SUBCON'
+           OR NEW.seller_type<>'SUBCON' OR NEW.buyer_type<>'COMPANY'
+           OR NEW.seller_subcontractor_id IS DISTINCT FROM v_lot.current_subcontractor_id THEN
+            RAISE EXCEPTION 'BUY_FROM_SUBCON harus membeli dari Subcon pemilik material saat ini.';
+        END IF;
+    ELSIF NEW.transaction_type='SELL_TO_CLIENT' THEN
+        IF v_lot.current_owner_type<>'COMPANY'
+           OR NEW.seller_type<>'COMPANY' OR NEW.buyer_type<>'CLIENT' THEN
+            RAISE EXCEPTION 'SELL_TO_CLIENT hanya untuk material milik perusahaan.';
+        END IF;
+    END IF;
+
+    IF NEW.status='POSTED' THEN
+        IF NEW.transaction_type IN ('RETURN_COMPANY','BUY_FROM_SUBCON') THEN
+            IF NEW.inventory_doc_id IS NULL OR NEW.inventory_out_doc_id IS NOT NULL THEN
+                RAISE EXCEPTION 'Transaksi penerimaan/return wajib memakai dokumen material_leftover_header saja.';
+            END IF;
+            SELECT project_id INTO v_doc_project
+              FROM public.material_leftover_header
+             WHERE id=NEW.inventory_doc_id AND lower(status)='posted';
+            IF v_doc_project IS DISTINCT FROM v_lot.project_id THEN
+                RAISE EXCEPTION 'Dokumen penerimaan inventory harus POSTED dan berasal dari proyek yang sama.';
+            END IF;
+            IF COALESCE((
+                SELECT sum(li.qty)
+                  FROM public.material_leftover_items li
+                 WHERE li.header_id=NEW.inventory_doc_id
+                   AND li.material_id=v_lot.material_id
+            ),0) < NEW.qty THEN
+                RAISE EXCEPTION 'Qty/material pada dokumen penerimaan tidak mencukupi transaksi.';
+            END IF;
+        ELSE
+            IF NEW.inventory_out_doc_id IS NULL OR NEW.inventory_doc_id IS NOT NULL THEN
+                RAISE EXCEPTION 'Penjualan ke client wajib memakai dokumen material_out_header saja.';
+            END IF;
+            SELECT project_id INTO v_doc_project
+              FROM public.material_out_header
+             WHERE id=NEW.inventory_out_doc_id AND lower(status)='posted';
+            IF v_doc_project IS DISTINCT FROM v_lot.project_id THEN
+                RAISE EXCEPTION 'Dokumen issue inventory harus POSTED dan berasal dari proyek yang sama.';
+            END IF;
+            IF COALESCE((
+                SELECT sum(oi.qty_out)
+                  FROM public.material_out_items oi
+                  JOIN public.material_out_header oh ON oh.id=oi.material_out_id
+                 WHERE oh.id=NEW.inventory_out_doc_id
+                   AND oi.material_id=v_lot.material_id
+            ),0) < NEW.qty THEN
+                RAISE EXCEPTION 'Qty/material pada dokumen issue tidak mencukupi transaksi.';
+            END IF;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_validate_spk_leftover_transaction ON public.spk_material_leftover_transactions;
+CREATE TRIGGER trg_validate_spk_leftover_transaction
+BEFORE INSERT OR UPDATE OF leftover_lot_id,transaction_type,seller_type,seller_subcontractor_id,
+                           buyer_type,buyer_subcontractor_id,qty,status,
+                           inventory_doc_id,inventory_out_doc_id
+ON public.spk_material_leftover_transactions
+FOR EACH ROW EXECUTE PROCEDURE public.fn_validate_spk_leftover_transaction();
+
+-- Posted ownership transactions are immutable; reverse with a separate
+-- compensating transaction/document, never by editing the posted row.
+CREATE OR REPLACE FUNCTION public.fn_block_posted_leftover_transaction_change()
+RETURNS trigger AS $$
+BEGIN
+    IF TG_OP='DELETE' AND OLD.status='POSTED' THEN
+        RAISE EXCEPTION 'Transaksi material sisa POSTED tidak boleh dihapus; gunakan transaksi koreksi.';
+    END IF;
+    IF TG_OP='UPDATE' AND OLD.status='POSTED' THEN
+        RAISE EXCEPTION 'Transaksi material sisa POSTED tidak boleh diubah; gunakan transaksi koreksi.';
+    END IF;
+    RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_block_posted_leftover_transaction_change ON public.spk_material_leftover_transactions;
+CREATE TRIGGER trg_block_posted_leftover_transaction_change
+BEFORE UPDATE OR DELETE ON public.spk_material_leftover_transactions
+FOR EACH ROW EXECUTE PROCEDURE public.fn_block_posted_leftover_transaction_change();
+
+-- Posting must work for both INSERT ... status='POSTED' and a DRAFT -> POSTED
+-- transition. Partial transfers split the lot; untransferred balance keeps
+-- its original owner.
+CREATE OR REPLACE FUNCTION public.fn_post_spk_leftover_transaction()
+RETURNS trigger AS $$
+DECLARE
+    v_lot public.spk_material_leftover_lots%ROWTYPE;
+BEGIN
+    IF NEW.status='POSTED'
+       AND (TG_OP='INSERT' OR OLD.status IS DISTINCT FROM 'POSTED') THEN
+        SELECT * INTO v_lot
+          FROM public.spk_material_leftover_lots
+         WHERE id=NEW.leftover_lot_id
+         FOR UPDATE;
+
+        IF NOT FOUND OR v_lot.qty_available < NEW.qty THEN
+            RAISE EXCEPTION 'Qty lot tidak cukup atau sudah berubah.';
+        END IF;
+
+        UPDATE public.spk_material_leftover_lots
+           SET qty_available = qty_available - NEW.qty,
+               status = CASE
+                   WHEN qty_available - NEW.qty = 0 THEN 'EXHAUSTED'
+                   ELSE 'PARTIAL'
+               END
+         WHERE id=NEW.leftover_lot_id;
+
+        IF NEW.transaction_type IN ('BUY_FROM_SUBCON','SELL_TO_CLIENT') THEN
+            INSERT INTO public.spk_material_leftover_lots (
+                lot_no, project_id, spk_id, work_item_id, supply_id, material_id,
+                source_owner_type, source_subcontractor_id,
+                current_owner_type, current_subcontractor_id,
+                qty_origin, qty_available, unit, condition_note, storage_location,
+                status, detected_date, created_by, parent_lot_id
+            ) VALUES (
+                left(NEW.transaction_no, 25) || '-' || NEW.id::text || '-LOT',
+                v_lot.project_id, v_lot.spk_id, v_lot.work_item_id, v_lot.supply_id, v_lot.material_id,
+                v_lot.source_owner_type, v_lot.source_subcontractor_id,
+                NEW.buyer_type, NEW.buyer_subcontractor_id,
+                NEW.qty, NEW.qty, v_lot.unit, v_lot.condition_note, v_lot.storage_location,
+                'AVAILABLE', NEW.transaction_date, NEW.posted_by, v_lot.id
+            );
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_post_spk_leftover_transaction ON public.spk_material_leftover_transactions;
+CREATE TRIGGER trg_post_spk_leftover_transaction
+AFTER INSERT OR UPDATE OF status ON public.spk_material_leftover_transactions
+FOR EACH ROW EXECUTE PROCEDURE public.fn_post_spk_leftover_transaction();
