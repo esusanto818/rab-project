@@ -49,3 +49,7 @@ Disesuaikan dengan tiga export database yang diberikan pada 3 November 2026:
 
 ## Status
 Revisi berbasis schema export aktual. Belum dieksekusi pada database dan belum diuji runtime PostgreSQL. Tetap di branch terpisah; tidak mengubah `main`.
+
+
+## Catatan transaksi material sisa
+Versi DDL terbaru memecah lot ketika transaksi BUY_FROM_SUBCON atau SELL_TO_CLIENT diposting. Kuantitas yang berpindah dibuat sebagai lot turunan dengan pemilik baru, sedangkan sisa kuantitas pada lot asal tetap dimiliki pemilik sebelumnya. Ini penting untuk transaksi sebagian agar kepemilikan tidak berpindah untuk seluruh sisa material.
