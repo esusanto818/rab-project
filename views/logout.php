@@ -1,15 +1,43 @@
 <?php
-if (!isset($_SESSION)) {session_start();}   //to restrict the access
-include "../php-class/crudClass.php";
+// views/logout.php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
-$sql = "update m_user_login_status set login_status=NULL,login_terminal=NULL where id=".$_SESSION["user_id"];
-$output = pg_query($sql)or die('connection failed'.pg_last_error());
+// Ambil user_id dari session
+$user_id = $_SESSION['user_id'] ?? null;
 
-session_unset();
-session_destroy();
-if(!isset($_SESSION['user_id']) || is_null($_SESSION['user_id']))
-    {
-      header("Location: ../index.php");
-      exit;
+if ($user_id) {
+    // Pastikan path ke crudClass.php sesuai dengan struktur folder Anda
+    require_once __DIR__ . '/../php-class/crudClass.php';
+    $db = new crud();
+    
+    try {
+        // Update status login berdasarkan user_id (bukan id primary key tabel login_status)
+        // Sesuai schema: m_user_login_status memiliki kolom user_id sebagai FK
+        $stmt = $db->prepare("UPDATE m_user_login_status SET login_status = false, login_terminal = NULL WHERE user_id = :user_id");
+        $stmt->execute(['user_id' => $user_id]);
+    } catch (Exception $e) {
+        // Jika gagal update (misal user tidak ada di tabel status), abaikan dan tetap lanjut logout
+        error_log("Logout DB Error: " . $e->getMessage());
     }
+}
+
+// Hapus semua data session
+$_SESSION = array();
+
+// Hapus cookie session jika ada
+if (ini_get("session.use_cookies")) {
+    $params = session_get_cookie_params();
+    setcookie(session_name(), '', time() - 42000,
+        $params["path"], $params["domain"],
+        $params["secure"] ?? false, $params["httponly"] ?? true
+    );
+}
+
+// Destroy session
+session_destroy();
+
+// Redirect to main page
+header('Location: ../index.php');
 ?>

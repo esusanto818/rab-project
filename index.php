@@ -153,7 +153,7 @@ background: rgba(34, 211, 238, 0.05);
 <a href="#comparison" class="hover:text-brand-cyan transition">Perbandingan</a>
 <a href="#contact" class="hover:text-brand-cyan transition">Kontak</a>
 </div>
-<a href="dev/login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg">
+<a href="login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg">
 Login
 </a>
 </div>
