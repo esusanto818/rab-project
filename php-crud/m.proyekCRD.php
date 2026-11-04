@@ -532,7 +532,8 @@ ATURAN:
 2. Setiap Task memiliki task_name, description, start_date, end_date (YYYY-MM-DD).
 3. Tanggal setiap Task harus berada di dalam rentang proyek.
 4. Material hanya boleh dipilih dari daftar material RAB di atas. Jangan membuat ID, nama material, atau satuan baru.
-5. Setiap material harus menyertakan budget_item_id yang persis sama dengan daftar, qty_estimate positif, dan reason singkat.
+5. Setiap material wajib mengembalikan budget_item_id persis dari daftar. material_id dan material_name boleh ikut dikembalikan sebagai informasi pembantu, tetapi TIDAK boleh menggantikan budget_item_id.
+6. qty_estimate harus positif dan sertakan reason singkat.
 6. qty_estimate adalah estimasi pembagian kebutuhan material pada Task, bukan angka final pengadaan.
 7. Jumlah qty_estimate dari seluruh Task untuk satu budget_item_id tidak boleh melebihi qty_remaining.
 8. Material yang sama boleh digunakan pada beberapa Task. Bagikan kuantitas secara masuk akal dan hindari mengalokasikan seluruh material ke setiap Task.
