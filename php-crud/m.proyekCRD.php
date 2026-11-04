@@ -532,12 +532,16 @@ ATURAN:
 2. Setiap Task memiliki task_name, description, start_date, end_date (YYYY-MM-DD).
 3. Tanggal setiap Task harus berada di dalam rentang proyek.
 4. Material hanya boleh dipilih dari daftar material RAB di atas. Jangan membuat ID, nama material, atau satuan baru.
-5. Setiap material harus menyertakan budget_item_id yang persis sama dengan daftar, qty_estimate positif, dan reason singkat.
+5. Setiap material wajib mengembalikan budget_item_id persis dari daftar. material_id dan material_name boleh ikut dikembalikan sebagai informasi pembantu, tetapi TIDAK boleh menggantikan budget_item_id.
+6. qty_estimate harus positif dan sertakan reason singkat.
 6. qty_estimate adalah estimasi pembagian kebutuhan material pada Task, bukan angka final pengadaan.
 7. Jumlah qty_estimate dari seluruh Task untuk satu budget_item_id tidak boleh melebihi qty_remaining.
 8. Material yang sama boleh digunakan pada beberapa Task. Bagikan kuantitas secara masuk akal dan hindari mengalokasikan seluruh material ke setiap Task.
-9. Jika material RAB tidak relevan untuk suatu Task, jangan dipaksakan.
-10. Jika daftar material RAB kosong, tetap buat Task dan isi materials sebagai array kosong.
+9. Untuk setiap Task, periksa kebutuhan material secara menyeluruh berdasarkan metode kerja, bukan hanya satu material utama. Contoh: pasangan dinding dapat membutuhkan bata/bata ringan, semen, pasir/mortar dan material pendukung; plester/aci membutuhkan semen dan pasir; pekerjaan lantai dapat membutuhkan keramik, perekat/spesi dan nat sesuai daftar RAB.
+10. Pilih SEMUA material relevan yang tersedia di daftar RAB untuk setiap Task. Jangan berhenti setelah menemukan satu material.
+11. Jangan mengarang material yang tidak ada di RAB. Jika material penting tidak tersedia, catat dalam missing_materials (nama dan alasan) agar pengguna dapat menambahkannya ke RAB proyek.
+12. Jika material RAB tidak relevan untuk suatu Task, jangan dipaksakan. Jika daftar material RAB kosong, tetap buat Task dan isi materials sebagai array kosong.
+13. Pastikan total qty_estimate antar Task untuk satu budget_item_id tidak melebihi qty_remaining.
 
 KELUARKAN JSON MURNI berbentuk object:
 {
@@ -549,6 +553,9 @@ KELUARKAN JSON MURNI berbentuk object:
       \"end_date\": \"YYYY-MM-DD\",
       \"materials\": [
         { \"budget_item_id\": 123, \"qty_estimate\": 10, \"reason\": \"string\" }
+      ],
+      \"missing_materials\": [
+        { \"material_name\": \"string\", \"reason\": \"string\" }
       ]
     }
   ]
@@ -561,7 +568,16 @@ KELUARKAN JSON MURNI berbentuk object:
             }
 
             $allowed = [];
-            foreach ($candidateMaterials as $bm) $allowed[(int)$bm['budget_item_id']] = $bm;
+            $byMaterialId = [];
+            $byMaterialName = [];
+            foreach ($candidateMaterials as $bm) {
+                $bid = (int)$bm['budget_item_id'];
+                $allowed[$bid] = $bm;
+                $mid = (int)$bm['material_id'];
+                if ($mid > 0) $byMaterialId[$mid][] = $bid;
+                $nameKey = strtolower(trim(preg_replace('/\\s+/', ' ', (string)$bm['material_name'])));
+                if ($nameKey !== '') $byMaterialName[$nameKey][] = $bid;
+            }
             $plannedTotals = [];
             $covered = true;
             $coverageNotes = [];
@@ -589,8 +605,26 @@ KELUARKAN JSON MURNI berbentuk object:
                 foreach (($t['materials'] ?? []) as $m) {
                     $bid = (int)($m['budget_item_id'] ?? 0);
                     $qty = (float)($m['qty_estimate'] ?? 0);
+
+                    // Beberapa respons model mengembalikan material_id atau nama material,
+                    // bukan budget_item_id. Resolusi hanya dilakukan terhadap kandidat RAB
+                    // proyek ini; tidak pernah menerima ID/nama di luar daftar kandidat.
                     if (!isset($allowed[$bid])) {
-                        throw new Exception('AI memilih item RAB material yang tidak tersedia/ tidak valid pada Task "' . $tName . '".');
+                        $mid = (int)($m['material_id'] ?? 0);
+                        if ($mid > 0 && !empty($byMaterialId[$mid]) && count($byMaterialId[$mid]) === 1) {
+                            $bid = (int)$byMaterialId[$mid][0];
+                        }
+                    }
+                    if (!isset($allowed[$bid])) {
+                        $name = (string)($m['material_name'] ?? ($m['name'] ?? ''));
+                        $nameKey = strtolower(trim(preg_replace('/\\s+/', ' ', $name)));
+                        if ($nameKey !== '' && !empty($byMaterialName[$nameKey]) && count($byMaterialName[$nameKey]) === 1) {
+                            $bid = (int)$byMaterialName[$nameKey][0];
+                        }
+                    }
+                    if (!isset($allowed[$bid])) {
+                        $returnedId = (int)($m['budget_item_id'] ?? 0);
+                        throw new Exception('AI mengembalikan ID material/RAB ' . $returnedId . ' yang tidak cocok dengan item RAB proyek. Periksa pemetaan material "' . trim((string)($m['material_name'] ?? '')) . '" pada Task "' . $tName . '".');
                     }
                     if ($qty <= 0) throw new Exception('Qty estimasi material harus lebih besar dari nol.');
                     $plannedTotals[$bid] = ($plannedTotals[$bid] ?? 0) + $qty;
@@ -608,7 +642,15 @@ KELUARKAN JSON MURNI berbentuk object:
                 $normalizedTasks[] = [
                     'task_name' => $tName, 'description' => $tDesc,
                     'start_date' => $tStart, 'end_date' => $tEnd,
-                    'materials' => $materials
+                    'materials' => $materials,
+                    'missing_materials' => array_values(array_filter(array_map(function($gap) {
+                        $name = trim((string)($gap['material_name'] ?? ''));
+                        if ($name === '') return null;
+                        return [
+                            'material_name' => $name,
+                            'reason' => trim((string)($gap['reason'] ?? 'Belum tersedia pada RAB proyek.'))
+                        ];
+                    }, is_array($t['missing_materials'] ?? null) ? $t['missing_materials'] : [])))
                 ];
             }
 
@@ -618,7 +660,9 @@ KELUARKAN JSON MURNI berbentuk object:
                 'coverage_valid' => $covered,
                 'notes' => $coverageNotes,
                 'data' => ['project_id' => $projectId, 'tasks' => $normalizedTasks],
-                'material_count' => array_sum(array_map(function($t) { return count($t['materials']); }, $normalizedTasks))
+                'available_materials' => $candidateMaterials,
+                'material_count' => array_sum(array_map(function($t) { return count($t['materials']); }, $normalizedTasks)),
+                'missing_material_count' => array_sum(array_map(function($t) { return count($t['missing_materials']); }, $normalizedTasks))
             ]);
             break;
 

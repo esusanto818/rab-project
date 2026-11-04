@@ -45,7 +45,7 @@ Ext.onReady(function () {
     // [AUTO-INV][NEW] window lebar + scroll (Ext.Msg terlalu sempit untuk tabel). onYes kosong -> hanya tombol Tutup.
     // Tombol footer memakai <button> HTML bergaya sama dengan "Print Task" (tombol Ext bawaan tidak terbaca di tema gelap).
     var planWinSeq = 0;
-    function showPlanWin(title, html, yesText, onYes) {
+    function showPlanWin(title, html, yesText, onYes, onReady) {
         var w = Math.min(1000, Math.round((window.innerWidth || 1200) * 0.92));
         var h = Math.min(560, Math.round((window.innerHeight || 800) * 0.85));
         var uid = 'planWin' + (++planWinSeq);
@@ -64,6 +64,7 @@ Ext.onReady(function () {
             })
         });
         win.show();
+        if (onReady) onReady(win, uid);
         var no = document.getElementById(uid + 'No'), yes = document.getElementById(uid + 'Yes');
         if (no) no.onclick = function () { win.close(); };
         if (yes) yes.onclick = function () { win.close(); onYes(); };
@@ -369,35 +370,115 @@ Ext.onReady(function () {
                             if (!res.success) { Ext.Msg.alert('Gagal', res.message || 'Analisis AI gagal.'); return; }
 
                             var plan = res.data;
-                            var html = '<div style="color:#b0bec5;margin-bottom:12px;">' +
-                                Ext.util.Format.htmlEncode(res.message) +
-                                '<br>Task: <b>' + plan.tasks.length + '</b> | Rekomendasi material: <b>' + (res.material_count || 0) + '</b></div>';
-                            if (res.notes && res.notes.length) {
-                                html += '<div style="color:#ffb74d;margin-bottom:12px;">' + Ext.util.Format.htmlEncode(res.notes.join(' ')) + '</div>';
-                            }
-                            if (!res.material_count) {
-                                html += '<div style="color:#ffb74d;margin-bottom:12px;">Belum ada material RAB yang dapat direkomendasikan. Task tetap dapat disimpan, material dapat dialokasikan kemudian.</div>';
-                            }
-                            Ext.each(plan.tasks, function(t, idx) {
-                                html += '<div style="border:1px solid #29465a;border-radius:5px;padding:10px;margin:0 0 10px 0;background:#102230;">' +
-                                    '<b style="color:#00bcd4;">' + (idx + 1) + '. ' + Ext.util.Format.htmlEncode(t.task_name) + '</b>' +
-                                    '<div style="color:#b0bec5;margin:5px 0;">' + Ext.util.Format.htmlEncode(t.description || '') + '</div>' +
-                                    '<div style="font-size:12px;color:#80deea;">' + Ext.util.Format.htmlEncode(t.start_date) + ' s/d ' + Ext.util.Format.htmlEncode(t.end_date) + '</div>';
-                                if (t.materials && t.materials.length) {
-                                    html += '<table width="100%" style="border-collapse:collapse;margin-top:8px;color:#fff;font-size:12px;"><tr style="color:#00bcd4;"><th align="left">Material RAB</th><th align="right">Estimasi Qty</th><th align="left">Alasan</th></tr>';
-                                    Ext.each(t.materials, function(m) {
-                                        html += '<tr style="border-top:1px solid #29465a;"><td style="padding:5px 3px;">' + Ext.util.Format.htmlEncode(m.material_name) + '</td>' +
-                                            '<td align="right" style="padding:5px 3px;white-space:nowrap;">' + Ext.util.Format.number(m.qty_estimate, '0,000.####') + ' ' + Ext.util.Format.htmlEncode(m.unit || '') + '</td>' +
-                                            '<td style="padding:5px 3px;">' + Ext.util.Format.htmlEncode(m.reason || '') + '</td></tr>';
-                                    });
-                                    html += '</table>';
-                                } else {
-                                    html += '<div style="color:#78909c;font-size:12px;margin-top:7px;">Tidak ada rekomendasi material untuk Task ini.</div>';
-                                }
-                                html += '</div>';
-                            });
+                            var availableMaterials = res.available_materials || [];
+                            var planWin = null;
 
-                            showPlanWin('Review Task & Material AI', html, 'Simpan Task & Material', function() {
+                            function renderTaskPlan() {
+                                var totalMaterials = 0;
+                                Ext.each(plan.tasks, function(task) { totalMaterials += (task.materials || []).length; });
+                                var html = '<div style="font-size:15px;line-height:1.55;color:#d5e3ec;margin-bottom:14px;">' +
+                                    Ext.util.Format.htmlEncode(res.message) +
+                                    '<br><b>Jumlah Task: ' + plan.tasks.length + ' | Alokasi material: ' + totalMaterials + '</b></div>';
+                                if (res.notes && res.notes.length) {
+                                    html += '<div style="font-size:14px;color:#ffcc80;margin-bottom:12px;">' + Ext.util.Format.htmlEncode(res.notes.join(' ')) + '</div>';
+                                }
+                                html += '<div style="font-size:14px;color:#b0bec5;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:14px;">' +
+                                    '<b>Cara menambah material:</b> Pilih material RAB yang sudah tersedia pada pilihan di setiap Task, masukkan Qty, lalu klik Tambah Material. ' +
+                                    'Jika material belum ada di daftar, tutup review ini, tambahkan dahulu melalui menu RAB Material pada proyek, simpan, kemudian jalankan analisis AI kembali.</div>';
+
+                                Ext.each(plan.tasks, function(t, idx) {
+                                    var cardId = 'aiTaskCard_' + idx;
+                                    html += '<div id="' + cardId + '" style="border:1px solid #3b6078;border-radius:7px;padding:15px;margin:0 0 14px 0;background:#102638;">' +
+                                        '<div style="font-size:18px;line-height:1.4;font-weight:bold;color:#40d7ed;margin-bottom:7px;">' +
+                                        (idx + 1) + '. ' + Ext.util.Format.htmlEncode(t.task_name) + '</div>' +
+                                        '<div style="font-size:15px;line-height:1.55;color:#e0e8ee;margin:5px 0;">' + Ext.util.Format.htmlEncode(t.description || '') + '</div>' +
+                                        '<div style="font-size:14px;color:#80deea;margin:6px 0 10px;">' +
+                                        Ext.util.Format.htmlEncode(t.start_date) + ' s/d ' + Ext.util.Format.htmlEncode(t.end_date) + '</div>';
+
+                                    if (t.materials && t.materials.length) {
+                                        html += '<table width="100%" style="border-collapse:collapse;margin:8px 0 12px;color:#fff;font-size:14px;line-height:1.5;">' +
+                                            '<tr style="color:#40d7ed;background:#0a1a27;"><th align="left" style="padding:8px;">Material RAB</th><th align="right" style="padding:8px;">Estimasi Qty</th><th align="left" style="padding:8px;">Alasan</th><th></th></tr>';
+                                        Ext.each(t.materials, function(m, mi) {
+                                            html += '<tr style="border-top:1px solid #34546a;">' +
+                                                '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(m.material_name) + '</td>' +
+                                                '<td align="right" style="padding:8px;white-space:nowrap;">' + Ext.util.Format.number(m.qty_estimate, '0,000.####') + ' ' + Ext.util.Format.htmlEncode(m.unit || '') + '</td>' +
+                                                '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(m.reason || '') + '</td>' +
+                                                '<td style="padding:6px;"><button type="button" class="aiRemoveMaterial" data-task="' + idx + '" data-material="' + mi + '" style="font-size:13px;padding:5px 9px;">Hapus</button></td></tr>';
+                                        });
+                                        html += '</table>';
+                                    } else {
+                                        html += '<div style="font-size:14px;color:#ffcc80;margin:8px 0 12px;">Belum ada material yang dialokasikan ke Task ini.</div>';
+                                    }
+
+                                    if (t.missing_materials && t.missing_materials.length) {
+                                        html += '<div style="border-left:3px solid #ffb74d;padding:7px 10px;margin:8px 0;color:#ffcc80;font-size:14px;">' +
+                                            '<b>Kebutuhan yang belum ada di RAB:</b><ul style="margin:5px 0 5px 20px;">';
+                                        Ext.each(t.missing_materials, function(g) {
+                                            html += '<li>' + Ext.util.Format.htmlEncode(g.material_name) + ' — ' + Ext.util.Format.htmlEncode(g.reason || '') + '</li>';
+                                        });
+                                        html += '</ul>Tambahkan item tersebut ke RAB proyek jika memang diperlukan.</div>';
+                                    }
+
+                                    html += '<div style="border-top:1px solid #34546a;padding-top:11px;margin-top:8px;">' +
+                                        '<div style="font-size:14px;font-weight:bold;color:#80deea;margin-bottom:7px;">Tambah material dari RAB ke Task ini</div>' +
+                                        '<select id="aiMaterialSelect_' + idx + '" style="width:58%;min-width:220px;padding:8px;font-size:14px;background:#061522;color:#fff;border:1px solid #52758b;">' +
+                                        '<option value="">-- Pilih material RAB --</option>';
+                                    Ext.each(availableMaterials, function(a) {
+                                        var already = false;
+                                        Ext.each(t.materials || [], function(tm) { if (parseInt(tm.budget_item_id,10) === parseInt(a.budget_item_id,10)) already = true; });
+                                        html += '<option value="' + parseInt(a.budget_item_id,10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
+                                            Ext.util.Format.htmlEncode(a.material_name + ' | Sisa RAB: ' + Ext.util.Format.number(a.qty_remaining, '0,000.####') + ' ' + a.unit) + '</option>';
+                                    });
+                                    html += '</select> <input id="aiMaterialQty_' + idx + '" type="number" min="0.0001" step="0.0001" placeholder="Qty" style="width:100px;padding:8px;font-size:14px;background:#061522;color:#fff;border:1px solid #52758b;"> ' +
+                                        '<button type="button" class="aiAddMaterial" data-task="' + idx + '" style="padding:8px 12px;font-size:14px;font-weight:bold;">Tambah Material</button>' +
+                                        '</div></div>';
+                                });
+                                return html;
+                            }
+
+                            function bindPlanActions(win) {
+                                var addButtons = win.body.dom.querySelectorAll('.aiAddMaterial');
+                                Ext.each(addButtons, function(btn) {
+                                    btn.onclick = function() {
+                                        var idx = parseInt(btn.getAttribute('data-task'), 10);
+                                        var select = document.getElementById('aiMaterialSelect_' + idx);
+                                        var qtyInput = document.getElementById('aiMaterialQty_' + idx);
+                                        var bid = parseInt(select.value, 10);
+                                        var qty = parseFloat(qtyInput.value);
+                                        if (!bid || !qty || qty <= 0) { Ext.Msg.alert('Peringatan', 'Pilih material dan isi Qty lebih besar dari nol.'); return; }
+                                        var candidate = null;
+                                        Ext.each(availableMaterials, function(a) { if (parseInt(a.budget_item_id,10) === bid) candidate = a; });
+                                        if (!candidate) { Ext.Msg.alert('Gagal', 'Material tidak ditemukan pada daftar RAB proyek.'); return; }
+                                        var total = 0;
+                                        Ext.each(plan.tasks, function(task) {
+                                            Ext.each(task.materials || [], function(m) { if (parseInt(m.budget_item_id,10) === bid) total += parseFloat(m.qty_estimate || 0); });
+                                        });
+                                        if (total + qty > parseFloat(candidate.qty_remaining) + 0.00005) {
+                                            Ext.Msg.alert('Qty melebihi sisa RAB', 'Sisa alokasi material ' + candidate.material_name + ' hanya ' + candidate.qty_remaining + ' ' + candidate.unit + '.');
+                                            return;
+                                        }
+                                        plan.tasks[idx].materials = plan.tasks[idx].materials || [];
+                                        plan.tasks[idx].materials.push({
+                                            budget_item_id: bid, material_name: candidate.material_name, unit: candidate.unit,
+                                            qty_estimate: qty, reason: 'Ditambahkan manual oleh pengguna'
+                                        });
+                                        win.body.update(renderTaskPlan());
+                                        bindPlanActions(win);
+                                    };
+                                });
+                                var removeButtons = win.body.dom.querySelectorAll('.aiRemoveMaterial');
+                                Ext.each(removeButtons, function(btn) {
+                                    btn.onclick = function() {
+                                        var ti = parseInt(btn.getAttribute('data-task'),10);
+                                        var mi = parseInt(btn.getAttribute('data-material'),10);
+                                        plan.tasks[ti].materials.splice(mi,1);
+                                        win.body.update(renderTaskPlan());
+                                        bindPlanActions(win);
+                                    };
+                                });
+                            }
+
+                            showPlanWin('Review Task & Material AI', renderTaskPlan(), 'Simpan Task & Material', function() {
                                 Ext.MessageBox.wait('Menyimpan Task dan alokasi material...', 'Mohon Tunggu');
                                 Ext.Ajax.request({
                                     url: CRD, method: 'POST',
@@ -422,6 +503,9 @@ Ext.onReady(function () {
                                         Ext.Msg.alert('Gagal', 'Gagal menyimpan Task dan material. Periksa log PHP.');
                                     }
                                 });
+                            }, function(win) {
+                                planWin = win;
+                                bindPlanActions(win);
                             });
                         },
                         failure: function() {
