@@ -216,7 +216,7 @@ Ext.onReady(function () {
         url: CRD,
         baseParams: { task: 'read_tasks' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
-            { name: 'id' }, { name: 'task_name' }, { name: 'description' },
+            { name: 'id' }, { name: 'task_name' }, { name: 'description' }, { name: 'materials' },
             { name: 'start_date' }, { name: 'end_date' }, { name: 'status' }
         ])
     });
@@ -257,19 +257,21 @@ Ext.onReady(function () {
                    '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
                    '<th style="border-bottom:1px solid #2a485d; padding:8px;">Nama Sub-Task (WBS)</th>' +
                    '<th style="border-bottom:1px solid #2a485d; padding:8px;">Deskripsi Pekerjaan</th>' +
+                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Material Task</th>' +
                    '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Tgl Mulai</th>' +
                    '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Tgl Selesai</th>' +
                    '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Status</th>' +
                    '</tr></thead><tbody>';
 
         if (!records || !records.length) {
-            html += '<tr><td colspan="5" style="padding:15px; text-align:center; color:#688998;">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#688998;">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
         } else {
             Ext.each(records, function (r) {
                 var d = r.data;
                 html += '<tr style="border-bottom:1px solid #182e3e;">' +
                         '<td style="font-weight:bold; color:#e0f7fa;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
                         '<td style="color:#b0bec5;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
+                        '<td style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.materials || '-') + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
                         '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:11px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
@@ -321,7 +323,7 @@ Ext.onReady(function () {
         url: CRD,
         baseParams: { task: 'read_tasks' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
-            { name: 'id' }, { name: 'task_name' }, { name: 'description' },
+            { name: 'id' }, { name: 'task_name' }, { name: 'description' }, { name: 'materials' },
             { name: 'start_date' }, { name: 'end_date' }, { name: 'status' }
         ])
     });
@@ -332,7 +334,8 @@ Ext.onReady(function () {
         title: 'Rincian Sub-Task Proyek oleh AI (Berdasarkan Definisi & Rentang Tanggal)',
         columns: [
             { header: 'Nama Task', dataIndex: 'task_name', width: 160 },
-            { header: 'Deskripsi', dataIndex: 'description', width: 240 },
+            { header: 'Deskripsi', dataIndex: 'description', width: 220 },
+            { header: 'Material RAB per Task', dataIndex: 'materials', width: 220, renderer: CellWrap },
             { header: 'Tgl Mulai', dataIndex: 'start_date', width: 90, align: 'center' },
             { header: 'Tgl Selesai', dataIndex: 'end_date', width: 90, align: 'center' },
             { header: 'Status', dataIndex: 'status', width: 90, align: 'center' }
@@ -351,37 +354,75 @@ Ext.onReady(function () {
                 document.getElementById('customAiBtn').onclick = function() {
                     var projId = Ext.getCmp('id').getValue();
                     if (!projId) {
-                        Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu sebelum menjalankan analisis task AI.');
+                        Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu sebelum menjalankan analisis AI.');
                         return;
                     }
-                    Ext.MessageBox.wait('AI sedang membaca definisi proyek & memecah sub-task...', 'Mohon Tunggu');
+                    Ext.MessageBox.wait('AI sedang menyusun Task dan rekomendasi material dari RAB proyek...', 'Mohon Tunggu');
                     Ext.Ajax.request({
-                        url: CRD,
-                        method: 'POST',
+                        url: CRD, method: 'POST',
                         params: { task: 'ai_generate_tasks', project_id: projId },
                         success: function(response) {
                             Ext.MessageBox.hide();
-                            var res = Ext.util.JSON.decode(response.responseText);
-                            if (res.success) {
-                                var msg = res.message;
-                                if (!res.coverage_valid && res.notes.length) {
-                                    msg += '<br><br><span style="color:red;">Peringatan Tanggal:<br>' + res.notes.join('<br>') + '</span>';
-                                } else {
-                                    msg += '<br><br><span style="color:green;">Semua tanggal kerja sub-task tercover sempurna dalam rentang proyek!</span>';
-                                }
-                                // [AUTO-INV] hasil penerbitan tagihan otomatis (dijalankan server setelah task tersimpan)
-                                if (res.invoice) {
-                                    msg += '<br><br><b>Tagihan otomatis:</b> ' + res.invoice.made + ' diterbitkan, ' + res.invoice.synced + ' disesuaikan.<br>' +
-                                           planHtml(res.invoice.rows, res.invoice.analysis);
-                                } else if (res.invoice_error) {
-                                    msg += '<br><br><span style="color:#e6a817;">Tagihan otomatis belum diterbitkan: ' + Ext.util.Format.htmlEncode(res.invoice_error) + '</span>';
-                                }
-                                showPlanWin('Analisis Selesai', msg);
-                                editorTaskStore.load({ params: { project_id: projId } });
-                                loadMainDetailPanel(projId);
-                            } else {
-                                Ext.Msg.alert('Gagal', res.message);
+                            var res;
+                            try { res = Ext.util.JSON.decode(response.responseText); }
+                            catch (e) { Ext.Msg.alert('Gagal', 'Respons AI tidak valid.'); return; }
+                            if (!res.success) { Ext.Msg.alert('Gagal', res.message || 'Analisis AI gagal.'); return; }
+
+                            var plan = res.data;
+                            var html = '<div style="color:#b0bec5;margin-bottom:12px;">' +
+                                Ext.util.Format.htmlEncode(res.message) +
+                                '<br>Task: <b>' + plan.tasks.length + '</b> | Rekomendasi material: <b>' + (res.material_count || 0) + '</b></div>';
+                            if (res.notes && res.notes.length) {
+                                html += '<div style="color:#ffb74d;margin-bottom:12px;">' + Ext.util.Format.htmlEncode(res.notes.join(' ')) + '</div>';
                             }
+                            if (!res.material_count) {
+                                html += '<div style="color:#ffb74d;margin-bottom:12px;">Belum ada material RAB yang dapat direkomendasikan. Task tetap dapat disimpan, material dapat dialokasikan kemudian.</div>';
+                            }
+                            Ext.each(plan.tasks, function(t, idx) {
+                                html += '<div style="border:1px solid #29465a;border-radius:5px;padding:10px;margin:0 0 10px 0;background:#102230;">' +
+                                    '<b style="color:#00bcd4;">' + (idx + 1) + '. ' + Ext.util.Format.htmlEncode(t.task_name) + '</b>' +
+                                    '<div style="color:#b0bec5;margin:5px 0;">' + Ext.util.Format.htmlEncode(t.description || '') + '</div>' +
+                                    '<div style="font-size:12px;color:#80deea;">' + Ext.util.Format.htmlEncode(t.start_date) + ' s/d ' + Ext.util.Format.htmlEncode(t.end_date) + '</div>';
+                                if (t.materials && t.materials.length) {
+                                    html += '<table width="100%" style="border-collapse:collapse;margin-top:8px;color:#fff;font-size:12px;"><tr style="color:#00bcd4;"><th align="left">Material RAB</th><th align="right">Estimasi Qty</th><th align="left">Alasan</th></tr>';
+                                    Ext.each(t.materials, function(m) {
+                                        html += '<tr style="border-top:1px solid #29465a;"><td style="padding:5px 3px;">' + Ext.util.Format.htmlEncode(m.material_name) + '</td>' +
+                                            '<td align="right" style="padding:5px 3px;white-space:nowrap;">' + Ext.util.Format.number(m.qty_estimate, '0,000.####') + ' ' + Ext.util.Format.htmlEncode(m.unit || '') + '</td>' +
+                                            '<td style="padding:5px 3px;">' + Ext.util.Format.htmlEncode(m.reason || '') + '</td></tr>';
+                                    });
+                                    html += '</table>';
+                                } else {
+                                    html += '<div style="color:#78909c;font-size:12px;margin-top:7px;">Tidak ada rekomendasi material untuk Task ini.</div>';
+                                }
+                                html += '</div>';
+                            });
+
+                            showPlanWin('Review Task & Material AI', html, 'Simpan Task & Material', function() {
+                                Ext.MessageBox.wait('Menyimpan Task dan alokasi material...', 'Mohon Tunggu');
+                                Ext.Ajax.request({
+                                    url: CRD, method: 'POST',
+                                    params: {
+                                        task: 'save_ai_task_plan',
+                                        project_id: projId,
+                                        plan_json: Ext.util.JSON.encode(plan)
+                                    },
+                                    success: function(saveResponse) {
+                                        Ext.MessageBox.hide();
+                                        var saved;
+                                        try { saved = Ext.util.JSON.decode(saveResponse.responseText); }
+                                        catch (e) { Ext.Msg.alert('Gagal', 'Respons penyimpanan tidak valid.'); return; }
+                                        Ext.Msg.alert(saved.success ? 'Sukses' : 'Gagal', saved.message || 'Proses selesai.');
+                                        if (saved.success) {
+                                            editorTaskStore.load({ params: { project_id: projId } });
+                                            loadMainDetailPanel(projId);
+                                        }
+                                    },
+                                    failure: function() {
+                                        Ext.MessageBox.hide();
+                                        Ext.Msg.alert('Gagal', 'Gagal menyimpan Task dan material. Periksa log PHP.');
+                                    }
+                                });
+                            });
                         },
                         failure: function() {
                             Ext.MessageBox.hide();
