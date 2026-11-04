@@ -451,110 +451,240 @@ try {
             break;
 
         case 'ai_generate_tasks':
-            if ($access < 2) {
-                mpJson(['success' => false, 'message' => 'Akses ditolak.']);
-            }
+            if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
             if ($projectId <= 0) throw new Exception('ID Proyek tidak valid.');
 
             $proj = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $projectId], 'ai_fetch_proj');
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
 
-            $pName   = $proj['name'];
-            $pScope  = $proj['project_scope'] ?: 'Tidak ada spesifikasi khusus';
-            $pStart  = $proj['start_date'] ?: date('Y-m-d');
-            $pEnd    = $proj['end_date'] ?: date('Y-m-d', strtotime('+30 days'));
+            // AI hanya boleh memilih material yang sudah ada di RAB proyek.
+            // Sisa kuantitas memperhitungkan alokasi Task yang sudah tersimpan.
+            $budgetMaterials = mpFetchAll($db, "
+                SELECT bi.id AS budget_item_id, bi.material_id,
+                       COALESCE(m.material_name, bi.item_name) AS material_name,
+                       COALESCE(NULLIF(bi.unit,''), m.unit, '') AS unit,
+                       COALESCE(bi.qty_plan,0) AS qty_plan,
+                       COALESCE((
+                           SELECT SUM(tm.qty_budget) FROM public.task_materials tm
+                            WHERE tm.budget_item_id = bi.id
+                       ),0) AS qty_allocated
+                  FROM public.budget_items bi
+                  LEFT JOIN public.materials m ON m.id = bi.material_id
+                 WHERE bi.project_id = :pid
+                   AND bi.category = 'Material'
+                   AND bi.material_id IS NOT NULL
+                 ORDER BY bi.item_name, bi.id
+            ", ['pid' => $projectId], 'ai_budget_materials');
+
+            $candidateMaterials = [];
+            foreach ($budgetMaterials as $bm) {
+                $remaining = max(0, (float)$bm['qty_plan'] - (float)$bm['qty_allocated']);
+                if ($remaining > 0.00005) {
+                    $candidateMaterials[] = [
+                        'budget_item_id' => (int)$bm['budget_item_id'],
+                        'material_id' => (int)$bm['material_id'],
+                        'material_name' => $bm['material_name'],
+                        'unit' => $bm['unit'],
+                        'qty_plan' => (float)$bm['qty_plan'],
+                        'qty_already_allocated' => (float)$bm['qty_allocated'],
+                        'qty_remaining' => $remaining
+                    ];
+                }
+            }
+
+            $pName = $proj['name'];
+            $pScope = $proj['project_scope'] ?: 'Tidak ada spesifikasi khusus';
+            $pStart = $proj['start_date'] ?: date('Y-m-d');
+            $pEnd = $proj['end_date'] ?: date('Y-m-d', strtotime('+30 days'));
             $pBudget = $proj['budget'];
 
+            $materialJson = json_encode($candidateMaterials, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
             $prompt = "
-                Anda adalah Construction Project Manager dan Expert Planner ahli. 
-                Tolong buatkan rincian Breakdown Struktur Pekerjaan (WBS) atau sub-task untuk proyek konstruksi berikut:
-                - Nama Proyek: {$pName}
-                - Definisi / Spesifikasi Proyek (Lingkup): {$pScope}
-                - Tanggal Mulai Proyek: {$pStart}
-                - Tanggal Selesai Proyek: {$pEnd}
-                - Total Budget: {$pBudget}
+Anda adalah Construction Project Planner dan estimator material.
+Buat WBS proyek sekaligus rekomendasi pembagian kebutuhan material per Task.
+DATA PROYEK:
+Nama: {$pName}
+Lingkup: {$pScope}
+Tanggal mulai: {$pStart}
+Tanggal selesai: {$pEnd}
+Budget: {$pBudget}
 
-                Aturan Ketat:
-                1. Sesuaikan sub-task dengan dimensi/spesifikasi pada Definisi Proyek (misal: pekerjaan pondasi, struktur, atap, atau luasan gudang/rumah tersebut).
-                2. Pecah proyek menjadi 5 hingga 9 sub-task logis.
-                3. Setiap sub-task HARUS memiliki rentang tanggal (start_date dan end_date) format YYYY-MM-DD.
-                4. Rentang tanggal sub-task harus berada di dalam atau tercover sepenuhnya di antara Tanggal Mulai ({$pStart}) dan Tanggal Selesai ({$pEnd}) proyek.
-                
-                Berikan respons dalam format JSON MURNI berupa array of objects tanpa markdown backtick tambahan:
-                [
-                  {
-                    \"task_name\": \"string\",
-                    \"description\": \"string\",
-                    \"start_date\": \"YYYY-MM-DD\",
-                    \"end_date\": \"YYYY-MM-DD\"
-                  }
-                ]
-            ";
-            // [AUTO-INV][REFACTOR] panggilan Gemini dipindah ke mpCallGemini() agar bisa dipakai analisis tagihan
-            $aiRawText = mpCallGemini($prompt) ?: '[]';
-            $tasks = json_decode($aiRawText, true);
+DAFTAR MATERIAL RAB YANG BOLEH DIPILIH (JSON):
+{$materialJson}
 
-            if (!is_array($tasks) || empty($tasks)) {
-                throw new Exception('AI gagal menghasilkan format task yang valid.');
+ATURAN:
+1. Buat 5 sampai 9 Task yang logis, relevan dengan lingkup proyek.
+2. Setiap Task memiliki task_name, description, start_date, end_date (YYYY-MM-DD).
+3. Tanggal setiap Task harus berada di dalam rentang proyek.
+4. Material hanya boleh dipilih dari daftar material RAB di atas. Jangan membuat ID, nama material, atau satuan baru.
+5. Setiap material harus menyertakan budget_item_id yang persis sama dengan daftar, qty_estimate positif, dan reason singkat.
+6. qty_estimate adalah estimasi pembagian kebutuhan material pada Task, bukan angka final pengadaan.
+7. Jumlah qty_estimate dari seluruh Task untuk satu budget_item_id tidak boleh melebihi qty_remaining.
+8. Material yang sama boleh digunakan pada beberapa Task. Bagikan kuantitas secara masuk akal dan hindari mengalokasikan seluruh material ke setiap Task.
+9. Jika material RAB tidak relevan untuk suatu Task, jangan dipaksakan.
+10. Jika daftar material RAB kosong, tetap buat Task dan isi materials sebagai array kosong.
+
+KELUARKAN JSON MURNI berbentuk object:
+{
+  ""tasks"": [
+    {
+      ""task_name"": ""string"",
+      ""description"": ""string"",
+      ""start_date"": ""YYYY-MM-DD"",
+      ""end_date"": ""YYYY-MM-DD"",
+      ""materials"": [
+        { ""budget_item_id"": 123, ""qty_estimate"": 10, ""reason"": ""string"" }
+      ]
+    }
+  ]
+}
+";
+            $aiRawText = mpCallGemini($prompt) ?: '{}';
+            $plan = json_decode($aiRawText, true);
+            if (!is_array($plan) || empty($plan['tasks']) || !is_array($plan['tasks'])) {
+                throw new Exception('AI gagal menghasilkan rencana Task dan material yang valid.');
             }
+
+            $allowed = [];
+            foreach ($candidateMaterials as $bm) $allowed[(int)$bm['budget_item_id']] = $bm;
+            $plannedTotals = [];
+            $covered = true;
+            $coverageNotes = [];
+            $normalizedTasks = [];
+
+            foreach ($plan['tasks'] as $idx => $t) {
+                $tName = trim((string)($t['task_name'] ?? ''));
+                $tDesc = trim((string)($t['description'] ?? ''));
+                $tStart = (string)($t['start_date'] ?? '');
+                $tEnd = (string)($t['end_date'] ?? '');
+                if ($tName === '') throw new Exception('Nama Task ke-' . ($idx + 1) . ' kosong.');
+                $validDate = function($v) {
+                    $d = DateTime::createFromFormat('!Y-m-d', $v);
+                    return $d && $d->format('Y-m-d') === $v;
+                };
+                if (!$validDate($tStart) || !$validDate($tEnd) || $tStart > $tEnd) {
+                    throw new Exception('Tanggal Task "' . $tName . '" tidak valid.');
+                }
+                if ($tStart < $pStart || $tEnd > $pEnd) {
+                    $covered = false;
+                    $coverageNotes[] = "Task '{$tName}' berada di luar rentang tanggal proyek.";
+                }
+
+                $materials = [];
+                foreach (($t['materials'] ?? []) as $m) {
+                    $bid = (int)($m['budget_item_id'] ?? 0);
+                    $qty = (float)($m['qty_estimate'] ?? 0);
+                    if (!isset($allowed[$bid])) {
+                        throw new Exception('AI memilih item RAB material yang tidak tersedia/ tidak valid pada Task "' . $tName . '".');
+                    }
+                    if ($qty <= 0) throw new Exception('Qty estimasi material harus lebih besar dari nol.');
+                    $plannedTotals[$bid] = ($plannedTotals[$bid] ?? 0) + $qty;
+                    if ($plannedTotals[$bid] > $allowed[$bid]['qty_remaining'] + 0.00005) {
+                        throw new Exception('Total estimasi ' . $allowed[$bid]['material_name'] . ' melebihi sisa Qty RAB yang belum dialokasikan.');
+                    }
+                    $materials[] = [
+                        'budget_item_id' => $bid,
+                        'material_name' => $allowed[$bid]['material_name'],
+                        'unit' => $allowed[$bid]['unit'],
+                        'qty_estimate' => $qty,
+                        'reason' => trim((string)($m['reason'] ?? 'Rekomendasi AI'))
+                    ];
+                }
+                $normalizedTasks[] = [
+                    'task_name' => $tName, 'description' => $tDesc,
+                    'start_date' => $tStart, 'end_date' => $tEnd,
+                    'materials' => $materials
+                ];
+            }
+
+            mpJson([
+                'success' => true,
+                'message' => 'Draft Task dan rekomendasi material berhasil dibuat. Periksa sebelum menyimpan.',
+                'coverage_valid' => $covered,
+                'notes' => $coverageNotes,
+                'data' => ['project_id' => $projectId, 'tasks' => $normalizedTasks],
+                'material_count' => array_sum(array_map(function($t) { return count($t['materials']); }, $normalizedTasks))
+            ]);
+            break;
+
+        case 'save_ai_task_plan':
+            if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
+            $projectId = (int)($_REQUEST['project_id'] ?? 0);
+            $planRaw = $_REQUEST['plan_json'] ?? '';
+            if ($projectId <= 0 || $planRaw === '') throw new Exception('Data rencana Task tidak lengkap.');
+            $plan = json_decode($planRaw, true);
+            if (!is_array($plan) || empty($plan['tasks']) || !is_array($plan['tasks'])) {
+                throw new Exception('Format rencana Task tidak valid.');
+            }
+            $proj = mpFetchOne($db, "SELECT id, start_date, end_date FROM projects WHERE id = :id", ['id' => $projectId], 'save_ai_plan_project');
+            if (!$proj) throw new Exception('Proyek tidak ditemukan.');
 
             $db->beginTransaction();
             try {
-                mpExec($db, "DELETE FROM public.project_tasks WHERE project_id = :pid", ['pid' => $projectId], 'del_old_tasks');
-                
-                $stIns = $db->prepare("
+                $stTask = $db->prepare("
                     INSERT INTO public.project_tasks (project_id, task_name, description, start_date, end_date, status)
                     VALUES (:pid, :tname, :tdesc, :tsd, :ted, 'Belum Mulai')
+                    RETURNING id
                 ");
-
-                $covered = true;
-                $coverageNotes = [];
-
-                foreach ($tasks as $t) {
-                    $tName = $t['task_name'] ?? 'Pekerjaan';
-                    $tDesc = $t['description'] ?? '';
-                    $tStart = $t['start_date'] ?? $pStart;
-                    $tEnd = $t['end_date'] ?? $pEnd;
-
-                    if ($tStart < $pStart || $tEnd > $pEnd) {
-                        $covered = false;
-                        $coverageNotes[] = "Task '{$tName}' diluar rentang tanggal proyek!";
+                $stMaterial = $db->prepare("
+                    INSERT INTO public.task_materials (task_id, budget_item_id, qty_budget)
+                    VALUES (:tid, :bid, :qty)
+                ");
+                $taskCount = 0; $materialCount = 0;
+                foreach ($plan['tasks'] as $t) {
+                    $tName = trim((string)($t['task_name'] ?? ''));
+                    $tDesc = trim((string)($t['description'] ?? ''));
+                    $tStart = (string)($t['start_date'] ?? '');
+                    $tEnd = (string)($t['end_date'] ?? '');
+                    $d1 = DateTime::createFromFormat('!Y-m-d', $tStart);
+                    $d2 = DateTime::createFromFormat('!Y-m-d', $tEnd);
+                    if ($tName === '' || !$d1 || $d1->format('Y-m-d') !== $tStart || !$d2 || $d2->format('Y-m-d') !== $tEnd || $tStart > $tEnd) {
+                        throw new Exception('Data Task tidak valid. Simpan dibatalkan.');
                     }
+                    $stTask->execute([':pid' => $projectId, ':tname' => $tName, ':tdesc' => $tDesc, ':tsd' => $tStart, ':ted' => $tEnd]);
+                    $taskId = (int)$stTask->fetchColumn();
+                    if ($taskId <= 0) throw new Exception('Gagal mendapatkan ID Task baru.');
 
-                    $stIns->execute([
-                        ':pid' => $projectId,
-                        ':tname' => $tName,
-                        ':tdesc' => $tDesc,
-                        ':tsd' => $tStart,
-                        ':ted' => $tEnd
-                    ]);
+                    $seen = [];
+                    foreach (($t['materials'] ?? []) as $m) {
+                        $bid = (int)($m['budget_item_id'] ?? 0);
+                        $qty = (float)($m['qty_estimate'] ?? 0);
+                        if ($bid <= 0 || $qty <= 0 || isset($seen[$bid])) {
+                            throw new Exception('Rincian material Task tidak valid atau duplikat.');
+                        }
+                        $seen[$bid] = true;
+                        $validBudget = mpFetchOne($db, "
+                            SELECT id FROM public.budget_items
+                             WHERE id = :bid AND project_id = :pid
+                               AND category = 'Material' AND material_id IS NOT NULL
+                        ", ['bid' => $bid, 'pid' => $projectId], 'validate_ai_plan_budget');
+                        if (!$validBudget) throw new Exception('Item RAB material tidak cocok dengan proyek ini.');
+
+                        $stMaterial->execute([':tid' => $taskId, ':bid' => $bid, ':qty' => $qty]);
+                        $materialCount++;
+                    }
+                    $taskCount++;
                 }
-
                 $db->commit();
 
-                // [AUTO-INV][NEW] task sudah tersimpan -> analisis pembayaran & terbitkan/sinkronkan tagihan otomatis.
-                // Dibungkus try sendiri: kegagalan tagihan tidak boleh membatalkan hasil breakdown task.
                 $invResult = null; $invError = '';
                 if ($access >= 3) {
                     try {
-                        $plan = mpBuildInvoicePlan($db, $projectId, true);
-                        $res  = mpApplyInvoicePlan($db, $plan);
-                        $invResult = ['rows' => $plan['rows'], 'analysis' => $plan['analysis'], 'made' => $res['made'], 'synced' => $res['synced']];
+                        $invoicePlan = mpBuildInvoicePlan($db, $projectId, true);
+                        $invoiceApplied = mpApplyInvoicePlan($db, $invoicePlan);
+                        $invResult = ['made' => $invoiceApplied['made'], 'synced' => $invoiceApplied['synced']];
                     } catch (Throwable $ie) {
-                        error_log('[m.proyekCRD][auto_invoice] ' . $ie->getMessage());
+                        error_log('[m.proyekCRD][auto_invoice_after_ai_plan] ' . $ie->getMessage());
                         $invError = $ie->getMessage();
                     }
-                } else {
-                    $invError = 'Penerbitan tagihan otomatis memerlukan hak akses ubah (level 3).';
                 }
-
                 mpJson([
-                    'success' => true, 
-                    'message' => 'Proyek berhasil dipecah oleh AI berdasarkan spesifikasi teknis!',
-                    'coverage_valid' => $covered,
-                    'notes' => $coverageNotes,
-                    'invoice' => $invResult,           // [AUTO-INV] null bila gagal / tidak berhak
+                    'success' => true,
+                    'message' => "{$taskCount} Task dan {$materialCount} alokasi material berhasil disimpan. Task lama tidak dihapus.",
+                    'task_count' => $taskCount,
+                    'material_count' => $materialCount,
+                    'invoice' => $invResult,
                     'invoice_error' => $invError
                 ]);
             } catch (Throwable $ex) {
