@@ -98,55 +98,55 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 
 <!-- HEADER & NAV -->
 <header class="bg-[#000000] border-b border-[#0a2d4a] sticky top-0 z-50 shadow-lg">
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-<div class="flex items-center justify-between h-14">
-<div class="flex items-center space-x-6">
-<a href="dashboard.php" class="flex items-center space-x-3 group">
-<?php if (file_exists(__DIR__ . '/../assets/favicon.ico')): ?>
-<img src="../assets/favicon.ico" alt="Logo" class="h-10 w-auto object-contain">
-<?php else: ?>
-<span class="font-arial text-xl font-normal text-white-400 tracking-wider group-hover:text-white-900 transition">[XYZ]SYS</span>
-<span class="text-base px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/50">v1.0</span>
-<?php endif; ?>
-</a>
-<ul class="flex items-center space-x-1 sm:space-x-3 font-rajdhani text-base tracking-wider font-semibold border-l border-[#0a2d4a] pl-4">
-<?php
-$i = 0;
-foreach ($mainMenus as $main): $i++;
-$romanNum = toRoman($i);
-$mainSeq = substr($main["seq"], 0, 2);
-$csql = "SELECT id, upper(name) as name, seq FROM m_form_group WHERE active = true AND substring(seq,3,2)!='00' AND substring(seq,1,2) = :sub_seq AND id IN (SELECT DISTINCT g.id FROM m_form_group g LEFT JOIN m_form_name f ON g.id = f.group_id LEFT JOIN m_user_access_menu u ON u.form_id = f.id WHERE g.active = true AND f.active = true AND u.user_id = :user_id) ORDER BY seq::int";
-$cStmt = $db->prepare($csql); $cStmt->execute(['sub_seq' => $mainSeq, 'user_id' => $user_id]);
-$childGroups = $cStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-$hasChildren = count($childGroups) > 0;
-?>
-<li class="nav-item group h-14 flex items-center">
-<a href="#" class="py-2 px-2.5 font-normal text-xl text-cyan-500 hover:text-yellow-300 group-hover:text-yellow-300 flex items-center gap-1 transition-all rounded hover:bg-[#071d30]">
-<?= $romanNum . '. ' . strtoupper(htmlspecialchars($main['name'])); ?>
-</a>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14">
+    <div class="flex items-center space-x-6">
+        <a href="dashboard.php" class="flex items-center space-x-3 group">
+            <?php if (file_exists(__DIR__ . '/../assets/favicon.ico')): ?>
+                <img src="../assets/favicon.ico" alt="Logo" class="h-10 w-auto object-contain">
+            <?php else: ?>
+                <span class="font-arial text-xl font-normal text-white-400 tracking-wider group-hover:text-white-900 transition">[XYZ]SYS</span>
+                <span class="text-base px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/50">v1.0</span>
+            <?php endif; ?>
+        </a>
+            <ul class="flex items-center space-x-1 sm:space-x-3 font-rajdhani text-base tracking-wider font-semibold border-l border-[#0a2d4a] pl-4">
+            <?php
+            $i = 0;
+            foreach ($mainMenus as $main): $i++;
+            $romanNum = toRoman($i);
+            $mainSeq = substr($main["seq"], 0, 2);
+            $csql = "SELECT id, upper(name) as name, seq FROM m_form_group WHERE active = true AND substring(seq,3,2)!='00' AND substring(seq,1,2) = :sub_seq AND id IN (SELECT DISTINCT g.id FROM m_form_group g LEFT JOIN m_form_name f ON g.id = f.group_id LEFT JOIN m_user_access_menu u ON u.form_id = f.id WHERE g.active = true AND f.active = true AND u.user_id = :user_id) ORDER BY seq::int";
+            $cStmt = $db->prepare($csql); $cStmt->execute(['sub_seq' => $mainSeq, 'user_id' => $user_id]);
+            $childGroups = $cStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            $hasChildren = count($childGroups) > 0;
+            ?>
+            <li class="nav-item group h-14 flex items-center">
+            <a href="#" class="py-2 px-2.5 font-normal text-xl text-cyan-500 hover:text-yellow-300 group-hover:text-yellow-300 flex items-center gap-1 transition-all rounded hover:bg-[#071d30]">
+            <?= $romanNum . '. ' . strtoupper(htmlspecialchars($main['name'])); ?>
+        </a>
 
-<?php if ($hasChildren): ?>
-<!-- [REVISI] dropdown selebar isi (maks. lebar layar), kolom ke samping lalu membungkus ke bawah -->
-<div class="dropdown-menu bg-[#0f172a] border border-[#0a2d4a] rounded-b-xl shadow-2xl p-4 text-xl font-normal text-cyan-100 z-50">
-<div class="menu-wrap">
+        <?php if ($hasChildren): ?>
+            <!-- [REVISI] dropdown selebar isi (maks. lebar layar), kolom ke samping lalu membungkus ke bawah -->
+            <div class="dropdown-menu bg-[#0f172a] border border-[#0a2d4a] rounded-b-xl shadow-2xl p-4 text-xl font-normal text-cyan-100 z-50">
+            <div class="menu-wrap">
 
-<?php foreach ($childGroups as $child):
-$fsql = "SELECT f.id, upper(f.title) as title, f.php_url FROM m_form_name f LEFT JOIN m_user_access_menu u ON u.form_id = f.id WHERE f.active = true AND group_id = :group_id AND u.id IS NOT NULL AND u.user_id = :user_id ORDER BY seq::int";
-$fStmt = $db->prepare($fsql); $fStmt->execute(['group_id' => $child["id"], 'user_id' => $user_id]);
-$formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-?>
-<div class="menu-column">
-<h3><?= htmlspecialchars($child['name']); ?></h3>
-<ul>
-<?php foreach ($formItems as $item): ?>
-<li><a href="router?id=<?= $item['id']; ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($item['title']); ?></a></li>
-<?php endforeach; ?>
-</ul>
-</div>
-<?php endforeach; ?>
-</div>
-</div>
-<?php endif; ?>
+                <?php foreach ($childGroups as $child):
+                    $fsql = "SELECT f.id, upper(f.title) as title, f.php_url FROM m_form_name f LEFT JOIN m_user_access_menu u ON u.form_id = f.id WHERE f.active = true AND group_id = :group_id AND u.id IS NOT NULL AND u.user_id = :user_id ORDER BY seq::int";
+                    $fStmt = $db->prepare($fsql); $fStmt->execute(['group_id' => $child["id"], 'user_id' => $user_id]);
+                    $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+                    ?>
+                        <div class="menu-column">
+                            <h3><?= htmlspecialchars($child['name']); ?></h3>
+                            <ul>
+                                <?php foreach ($formItems as $item): ?>
+                                    <li><a href="router?id=<?= $item['id']; ?>" target="_blank" rel="noopener noreferrer"><?= htmlspecialchars($item['title']); ?></a></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                <?php endforeach; ?>
+            </div>
+            </div>
+            <?php endif; ?>
 
 
 </li>
