@@ -553,6 +553,9 @@ KELUARKAN JSON MURNI berbentuk object:
       \"end_date\": \"YYYY-MM-DD\",
       \"materials\": [
         { \"budget_item_id\": 123, \"qty_estimate\": 10, \"reason\": \"string\" }
+      ],
+      \"missing_materials\": [
+        { \"material_name\": \"string\", \"reason\": \"string\" }
       ]
     }
   ]
