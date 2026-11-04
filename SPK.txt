@@ -1,0 +1,429 @@
+Saya sudah menelusuri kembali kode SPK pada branch `main`. Ada hal penting yang perlu dibedakan: SPK Internal sudah memiliki form dan workflow, sedangkan SPK Subcon belum bisa dibuat melalui form SPK yang sekarang.
+
+DDL yang kita pasang menyiapkan struktur database untuk integrasi Subcon, tetapi belum otomatis menambahkan pilihan jenis SPK, pemilihan kontraktor Subcon, maupun form inspeksi dan sertifikat pembayaran.
+
+Saya buatkan manual dengan dua bagian: cara menggunakan fitur yang sudah tersedia dan prosedur SPK Subcon yang akan menjadi target implementasi.
+
+# USER MANUAL
+
+# PENGGUNAAN SPK INTERNAL DAN SPK SUBCON
+
+**Aplikasi: RAB-Project**
+
+## 1. Pengenalan SPK
+
+SPK (Surat Perintah Kerja) digunakan untuk memberikan otorisasi pelaksanaan pekerjaan dalam suatu proyek.
+
+Dalam RAB-Project, SPK dirancang untuk dua jenis pelaksanaan:
+
+1. **SPK Internal** — pekerjaan dilaksanakan oleh tim internal perusahaan.
+2. **SPK Subcon** — pekerjaan dilaksanakan oleh kontraktor atau subkontraktor eksternal berdasarkan kontrak kerja.
+
+Kedua jenis SPK menggunakan satu identitas SPK, tetapi mempunyai alur pelaksanaan dan administrasi yang berbeda.
+
+### Perbedaan SPK Internal dan SPK Subcon
+
+| Aspek              | SPK Internal                                  | SPK Subcon                                |
+| ------------------ | --------------------------------------------- | ----------------------------------------- |
+| Pelaksana          | Tim internal                                  | Perusahaan Subcon                         |
+| Dasar pekerjaan    | Penugasan internal                            | Kontrak Subcon                            |
+| Lingkup pekerjaan  | Task proyek                                   | Task dan item kontrak                     |
+| Material           | Persediaan perusahaan atau sumber lain        | Perusahaan, Subcon, atau kombinasi        |
+| Pengukuran progres | Progres pekerjaan internal                    | Klaim kuantitas dan inspeksi              |
+| Pembayaran         | Biaya internal sesuai proses perusahaan       | Berdasarkan kuantitas yang lolos inspeksi |
+| Material sisa      | Dikembalikan atau diproses sesuai kepemilikan | Mengikuti sumber kepemilikan material     |
+
+---
+
+# BAGIAN A — SPK INTERNAL
+
+## 2. Persiapan sebelum membuat SPK Internal
+
+Pastikan hal berikut sudah tersedia:
+
+1. Proyek sudah dibuat di menu Proyek.
+2. RAB proyek sudah tersedia.
+3. Task atau pekerjaan proyek sudah dibuat.
+4. Material yang akan digunakan sudah terdaftar dalam RAB.
+5. Pembayaran termin proyek sudah tercatat apabila SPK akan diterbitkan.
+6. User memiliki hak akses SPK.
+
+## 3. Langkah membuat SPK Internal
+
+### Langkah 1 — Buka menu SPK
+
+Masuk ke menu SPK pada RAB-Project.
+
+Pilih tombol **Tambah SPK**.
+
+### Langkah 2 — Isi informasi SPK
+
+Isi informasi berikut:
+
+| Field       | Cara pengisian                             |
+| ----------- | ------------------------------------------ |
+| Tanggal SPK | Tanggal penerbitan SPK                     |
+| Proyek      | Pilih proyek yang akan dikerjakan          |
+| Foreman     | Nama mandor atau penanggung jawab internal |
+| Description | Nama atau uraian pekerjaan                 |
+| Remark      | Catatan tambahan jika diperlukan           |
+
+Contoh:
+
+- Proyek: Pembangunan Gudang MERR
+- Foreman: Budi Santoso
+- Description: Pekerjaan struktur lantai 1
+- Remark: Pelaksanaan sesuai jadwal proyek.
+
+### Langkah 3 — Pilih Task Proyek
+
+Pada bagian **Task Proyek**, pilih pekerjaan yang akan menjadi tanggung jawab SPK.
+
+Klik **Tambah Task**.
+
+Contoh:
+
+- Pekerjaan pondasi
+- Pekerjaan kolom
+- Pekerjaan balok
+- Pekerjaan pelat lantai
+
+Task harus berasal dari proyek yang dipilih.
+
+### Langkah 4 — Masukkan material
+
+Pada bagian detail material:
+
+1. Pilih material dari daftar material RAB proyek.
+2. Masukkan kuantitas yang diperlukan.
+3. Masukkan catatan jika diperlukan.
+4. Periksa kuota material yang tersedia.
+
+**Penting:** Kuantitas SPK tidak boleh melebihi kuota yang dihitung sistem.
+
+Kuota dipengaruhi oleh kuantitas RAB, pembayaran proyek, SPK aktif lainnya, dan pemakaian material yang sudah tercatat.
+
+### Langkah 5 — Simpan SPK
+
+Klik **Simpan**.
+
+Sistem akan:
+
+- Membuat nomor SPK.
+- Menyimpan SPK dengan status Draft.
+- Menyimpan task yang dipilih.
+- Menyimpan daftar material dan kuantitasnya.
+
+Periksa kembali detail SPK sebelum diterbitkan.
+
+### Langkah 6 — Terbitkan SPK
+
+Pilih SPK yang sudah dibuat, kemudian klik **Terbitkan**.
+
+Sistem memeriksa:
+
+- Status SPK masih Draft.
+- Proyek sudah menerima pembayaran termin.
+- Nilai kontrak dan kuota pembayaran tersedia.
+- Kuantitas material tidak melebihi kuota yang diperbolehkan.
+
+Jika pemeriksaan berhasil, status SPK menjadi **Diterbitkan**.
+
+Jika belum memenuhi syarat, sistem akan menolak penerbitan dan menampilkan alasan.
+
+### Langkah 7 — Pengeluaran material gudang
+
+Setelah SPK diterbitkan:
+
+1. Buka menu Warehouse Issuing.
+2. Pilih proyek.
+3. Pilih SPK yang sesuai.
+4. Masukkan material dan kuantitas yang akan dikeluarkan.
+5. Simpan dan posting pengeluaran sesuai prosedur inventory.
+
+Kuantitas pengeluaran tidak boleh melebihi sisa jatah material SPK.
+
+### Langkah 8 — Menyelesaikan SPK
+
+Setelah pekerjaan dan kebutuhan pengeluaran material selesai, SPK dapat ditutup menggunakan tombol **Tutup SPK**.
+
+Status berubah menjadi **Selesai**.
+
+Sisa kuota material yang tidak terpakai kembali tersedia untuk proyek.
+
+---
+
+# BAGIAN B — SPK SUBCON
+
+## 4. Konsep SPK Subcon
+
+SPK Subcon digunakan apabila pekerjaan proyek diserahkan kepada perusahaan atau kontraktor eksternal.
+
+Contoh:
+
+Proyek: Pembangunan Gudang MERR
+
+Perusahaan menunjuk:
+
+- PT ABC Konstruksi sebagai Subcon pekerjaan struktur.
+- PT XYZ Engineering sebagai Subcon pekerjaan MEP.
+
+Masing-masing pekerjaan mempunyai lingkup, kuantitas, harga satuan, dan ketentuan pembayaran sendiri.
+
+SPK Subcon tetap menggunakan nomor SPK sebagai identitas pekerjaan, sedangkan informasi komersialnya dicatat dalam kontrak Subcon.
+
+## 5. Prosedur pembuatan SPK Subcon — rancangan workflow
+
+**Catatan:** Langkah berikut adalah prosedur target setelah integrasi SPK Subcon pada aplikasi selesai. Form SPK di branch main saat ini belum menyediakan pilihan INTERNAL/SUBCON dan belum mendukung penyimpanan SPK tanpa material.
+
+### Langkah 1 — Pilih jenis SPK
+
+Pada form Tambah SPK, nantinya tersedia pilihan:
+
+- Internal
+- Subcon
+
+Pilih **Subcon**.
+
+### Langkah 2 — Pilih proyek dan perusahaan Subcon
+
+Isi:
+
+| Field             | Contoh                  |
+| ----------------- | ----------------------- |
+| Proyek            | Pembangunan Gudang MERR |
+| Jenis SPK         | SUBCON                  |
+| Perusahaan Subcon | PT ABC Konstruksi       |
+| Tanggal SPK       | 04-11-2026              |
+| Tanggal mulai     | 05-11-2026              |
+| Target selesai    | 30-11-2026              |
+| Penanggung jawab  | Budi Santoso            |
+
+Data perusahaan Subcon harus dipilih dari master Subcontractors.
+
+### Langkah 3 — Masukkan lingkup pekerjaan
+
+Tambahkan pekerjaan yang akan diserahkan kepada Subcon.
+
+Contoh:
+
+| Pekerjaan            | Satuan | Volume | Harga satuan |
+| -------------------- | ------ | ------ | ------------ |
+| Pekerjaan bekisting  | m²     | 500    | Rp85.000     |
+| Pekerjaan pembesian  | kg     | 3.000  | Rp2.500      |
+| Pekerjaan pengecoran | m³     | 80     | Rp250.000    |
+
+Sistem menghitung nilai pekerjaan berdasarkan volume dikalikan harga satuan.
+
+Lingkup pekerjaan harus terhubung dengan task proyek dan, jika tersedia, item RAB yang sesuai.
+
+### Langkah 4 — Tentukan sumber material
+
+Setiap pekerjaan harus memiliki sumber material yang jelas:
+
+**A. COMPANY**
+
+Material disediakan perusahaan dan dikeluarkan melalui Warehouse Issuing.
+
+**B. SUBCON**
+
+Material disediakan oleh perusahaan Subcon sendiri. Material tersebut tidak otomatis menjadi stok perusahaan.
+
+**C. MIXED**
+
+Material sebagian disediakan perusahaan dan sebagian disediakan Subcon.
+
+Sumber material harus dicatat per item agar kepemilikan material dapat ditelusuri.
+
+### Langkah 5 — Isi ketentuan kontrak
+
+Lengkapi ketentuan komersial:
+
+- Nomor kontrak Subcon.
+- Nilai kontrak.
+- Tanggal kontrak.
+- Jadwal pelaksanaan.
+- Retensi.
+- Uang muka jika ada.
+- Ketentuan pajak.
+- Ketentuan pembayaran.
+- Ketentuan denda dan perubahan pekerjaan jika berlaku.
+
+Simpan kontrak sebagai detail komersial yang terhubung dengan nomor SPK.
+
+### Langkah 6 — Review dan terbitkan SPK
+
+Sebelum diterbitkan, periksa:
+
+1. Identitas Subcon benar.
+2. Lingkup pekerjaan dan kuantitas benar.
+3. Harga satuan dan nilai kontrak benar.
+4. Sumber material jelas.
+5. Jadwal pekerjaan disepakati.
+6. Dokumen kontrak telah disetujui.
+
+Setelah persetujuan, SPK diterbitkan dan menjadi dasar pelaksanaan pekerjaan Subcon.
+
+---
+
+## 6. Cara mencatat progres pekerjaan Subcon
+
+### Langkah 1 — Subcon mengajukan progres
+
+Subcon mengajukan kuantitas pekerjaan yang sudah selesai.
+
+Contoh:
+
+| Pekerjaan  | Volume kontrak | Klaim progres |
+| ---------- | -------------- | ------------- |
+| Bekisting  | 500 m²         | 150 m²        |
+| Pembesian  | 3.000 kg       | 900 kg        |
+| Pengecoran | 80 m³          | 20 m³         |
+
+Klaim harus disertai bukti pekerjaan sesuai ketentuan proyek.
+
+### Langkah 2 — Tim proyek melakukan inspeksi
+
+Tim proyek memeriksa pekerjaan di lapangan.
+
+Hasil pemeriksaan dapat berupa:
+
+- Lolos.
+- Lolos sebagian.
+- Ditolak.
+- Harus diperbaiki (rework).
+
+Contoh:
+
+| Pekerjaan  | Diklaim | Diperiksa | Lolos | Ditolak |
+| ---------- | ------- | --------- | ----- | ------- |
+| Bekisting  | 150     | 150       | 140   | 10      |
+| Pembesian  | 900     | 900       | 850   | 50      |
+| Pengecoran | 20      | 20        | 20    | 0       |
+
+Hanya kuantitas yang lolos inspeksi dan telah disetujui yang boleh menjadi dasar pembayaran.
+
+Kuantitas yang ditolak atau harus diperbaiki tidak boleh dimasukkan ke sertifikat pembayaran.
+
+### Langkah 3 — Persetujuan inspeksi
+
+Inspector atau pejabat yang berwenang menyetujui hasil inspeksi.
+
+Hasil inspeksi yang disetujui menjadi dasar pencatatan progres pekerjaan resmi.
+
+---
+
+## 7. Cara membuat Payment Certificate Subcon
+
+Setelah inspeksi disetujui:
+
+1. Pilih SPK Subcon.
+2. Pilih klaim progres dan hasil inspeksi yang sudah disetujui.
+3. Sistem mengambil kuantitas yang lolos.
+4. Sistem menghitung nilai pekerjaan yang dapat disertifikasi.
+5. Terapkan retensi, pemulihan uang muka, pajak, dan potongan yang disetujui sesuai kontrak.
+6. Ajukan Payment Certificate.
+7. Minta persetujuan pejabat berwenang.
+
+Payment Certificate menjadi dasar pencocokan invoice Subcon.
+
+### Contoh sederhana
+
+Pekerjaan bekisting:
+
+- Kuantitas lolos inspeksi: 140 m².
+- Harga kontrak: Rp85.000/m².
+- Nilai pekerjaan tersertifikasi: Rp11.900.000.
+
+Kuantitas 10 m² yang ditolak tidak ikut dihitung.
+
+---
+
+## 8. Penerimaan invoice dan pembayaran Subcon
+
+Setelah Payment Certificate disetujui:
+
+1. Subcon mengirim invoice.
+2. Finance mencocokkan invoice dengan Payment Certificate.
+3. Periksa nilai invoice dan saldo sertifikat.
+4. Lakukan persetujuan pembayaran.
+5. Finance memproses pembayaran melalui jalur pembayaran resmi.
+6. Simpan bukti pembayaran.
+
+Nilai invoice tidak boleh melebihi saldo sertifikat yang telah disetujui.
+
+Pembayaran tidak boleh dicatat dua kali melalui dua jalur pembayaran yang berbeda.
+
+---
+
+## 9. Pengelolaan material sisa Subcon
+
+Kepemilikan material sisa mengikuti sumber material.
+
+### A. Material milik perusahaan
+
+Jika material berasal dari perusahaan:
+
+- Catat kuantitas sisa.
+- Periksa kondisi material.
+- Kembalikan ke gudang melalui dokumen inventory resmi.
+
+### B. Material milik Subcon
+
+Jika material berasal dari Subcon:
+
+- Catat kuantitas sisa.
+- Catat pemilik material.
+- Material tetap menjadi milik Subcon.
+- Jika perusahaan ingin memilikinya, lakukan transaksi pembelian resmi.
+
+### C. Material perusahaan dijual kepada Subcon atau klien
+
+Jika perusahaan menjual material sisa:
+
+- Buat transaksi penjualan.
+- Tentukan harga.
+- Minta persetujuan.
+- Catat perpindahan kepemilikan.
+- Hubungkan dengan dokumen inventory yang sesuai.
+
+Perubahan kepemilikan tidak boleh dilakukan hanya dengan mengubah nama pemilik pada data material.
+
+---
+
+# BAGIAN C — PENUTUP DAN KONTROL
+
+## 10. Aturan penting penggunaan SPK
+
+1. Satu SPK harus terhubung dengan satu proyek.
+2. Task yang dipilih harus berasal dari proyek yang sama.
+3. SPK Internal dan Subcon menggunakan identitas SPK yang sama, tetapi memiliki jenis pelaksanaan berbeda.
+4. SPK Subcon harus memiliki perusahaan Subcon dan kontrak yang jelas.
+5. Kuantitas pekerjaan tidak boleh melebihi kuantitas kontrak ditambah perubahan pekerjaan yang disetujui.
+6. Progres yang belum lolos inspeksi tidak boleh menjadi dasar pembayaran.
+7. Invoice tidak boleh melebihi nilai sertifikat yang disetujui.
+8. Material milik Subcon tidak otomatis menjadi stok perusahaan.
+9. Semua perubahan kontrak, persetujuan, inspeksi, dan transaksi harus memiliki jejak audit.
+
+## 11. Status implementasi
+
+| Fitur                                   | Kondisi                                  |
+| --------------------------------------- | ---------------------------------------- |
+| Form SPK existing                       | Tersedia                                 |
+| SPK Internal dengan task dan material   | Tersedia dengan batasan existing         |
+| SPK tanpa material                      | Belum didukung form existing             |
+| Pilihan jenis SPK Internal/Subcon       | Belum tersedia                           |
+| Pemilihan perusahaan Subcon di form SPK | Belum tersedia                           |
+| Lingkup pekerjaan dan harga per item    | Struktur database disiapkan              |
+| Klaim progres berbasis kuantitas        | Struktur database disiapkan              |
+| Inspeksi kuantitas                      | Struktur database dan validasi disiapkan |
+| Payment Certificate                     | Struktur database dan validasi disiapkan |
+| Integrasi invoice dan pembayaran        | Belum selesai                            |
+| Pengelolaan kepemilikan material sisa   | Struktur database disiapkan              |
+| Integrasi seluruh workflow ke UI        | Belum selesai                            |
+
+**Kesimpulan:** SPK Internal dapat digunakan melalui menu SPK yang sekarang. Untuk SPK Subcon, database sudah memiliki fondasi yang disiapkan, tetapi aplikasi masih membutuhkan pengembangan form dan workflow agar pengguna dapat memasukkan serta memproses SPK Subcon secara langsung.
+
+Saran implementasi: langkah berikutnya adalah mengembangkan satu form SPK dengan pilihan jenis `INTERNAL` atau `SUBCON`. Jika memilih Internal, sistem menampilkan form pelaksana internal dan material. Jika memilih Subcon, sistem menampilkan perusahaan Subcon, lingkup pekerjaan, harga kontrak, sumber material, dan ketentuan kontrak. Dengan begitu pengguna tidak perlu mengelola dua master SPK yang berbeda.
+
+Saya bisa lanjut mengubah form SPK dan backend agar prosedur Subcon di manual ini benar-benar bisa dijalankan di RAB-Project, dimulai dari branch pengembangan terpisah.

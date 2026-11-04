@@ -41,7 +41,7 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 /* [REVISI 2026-10-30] Mega menu: dropdown dikaitkan ke <header> (selebar layar), BUKAN ke <li> yang sempit.
    Kolom grup tersusun ke SAMPING; baru turun ke baris berikutnya bila tidak muat. Lebar maksimum = lebar layar. */
 .nav-item { position: static; }
-.nav-item:hover .dropdown-menu, .nav-item:focus-within .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+.nav-item:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
 .dropdown-menu {
     position: absolute; top: 100%; left: 0;
     width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
@@ -285,22 +285,55 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
 <!-- ROW 2b: KAS, PPN, SUBKON -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="extra_row">
-<div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-sky-500">
-<div class="text-base text-slate-400 uppercase font-bold tracking-wider">🏦 Saldo Kas &amp; Bank</div>
-<div class="text-xl font-bold font-mono text-sky-300 mt-2" id="extra_cash">Rp 0</div>
-<div class="text-[10px] text-sky-400/80 mt-1">Dari jurnal terposting (semua proyek)</div>
+    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-sky-500">
+        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">🏦 Saldo Kas &amp; Bank</div>
+        <div class="text-xl font-bold font-mono text-sky-300 mt-2" id="extra_cash">Rp 0</div>
+        <div class="text-[10px] text-sky-400/80 mt-1">Dari jurnal terposting (semua proyek)</div>
+    </div>
+    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-orange-500">
+        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">🧾 PPN Bulan Ini <span id="extra_ppn_period" class="text-xs"></span></div>
+        <div class="text-xl font-bold font-mono mt-2" id="extra_ppn">Rp 0</div>
+        <div class="text-[10px] text-orange-300/80 mt-1" id="extra_ppn_sub">Keluaran - Masukan</div>
+    </div>
+    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-lime-500" id="extra_subcon_card">
+        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">👷 Subkontraktor</div>
+        <div class="text-xl font-bold font-mono text-lime-300 mt-2" id="extra_subcon">Rp 0</div>
+        <div class="text-[10px] text-lime-300/80 mt-1" id="extra_subcon_sub">Sisa hutang prestasi</div>
+    </div>
 </div>
-<div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-orange-500">
-<div class="text-base text-slate-400 uppercase font-bold tracking-wider">🧾 PPN Bulan Ini <span id="extra_ppn_period" class="text-xs"></span></div>
-<div class="text-xl font-bold font-mono mt-2" id="extra_ppn">Rp 0</div>
-<div class="text-[10px] text-orange-300/80 mt-1" id="extra_ppn_sub">Keluaran - Masukan</div>
+<!-- [BARU 2026-10-30] KESEHATAN PROYEK: progres vs pemakaian biaya + rekomendasi otomatis (data: dashboardCRD.php?action=read_project_health).
+     Fungsinya mirip ROW 2c di bawah (card-monitoring.php). Bila hanya ingin satu, hapus salah satu blok. -->
+<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]" id="health_panel">
+<div class="pb-3 border-b border-[#0a2d4a] mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">🩺 Kesehatan Proyek (Progres vs Pemakaian Biaya)</h2>
+<span class="text-[11px] text-slate-500" id="health_legend">Klik kartu untuk analisis AI</span>
 </div>
-<div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-lime-500" id="extra_subcon_card">
-<div class="text-base text-slate-400 uppercase font-bold tracking-wider">👷 Subkontraktor</div>
-<div class="text-xl font-bold font-mono text-lime-300 mt-2" id="extra_subcon">Rp 0</div>
-<div class="text-[10px] text-lime-300/80 mt-1" id="extra_subcon_sub">Sisa hutang prestasi</div>
+<div id="health_cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-96 overflow-y-auto no-scrollbar">
+<div class="text-center text-slate-500 text-xs py-4 col-span-full">Memuat kesehatan proyek...</div>
 </div>
+<div id="health_reco" class="mt-3"></div>
 </div>
+<!-- END KESEHATAN PROYEK -->
+
+<!-- ROW 2c: MONITORING PROYEK - PEMAKAIAN VS PROGRES
+<div class="bg-[#04101c] p-5 rounded-xl border border-[#0a2d4a]">
+    <div class="flex justify-between items-center mb-3 border-b border-[#0a2d4a] pb-2">
+        <h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">
+            📊 Monitoring Proyek - Pemakaian vs Progres
+        </h2>
+        <span class="text-[10px] text-slate-500 font-mono">Real-time</span>
+    </div> -->
+    
+    <?php
+    // Pastikan BASE_PATH terdefinisi
+    /*if (!defined('BASE_PATH')) {
+        define('BASE_PATH', realpath(__DIR__ . '/..'));
+    }
+    include BASE_PATH . "/includes/card-monitoring.php";*/
+    ?>
+</div>
+<!-- END ROW 2c -->
+
 
 <!-- ROW 3: ACTION CENTER & AI MILESTONES -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -425,11 +458,17 @@ async function initDashboard() {
     loadMilestones();
     loadProfitability();
     loadExtra();
+    loadProjectHealth();
     loadFinancialPerformance();
     loadMaterialMonitoring();
     initMegaMenu();
 }
-
+document.querySelectorAll('.dropdown-menu a').forEach(link => {
+    link.addEventListener('click', () => {
+        // Membuang fokus dari elemen agar dropdown langsung tersembunyi
+        document.activeElement.blur();
+    });
+});
 async function loadProjects() {
     try {
         const res = await fetch(`${API_ENDPOINT}?action=get_projects`);
@@ -443,7 +482,7 @@ async function loadProjects() {
 
 function onProjectChange(val) {
     currentProjectId = parseInt(val) || 0;
-    loadFinancialAging(); loadInvoicePipeline(); loadActionCenter(); loadMilestones(); loadProfitability(); loadExtra(); loadFinancialPerformance(); loadMaterialMonitoring();
+    loadFinancialAging(); loadInvoicePipeline(); loadActionCenter(); loadMilestones(); loadProfitability(); loadExtra(); loadProjectHealth(); loadFinancialPerformance(); loadMaterialMonitoring();
 }
 
 async function loadFinancialAging() {
@@ -579,6 +618,129 @@ async function loadProfitability() {
             }).join('');
         } else { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-slate-500 text-xs">Tidak ada data profitabilitas.</td></tr>'; }
     } catch (err) { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-rose-400 text-xs">Error memuat data</td></tr>'; }
+}
+
+// [BARU] Kesehatan proyek: progres vs pemakaian biaya, status NORMAL / WASPADA / KRITIS.
+// Klik kartu -> uraian AI di bawahnya berganti sesuai proyek (endpoint read_project_ai: temuan sistem + narasi Gemini, dengan cache).
+const HEALTH_STYLE = {
+    KRITIS:  { badge: 'bg-rose-950 text-rose-300 border-rose-800',      icon: '🔴', label: 'KRITIS',  num: 'text-rose-400',    bar: 'bg-rose-500' },
+    WASPADA: { badge: 'bg-amber-950 text-amber-300 border-amber-800',   icon: '🟡', label: 'WASPADA', num: 'text-yellow-300',  bar: 'bg-yellow-400' },
+    NORMAL:  { badge: 'bg-emerald-950 text-emerald-300 border-emerald-800', icon: '🟢', label: 'NORMAL', num: 'text-emerald-400', bar: 'bg-emerald-500' },
+    NA:      { badge: 'bg-slate-800 text-slate-300 border-slate-600',   icon: '⚪', label: 'BUDGET KOSONG', num: 'text-slate-400', bar: 'bg-slate-500' }
+};
+const HEALTH_ICONS = ['🏗️', '🏢', '🏘️', '🏭', '🏠'];
+const RISK_STYLE = {
+    HIGH:   { badge: 'bg-rose-950 text-rose-300 border-rose-800',       text: 'text-rose-300' },
+    MEDIUM: { badge: 'bg-amber-950 text-amber-300 border-amber-800',    text: 'text-amber-300' },
+    LOW:    { badge: 'bg-emerald-950 text-emerald-300 border-emerald-800', text: 'text-emerald-300' }
+};
+const SEV_STYLE = { high: 'border-rose-600 text-rose-200', medium: 'border-amber-600 text-amber-200', low: 'border-cyan-700 text-cyan-200' };
+let healthSelectedId = 0, aiRequestToken = 0;
+
+// [BARU] Setelah analisis AI (baru / ulang) selesai: status kartu langsung ikut naik bila risiko AI lebih tinggi (server menyimpan hasilnya ke ai_variance_logs,
+// sehingga muat ulang dashboard menampilkan status yang sama).
+const LEVEL_RANK = { NA: 0, NORMAL: 0, WASPADA: 1, KRITIS: 2 };
+function applyAiRiskToCard(id, aiRisk) {
+    const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
+    if (!card) return;
+    const target = (aiRisk === 'HIGH' || aiRisk === 'CRITICAL') ? 'KRITIS' : (aiRisk === 'MEDIUM' ? 'WASPADA' : null);
+    const cur = card.getAttribute('data-level') || 'NORMAL';
+    if (!target || LEVEL_RANK[target] <= (LEVEL_RANK[cur] || 0)) return;
+    const st = HEALTH_STYLE[target], badge = card.querySelector('.health-badge');
+    badge.className = `health-badge px-2 py-0.5 text-[11px] font-bold border rounded-md whitespace-nowrap ${st.badge}`;
+    badge.innerHTML = `${st.icon} ${st.label} • AI`;
+    card.querySelectorAll('.health-num').forEach(el => { el.className = `health-num ${st.num}`; });
+    card.setAttribute('data-level', target);
+}
+
+function selectHealthProject(id, refresh) {
+    healthSelectedId = id;
+    document.querySelectorAll('#health_cards [data-pid]').forEach(el => {
+        const on = parseInt(el.getAttribute('data-pid'), 10) === id;
+        el.classList.toggle('ring-2', on); el.classList.toggle('ring-cyan-400', on);
+    });
+    loadProjectAI(id, !!refresh);
+}
+
+async function loadProjectAI(id, refresh) {
+    const box = document.getElementById('health_reco');
+    const token = ++aiRequestToken;                 // abaikan respons usang bila user klik kartu lain
+    const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
+    const pname = card ? card.getAttribute('data-name') : '';
+    box.innerHTML = `<div class="bg-purple-950/30 border border-purple-700/40 rounded-lg p-4 text-sm text-purple-200 animate-pulse">🧠 AI sedang menganalisa <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
+    try {
+        const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
+        const json = await res.json();
+        if (token !== aiRequestToken) return;
+        if (!json.success) { box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
+        const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
+        const li = (arr, cls) => arr.map(t => `<li class="${cls || ''}">${esc(t)}</li>`).join('');
+        const findings = (d.findings || []).map(f => `
+            <div class="border-l-4 ${SEV_STYLE[f.sev] || SEV_STYLE.low} bg-[#071d30] rounded px-2 py-1 mb-1">
+                <div class="text-xs font-bold">${esc(f.title)}</div><div class="text-[11px] opacity-80">${esc(f.evidence)}</div></div>`).join('');
+        box.innerHTML = `
+        <div class="bg-purple-950/30 border border-purple-700/40 rounded-lg p-4 max-h-96 overflow-y-auto no-scrollbar">
+            <div class="flex flex-wrap items-center gap-2 mb-2">
+                <span class="text-purple-300 font-bold text-base">🧠 AI Recommendation</span>
+                <span class="px-2 py-0.5 text-[11px] font-bold border rounded-md ${rs.badge}">RISK: ${esc(d.risk)}</span>
+                <span class="px-2 py-0.5 text-[10px] border rounded-md border-slate-600 text-slate-300">${d.ai_used ? 'Gemini' : 'Analisis sistem'}${d.cached ? ' • cache' : ''}</span>
+                <span class="text-[11px] text-slate-500 ml-auto">${esc(d.generated_at || '')}${d.log_id ? ' • log #' + d.log_id : ''}</span>
+                <button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded bg-[#066b78] text-white cursor-pointer border-0">Analisis Ulang</button>
+            </div>
+            <div class="${rs.text} italic text-base mb-2"><b>${esc(d.project_name)}:</b> ${esc(d.headline)}</div>
+            <div class="text-sm text-slate-200 mb-2 leading-relaxed">${esc(d.summary)}</div>
+            ${d.actions.length ? `<div class="text-xs font-bold text-cyan-300 mt-2 mb-1">Tindakan yang disarankan</div><ul class="list-disc pl-5 text-sm text-slate-200 space-y-1">${li(d.actions)}</ul>` : ''}
+            ${d.questions && d.questions.length ? `<div class="text-xs font-bold text-amber-300 mt-3 mb-1">Perlu dikonfirmasi</div><ul class="list-disc pl-5 text-sm text-amber-100 space-y-1">${li(d.questions)}</ul>` : ''}
+            ${findings ? `<div class="text-xs font-bold text-slate-400 mt-3 mb-1">Temuan sistem (${d.findings.length})</div>${findings}` : ''}
+            ${d.ai_note ? `<div class="text-[11px] text-amber-400 mt-2">${esc(d.ai_note)}</div>` : ''}
+        </div>`;
+        box.querySelector('.aiRefresh').onclick = () => loadProjectAI(id, true);
+        applyAiRiskToCard(id, d.risk);
+    } catch (err) { if (token === aiRequestToken) box.innerHTML = '<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">Error memuat rekomendasi AI</div>'; }
+}
+
+async function loadProjectHealth() {
+    const box = document.getElementById('health_cards'), reco = document.getElementById('health_reco');
+    try {
+        const res = await fetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
+        const json = await res.json();
+        if (!json.success) { box.innerHTML = `<div class="text-center text-rose-400 text-xs py-4 col-span-full">${esc(json.message || 'Gagal memuat kesehatan proyek')}</div>`; reco.innerHTML = ''; return; }
+        if (!json.data.length) { box.innerHTML = '<div class="text-center text-slate-500 text-xs py-4 col-span-full">Tidak ada proyek berstatus Berjalan.</div>'; reco.innerHTML = ''; return; }
+        const t = json.thresholds || { warn: 10, crit: 25 };
+        document.getElementById('health_legend').innerText = `Klik kartu untuk analisis AI | Status = gap biaya (WASPADA >= ${t.warn}, KRITIS >= ${t.crit}), indeks biaya CPI (<${t.cpi_yellow} / <${t.cpi_red}), jadwal, dan hasil AI terakhir`;
+        box.innerHTML = json.data.map((p, i) => {
+            const st = HEALTH_STYLE[p.level] || HEALTH_STYLE.NA;
+            const hasUsage = p.usage_pct !== null && p.usage_pct !== undefined;
+            const gap = (p.gap === null || p.gap === undefined) ? null : Math.round(p.gap);
+            const gapTxt = gap === null ? '-' : (gap > 0 ? '+' + gap : String(gap));
+            const detail = `Budget ${fmtRp(p.budget)} | Biaya ${fmtRp(p.cost_total)} (Material ${fmtRp(p.cost_material)}, Pengeluaran ${fmtRp(p.cost_expense)}, Subkon ${fmtRp(p.cost_subcon)})` +
+                (p.cpi !== null && p.cpi !== undefined ? ` | CPI ${p.cpi}` : '') + (p.elapsed_pct !== null ? ` | Waktu terpakai ${p.elapsed_pct}%` : '') +
+                (p.late_days ? ` | Lewat jadwal ${p.late_days} hari` : '') + (p.ai_risk ? ` | AI terakhir: ${p.ai_risk} (${p.ai_at})` : '') +
+                (p.reasons && p.reasons.length ? ` | Alasan status: ${p.reasons.join('; ')}` : '');
+            const w1 = Math.max(0, Math.min(100, p.progress)), w2 = hasUsage ? Math.max(0, Math.min(100, p.usage_pct)) : 0;
+            return `
+            <div class="bg-[#071d30] border border-[#0a2d4a] rounded-xl p-3 cursor-pointer hover:border-cyan-500 transition" data-pid="${p.id}" data-name="${esc(p.name)}" data-level="${p.level}" title="${esc(detail)}">
+                <div class="flex justify-between items-start gap-2">
+                    <div class="font-bold text-white text-base leading-tight">${HEALTH_ICONS[i % HEALTH_ICONS.length]} ${esc(p.name)}</div>
+                    <span class="health-badge px-2 py-0.5 text-[11px] font-bold border rounded-md whitespace-nowrap ${st.badge}">${st.icon} ${st.label}${p.ai_risk && p.level !== 'NORMAL' ? ' • AI' : ''}</span>
+                </div>
+                <div class="flex flex-wrap gap-x-4 text-sm mt-2 text-slate-400">
+                    <span>Progres: <b class="text-white">${p.progress}%</b></span>
+                    <span>Pemakaian: <b class="health-num ${st.num}">${hasUsage ? Number(p.usage_pct).toFixed(0) + '%' : '-'}</b></span>
+                    <span>Gap: <b class="health-num ${st.num}">${gapTxt}</b></span>
+                </div>
+                <div class="mt-2 space-y-1">
+                    <div class="h-1.5 bg-slate-800 rounded"><div class="h-1.5 rounded bg-cyan-500" style="width:${w1}%"></div></div>
+                    <div class="h-1.5 bg-slate-800 rounded"><div class="h-1.5 rounded ${st.bar}" style="width:${w2}%"></div></div>
+                </div>
+            </div>`;
+        }).join('');
+        box.querySelectorAll('[data-pid]').forEach(el => { el.onclick = () => selectHealthProject(parseInt(el.getAttribute('data-pid'), 10), false); });
+        // pilih otomatis: proyek yang sedang dipilih / sesuai filter / yang paling kritis (kartu pertama)
+        const ids = json.data.map(p => p.id);
+        const pick = ids.includes(healthSelectedId) ? healthSelectedId : (ids.includes(parseInt(currentProjectId, 10)) ? parseInt(currentProjectId, 10) : ids[0]);
+        selectHealthProject(pick, false);
+    } catch (err) { console.error('Error load project health:', err); box.innerHTML = '<div class="text-center text-rose-400 text-xs py-4 col-span-full">Error memuat kesehatan proyek</div>'; }
 }
 
 // [REVISI] kartu tambahan: saldo kas & bank, PPN bulan berjalan, subkon
