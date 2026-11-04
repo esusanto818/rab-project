@@ -561,7 +561,16 @@ KELUARKAN JSON MURNI berbentuk object:
             }
 
             $allowed = [];
-            foreach ($candidateMaterials as $bm) $allowed[(int)$bm['budget_item_id']] = $bm;
+            $byMaterialId = [];
+            $byMaterialName = [];
+            foreach ($candidateMaterials as $bm) {
+                $bid = (int)$bm['budget_item_id'];
+                $allowed[$bid] = $bm;
+                $mid = (int)$bm['material_id'];
+                if ($mid > 0) $byMaterialId[$mid][] = $bid;
+                $nameKey = strtolower(trim(preg_replace('/\\s+/', ' ', (string)$bm['material_name'])));
+                if ($nameKey !== '') $byMaterialName[$nameKey][] = $bid;
+            }
             $plannedTotals = [];
             $covered = true;
             $coverageNotes = [];
@@ -589,8 +598,26 @@ KELUARKAN JSON MURNI berbentuk object:
                 foreach (($t['materials'] ?? []) as $m) {
                     $bid = (int)($m['budget_item_id'] ?? 0);
                     $qty = (float)($m['qty_estimate'] ?? 0);
+
+                    // Beberapa respons model mengembalikan material_id atau nama material,
+                    // bukan budget_item_id. Resolusi hanya dilakukan terhadap kandidat RAB
+                    // proyek ini; tidak pernah menerima ID/nama di luar daftar kandidat.
                     if (!isset($allowed[$bid])) {
-                        throw new Exception('AI memilih item RAB material yang tidak tersedia/ tidak valid pada Task "' . $tName . '".');
+                        $mid = (int)($m['material_id'] ?? 0);
+                        if ($mid > 0 && !empty($byMaterialId[$mid]) && count($byMaterialId[$mid]) === 1) {
+                            $bid = (int)$byMaterialId[$mid][0];
+                        }
+                    }
+                    if (!isset($allowed[$bid])) {
+                        $name = (string)($m['material_name'] ?? ($m['name'] ?? ''));
+                        $nameKey = strtolower(trim(preg_replace('/\\s+/', ' ', $name)));
+                        if ($nameKey !== '' && !empty($byMaterialName[$nameKey]) && count($byMaterialName[$nameKey]) === 1) {
+                            $bid = (int)$byMaterialName[$nameKey][0];
+                        }
+                    }
+                    if (!isset($allowed[$bid])) {
+                        $returnedId = (int)($m['budget_item_id'] ?? 0);
+                        throw new Exception('AI mengembalikan ID material/RAB ' . $returnedId . ' yang tidak cocok dengan item RAB proyek. Periksa pemetaan material "' . trim((string)($m['material_name'] ?? '')) . '" pada Task "' . $tName . '".');
                     }
                     if ($qty <= 0) throw new Exception('Qty estimasi material harus lebih besar dari nol.');
                     $plannedTotals[$bid] = ($plannedTotals[$bid] ?? 0) + $qty;
