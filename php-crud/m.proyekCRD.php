@@ -410,7 +410,21 @@ try {
 
         case 'read_tasks':
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            $tasks = mpFetchAll($db, "SELECT * FROM public.project_tasks WHERE project_id = :pid ORDER BY start_date ASC", ['pid' => $projectId], 'read_tasks');
+            $tasks = mpFetchAll($db, "
+                SELECT t.*,
+                       COALESCE((
+                           SELECT string_agg(
+                               bi.item_name || ': ' || tm.qty_budget::text || ' ' || COALESCE(bi.unit,''),
+                               ', ' ORDER BY bi.item_name
+                           )
+                             FROM public.task_materials tm
+                             JOIN public.budget_items bi ON bi.id = tm.budget_item_id
+                            WHERE tm.task_id = t.id
+                       ), '') AS materials
+                  FROM public.project_tasks t
+                 WHERE t.project_id = :pid
+                 ORDER BY t.start_date ASC, t.id ASC
+            ", ['pid' => $projectId], 'read_tasks');
             mpJson(['success' => true, 'data' => $tasks]);
             break;
 
@@ -527,14 +541,14 @@ ATURAN:
 
 KELUARKAN JSON MURNI berbentuk object:
 {
-  ""tasks"": [
+  \"tasks\": [
     {
-      ""task_name"": ""string"",
-      ""description"": ""string"",
-      ""start_date"": ""YYYY-MM-DD"",
-      ""end_date"": ""YYYY-MM-DD"",
-      ""materials"": [
-        { ""budget_item_id"": 123, ""qty_estimate"": 10, ""reason"": ""string"" }
+      \"task_name\": \"string\",
+      \"description\": \"string\",
+      \"start_date\": \"YYYY-MM-DD\",
+      \"end_date\": \"YYYY-MM-DD\",
+      \"materials\": [
+        { \"budget_item_id\": 123, \"qty_estimate\": 10, \"reason\": \"string\" }
       ]
     }
   ]
