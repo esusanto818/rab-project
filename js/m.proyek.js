@@ -323,7 +323,7 @@ Ext.onReady(function () {
         url: CRD,
         baseParams: { task: 'read_tasks' },
         reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
-            { name: 'id' }, { name: 'task_name' }, { name: 'description' },
+            { name: 'id' }, { name: 'task_name' }, { name: 'description' }, { name: 'materials' },
             { name: 'start_date' }, { name: 'end_date' }, { name: 'status' }
         ])
     });
