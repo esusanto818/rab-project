@@ -14,6 +14,7 @@ ob_start();
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
 
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }

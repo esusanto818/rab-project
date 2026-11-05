@@ -41,6 +41,23 @@ if (!class_exists('crud')) {
           // PERBAIKAN WARNING: Gunakan SET (Session level) alih-alih SET LOCAL (Transaction level)
           $appUser = $_SESSION['login_name'] ?? $_SESSION['username'] ?? 'system';
           $this->exec("SET app.username = " . $this->quote($appUser));
+
+// AUDIT O-B: Identitas koneksi database aplikasi
+$stmt = $this->query("
+    SELECT
+        current_database() AS database_name,
+        session_user AS login_role,
+        current_user AS effective_role,
+        current_setting('application_name') AS application_name
+");
+
+$auditIdentity = $stmt->fetch(PDO::FETCH_ASSOC);
+
+error_log(
+    'AUDIT DATABASE IDENTITY: ' .
+    json_encode($auditIdentity)
+);
+
       } catch (PDOException $e) {
           echo "Koneksi Gagal: " . $e->getMessage();
           exit;

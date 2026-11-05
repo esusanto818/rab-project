@@ -460,3 +460,17 @@ Keputusan desain yang saya rekomendasikan: gunakan `spk` sebagai induk SPK inter
 
 Langkah teknis berikutnya adalah membuat dokumen spesifikasi database final beserta migration SQL yang kompatibel dengan PostgreSQL versi aplikasi, setelah seluruh struktur tabel aktual diverifikasi. Saya akan menjaga perubahan tetap di branch pengembangan terpisah dari `main`, dan tidak menerapkan migration ke database produksi tanpa pengujian staging.
 
+
+################################
+######## revisi  proyek ########
+################################
+
+Aspek,Sebelum (Salah),Sekarang (Benar)
+Start,Entry RAB manual,Entry Proyek → AI auto-create RAB
+Material,Harus ada di master,Auto-create jika belum ada
+Flow,User input semua,User input deskripsi → AI breakdown
+Harga,1 harga,Range (min/max) + 1 harga kalkulasi
+Button,Tidak ada,"""AI Analisa Proyek"""
+
+
+

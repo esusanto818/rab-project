@@ -39,5 +39,16 @@ if (ini_get("session.use_cookies")) {
 session_destroy();
 
 // Redirect to main page
-header('Location: /index.php');
+$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
+$host = $_SERVER['HTTP_HOST'];
+$script_dir = dirname($_SERVER['SCRIPT_NAME']);
+$base_dir = rtrim($script_dir, '/\\') . '/';
+$base_url = $protocol . $host . $base_dir;
+
+error_log('HOST = '.$host);
+error_log('BASE DIR = '.$base_dir);
+error_log('BASE URL = '.$base_url);
+
+
+header('Location: ../index.php');
 ?>
