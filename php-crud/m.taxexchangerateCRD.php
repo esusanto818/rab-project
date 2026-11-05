@@ -4,19 +4,39 @@
  * Description   : CRUD Backend Controller for Master Kurs Pajak Kemenkeu
  */
 set_time_limit(0);
-if (!isset($_SESSION)) {
+if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 date_default_timezone_set('Asia/Jakarta');
 
-require_once 'db_connection.PHP';
+header('Content-Type: application/json; charset=utf-8');
+
+// Validasi login dan hak akses form EXCHANGE RATE.
+require_once __DIR__ . '/../php-func/user.valid.php';
+
+// PDO untuk operasi data kurs.
+require_once __DIR__ . '/db_connection.PHP';
+
+$formAccess = (int)($_SESSION['FormAccess'] ?? 0);
+
+function taxExchangeRequireAccess($minimum, $message)
+{
+    $currentAccess = (int)($_SESSION['FormAccess'] ?? 0);
+
+    if ($currentAccess < $minimum) {
+        http_response_code(403);
+        echo json_encode([
+            'success' => false,
+            'message' => $message
+        ]);
+        exit;
+    }
+}
 
 $task   = $_POST['task'] ?? $_REQUEST['task'] ?? 'read';
 $start  = intval($_POST['start'] ?? $_REQUEST['start'] ?? 0);
 $limit  = intval($_POST['limit'] ?? $_REQUEST['limit'] ?? 250);
 $id     = intval($_POST['id'] ?? $_REQUEST['id'] ?? 0);
-
-header('Content-Type: application/json');
 
 switch ($task) {
 
@@ -92,6 +112,10 @@ switch ($task) {
     // ------------------------------------------------------------
     case 'fetch_now':
     case 'sync':
+        taxExchangeRequireAccess(
+            3,
+            'Anda tidak memiliki hak untuk memperbarui Kurs Pajak.'
+        );
         try {
             require_once __DIR__ . '/../cron/fetch_kurs_pajak.php';
             $res = fetchAndStoreTaxExchangeRates($pdo);
@@ -116,6 +140,10 @@ switch ($task) {
     // 4. DELETE RECORD
     // ------------------------------------------------------------
     case 'delete':
+        taxExchangeRequireAccess(
+            4,
+            'Anda tidak memiliki hak untuk menghapus Kurs Pajak.'
+        );
         try {
             if ($id <= 0) {
                 echo json_encode(['success' => false, 'message' => 'ID data tidak valid.']);

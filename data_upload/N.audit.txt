@@ -1,0 +1,11 @@
+N-A
+"database_name","login_role","effective_role","application_name","row_security_setting"
+proyekGMN,postgres,postgres,DBeaver 26.2.1 - SQLEditor <Script-60.sql>,on
+
+N-B
+SQL Error [42703]: ERROR: column "backend_type" does not exist
+  Position: 168
+
+N-C
+"rolname","rolsuper","rolcanlogin","rolvaliduntil"
+postgres,true,true,

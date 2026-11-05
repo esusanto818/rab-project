@@ -68,7 +68,7 @@ Ext.onReady(function() {
         kursDtlDiv.style.display = 'block';
 
         Ext.Ajax.request({
-            url: '../php-crud/m.taxexchangerateCRD.php',
+            url: '../dev/php-crud/m.taxexchangerateCRD.php',
             method: 'POST',
             params: { task: 'read_detail', hdr_id: hdrId },
             success: function(response) {
@@ -149,7 +149,7 @@ Ext.onReady(function() {
     ];
 
     var mainDs = new Ext.data.Store({
-        url: '../php-crud/m.taxexchangerateCRD.php',
+        url: '../dev/php-crud/m.taxexchangerateCRD.php',
         idProperty: 'id',
         baseParams: { task: 'read', start: 0, limit: pageSizeVal },
         reader: new Ext.data.JsonReader({
@@ -192,7 +192,7 @@ Ext.onReady(function() {
     if (document.getElementById('printData')) {
         document.getElementById('printData').onclick = function() {
             var hdrId = selectedHdrRecord ? selectedHdrRecord.get('id') : 0;
-            var targetUrl = "../php-crud/m.taxexchangerate.pdf.php?id=" + hdrId;
+            var targetUrl = "../dev/php-crud/m.taxexchangerate.pdf.php?id=" + hdrId;
             window.open(targetUrl, 'print_kurs_pajak', 'toolbar=no,location=no,status=no,directories=no,menubar=no,width=900,height=700,scrollbars=yes');
         };
     }
@@ -201,7 +201,7 @@ Ext.onReady(function() {
         document.getElementById('popOK').onclick = function() {
             if (task === 'delete' && selectedHdrRecord) {
                 Ext.Ajax.request({
-                    url: '../php-crud/m.taxexchangerateCRD.php',
+                    url: '../dev/php-crud/m.taxexchangerateCRD.php',
                     params: { task: 'delete', id: selectedHdrRecord.get('id') },
                     success: function(response) {
                         var res = Ext.util.JSON.decode(response.responseText);

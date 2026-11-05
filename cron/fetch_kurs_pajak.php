@@ -1,4 +1,14 @@
 <?php
+// Block direct HTTP access before loading application dependencies.
+if (
+    PHP_SAPI !== 'cli' &&
+    isset($_SERVER['SCRIPT_FILENAME']) &&
+    realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)
+) {
+    http_response_code(404);
+    exit;
+}
+
 /**
  * Cron Task / Scraper: fetch_kurs_pajak.php
  * Mengambil data Kurs Pajak mingguan dari Kemenkeu (https://fiskal.kemenkeu.go.id/informasi-publik/kurs-pajak)
@@ -235,10 +245,18 @@ function fetchAndStoreTaxExchangeRates($pdo = null) {
     ];
 }
 
-if (php_sapi_name() === 'cli' || isset($_GET['run'])) {
+// Runner hanya aktif jika file ini dieksekusi langsung melalui CLI.
+// Pemanggilan melalui require_once dari aplikasi tidak menjalankan runner.
+// Parameter HTTP ?run tidak lagi dapat memicu proses sinkronisasi.
+if (
+    PHP_SAPI === 'cli' &&
+    isset($_SERVER['SCRIPT_FILENAME']) &&
+    realpath($_SERVER['SCRIPT_FILENAME']) === realpath(__FILE__)
+) {
     echo "=== FETCHING KURS PAJAK KEMENKEU ===\n";
     global $pdo;
     $res = fetchAndStoreTaxExchangeRates($pdo ?? null);
+
     if ($res['success']) {
         echo "SUKSES! KMK: {$res['kmk_no']} | Periode: {$res['period']} | Total Items: {$res['items_count']}\n";
     } else {
