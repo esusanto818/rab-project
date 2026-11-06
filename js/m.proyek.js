@@ -4,6 +4,7 @@
                    - Panel Detail Sub-Task AI di Layar Utama (Main Screen)
                    - Editor Form Responsif & Tinggi Maksimal
   Backend       : /rab-project/php-crud/m.proyekCRD.php
+  [AI-BOQ]      : analisis AI -> BoQ lengkap (spesifikasi, satuan, qty, harga); simpan = buat material master -> RAB -> task
   [AUTO-INV]    : + tagihan otomatis (DP/Termin 1-3 = 30-20-20-30) dari breakdown task; tabel tagihan di panel detail
 */
 
@@ -46,8 +47,8 @@ Ext.onReady(function () {
     // Tombol footer memakai <button> HTML bergaya sama dengan "Print Task" (tombol Ext bawaan tidak terbaca di tema gelap).
     var planWinSeq = 0;
     function showPlanWin(title, html, yesText, onYes, onReady) {
-        var w = Math.min(1000, Math.round((window.innerWidth || 1200) * 0.92));
-        var h = Math.min(560, Math.round((window.innerHeight || 800) * 0.85));
+        var w = Math.min(1250, Math.round((window.innerWidth || 1200) * 0.95));      // [AI-BOQ] lebih lebar untuk tabel BoQ
+        var h = Math.min(700, Math.round((window.innerHeight || 800) * 0.90));
         var uid = 'planWin' + (++planWinSeq);
         var btnBase = 'padding:8px 20px; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px; margin-left:10px;';
         var btnHtml = '<div style="text-align:right; padding:6px 4px;">' +
@@ -358,9 +359,10 @@ Ext.onReady(function () {
                         Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu sebelum menjalankan analisis AI.');
                         return;
                     }
-                    Ext.MessageBox.wait('AI sedang menyusun Task dan rekomendasi material dari RAB proyek...', 'Mohon Tunggu');
+                    Ext.MessageBox.wait('AI sedang menyusun Task, daftar material (BoQ) dan perkiraan harga... (bisa 1-2 menit)', 'Mohon Tunggu');
                     Ext.Ajax.request({
                         url: CRD, method: 'POST',
+                        timeout: 180000,                       // [AI-BOQ] BoQ lengkap butuh waktu analisis lebih lama (default Ext 30 dtk)
                         params: { task: 'ai_generate_tasks', project_id: projId },
                         success: function(response) {
                             Ext.MessageBox.hide();
@@ -373,64 +375,91 @@ Ext.onReady(function () {
                             var availableMaterials = res.available_materials || [];
                             var planWin = null;
 
-                            function renderTaskPlan() {
-                                var totalMaterials = 0;
-                                Ext.each(plan.tasks, function(task) { totalMaterials += (task.materials || []).length; });
-                                var html = '<div style="font-size:15px;line-height:1.55;color:#d5e3ec;margin-bottom:14px;">' +
-                                    Ext.util.Format.htmlEncode(res.message) +
-                                    '<br><b>Jumlah Task: ' + plan.tasks.length + ' | Alokasi material: ' + totalMaterials + '</b></div>';
-                                if (res.notes && res.notes.length) {
-                                    html += '<div style="font-size:14px;color:#ffcc80;margin-bottom:12px;">' + Ext.util.Format.htmlEncode(res.notes.join(' ')) + '</div>';
-                                }
-                                html += '<div style="font-size:14px;color:#b0bec5;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:14px;">' +
-                                    '<b>Cara menambah material:</b> Pilih material RAB yang sudah tersedia pada pilihan di setiap Task, masukkan Qty, lalu klik Tambah Material. ' +
-                                    'Jika material belum ada di daftar, tutup review ini, tambahkan dahulu melalui menu RAB Material pada proyek, simpan, kemudian jalankan analisis AI kembali.</div>';
+                            // [AI-BOQ][REWORK] Review BoQ: per Task -> tabel material (spesifikasi, satuan, qty, harga, total, status RAB)
+                            var STATUS_LBL = {
+                                'rab':       ['Sudah di RAB',   '#80cbc4'],
+                                'rab_topup': ['Qty RAB ditambah', '#ffd54f'],
+                                'master':    ['Masuk RAB',      '#4fc3f7'],
+                                'new':       ['Material baru',  '#ffb74d']
+                            };
+                            function lineTotal(m) { return (parseFloat(m.qty_estimate) || 0) * (parseFloat(m.unit_price) || 0); }
 
+                            function renderTaskPlan() {
+                                var totalMaterials = 0, grand = 0, newCount = 0, seenNew = {};
+                                Ext.each(plan.tasks, function(task) {
+                                    Ext.each(task.materials || [], function(m) {
+                                        totalMaterials++; grand += lineTotal(m);
+                                        if (m.status === 'new') seenNew[String(m.material_name).toLowerCase()] = true;
+                                    });
+                                });
+                                for (var k in seenNew) { newCount++; }
+                                var enc = Ext.util.Format.htmlEncode;
+                                var html = '<div style="font-size:15px;line-height:1.55;color:#d5e3ec;margin-bottom:14px;">' +
+                                    enc(res.message) +
+                                    '<br><b>Task: ' + plan.tasks.length + ' | Baris material: ' + totalMaterials +
+                                    ' | Material baru (dibuat di master): ' + newCount +
+                                    ' | Total estimasi material: Rp ' + fmtRp(grand) + '</b></div>';
+                                if (res.analysis) {
+                                    html += '<div style="font-size:14px;line-height:1.55;color:#b0d4e0;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:12px;"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
+                                }
+                                if (res.notes && res.notes.length) {
+                                    html += '<div style="font-size:14px;color:#ffcc80;margin-bottom:12px;">' + enc(res.notes.join(' ')) + '</div>';
+                                }
+                                html += '<div style="font-size:13px;color:#b0bec5;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:14px;line-height:1.5;">' +
+                                    '<b>Saat disimpan:</b> material <span style="color:#ffb74d;">baru</span> dibuat dulu di master material, lalu semua material masuk ke RAB proyek, kemudian Task dan alokasi materialnya disimpan. ' +
+                                    'Harga satuan adalah perkiraan pasar AI (bukan harga final); ubah di RAB bila perlu. Gunakan <b>Hapus</b> untuk membuang baris yang tidak diinginkan.</div>';
+
+                                var th = 'padding:8px;border-bottom:1px solid #34546a;';
                                 Ext.each(plan.tasks, function(t, idx) {
-                                    var cardId = 'aiTaskCard_' + idx;
-                                    html += '<div id="' + cardId + '" style="border:1px solid #3b6078;border-radius:7px;padding:15px;margin:0 0 14px 0;background:#102638;">' +
-                                        '<div style="font-size:18px;line-height:1.4;font-weight:bold;color:#40d7ed;margin-bottom:7px;">' +
-                                        (idx + 1) + '. ' + Ext.util.Format.htmlEncode(t.task_name) + '</div>' +
-                                        '<div style="font-size:15px;line-height:1.55;color:#e0e8ee;margin:5px 0;">' + Ext.util.Format.htmlEncode(t.description || '') + '</div>' +
-                                        '<div style="font-size:14px;color:#80deea;margin:6px 0 10px;">' +
-                                        Ext.util.Format.htmlEncode(t.start_date) + ' s/d ' + Ext.util.Format.htmlEncode(t.end_date) + '</div>';
+                                    var sub = 0;
+                                    Ext.each(t.materials || [], function(m) { sub += lineTotal(m); });
+                                    html += '<div id="aiTaskCard_' + idx + '" style="border:1px solid #3b6078;border-radius:7px;padding:15px;margin:0 0 14px 0;background:#102638;">' +
+                                        '<div style="font-size:18px;line-height:1.4;font-weight:bold;color:#40d7ed;margin-bottom:7px;">' + (idx + 1) + '. ' + enc(t.task_name) + '</div>' +
+                                        '<div style="font-size:15px;line-height:1.55;color:#e0e8ee;margin:5px 0;">' + enc(t.description || '') + '</div>' +
+                                        (t.assumption ? '<div style="font-size:13px;color:#a1c4d0;margin:4px 0;"><i>Asumsi: ' + enc(t.assumption) + '</i></div>' : '') +
+                                        '<div style="font-size:14px;color:#80deea;margin:6px 0 10px;">' + enc(t.start_date) + ' s/d ' + enc(t.end_date) + '</div>';
 
                                     if (t.materials && t.materials.length) {
-                                        html += '<table width="100%" style="border-collapse:collapse;margin:8px 0 12px;color:#fff;font-size:14px;line-height:1.5;">' +
-                                            '<tr style="color:#40d7ed;background:#0a1a27;"><th align="left" style="padding:8px;">Material RAB</th><th align="right" style="padding:8px;">Estimasi Qty</th><th align="left" style="padding:8px;">Alasan</th><th></th></tr>';
+                                        html += '<table width="100%" style="border-collapse:collapse;margin:8px 0 12px;color:#fff;font-size:13px;line-height:1.45;">' +
+                                            '<tr style="color:#40d7ed;background:#0a1a27;">' +
+                                            '<th align="left" style="' + th + '">Nama Material / Spesifikasi</th>' +
+                                            '<th align="center" style="' + th + '">Satuan</th>' +
+                                            '<th align="right" style="' + th + '">Estimasi Qty</th>' +
+                                            '<th align="right" style="' + th + '">Harga Satuan (Rp)</th>' +
+                                            '<th align="right" style="' + th + '">Total (Rp)</th>' +
+                                            '<th align="left" style="' + th + '">Status</th><th style="' + th + '"></th></tr>';
                                         Ext.each(t.materials, function(m, mi) {
+                                            var st = STATUS_LBL[m.status] || ['-', '#b0bec5'];
                                             html += '<tr style="border-top:1px solid #34546a;">' +
-                                                '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(m.material_name) + '</td>' +
-                                                '<td align="right" style="padding:8px;white-space:nowrap;">' + Ext.util.Format.number(m.qty_estimate, '0,000.####') + ' ' + Ext.util.Format.htmlEncode(m.unit || '') + '</td>' +
-                                                '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(m.reason || '') + '</td>' +
-                                                '<td style="padding:6px;"><button type="button" class="aiRemoveMaterial" data-task="' + idx + '" data-material="' + mi + '" style="font-size:13px;padding:5px 9px;">Hapus</button></td></tr>';
+                                                '<td style="padding:8px;"><b>' + enc(m.material_name) + '</b>' +
+                                                (m.spec ? '<div style="color:#a1c4d0;font-size:12px;">' + enc(m.spec) + '</div>' : '') +
+                                                (m.reason ? '<div style="color:#688998;font-size:11px;">' + enc(m.reason) + '</div>' : '') + '</td>' +
+                                                '<td align="center" style="padding:8px;">' + enc(m.unit || '') + '</td>' +
+                                                '<td align="right" style="padding:8px;white-space:nowrap;">' + Ext.util.Format.number(m.qty_estimate, '0,000.###') + '</td>' +
+                                                '<td align="right" style="padding:8px;white-space:nowrap;">' + fmtRp(m.unit_price) + '</td>' +
+                                                '<td align="right" style="padding:8px;white-space:nowrap;">' + fmtRp(lineTotal(m)) + '</td>' +
+                                                '<td style="padding:8px;white-space:nowrap;color:' + st[1] + ';font-weight:bold;">' + st[0] + '</td>' +
+                                                '<td style="padding:6px;"><button type="button" class="aiRemoveMaterial" data-task="' + idx + '" data-material="' + mi + '" ' +
+                                                'style="padding:6px 14px;background:#800020;color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:bold;font-size:12px;">Hapus</button></td></tr>';
                                         });
-                                        html += '</table>';
+                                        html += '<tr style="border-top:1px solid #34546a;"><td colspan="4" align="right" style="padding:8px;color:#40d7ed;"><b>Subtotal Task</b></td>' +
+                                            '<td align="right" style="padding:8px;"><b>' + fmtRp(sub) + '</b></td><td colspan="2"></td></tr></table>';
                                     } else {
-                                        html += '<div style="font-size:14px;color:#ffcc80;margin:8px 0 12px;">Belum ada material yang dialokasikan ke Task ini.</div>';
-                                    }
-
-                                    if (t.missing_materials && t.missing_materials.length) {
-                                        html += '<div style="border-left:3px solid #ffb74d;padding:7px 10px;margin:8px 0;color:#ffcc80;font-size:14px;">' +
-                                            '<b>Kebutuhan yang belum ada di RAB:</b><ul style="margin:5px 0 5px 20px;">';
-                                        Ext.each(t.missing_materials, function(g) {
-                                            html += '<li>' + Ext.util.Format.htmlEncode(g.material_name) + ' — ' + Ext.util.Format.htmlEncode(g.reason || '') + '</li>';
-                                        });
-                                        html += '</ul>Tambahkan item tersebut ke RAB proyek jika memang diperlukan.</div>';
+                                        html += '<div style="font-size:14px;color:#ffcc80;margin:8px 0 12px;">Task ini tidak memuat material (pekerjaan jasa / non-material).</div>';
                                     }
 
                                     html += '<div style="border-top:1px solid #34546a;padding-top:11px;margin-top:8px;">' +
-                                        '<div style="font-size:14px;font-weight:bold;color:#80deea;margin-bottom:7px;">Tambah material dari RAB ke Task ini</div>' +
+                                        '<div style="font-size:14px;font-weight:bold;color:#80deea;margin-bottom:7px;">Tambah material dari RAB yang sudah ada ke Task ini</div>' +
                                         '<select id="aiMaterialSelect_' + idx + '" style="width:58%;min-width:220px;padding:8px;font-size:14px;background:#061522;color:#fff;border:1px solid #52758b;">' +
                                         '<option value="">-- Pilih material RAB --</option>';
                                     Ext.each(availableMaterials, function(a) {
                                         var already = false;
-                                        Ext.each(t.materials || [], function(tm) { if (parseInt(tm.budget_item_id,10) === parseInt(a.budget_item_id,10)) already = true; });
-                                        html += '<option value="' + parseInt(a.budget_item_id,10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
-                                            Ext.util.Format.htmlEncode(a.material_name + ' | Sisa RAB: ' + Ext.util.Format.number(a.qty_remaining, '0,000.####') + ' ' + a.unit) + '</option>';
+                                        Ext.each(t.materials || [], function(tm) { if (parseInt(tm.budget_item_id, 10) === parseInt(a.budget_item_id, 10)) already = true; });
+                                        html += '<option value="' + parseInt(a.budget_item_id, 10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
+                                            enc(a.material_name + ' | Sisa RAB: ' + Ext.util.Format.number(a.qty_remaining, '0,000.####') + ' ' + a.unit) + '</option>';
                                     });
                                     html += '</select> <input id="aiMaterialQty_' + idx + '" type="number" min="0.0001" step="0.0001" placeholder="Qty" style="width:100px;padding:8px;font-size:14px;background:#061522;color:#fff;border:1px solid #52758b;"> ' +
-                                        '<button type="button" class="aiAddMaterial" data-task="' + idx + '" style="padding:8px 12px;font-size:14px;font-weight:bold;">Tambah Material</button>' +
+                                        '<button type="button" class="aiAddMaterial" data-task="' + idx + '" style="padding:8px 20px;background:#066b78;color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:bold;font-size:13px;">Tambah Material</button>' +
                                         '</div></div>';
                                 });
                                 return html;
@@ -458,9 +487,10 @@ Ext.onReady(function () {
                                             return;
                                         }
                                         plan.tasks[idx].materials = plan.tasks[idx].materials || [];
-                                        plan.tasks[idx].materials.push({
-                                            budget_item_id: bid, material_name: candidate.material_name, unit: candidate.unit,
-                                            qty_estimate: qty, reason: 'Ditambahkan manual oleh pengguna'
+                                        plan.tasks[idx].materials.push({   // [AI-BOQ] ikut field BoQ baru; harga = harga RAB yang berlaku
+                                            budget_item_id: bid, material_id: candidate.material_id, material_name: candidate.material_name, spec: '',
+                                            unit: candidate.unit, qty_estimate: qty, unit_price: candidate.unit_price || 0, status: 'rab',
+                                            reason: 'Ditambahkan manual oleh pengguna'
                                         });
                                         win.body.update(renderTaskPlan());
                                         bindPlanActions(win);
@@ -478,10 +508,11 @@ Ext.onReady(function () {
                                 });
                             }
 
-                            showPlanWin('Review Task & Material AI', renderTaskPlan(), 'Simpan Task & Material', function() {
-                                Ext.MessageBox.wait('Menyimpan Task dan alokasi material...', 'Mohon Tunggu');
+                            showPlanWin('Review Task, Material & RAB (AI)', renderTaskPlan(), 'Simpan ke Master, RAB & Task', function() {
+                                Ext.MessageBox.wait('Membuat material baru, memasukkan ke RAB, lalu menyimpan Task...', 'Mohon Tunggu');
                                 Ext.Ajax.request({
                                     url: CRD, method: 'POST',
+                                    timeout: 90000,            // [AI-BOQ] simpan = buat material + RAB + task dalam satu transaksi
                                     params: {
                                         task: 'save_ai_task_plan',
                                         project_id: projId,

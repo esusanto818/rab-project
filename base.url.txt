@@ -1,0 +1,13 @@
+./login.php:3:Document : login.php
+./index.latest.php:156:<a href="dev/login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg">
+./index.latest.php:179:<!-- <a href="dev/login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
+./index.latest.php:885:<!-- <a href="dev/login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
+./index.php:156:<a href="login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg">
+./index.php:179:<!-- <a href="dev/login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
+./index.php:885:<!-- <a href="dev/login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
+./views/dashboard.latest.php:6:if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+./views/login.php:77:            header("Location: menu.php");
+./views/change.pass.php:4:    header('Location: ../login.php');
+./views/dashboard.php:8:if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+./includes/many-template-icn.php:22:    <?php include BASE_PATH . "/includes/div-burger-menu.php"; ?>
+./includes/many-template-icn.php:33:  <?php include BASE_PATH . "/includes/div-links-menu.php"; ?>

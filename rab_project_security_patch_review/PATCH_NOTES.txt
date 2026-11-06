@@ -1,0 +1,40 @@
+RAB-PROJECT SECURITY PATCH - REVIEW BUILD
+=========================================
+
+Files changed:
+- .htaccess
+- router.php
+- php-func/user.valid.php
+- views/logout.php
+
+Files included unchanged for context:
+- index.php
+- php-func/app.url.php
+
+Changes:
+1. Direct /php-crud/*.php and /pdf/*.php requests are rewritten through router.php
+   BEFORE the physical-file bypass. This closes the direct-file routing bypass
+   present in the supplied .htaccess.
+2. Direct /views/* execution is denied by Apache; views remain includable by router.
+3. router.php only interprets GET id as form_id on the legacy /views/router route.
+   Normal record IDs are no longer automatically treated as menu IDs.
+4. Relative asset path rewrites use BASE_URL rather than hard-coded /proyek.
+5. Login/logout redirects use BASE_URL and do not construct URLs from HTTP_HOST.
+6. Removed logout debug logging of host/base URL.
+
+Validation:
+- PHP syntax lint passed on router.php, user.valid.php, views/logout.php,
+  index.php, and app.url.php using PHP CLI 8.4.24.
+- Apache rewrite behavior, database authorization mapping, PHP 7 compatibility,
+  and application workflows still require testing on the target server.
+
+Important deployment notes:
+- Make a backup before replacing files.
+- The .htaccess assumes Apache 2.4+ because it uses the [END] flag.
+- RewriteBase currently matches /rab-project/dev/. Change it if deployment path differs.
+- Test direct CRUD/PDF access as both authorized and unauthorized users.
+- Test that CRUD handlers independently enforce operation-level permissions;
+  menu access alone is not sufficient for create/update/delete/post/reverse.
+- This patch does not claim full security certification. Session cookie flags,
+  CSRF coverage, endpoint-by-endpoint operation authorization, and database
+  privilege boundaries remain separate audit items.

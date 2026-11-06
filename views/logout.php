@@ -1,5 +1,7 @@
 <?php
 // views/logout.php
+require_once __DIR__ . '/../php-func/app.url.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -38,17 +40,6 @@ if (ini_get("session.use_cookies")) {
 // Destroy session
 session_destroy();
 
-// Redirect to main page
-$protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https://' : 'http://';
-$host = $_SERVER['HTTP_HOST'];
-$script_dir = dirname($_SERVER['SCRIPT_NAME']);
-$base_dir = rtrim($script_dir, '/\\') . '/';
-$base_url = $protocol . $host . $base_dir;
-
-error_log('HOST = '.$host);
-error_log('BASE DIR = '.$base_dir);
-error_log('BASE URL = '.$base_url);
-
-
-header('Location: ../index.php');
-?>
+// Redirect to the application root without trusting the Host header.
+header('Location: ' . rtrim(BASE_URL, '/') . '/index.php');
+exit;

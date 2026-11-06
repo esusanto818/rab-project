@@ -1,21 +1,27 @@
+
 RewriteEngine On
 RewriteBase /rab-project/dev/
 
-# 1. Jika ada request yang terlanjur minta /router.php, alihkan (301) ke /router (pretty URL)
-RewriteCond %{THE_REQUEST} \s/rab-project/dev/router\.php[?\s] [NC]
-RewriteRule ^router\.php$ /rab-project/dev/router [R=301,L,QSA]
+# A. Endpoint CRUD dan PDF melalui router
+RewriteRule ^(php-crud|pdf)/([A-Za-z0-9_.-]+\.php)$ router.php [END,QSA,NC]
 
-# 2. Pemetaan internal: mengarahkan /router ke router.php secara transparan
-RewriteRule ^router$ router.php [L,QSA]
+# B. Router utama
+RewriteRule ^router$ router.php [END,QSA]
 
-# 3. Jika request ditujukan langsung ke /php/router.php, alihkan ke /router
-RewriteCond %{REQUEST_URI} ^/rab-project/dev/php/router\.php [NC]
-RewriteRule ^php/router\.php$ /rab-project/dev/router [R=301,L,QSA]
+# C. Legacy menu router
+RewriteRule ^views/router$ router.php [END,QSA,NC]
 
-# 4. Kecualikan file & folder fisik asli
+# D. Dashboard sementara diizinkan langsung
+RewriteRule ^views/dashboard\.php$ - [END,NC]
+
+# E. Sementara jangan blokir views sampai
+# semua pemanggilan langsung sudah dipindahkan
+# RewriteRule ^views/ - [F,END,NC]
+
+# F. File dan folder fisik lainnya
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
-RewriteRule ^ - [L]
+RewriteRule ^ - [END]
 
-# 5. Arahkan sisa request non-fisik lainnya ke router.php utama
-RewriteRule ^(.*)$ router.php [QSA,L]
+# G. Fallback
+RewriteRule ^ router.php [END,QSA]

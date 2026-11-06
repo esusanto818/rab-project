@@ -1,0 +1,27 @@
+
+RewriteEngine On
+RewriteBase /rab-project/dev/
+
+# A. Endpoint CRUD dan PDF melalui router
+RewriteRule ^(php-crud|pdf)/([A-Za-z0-9_.-]+\.php)$ router.php [END,QSA,NC]
+
+# B. Router utama
+RewriteRule ^router$ router.php [END,QSA]
+
+# C. Legacy menu router
+RewriteRule ^views/router$ router.php [END,QSA,NC]
+
+# D. Dashboard sementara diizinkan langsung
+RewriteRule ^views/dashboard\.php$ - [END,NC]
+
+# E. Sementara jangan blokir views sampai
+# semua pemanggilan langsung sudah dipindahkan
+# RewriteRule ^views/ - [F,END,NC]
+
+# F. File dan folder fisik lainnya
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [END]
+
+# G. Fallback
+RewriteRule ^ router.php [END,QSA]

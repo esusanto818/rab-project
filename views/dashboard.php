@@ -2,9 +2,11 @@
 $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");  
 
 // views/dashboard.php - FINAL VERSION
+// [REVISI 2026-11-06] Dashboard dibagi 3 area bertab: Ringkasan Proyek | Keuangan | Material & RAB.
+//   Data dimuat per tab (lazy) dan hanya dimuat ulang bila filter proyek berubah. Backend dashboardCRD.php TIDAK berubah.
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
-require_once __DIR__ . '/../php-class/crudClass.php';
+require_once __DIR__ . '/../dev/php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
 
@@ -87,6 +89,14 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
     background: rgba(252, 253, 253, 0.61);
     transform: translateX(2px);
 }
+
+/* [BARU 2026-11-06 TAB] Tab dashboard. Tombol mengikuti template "Print Task"; aktif = teal #066b78 */
+.tab-btn { background:#1f2d3a; color:#ffffff; font-weight:700; font-size:15px; padding:8px 20px; border:none; border-radius:4px; cursor:pointer; transition:background .15s; }
+.tab-btn:hover { background:#2b3f52; }
+.tab-btn.active { background:#066b78; }
+.tab-btn:focus-visible { outline:2px solid #22d3ee; outline-offset:2px; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
 </style>
 </head>
 <?php $favVer = date('YmdHis'); ?>
@@ -178,6 +188,68 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 </div>
 </div>
 
+<!-- [BARU 2026-11-06 TAB] TAB BAR: 3 area dashboard (gaya tombol "Print Task": putih tebal, padding 8px 20px, radius 4px) -->
+<div id="tab_bar" class="flex flex-wrap gap-2 bg-[#04101c] p-3 rounded-xl border border-[#0a2d4a]" role="tablist" aria-label="Area dashboard">
+<button type="button" class="tab-btn active" id="tabbtn_ringkasan" data-tab="ringkasan" role="tab" aria-selected="true" aria-controls="tab_ringkasan">Ringkasan Proyek</button>
+<button type="button" class="tab-btn" id="tabbtn_keuangan" data-tab="keuangan" role="tab" aria-selected="false" aria-controls="tab_keuangan" tabindex="-1">Keuangan</button>
+<button type="button" class="tab-btn" id="tabbtn_material" data-tab="material" role="tab" aria-selected="false" aria-controls="tab_material" tabindex="-1">Material &amp; RAB</button>
+</div>
+
+<!-- ===== TAB 1: RINGKASAN PROYEK (kesehatan, action center, milestone, profitabilitas) ===== -->
+<section id="tab_ringkasan" class="tab-panel active space-y-6" role="tabpanel" aria-labelledby="tabbtn_ringkasan">
+<!-- [BARU 2026-10-30] KESEHATAN PROYEK: progres vs pemakaian biaya + rekomendasi otomatis (data: dashboardCRD.php?action=read_project_health).
+     -->
+<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]" id="health_panel">
+<div class="pb-3 border-b border-[#0a2d4a] mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">🩺 Kesehatan Proyek (Progres vs Pemakaian Biaya)</h2>
+<span class="text-[11px] text-slate-500" id="health_legend">Klik kartu untuk analisis AI</span>
+</div>
+<div id="health_cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-96 overflow-y-auto no-scrollbar">
+<div class="text-center text-slate-500 text-xs py-4 col-span-full">Memuat kesehatan proyek...</div>
+</div>
+<div id="health_reco" class="mt-3"></div>
+</div>
+<!-- END KESEHATAN PROYEK -->
+
+<!-- ROW 3: ACTION CENTER & AI MILESTONES -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<!-- ACTION CENTER -->
+<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
+<div class="pb-3 border-b border-[#0a2d4a] mb-3">
+<h2 class="text-base font-bold text-rose-400 uppercase tracking-wider font-rajdhani">⚡ Action Center (Butuh Tindakan)</h2>
+</div>
+<ul class="space-y-2 text-sm max-h-72 overflow-y-auto no-scrollbar" id="action_list">
+<li class="text-center text-slate-500 text-xs py-4">Memuat indikator...</li>
+</ul></div>
+
+<!-- AI MILESTONE -->
+<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
+<div class="pb-3 border-b border-[#0a2d4a] mb-3">
+<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">🎯 Milestone Task Proyek (14 Hari &amp; Terlambat)</h2>
+</div>
+<div class="space-y-2 max-h-48 overflow-y-auto no-scrollbar" id="milestone_list">
+<div class="text-center text-slate-500 text-xs py-4">Memuat milestone...</div>
+</div></div>
+</div>
+
+
+<!-- PROFITABILITAS -->
+<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
+<div class="pb-3 border-b border-[#0a2d4a] mb-3">
+<h2 class="text-base font-bold text-emerald-400 uppercase tracking-wider font-rajdhani">📊 Profitabilitas Proyek (Biaya Riil vs Tertagih)</h2>
+</div>
+<div class="overflow-x-auto max-h-64 no-scrollbar">
+<table class="w-full text-left text-xs">
+<thead class="text-slate-400 border-b border-[#0a2d4a] sticky top-0 bg-[#04101c]">
+<tr><th class="pb-2">Proyek</th><th class="pb-2 text-right">Progres</th><th class="pb-2 text-right">Kontrak (DPP)</th><th class="pb-2 text-right">Tertagih (DPP)</th><th class="pb-2 text-right">Biaya Riil</th><th class="pb-2 text-right">Biaya/Kontrak</th><th class="pb-2 text-right">Margin</th></tr>
+</thead>
+<tbody id="profit_tbody" class="divide-y divide-[#0a2d4a]/60 font-mono">
+<tr><td colspan="7" class="py-4 text-center text-slate-500">Memuat...</td></tr>
+</tbody></table></div></div>
+</section>
+
+<!-- ===== TAB 2: KEUANGAN (aging, pipeline, kas/PPN/subkon, performa bulanan, kurs KMK) ===== -->
+<section id="tab_keuangan" class="tab-panel space-y-6" role="tabpanel" aria-labelledby="tabbtn_keuangan">
 <!-- ROW 1: AGING & INVOICE PIPELINE -->
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
 <!-- FINANCIAL AGING -->
@@ -207,10 +279,72 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 </div></div>
 </div>
 
-<!-- ROW 2: KPI CARDS & PERFORMA KEUANGAN -->
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+
+<!-- ROW 2b: KAS, PPN, SUBKON -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="extra_row">
+    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-sky-500">
+        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">🏦 Saldo Kas &amp; Bank</div>
+        <div class="text-xl font-bold font-mono text-sky-300 mt-2" id="extra_cash">Rp 0</div>
+        <div class="text-[10px] text-sky-400/80 mt-1">Dari jurnal terposting (semua proyek)</div>
+    </div>
+    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-orange-500">
+        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">🧾 PPN Bulan Ini <span id="extra_ppn_period" class="text-xs"></span></div>
+        <div class="text-xl font-bold font-mono mt-2" id="extra_ppn">Rp 0</div>
+        <div class="text-[10px] text-orange-300/80 mt-1" id="extra_ppn_sub">Keluaran - Masukan</div>
+    </div>
+    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-lime-500" id="extra_subcon_card">
+        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">👷 Subkontraktor</div>
+        <div class="text-xl font-bold font-mono text-lime-300 mt-2" id="extra_subcon">Rp 0</div>
+        <div class="text-[10px] text-lime-300/80 mt-1" id="extra_subcon_sub">Sisa hutang prestasi</div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+<!-- PERFORMA KEUANGAN -->
+<div class="bg-[#04101c] rounded-xl border border-[#0a2d4a] p-4 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-center pb-3 border-b border-[#0a2d4a] mb-3">
+<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">Performa Keuangan (Bulanan)</h2>
+<select id="fin_year_select" onchange="loadFinancialPerformance()" class="bg-[#071d30] border border-[#0a2d4a] text-cyan-200 text-[10px] rounded px-2 py-0.5">
+<option value="2026" selected>2026</option><option value="2025">2025</option>
+</select></div>
+<div class="relative w-full h-52">
+<canvas id="finChartCanvas"></canvas>
+<div id="fin_empty" class="hidden absolute inset-0 flex items-center justify-center text-center px-6 text-[11px] text-slate-400 font-sans pointer-events-none"></div>
+</div></div></div>
+
+<!-- RATE KURS PAJAK -->
+<div class="bg-[#04101c] rounded-xl border border-[#0a2d4a] p-4 flex flex-col justify-between">
+<div>
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b border-[#0a2d4a] mb-3 gap-2">
+<div>
+<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">Rate Kurs Pajak (KMK)</h2>
+<div class="flex items-center gap-2 mt-1">
+<span id="kmk_badge" class="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-800 px-1.5 py-0.5 rounded inline-block">Memuat...</span>
+<span id="kmk_valid_date" class="text-[11px] text-yellow-400"></span>
+</div></div>
+<div class="flex items-center space-x-2 w-full sm:w-auto">
+<div class="relative flex-1 sm:w-44">
+<input type="text" id="search_tax_currency" onkeyup="filterTaxRates()" placeholder="Cari mata uang..." class="w-full bg-[#071d30] border border-[#0a2d4a] text-cyan-200 text-[11px] rounded px-2.5 py-1 pl-7 focus:outline-none focus:border-cyan-500 placeholder-slate-500">
+<svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+</div>
+<button id="btn_sync_tax" onclick="syncTaxRates()" class="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-1 rounded transition whitespace-nowrap">Update Kurs</button>
+</div></div>
+<div class="max-h-56 overflow-y-auto no-scrollbar">
+<table class="w-full text-left text-[13px]">
+<thead class="bg-[#071d30] text-cyan-300 sticky top-0">
+<tr><th class="p-1.5">Mata Uang</th><th class="p-1.5 text-right">Kurs (IDR)</th><th class="p-1.5 text-center">Ubah</th></tr>
+</thead>
+<tbody id="tax_rate_tbody" class="divide-y divide-[#0a2d4a] text-slate-300 font-mono text-[12px]">
+<tr><td colspan="3" class="p-3 text-center text-slate-500">Memuat data kurs pajak...</td></tr>
+</tbody></table></div></div></div>
+</div>
+</section>
+
+<!-- ===== TAB 3: MATERIAL & RAB (KPI RAB, distribusi, top material, rincian) ===== -->
+<section id="tab_material" class="tab-panel space-y-6" role="tabpanel" aria-labelledby="tabbtn_material">
 <!-- KPI CARDS - [FIX] Warna Border Valid Tailwind -->
-<div class="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 <!-- 1. Total Budget RAB - FUCHSIA -->
 <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-fuchsia-500 flex flex-col justify-between">
 <div>
@@ -269,135 +403,6 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 </div>
 </div>
 
-<!-- PERFORMA KEUANGAN -->
-<div class="lg:col-span-6 bg-[#04101c] rounded-xl border border-[#0a2d4a] p-4 flex flex-col justify-between">
-<div>
-<div class="flex justify-between items-center pb-3 border-b border-[#0a2d4a] mb-3">
-<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">Performa Keuangan (Bulanan)</h2>
-<select id="fin_year_select" onchange="loadFinancialPerformance()" class="bg-[#071d30] border border-[#0a2d4a] text-cyan-200 text-[10px] rounded px-2 py-0.5">
-<option value="2026" selected>2026</option><option value="2025">2025</option>
-</select></div>
-<div class="relative w-full h-52">
-<canvas id="finChartCanvas"></canvas>
-<div id="fin_empty" class="hidden absolute inset-0 flex items-center justify-center text-center px-6 text-[11px] text-slate-400 font-sans pointer-events-none"></div>
-</div></div></div>
-</div>
-
-<!-- ROW 2b: KAS, PPN, SUBKON -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-4" id="extra_row">
-    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-sky-500">
-        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">🏦 Saldo Kas &amp; Bank</div>
-        <div class="text-xl font-bold font-mono text-sky-300 mt-2" id="extra_cash">Rp 0</div>
-        <div class="text-[10px] text-sky-400/80 mt-1">Dari jurnal terposting (semua proyek)</div>
-    </div>
-    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-orange-500">
-        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">🧾 PPN Bulan Ini <span id="extra_ppn_period" class="text-xs"></span></div>
-        <div class="text-xl font-bold font-mono mt-2" id="extra_ppn">Rp 0</div>
-        <div class="text-[10px] text-orange-300/80 mt-1" id="extra_ppn_sub">Keluaran - Masukan</div>
-    </div>
-    <div class="bg-[#071d30]/80 p-4 rounded-xl border-l-4 border-l-lime-500" id="extra_subcon_card">
-        <div class="text-base text-slate-400 uppercase font-bold tracking-wider">👷 Subkontraktor</div>
-        <div class="text-xl font-bold font-mono text-lime-300 mt-2" id="extra_subcon">Rp 0</div>
-        <div class="text-[10px] text-lime-300/80 mt-1" id="extra_subcon_sub">Sisa hutang prestasi</div>
-    </div>
-</div>
-<!-- [BARU 2026-10-30] KESEHATAN PROYEK: progres vs pemakaian biaya + rekomendasi otomatis (data: dashboardCRD.php?action=read_project_health).
-     Fungsinya mirip ROW 2c di bawah (card-monitoring.php). Bila hanya ingin satu, hapus salah satu blok. -->
-<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]" id="health_panel">
-<div class="pb-3 border-b border-[#0a2d4a] mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">🩺 Kesehatan Proyek (Progres vs Pemakaian Biaya)</h2>
-<span class="text-[11px] text-slate-500" id="health_legend">Klik kartu untuk analisis AI</span>
-</div>
-<div id="health_cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 max-h-96 overflow-y-auto no-scrollbar">
-<div class="text-center text-slate-500 text-xs py-4 col-span-full">Memuat kesehatan proyek...</div>
-</div>
-<div id="health_reco" class="mt-3"></div>
-</div>
-<!-- END KESEHATAN PROYEK -->
-
-<!-- ROW 2c: MONITORING PROYEK - PEMAKAIAN VS PROGRES
-<div class="bg-[#04101c] p-5 rounded-xl border border-[#0a2d4a]">
-    <div class="flex justify-between items-center mb-3 border-b border-[#0a2d4a] pb-2">
-        <h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">
-            📊 Monitoring Proyek - Pemakaian vs Progres
-        </h2>
-        <span class="text-[10px] text-slate-500 font-mono">Real-time</span>
-    </div> -->
-    
-    <?php
-    // Pastikan BASE_PATH terdefinisi
-    /*if (!defined('BASE_PATH')) {
-        define('BASE_PATH', realpath(__DIR__ . '/..'));
-    }
-    include BASE_PATH . "/includes/card-monitoring.php";*/
-    ?>
-</div>
-<!-- END ROW 2c -->
-
-
-<!-- ROW 3: ACTION CENTER & AI MILESTONES -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-<!-- ACTION CENTER -->
-<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
-<div class="pb-3 border-b border-[#0a2d4a] mb-3">
-<h2 class="text-base font-bold text-rose-400 uppercase tracking-wider font-rajdhani">⚡ Action Center (Butuh Tindakan)</h2>
-</div>
-<ul class="space-y-2 text-sm max-h-72 overflow-y-auto no-scrollbar" id="action_list">
-<li class="text-center text-slate-500 text-xs py-4">Memuat indikator...</li>
-</ul></div>
-
-<!-- AI MILESTONE -->
-<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
-<div class="pb-3 border-b border-[#0a2d4a] mb-3">
-<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">🎯 Milestone Task Proyek (14 Hari &amp; Terlambat)</h2>
-</div>
-<div class="space-y-2 max-h-48 overflow-y-auto no-scrollbar" id="milestone_list">
-<div class="text-center text-slate-500 text-xs py-4">Memuat milestone...</div>
-</div></div>
-</div>
-
-<!-- ROW 4: PROFITABILITAS & RATE KURS -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-<!-- PROFITABILITAS -->
-<div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
-<div class="pb-3 border-b border-[#0a2d4a] mb-3">
-<h2 class="text-base font-bold text-emerald-400 uppercase tracking-wider font-rajdhani">📊 Profitabilitas Proyek (Biaya Riil vs Tertagih)</h2>
-</div>
-<div class="overflow-x-auto max-h-64 no-scrollbar">
-<table class="w-full text-left text-xs">
-<thead class="text-slate-400 border-b border-[#0a2d4a] sticky top-0 bg-[#04101c]">
-<tr><th class="pb-2">Proyek</th><th class="pb-2 text-right">Progres</th><th class="pb-2 text-right">Kontrak (DPP)</th><th class="pb-2 text-right">Tertagih (DPP)</th><th class="pb-2 text-right">Biaya Riil</th><th class="pb-2 text-right">Biaya/Kontrak</th><th class="pb-2 text-right">Margin</th></tr>
-</thead>
-<tbody id="profit_tbody" class="divide-y divide-[#0a2d4a]/60 font-mono">
-<tr><td colspan="7" class="py-4 text-center text-slate-500">Memuat...</td></tr>
-</tbody></table></div></div>
-
-<!-- RATE KURS PAJAK -->
-<div class="bg-[#04101c] rounded-xl border border-[#0a2d4a] p-4 flex flex-col justify-between">
-<div>
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-3 border-b border-[#0a2d4a] mb-3 gap-2">
-<div>
-<h2 class="text-base font-bold text-cyan-400 uppercase tracking-wider font-rajdhani">Rate Kurs Pajak (KMK)</h2>
-<div class="flex items-center gap-2 mt-1">
-<span id="kmk_badge" class="text-[9px] bg-cyan-950 text-cyan-300 border border-cyan-800 px-1.5 py-0.5 rounded inline-block">Memuat...</span>
-<span id="kmk_valid_date" class="text-[11px] text-yellow-400"></span>
-</div></div>
-<div class="flex items-center space-x-2 w-full sm:w-auto">
-<div class="relative flex-1 sm:w-44">
-<input type="text" id="search_tax_currency" onkeyup="filterTaxRates()" placeholder="Cari mata uang..." class="w-full bg-[#071d30] border border-[#0a2d4a] text-cyan-200 text-[11px] rounded px-2.5 py-1 pl-7 focus:outline-none focus:border-cyan-500 placeholder-slate-500">
-<svg class="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-</div>
-<button id="btn_sync_tax" onclick="syncTaxRates()" class="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-1 rounded transition whitespace-nowrap">Update Kurs</button>
-</div></div>
-<div class="max-h-56 overflow-y-auto no-scrollbar">
-<table class="w-full text-left text-[13px]">
-<thead class="bg-[#071d30] text-cyan-300 sticky top-0">
-<tr><th class="p-1.5">Mata Uang</th><th class="p-1.5 text-right">Kurs (IDR)</th><th class="p-1.5 text-center">Ubah</th></tr>
-</thead>
-<tbody id="tax_rate_tbody" class="divide-y divide-[#0a2d4a] text-slate-300 font-mono text-[12px]">
-<tr><td colspan="3" class="p-3 text-center text-slate-500">Memuat data kurs pajak...</td></tr>
-</tbody></table></div></div></div>
-</div>
 
 <!-- ROW 5: MATERIAL CHARTS -->
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -410,6 +415,7 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 <div class="relative w-full h-56"><canvas id="barMaterialCanvas"></canvas></div>
 </div>
 </div>
+
 
 <!-- ROW 6: TABEL MATERIAL -->
 <div class="bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a]">
@@ -435,6 +441,8 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 <tr><td colspan="9" class="p-4 text-center text-slate-500">Memuat data material proyek...</td></tr>
 </tbody></table></div></div>
 
+</section>
+
 </main>
 
 <!-- JAVASCRIPT -->
@@ -449,19 +457,63 @@ const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFra
 
 document.addEventListener('DOMContentLoaded', () => { initDashboard(); });
 
+// [BARU 2026-11-06 TAB] Tab engine: loader per tab, lazy-load, hash #ringkasan | #keuangan | #material
+const TAB_LOADERS = {
+    ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
+    keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
+    material:  () => { loadMaterialMonitoring(); }
+};
+// chart di tab tersembunyi bisa berukuran 0 -> resize saat tab ditampilkan kembali
+const TAB_CHARTS = { keuangan: () => [finChart], material: () => [doughnutChart, barMaterialChart] };
+const tabDirty = { ringkasan: true, keuangan: true, material: true };   // true = data tab perlu (re)load
+let activeTab = 'ringkasan';
+
+function tabFromHash() {
+    const h = (location.hash || '').replace('#', '');
+    return TAB_LOADERS[h] ? h : 'ringkasan';
+}
+
+function switchTab(name, skipHash) {
+    if (!TAB_LOADERS[name]) name = 'ringkasan';
+    activeTab = name;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+        const on = b.getAttribute('data-tab') === name;
+        b.classList.toggle('active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+        b.tabIndex = on ? 0 : -1;
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab_' + name));
+    if (!skipHash && location.hash !== '#' + name) history.replaceState(null, '', '#' + name);   // tanpa lompat scroll
+    if (tabDirty[name]) {
+        tabDirty[name] = false;
+        TAB_LOADERS[name]();
+    } else if (TAB_CHARTS[name]) {
+        TAB_CHARTS[name]().forEach(c => { if (c) c.resize(); });
+    }
+}
+
+// Filter proyek berubah: tandai semua tab usang, muat ulang hanya tab yang sedang tampil
+function refreshDashboard() {
+    Object.keys(tabDirty).forEach(k => { tabDirty[k] = true; });
+    switchTab(activeTab, true);
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+    btn.addEventListener('keydown', (e) => {          // navigasi keyboard kiri/kanan antar tab
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const names = Object.keys(TAB_LOADERS), i = names.indexOf(activeTab);
+        const next = names[(i + (e.key === 'ArrowRight' ? 1 : names.length - 1)) % names.length];
+        switchTab(next);
+        document.getElementById('tabbtn_' + next).focus();
+    });
+});
+window.addEventListener('hashchange', () => { const t = tabFromHash(); if (t !== activeTab) switchTab(t, true); });
+
 async function initDashboard() {
     await loadProjects();
-    await loadTaxRates();
-    loadFinancialAging();
-    loadInvoicePipeline();
-    loadActionCenter();
-    loadMilestones();
-    loadProfitability();
-    loadExtra();
-    loadProjectHealth();
-    loadFinancialPerformance();
-    loadMaterialMonitoring();
     initMegaMenu();
+    switchTab(tabFromHash(), true);     // [REVISI TAB] sebelumnya semua loader dipanggil sekaligus; kini hanya tab aktif
 }
 document.querySelectorAll('.dropdown-menu a').forEach(link => {
     link.addEventListener('click', () => {
@@ -482,7 +534,7 @@ async function loadProjects() {
 
 function onProjectChange(val) {
     currentProjectId = parseInt(val) || 0;
-    loadFinancialAging(); loadInvoicePipeline(); loadActionCenter(); loadMilestones(); loadProfitability(); loadExtra(); loadProjectHealth(); loadFinancialPerformance(); loadMaterialMonitoring();
+    refreshDashboard();     // [REVISI TAB] muat ulang tab aktif saja; tab lain ditandai usang
 }
 
 async function loadFinancialAging() {

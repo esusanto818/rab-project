@@ -1,182 +1,248 @@
 <?php
-
-
-// 1. Matikan PCRE JIT untuk mencegah warning alokasi memori pada PHP 7
+/**
+ * Security patch for legacy ProyekGMN router.
+ * Compatible with PHP 7.x.
+ */
 ini_set('pcre.jit', '0');
 
-// 2. Memulai session jika belum aktif
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// 3. Cek Autentikasi User (Keamanan Dasar)
-if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-        http_response_code(401);
-        echo json_encode(["success" => false, "message" => "Session expired. Silakan login kembali."]);
-        exit;
+require_once __DIR__ . '/php-func/app.url.php';
+
+function router_is_ajax_request()
+{
+    $requestedWith = isset($_SERVER['HTTP_X_REQUESTED_WITH'])
+        ? strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) : '';
+    $accept = isset($_SERVER['HTTP_ACCEPT']) ? $_SERVER['HTTP_ACCEPT'] : '';
+
+    return ($requestedWith === 'xmlhttprequest')
+        || (strpos($accept, 'application/json') !== false);
+}
+
+function router_respond_denied($status, $message)
+{
+    http_response_code($status);
+    if (router_is_ajax_request()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(array('success' => false, 'message' => $message));
+    } else {
+        echo htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
     }
-    header('Location: index.php');
     exit;
 }
 
-// =========================================================================
-// 3.1 BYPASS ROUTER KHUSUS FILE PDF / REPORT DIRECT
-// =========================================================================
-$requestUri = $_SERVER['REQUEST_URI'] ?? '';
-
-if (preg_match('/\/pdf\/([a-zA-Z0-9_\-\.]+\.php)/i', $requestUri, $matches)) {
-    $pdfFileName = $matches[1];
-    $possiblePaths = [
-        __DIR__ . '/pdf/' . $pdfFileName,
-        __DIR__ . '/../pdf/' . $pdfFileName,
-        $_SERVER['DOCUMENT_ROOT'] . '/rab-project/dev/pdf/' . $pdfFileName
-    ];
-
-    foreach ($possiblePaths as $pdfFilePath) {
-        if (file_exists($pdfFilePath)) {
-            chdir(dirname($pdfFilePath));
-            require_once $pdfFilePath;
-            exit;
+function router_require_login()
+{
+    if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id'])
+        || intval($_SESSION['user_id']) <= 0) {
+        if (router_is_ajax_request()) {
+            router_respond_denied(401, 'Session telah berakhir. Silakan login kembali.');
         }
+        header('Location: ' . rtrim(BASE_URL, '/') . '/index.php');
+        exit;
     }
 }
 
+function router_normalize_menu_path($value)
+{
+    $value = trim((string)$value);
+    if ($value === '') {
+        return '';
+    }
+    $value = str_replace('\\', '/', $value);
+    return strtolower(basename($value));
+}
 
+/**
+ * Map a direct CRUD/PDF endpoint to its parent view menu.
+ * A successful match means the user has access to the menu, not necessarily
+ * permission for every operation. CRUD handlers must still enforce operation
+ * permissions (read/create/update/delete/post/reverse) server-side.
+ */
+function router_authorize_endpoint($db, $userId, $endpointType, $fileName)
+{
+    $candidates = array();
+    $base = basename($fileName);
 
-
-
-// =========================================================================
-// 3.2 BYPASS ROUTER KHUSUS AJAX POST / REQUEST CRUD EXTJS (FIX AUTOMATIC)
-// =========================================================================
-$isAjax = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest');
-if ($_SERVER['REQUEST_METHOD'] === 'POST' || isset($_POST['task']) || $isAjax) {
-    
-    // PERBAIKAN: Tangkap nama file CRUD meskipun URL dari browser salah / kehilangan folder '/dev/'
-    if (preg_match('/php-crud\/([a-zA-Z0-9_\-\.]+\.php)/i', $requestUri, $matches)) {
-        $crudFileName = $matches[1];
-        
-        // Cari lokasi fisik file .php yang benar di server
-        $crudFile = __DIR__ . '/dev/php-crud/' . $crudFileName;
-    
-        if (file_exists($crudFile)) {
-            // Pindahkan working directory ke folder crud agar include di dalamnya aman
-            chdir(__DIR__ . '/php-crud');
-            require_once $crudFile;
-            exit;
+    if ($endpointType === 'crud') {
+        if (preg_match('/CRD\.php$/i', $base)) {
+            $candidates[] = preg_replace('/CRD\.php$/i', '.php', $base);
+        }
+    } elseif ($endpointType === 'pdf') {
+        $candidates[] = $base; // wrapper file inside /pdf
+        if (preg_match('/\.pdf\.php$/i', $base)) {
+            $candidates[] = preg_replace('/\.pdf\.php$/i', '.php', $base);
         }
     }
-}
 
-// =========================================================================
+    $candidates = array_values(array_unique(array_filter($candidates)));
+    if (!$candidates) {
+        return false;
+    }
 
-// 4. Load Database Class secara Absolut
-require_once __DIR__ . '/php-class/crudClass.php';
-
-// 5. Tangkap ID Menu dari Query String / Request / Session
-$user_id = intval($_SESSION["user_id"]);
-$form_id = 0;
-
-if (isset($_REQUEST['menu_id']) && intval($_REQUEST['menu_id']) > 0) {
-    $form_id = intval($_REQUEST['menu_id']);
-} elseif (isset($_REQUEST['form_id']) && intval($_REQUEST['form_id']) > 0) {
-    $form_id = intval($_REQUEST['form_id']);
-} elseif (isset($_GET['id'])) {
-    $form_id = intval($_GET['id']);
-} elseif (isset($_GET['menu'])) {
-    $form_id = intval($_GET['menu']);
-} elseif (preg_match('/menu=(\d+)/i', $requestUri, $matches)) {
-    $form_id = intval($matches[1]);
-} elseif (isset($_SESSION['current_menu_id'])) {
-    $form_id = intval($_SESSION['current_menu_id']);
-}
-
-if ($form_id <= 0) {
-    http_response_code(400);
-    die("Akses ditolak: Parameter menu ID tidak valid.");
-}
-
-// Simpan Form ID aktif ke Session agar request AJAX berikutnya dapat mengingatnya
-$_SESSION['current_menu_id'] = $form_id;
-
-try {
-    $db = new crud();
-
-    // 6. Verifikasi Hak Akses User & Ambil URL Target
     $sql = "
         SELECT f.id, f.title, f.php_url, u.access_level
         FROM m_form_name f
         INNER JOIN m_user_access_menu u ON u.form_id = f.id
-        WHERE f.id = :form_id 
+        WHERE u.user_id = :user_id
+          AND COALESCE(u.access_level, 0) > 0
+    ";
+    $stmt = $db->prepare($sql);
+    $stmt->execute(array('user_id' => $userId));
+
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $menuFile = router_normalize_menu_path($row['php_url']);
+        if ($menuFile !== '' && in_array($menuFile, array_map('strtolower', $candidates), true)) {
+            $_SESSION['FormAccess'] = $row['access_level'];
+            $_SESSION['form_id'] = intval($row['id']);
+            $_SESSION['current_menu_id'] = intval($row['id']);
+            return $row;
+        }
+    }
+    return false;
+}
+
+router_require_login();
+
+$requestPath = parse_url(isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/', PHP_URL_PATH);
+$requestMethod = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUEST_METHOD']) : 'GET';
+$userId = intval($_SESSION['user_id']);
+
+require_once __DIR__ . '/php-class/crudClass.php';
+
+try {
+    $db = new crud();
+
+    // Direct PDF/report endpoint: authenticate AND authorize against parent menu.
+    if (preg_match('~(?:^|/)pdf/([A-Za-z0-9_.-]+\.php)$~i', $requestPath, $matches)) {
+        $pdfName = $matches[1];
+        $pdfPath = realpath(__DIR__ . '/pdf/' . $pdfName);
+        $pdfRoot = realpath(__DIR__ . '/pdf');
+
+        if (!$pdfPath || !$pdfRoot || strpos($pdfPath, $pdfRoot . DIRECTORY_SEPARATOR) !== 0
+            || !is_file($pdfPath)) {
+            router_respond_denied(404, 'File laporan tidak ditemukan.');
+        }
+
+        if (!router_authorize_endpoint($db, $userId, 'pdf', $pdfName)) {
+            router_respond_denied(403, 'Anda tidak memiliki hak akses untuk laporan ini.');
+        }
+
+        chdir(dirname($pdfPath));
+        require $pdfPath;
+        exit;
+    }
+
+    // Direct CRUD endpoint: authenticate AND authorize against parent menu.
+    if (preg_match('~(?:^|/)php-crud/([A-Za-z0-9_.-]+\.php)$~i', $requestPath, $matches)) {
+        $crudName = $matches[1];
+        $crudPath = realpath(__DIR__ . '/php-crud/' . $crudName);
+        $crudRoot = realpath(__DIR__ . '/php-crud');
+
+        if (!$crudPath || !$crudRoot || strpos($crudPath, $crudRoot . DIRECTORY_SEPARATOR) !== 0
+            || !is_file($crudPath)) {
+            router_respond_denied(404, 'Endpoint tidak ditemukan.');
+        }
+
+        // Dashboard API: hanya pengguna yang sudah login.
+        // Tidak memerlukan entri dashboard.php di m_form_name.
+        $isDashboardApi = (strcasecmp($crudName, 'dashboardCRD.php') === 0);
+
+        if (
+            !$isDashboardApi &&
+            !router_authorize_endpoint($db, $userId, 'crud', $crudName)
+        ) {
+            router_respond_denied(403, 'Anda tidak memiliki hak akses ke modul ini.');
+        }
+
+        chdir(dirname($crudPath));
+        require $crudPath;
+        exit;
+    }
+
+    // Normal view routing. Do not use stale session menu id as authorization
+    // when the request explicitly supplies a different or invalid menu id.
+    $formId = 0;
+    if (isset($_REQUEST['menu_id']) && is_numeric($_REQUEST['menu_id'])) {
+        $formId = intval($_REQUEST['menu_id']);
+    } elseif (isset($_REQUEST['form_id']) && is_numeric($_REQUEST['form_id'])) {
+        $formId = intval($_REQUEST['form_id']);
+    } elseif (
+        preg_match('~(?:^|/)views/router/?$~i', $requestPath)
+        && isset($_GET['id']) && ctype_digit((string)$_GET['id'])
+    ) {
+        // Legacy /views/router?id=<form_id> only. A normal business-record
+        // id must never be interpreted as a menu/form identifier.
+        $formId = intval($_GET['id']);
+    } elseif (isset($_GET['menu']) && ctype_digit((string)$_GET['menu'])) {
+        $formId = intval($_GET['menu']);
+    } elseif (isset($_SESSION['current_menu_id'])) {
+        $formId = intval($_SESSION['current_menu_id']);
+    }
+
+    if ($formId <= 0) {
+        router_respond_denied(400, 'Parameter menu ID tidak valid.');
+    }
+
+    $sql = "
+        SELECT f.id, f.title, f.php_url, u.access_level
+        FROM m_form_name f
+        INNER JOIN m_user_access_menu u ON u.form_id = f.id
+        WHERE f.id = :form_id
           AND u.user_id = :user_id
+          AND COALESCE(u.access_level, 0) > 0
         LIMIT 1
     ";
-
     $stmt = $db->prepare($sql);
-    $stmt->execute([
-        'form_id' => $form_id,
-        'user_id' => $user_id
-    ]);
-    
+    $stmt->execute(array('form_id' => $formId, 'user_id' => $userId));
     $formData = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$formData) {
-        http_response_code(403);
-        die("Akses ditolak: Anda tidak memiliki izin untuk membuka halaman ini.");
+        router_respond_denied(403, 'Anda tidak memiliki izin untuk membuka halaman ini.');
     }
 
-    // Simpan Access Level ke Session agar dibaca oleh ExtJS formAccess
+    $targetFile = trim((string)$formData['php_url']);
+    if ($targetFile === '' || strpos($targetFile, "\0") !== false) {
+        router_respond_denied(404, 'File tujuan belum dikonfigurasi.');
+    }
+
+    // Resolve only inside /views; reject traversal and symlink escape.
+    $viewRoot = realpath(__DIR__ . '/views');
+    $relative = ltrim(str_replace('\\', '/', $targetFile), '/');
+    $relative = preg_replace('~^(?:\.\./|php/)+~i', '', $relative);
+    $viewPath = realpath(__DIR__ . '/views/' . $relative);
+
+    if (!$viewRoot || !$viewPath || strpos($viewPath, $viewRoot . DIRECTORY_SEPARATOR) !== 0
+        || !is_file($viewPath) || strtolower(pathinfo($viewPath, PATHINFO_EXTENSION)) !== 'php') {
+        router_respond_denied(404, 'File halaman tidak ditemukan pada lokasi yang diizinkan.');
+    }
+
     $_SESSION['FormAccess'] = $formData['access_level'];
+    $_SESSION['form_id'] = intval($formData['id']);
+    $_SESSION['current_menu_id'] = intval($formData['id']);
 
-    $targetFile = trim($formData['php_url'] ?? '');
+    chdir($viewRoot);
+    ob_start();
+    include $viewPath;
+    $htmlOutput = ob_get_clean();
 
-    if (empty($targetFile)) {
-        http_response_code(404);
-        die("Error: File tujuan belum dikonfigurasi di database.");
-    }
-
-    // 7. Sanitasi Path File (Hapus prefix ../, php/, atau /)
-    $cleanFileName = preg_replace('/^(\.\.\/|php\/|\/)+/', '', $targetFile);
-    $filePath = __DIR__ . '/views/' . $cleanFileName;
-
-    if (file_exists($filePath)) {
-        // Ubah working directory ke /php agar include internal file tidak error
-        chdir(__DIR__ . '/views');
-
-        // Tangkap output HTML dengan Buffer
-        ob_start();
-        include $cleanFileName;
-        $htmlOutput = ob_get_clean();
-
-        // B. AUTO-REPLACE STRING PATH RELATIF TANPA UBAH SUSUNAN FILE DARI FRONTEND
-        $patterns = [
-            '="../css/'      => '="/rab-project/dev/css/',
-            '="../js/'       => '="/rab-project/dev/js/',
-            '="../js-ext/'   => '="/rab-project/dev/js-ext/',
-            '="../pdf/'      => '="/rab-project/dev/pdf/',
-            '="../tcpdf_new/'=> '="/rab-project/dev/tcpdf_new/',
-            '="../js-func/'  => '="/rab-project/dev/js-func/',
-            '="../php-crud/' => '="/rab-project/dev/php-crud/',
-            // KUNCI PERBAIKAN: Pola mentah untuk string di dalam Javascript / ExtJS Store
-            '../php-crud/'   => '/rab-project/dev/php-crud/',
-            '../css/'        => '/rab-project/dev/css/',
-            '../js/'         => '/rab-project/dev/js/',
-            ];
-        $htmlOutput = strtr($htmlOutput, $patterns);
-
-        echo $htmlOutput;
-        exit;
-    } else {
-        //http_response_code(404);
-        //die("Error 404: File <b>" . htmlspecialchars($cleanFileName) . "</b> tidak ditemukan pada lokasi server.");
-         // Alihkan langsung ke index.html jika file view tidak ditemukan
-        header("Location: /rab-project/dev/index.php");
-        exit;
-    }
+    $base = rtrim(BASE_URL, '/') . '/';
+    $patterns = array(
+        '="../css/'       => '="' . $base . 'css/',
+        '="../js/'        => '="' . $base . 'js/',
+        '="../js-ext/'    => '="' . $base . 'js-ext/',
+        '="../pdf/'       => '="' . $base . 'pdf/',
+        '="../tcpdf_new/' => '="' . $base . 'tcpdf_new/',
+        '="../js-func/'   => '="' . $base . 'js-func/',
+        '="../php-crud/'  => '="' . $base . 'php-crud/'
+    );
+    echo strtr($htmlOutput, $patterns);
+    exit;
 
 } catch (Exception $e) {
-    error_log("Router Error: " . $e->getMessage());
-    http_response_code(500);
-    die("Terjadi kesalahan pada server saat memproses navigasi.");
+    error_log('Router security patch error: ' . $e->getMessage());
+    router_respond_denied(500, 'Terjadi kesalahan server saat memproses permintaan.');
 }
 ?>
