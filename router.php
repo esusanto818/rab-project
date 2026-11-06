@@ -3,13 +3,13 @@
  * Security patch for legacy ProyekGMN router.
  * Compatible with PHP 7.x.
  */
+require_once __DIR__ . '/php-func/app.url.php';
+
 ini_set('pcre.jit', '0');
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-require_once __DIR__ . '/php-func/app.url.php';
 
 function router_is_ajax_request()
 {
@@ -40,7 +40,7 @@ function router_require_login()
         if (router_is_ajax_request()) {
             router_respond_denied(401, 'Session telah berakhir. Silakan login kembali.');
         }
-        header('Location: ' . rtrim(BASE_URL, '/') . '/index.php');
+        header('Location: index.php');
         exit;
     }
 }
@@ -146,8 +146,10 @@ try {
             router_respond_denied(404, 'Endpoint tidak ditemukan.');
         }
 
-        // Dashboard API: hanya pengguna yang sudah login.
-        // Tidak memerlukan entri dashboard.php di m_form_name.
+        /*if (!router_authorize_endpoint($db, $userId, 'crud', $crudName)) {
+            router_respond_denied(403, 'Anda tidak memiliki hak akses ke modul ini.');
+        }*/
+        
         $isDashboardApi = (strcasecmp($crudName, 'dashboardCRD.php') === 0);
 
         if (
@@ -169,14 +171,9 @@ try {
         $formId = intval($_REQUEST['menu_id']);
     } elseif (isset($_REQUEST['form_id']) && is_numeric($_REQUEST['form_id'])) {
         $formId = intval($_REQUEST['form_id']);
-    } elseif (
-        preg_match('~(?:^|/)views/router/?$~i', $requestPath)
-        && isset($_GET['id']) && ctype_digit((string)$_GET['id'])
-    ) {
-        // Legacy /views/router?id=<form_id> only. A normal business-record
-        // id must never be interpreted as a menu/form identifier.
+    } elseif (isset($_GET['id']) && is_numeric($_GET['id'])) {
         $formId = intval($_GET['id']);
-    } elseif (isset($_GET['menu']) && ctype_digit((string)$_GET['menu'])) {
+    } elseif (isset($_GET['menu']) && is_numeric($_GET['menu'])) {
         $formId = intval($_GET['menu']);
     } elseif (isset($_SESSION['current_menu_id'])) {
         $formId = intval($_SESSION['current_menu_id']);
@@ -228,15 +225,14 @@ try {
     include $viewPath;
     $htmlOutput = ob_get_clean();
 
-    $base = rtrim(BASE_URL, '/') . '/';
     $patterns = array(
-        '="../css/'       => '="' . $base . 'css/',
-        '="../js/'        => '="' . $base . 'js/',
-        '="../js-ext/'    => '="' . $base . 'js-ext/',
-        '="../pdf/'       => '="' . $base . 'pdf/',
-        '="../tcpdf_new/' => '="' . $base . 'tcpdf_new/',
-        '="../js-func/'   => '="' . $base . 'js-func/',
-        '="../php-crud/'  => '="' . $base . 'php-crud/'
+        '="../css/'       => '="/proyek/css/',
+        '="../js/'        => '="/proyek/js/',
+        '="../js-ext/'    => '="/proyek/js-ext/',
+        '="../pdf/'       => '="/proyek/pdf/',
+        '="../tcpdf_new/' => '="/proyek/tcpdf_new/',
+        '="../js-func/'   => '="/proyek/js-func/',
+        '="../php-crud/'  => '="/proyek/php-crud/'
     );
     echo strtr($htmlOutput, $patterns);
     exit;
