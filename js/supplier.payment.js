@@ -340,6 +340,9 @@ Ext.onReady(function () {
         }, true);
     }
 
+    // Ikat tombol Printing di header untuk mencetak daftar pembayaran.
+    bindMainPrintButton();
+
     // ============================================================
     // 4. MAIN GRID ACTIONS & DETAIL LOADER
     // ============================================================
