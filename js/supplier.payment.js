@@ -993,8 +993,102 @@ Ext.onReady(function () {
         });
     }
 
-    // --- SUBMIT ---
+
     function submitPayment(arrItems) {
         frmEditor.getForm().submit({
             url: CRD,
             params: {
+                task: task,
+                arrItems: Ext.encode(arrItems)
+            },
+            waitMsg: 'Menyimpan data...',
+            success: function (form, action) {
+                var msg = (action && action.result && action.result.message) ? action.result.message : 'Data pembayaran berhasil disimpan.';
+                Ext.Msg.alert('Sukses', msg);
+                hideWindow();
+                mainDs.reload();
+                clearSelection();
+            },
+            failure: function (form, action) {
+                var msg = 'Gagal menyimpan data.';
+                if (action && action.result && action.result.message) {
+                    msg = action.result.message;
+                } else if (action && action.failureType === Ext.form.Action.CONNECT_FAILURE) {
+                    msg = 'Gagal terhubung ke server (sesi mungkin berakhir).';
+                }
+                Ext.Msg.alert('Gagal', msg);
+            }
+        });
+    }
+
+    if (Ext.get('saveEdit')) {
+        Ext.get('saveEdit').on('click', function (e) {
+            if (e) e.stopEvent();
+
+            if (!frmEditor.getForm().isValid()) {
+                Ext.Msg.alert('Peringatan', 'Mohon lengkapi semua field yang wajib diisi.');
+                return;
+            }
+            if (gridAlloc.stopEditing) gridAlloc.stopEditing();
+
+            var cash = num(fldTotal.getValue());
+            var dep = num(fldDeposit.getValue());
+            var alloc = getAllocatedTotal();
+            var avail = getAvailableDeposit();
+
+            if (cash <= 0 && dep <= 0) {
+                Ext.Msg.alert('Peringatan', 'Total dibayar atau saldo deposit yang dipakai harus lebih dari 0.');
+                return;
+            }
+            if (cash > 0 && !fldAccount.getValue()) {
+                Ext.Msg.alert('Peringatan', 'Pilih akun Kas/Bank sumber dana.');
+                return;
+            }
+            if (dep > avail + 0.01) {
+                Ext.Msg.alert('Peringatan', 'Saldo deposit yang dipakai (' + fmtAmt(dep) + ') melebihi saldo tersedia (' + fmtAmt(avail) + ').');
+                return;
+            }
+            if (dep > alloc + 0.01) {
+                Ext.Msg.alert('Peringatan', 'Saldo deposit yang dipakai tidak boleh melebihi total alokasi ke invoice.');
+                return;
+            }
+            if (cash + dep + 0.01 < alloc) {
+                Ext.Msg.alert('Peringatan', 'Total dibayar + saldo deposit (' + fmtAmt(cash + dep) + ') belum cukup menutupi alokasi invoice (' + fmtAmt(alloc) + ').');
+                return;
+            }
+
+            var arrItems = [];
+            var overRow = null;
+            gridInvoiceDs.each(function (rec) {
+                var amt = round2(rec.get('amount_paid'));
+                if (amt <= 0) return;
+                if (amt > num(rec.get('unpaid_amount')) + 0.01) overRow = rec;
+                arrItems.push({ invoice_id: rec.get('invoice_id'), amount_paid: amt });
+            });
+            if (overRow) {
+                Ext.Msg.alert('Peringatan', 'Nominal dibayar untuk invoice ' + esc(overRow.get('invoice_no')) + ' melebihi sisa hutangnya.');
+                return;
+            }
+
+            var excess = round2(cash + dep - alloc);
+            if (excess > 0.01) {
+                Ext.Msg.confirm('Konfirmasi Uang Muka',
+                    'Dana melebihi alokasi invoice sebesar <b>' + fmtAmt(excess) + '</b>.<br/>Selisih dicatat sebagai Uang Muka Pembelian (deposit supplier). Lanjutkan?',
+                    function (btn) { if (btn === 'yes') submitPayment(arrItems); });
+            } else {
+                submitPayment(arrItems);
+            }
+        });
+    }
+
+    var btnDiscard = Ext.get('discardEdit') || Ext.select('#editorWdw .x-tool-close');
+    if (btnDiscard) {
+        btnDiscard.on('click', function (e) {
+            if (e) e.stopEvent();
+            hideWindow();
+        });
+    }
+
+    var wdwInit = document.getElementById('editorWdw');
+    if (wdwInit) wdwInit.style.display = 'none';
+});
