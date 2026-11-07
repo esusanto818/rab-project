@@ -235,15 +235,20 @@ Ext.onReady(function () {
         elGridDiv.parentNode.insertBefore(payDtlDiv, elGridDiv.nextSibling);
     }
 
-    function renderPaymentDetailPanel(rows, paymentNo, paymentId) {
+    function renderPaymentDetailHeader(paymentNo, paymentId) {
+        var safeId = parseInt(paymentId, 10) || 0;
         var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
         html += '<h3 class="detail-title" style="margin:0; font-size:14px; color:#38bdf8;">Detail Alokasi Invoice: ' + esc(paymentNo || '') + '</h3>';
         html += '<div>';
-        // Berikan atribut data-payment-id agar mudah ditangkap oleh event handler global
-        html += '<button type="button" class="spBtnPrint" data-payment-id="' + paymentId + '" style="margin-left:8px; padding:6px 14px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px;">Cetak Bukti Bayar</button>';
+        html += '<button type="button" class="spBtnPrint" data-payment-id="' + safeId + '" style="margin-left:8px; padding:6px 14px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px; display:inline-block; visibility:visible;">Cetak Bukti Bayar</button>';
         html += '</div>';
         html += '</div>';
         html += '<hr class="detail-hr" style="border:0; border-top:1px solid #334155; margin-bottom:10px;" />';
+        return html;
+    }
+
+    function renderPaymentDetailPanel(rows, paymentNo, paymentId) {
+        var html = renderPaymentDetailHeader(paymentNo, paymentId);
         html += '<table id="payTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#f8fafc; font-size:12px;">';
         html += '<thead>';
         html += '<tr class="header-row" style="background-color:#1e293b; color:#94a3b8;">';
@@ -352,7 +357,10 @@ Ext.onReady(function () {
 
     function loadPaymentDetailPanel(paymentId, paymentNo) {
         payDtlDiv.style.display = 'block';
-        payDtlDiv.innerHTML = '<div style="padding:15px; text-align:center; color:#38bdf8;">Memuat detail alokasi...</div>';
+        // Tombol cetak langsung tersedia setelah pembayaran dipilih,
+        // tanpa menunggu hasil pemuatan detail alokasi invoice.
+        payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
+            '<div style="padding:15px; text-align:center; color:#38bdf8;">Memuat detail alokasi...</div>';
 
         Ext.Ajax.request({
             url: CRD,
@@ -363,18 +371,21 @@ Ext.onReady(function () {
                 try {
                     res = Ext.util.JSON.decode(response.responseText);
                 } catch (e) {
-                    payDtlDiv.innerHTML = '<div style="padding:15px; color:#ef4444;">Gagal memparsing respon detail.</div>';
+                    payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
+                        '<div style="padding:15px; color:#ef4444;">Gagal memparsing respon detail.</div>';
                     return;
                 }
                 
                 if (res && res.success) {
                     renderPaymentDetailPanel(res.data, paymentNo, paymentId);
                 } else {
-                    payDtlDiv.innerHTML = '<div style="padding:15px; color:#f59e0b;">' + (res.message || 'Tidak ada detail ditemukan.') + '</div>';
+                    payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
+                        '<div style="padding:15px; color:#f59e0b;">' + esc(res.message || 'Tidak ada detail ditemukan.') + '</div>';
                 }
             },
             failure: function () {
-                payDtlDiv.innerHTML = '<div style="padding:15px; color:#ef4444;">Gagal terhubung ke server untuk memuat detail.</div>';
+                payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
+                    '<div style="padding:15px; color:#ef4444;">Gagal terhubung ke server untuk memuat detail.</div>';
             }
         });
     }
@@ -987,115 +998,3 @@ Ext.onReady(function () {
         frmEditor.getForm().submit({
             url: CRD,
             params: {
-                task: task,
-                arrItems: Ext.encode(arrItems)
-            },
-            waitMsg: 'Menyimpan data...',
-            success: function (form, action) {
-                var msg = (action && action.result && action.result.message) ? action.result.message : 'Data pembayaran berhasil disimpan.';
-                Ext.Msg.alert('Sukses', msg);
-                hideWindow();
-                mainDs.reload();
-                clearSelection();
-            },
-            failure: function (form, action) {
-                var msg = 'Gagal menyimpan data.';
-                if (action && action.result && action.result.message) {
-                    msg = action.result.message;
-                } else if (action && action.failureType === Ext.form.Action.CONNECT_FAILURE) {
-                    msg = 'Gagal terhubung ke server (sesi mungkin berakhir).';
-                }
-                Ext.Msg.alert('Gagal', msg);
-            }
-        });
-    }
-
-    // --- SAVE BUTTON ---
-    if (Ext.get('saveEdit')) {
-        Ext.get('saveEdit').on('click', function (e) {
-            if (e) e.stopEvent();
-
-            if (!frmEditor.getForm().isValid()) {
-                Ext.Msg.alert('Peringatan', 'Mohon lengkapi semua field yang wajib diisi.');
-                return;
-            }
-
-            if (gridAlloc.stopEditing) gridAlloc.stopEditing();
-
-            var cash = num(fldTotal.getValue());
-            var dep = num(fldDeposit.getValue());
-            var alloc = getAllocatedTotal();
-            var avail = getAvailableDeposit();
-
-            if (cash <= 0 && dep <= 0) {
-                Ext.Msg.alert('Peringatan', 'Total dibayar atau saldo deposit yang dipakai harus lebih dari 0.');
-                return;
-            }
-
-            if (cash > 0 && !fldAccount.getValue()) {
-                Ext.Msg.alert('Peringatan', 'Pilih akun Kas/Bank sumber dana.');
-                return;
-            }
-
-            if (dep > avail + 0.01) {
-                Ext.Msg.alert('Peringatan', 'Saldo deposit yang dipakai (' + fmtAmt(dep) + ') melebihi saldo tersedia (' + fmtAmt(avail) + ').');
-                return;
-            }
-
-            if (dep > alloc + 0.01) {
-                Ext.Msg.alert('Peringatan', 'Saldo deposit yang dipakai tidak boleh melebihi total alokasi ke invoice.');
-                return;
-            }
-
-            if (cash + dep + 0.01 < alloc) {
-                Ext.Msg.alert('Peringatan', 'Total dibayar + saldo deposit (' + fmtAmt(cash + dep) + ') belum cukup menutupi alokasi invoice (' + fmtAmt(alloc) + ').');
-                return;
-            }
-
-            var arrItems = [];
-            var overRow = null;
-            gridInvoiceDs.each(function (rec) {
-                var amt = round2(rec.get('amount_paid'));
-                if (amt <= 0) return;
-                if (amt > num(rec.get('unpaid_amount')) + 0.01) overRow = rec;
-                arrItems.push({ invoice_id: rec.get('invoice_id'), amount_paid: amt });
-            });
-
-            if (overRow) {
-                Ext.Msg.alert('Peringatan', 'Nominal dibayar untuk invoice ' + esc(overRow.get('invoice_no')) + ' melebihi sisa hutangnya.');
-                return;
-            }
-
-            var excess = round2(cash + dep - alloc);
-            if (excess > 0.01) {
-                Ext.Msg.confirm('Konfirmasi Uang Muka',
-                    'Dana melebihi alokasi invoice sebesar <b>' + fmtAmt(excess) + '</b>.<br/>Selisih dicatat sebagai Uang Muka Pembelian (deposit supplier). Lanjutkan?',
-                    function (btn) {
-                        if (btn === 'yes') submitPayment(arrItems);
-                    }
-                );
-            } else {
-                submitPayment(arrItems);
-            }
-        });
-    }
-
-    // --- DISCARD BUTTON ---
-    var btnDiscard = Ext.get('discardEdit') || Ext.select('#editorWdw .x-tool-close');
-    if (btnDiscard) {
-        btnDiscard.on('click', function (e) {
-            if (e) e.stopEvent();
-            hideWindow();
-        });
-    }
-
-    // ============================================================
-    // INIT: Hide editor window + bind print buttons
-    // ============================================================
-    var wdwInit = document.getElementById('editorWdw');
-    if (wdwInit) wdwInit.style.display = 'none';
-
-    bindMainPrintButton();
-    setTimeout(bindMainPrintButton, 250);
-    setTimeout(bindMainPrintButton, 1000);
-});
