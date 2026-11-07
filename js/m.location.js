@@ -18,7 +18,7 @@ Ext.onReady(function() {
     if (formAccess==3 || formAccess==4){
       frmEditor.getForm().reset();
       task = 'update';
-      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.location.php',params:{id: dataRecord.id, task: 'read_edit'}});
+      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.locationCRD.php',params:{id: dataRecord.id, task: 'read_edit'}});
       document.getElementById('editorWdw').style.display='block';
       document.getElementById("editorFormHeaderText").innerHTML = "&nbsp;&nbsp;Edit Location";
       locHourDs.load({
@@ -110,11 +110,11 @@ Ext.onReady(function() {
   };
 
   let myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-  let deleteDs = new Ext.data.Store({url: '../php-crud/m.location.php'});
+  let deleteDs = new Ext.data.Store({url: '../php-crud/m.locationCRD.php'});
 
 	let locationFields = [{name: 'id'}, {name: 'init'}, {name: 'name'}, {name: 'remark'}];
 	mainDs = new Ext.data.Store({
-		url: '../php-crud/m.location.php',
+		url: '../php-crud/m.locationCRD.php',
 		idProperty: 'id',
 		baseParams:{task: 'read', start: 0, limit: PageSize},
 		reader: new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :locationFields})
@@ -122,12 +122,12 @@ Ext.onReady(function() {
 	mainDs.load();
   let locHourFields = [{name: 'id'}, {name: 'location_id'}, {name: 'day'}, {name: 'shift'}, {name: 'from_time'}, {name: 'to_time'}, {name: 'from_date', type:'date', dateFormat:'Y-m-d'}];
   let locHourDs = new Ext.data.Store({
-    url: '../php-crud/m.location.php',
+    url: '../php-crud/m.locationCRD.php',
     baseParams:{task: 'read_hour'},
     reader: new Ext.data.JsonReader({root: 'data', fields : locHourFields})
   });
   let frmEditor = new stdForm({
-    url      : '../php-crud/m.location.php',
+    url      : '../php-crud/m.locationCRD.php',
     id       : 'frmEditor',
     reader   : new Ext.data.JsonReader({root : 'data',fields: locationFields}),
     renderTo : 'editorFormMain',
@@ -217,7 +217,7 @@ Ext.onReady(function() {
     pageStore:mainDs
   });
   /* History */
-  let GridHistoryDs = new historyDs({url: '../php-crud/m.location.php'});
+  let GridHistoryDs = new historyDs({url: '../php-crud/m.locationCRD.php'});
   let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
   
 

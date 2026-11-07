@@ -4,7 +4,7 @@
     Created on    : Feb 17, 2016
     Author        : Eddy Susanto
     Description   : Entry master of currency
-    File related  : - m.currency.php (CRUD)
+    File related  : - m.currencyCRD.php (CRUD)
                     - m.currency.pdf.php (Printing)
   */
   include "../php-func/user.valid.php";

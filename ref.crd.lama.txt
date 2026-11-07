@@ -1,0 +1,174 @@
+./proyekgmn/js/m.department.js:25:        url:'../php-crud/m.department.php',
+./proyekgmn/js/m.department.js:49:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.department.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./proyekgmn/js/m.department.js:131:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.department.php'});
+./proyekgmn/js/m.department.js:133:    url: '../php-crud/m.location.php',
+./proyekgmn/js/m.department.js:142:		url: '../php-crud/m.department.php',
+./proyekgmn/js/m.department.js:149:  let gridEditorDs = new Ext.data.Store({url: '../php-crud/m.department.php', idProperty: 'size', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+./proyekgmn/js/m.department.js:187:    url      : '../php-crud/m.department.php',
+./proyekgmn/js/m.department.js:247:  let gridDetailDs = new Ext.data.Store({url: '../php-crud/m.department.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+./proyekgmn/js/m.department.js:267:  let GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+./proyekgmn/js/m.warehouse.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.warehouse.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./proyekgmn/js/m.warehouse.js:40:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.warehouse.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');}
+./proyekgmn/js/m.warehouse.js:100:  var deleteDs = new Ext.data.Store({url: '../php-crud/m.warehouse.php'});
+./proyekgmn/js/m.warehouse.js:102:    url: '../php-crud/m.location.php',
+./proyekgmn/js/m.warehouse.js:109:		url: '../php-crud/m.warehouse.php',
+./proyekgmn/js/m.warehouse.js:117:    url      : '../php-crud/m.warehouse.php',
+./proyekgmn/js/m.warehouse.js:154:  var GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+./proyekgmn/js/m.employee.js:179:    url: '../php-crud/m.department.php',
+./proyekgmn/js/m.employee.js:192:    url: '../php-crud/m.department.php',
+./proyekgmn/js/m.location.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.location.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./proyekgmn/js/m.location.js:52:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.location.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./proyekgmn/js/m.location.js:113:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.location.php'});
+./proyekgmn/js/m.location.js:117:		url: '../php-crud/m.location.php',
+./proyekgmn/js/m.location.js:125:    url: '../php-crud/m.location.php',
+./proyekgmn/js/m.location.js:130:    url      : '../php-crud/m.location.php',
+./proyekgmn/js/m.location.js:220:  let GridHistoryDs = new historyDs({url: '../php-crud/m.location.php'});
+./proyekgmn/js/m.form.name.js:137:    url: '../dev/php-crud/m.department.php',
+./proyekgmn/js/m.customer.js:188:		url: '../php-crud/m.currency.php',
+./proyekgmn/js/m.currency.js:22:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.currency.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./proyekgmn/js/m.currency.js:41:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.currency.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./proyekgmn/js/m.currency.js:100:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.currency.php'});
+./proyekgmn/js/m.currency.js:103:		url: '../php-crud/m.currency.php'
+./proyekgmn/js/m.currency.js:115:    url      : '../php-crud/m.currency.php',
+./proyekgmn/js/m.currency.js:141:  let GridHistoryDs = new historyDs({url: '../php-crud/m.currency.php'});
+./proyekgmn/js/m.department.exc.js:137:      url: '../php-crud/m.department.php',
+./proyekgmn/js/m.um.js:22:        url:'../php-crud/m.um.php'
+./proyekgmn/js/m.um.js:44:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.um.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./proyekgmn/js/m.um.js:105:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.um.php'});
+./proyekgmn/js/m.um.js:108:		url: '../php-crud/m.um.php'
+./proyekgmn/js/m.um.js:116:    url      : '../php-crud/m.um.php',
+./proyekgmn/js/m.um.js:152:  let GridHistoryDs = new historyDs({url: '../php-crud/m.um.php'});
+./proyekgmn/js/m.color.js:22:        url:'../php-crud/m.color.php'
+./proyekgmn/js/m.color.js:45:    window.open("../pdf/m.color.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');
+./proyekgmn/js/m.color.js:107:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.color.php'});
+./proyekgmn/js/m.color.js:110:		url: '../php-crud/m.color.php'
+./proyekgmn/js/m.color.js:118:    url      : '../php-crud/m.color.php',
+./proyekgmn/js/m.color.js:154:  let GridHistoryDs = new historyDs({url: '../php-crud/m.color.php'});
+./proyekgmn/views/m.color.php:7:    File related  : - m.color.php (CRUD)
+./proyekgmn/views/m.um.php:7:  File related  : - m.um.php (CRUD)
+./proyekgmn/views/m.location.php:7:  File related  : - m.location.php (CRUD)
+./proyekgmn/views/m.location.php:8:                  - m.location.php (Printing)
+./proyekgmn/views/m.currency.php:7:    File related  : - m.currency.php (CRUD)
+./proyekgmn/views/m.warehouse.php:6:    File related 	: - m.warehouse.php (CRUD)
+./proyekgmn/js-func/ExtExtend.js:176:  url        : '../php-crud/m.currency.php',
+./proyekgmn/js-func/ExtExtend.js:181:  url        : '../php-crud/m.color.php',
+./proyekgmn/js-func/ExtExtend.js:216:  url        : '../php-crud/m.um.php',
+./proyekgmn/js-func/ExtExtend.js:221:  url        : '../php-crud/m.location.php',
+./proyekgmn/js-func/ExtExtend.js:226:  url        : '../php-crud/m.department.php',
+./proyekgmn/js-func/ExtExtend.js:231:  url        : '../php-crud/m.warehouse.php',
+./live/js/m.department.js:25:        url:'../php-crud/m.department.php',
+./live/js/m.department.js:49:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.department.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./live/js/m.department.js:131:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.department.php'});
+./live/js/m.department.js:133:    url: '../php-crud/m.location.php',
+./live/js/m.department.js:142:		url: '../php-crud/m.department.php',
+./live/js/m.department.js:149:  let gridEditorDs = new Ext.data.Store({url: '../php-crud/m.department.php', idProperty: 'size', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+./live/js/m.department.js:187:    url      : '../php-crud/m.department.php',
+./live/js/m.department.js:247:  let gridDetailDs = new Ext.data.Store({url: '../php-crud/m.department.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+./live/js/m.department.js:267:  let GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+./live/js/m.warehouse.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.warehouse.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./live/js/m.warehouse.js:40:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.warehouse.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');}
+./live/js/m.warehouse.js:100:  var deleteDs = new Ext.data.Store({url: '../php-crud/m.warehouse.php'});
+./live/js/m.warehouse.js:102:    url: '../php-crud/m.location.php',
+./live/js/m.warehouse.js:109:		url: '../php-crud/m.warehouse.php',
+./live/js/m.warehouse.js:117:    url      : '../php-crud/m.warehouse.php',
+./live/js/m.warehouse.js:154:  var GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+./live/js/m.employee.js:179:    url: '../php-crud/m.department.php',
+./live/js/m.employee.js:192:    url: '../php-crud/m.department.php',
+./live/js/m.location.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.location.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./live/js/m.location.js:52:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.location.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./live/js/m.location.js:113:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.location.php'});
+./live/js/m.location.js:117:		url: '../php-crud/m.location.php',
+./live/js/m.location.js:125:    url: '../php-crud/m.location.php',
+./live/js/m.location.js:130:    url      : '../php-crud/m.location.php',
+./live/js/m.location.js:220:  let GridHistoryDs = new historyDs({url: '../php-crud/m.location.php'});
+./live/js/m.form.name.js:137:    url: '../dev/php-crud/m.department.php',
+./live/js/m.customer.js:188:		url: '../php-crud/m.currency.php',
+./live/js/m.currency.js:22:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.currency.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./live/js/m.currency.js:41:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.currency.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./live/js/m.currency.js:100:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.currency.php'});
+./live/js/m.currency.js:103:		url: '../php-crud/m.currency.php'
+./live/js/m.currency.js:115:    url      : '../php-crud/m.currency.php',
+./live/js/m.currency.js:141:  let GridHistoryDs = new historyDs({url: '../php-crud/m.currency.php'});
+./live/js/m.department.exc.js:137:      url: '../php-crud/m.department.php',
+./live/js/m.um.js:22:        url:'../php-crud/m.um.php'
+./live/js/m.um.js:44:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.um.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./live/js/m.um.js:105:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.um.php'});
+./live/js/m.um.js:108:		url: '../php-crud/m.um.php'
+./live/js/m.um.js:116:    url      : '../php-crud/m.um.php',
+./live/js/m.um.js:152:  let GridHistoryDs = new historyDs({url: '../php-crud/m.um.php'});
+./live/js/m.color.js:22:        url:'../php-crud/m.color.php'
+./live/js/m.color.js:45:    window.open("../pdf/m.color.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');
+./live/js/m.color.js:107:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.color.php'});
+./live/js/m.color.js:110:		url: '../php-crud/m.color.php'
+./live/js/m.color.js:118:    url      : '../php-crud/m.color.php',
+./live/js/m.color.js:154:  let GridHistoryDs = new historyDs({url: '../php-crud/m.color.php'});
+./live/views/m.color.php:7:    File related  : - m.color.php (CRUD)
+./live/views/m.um.php:7:  File related  : - m.um.php (CRUD)
+./live/views/m.location.php:7:  File related  : - m.location.php (CRUD)
+./live/views/m.location.php:8:                  - m.location.php (Printing)
+./live/views/m.currency.php:7:    File related  : - m.currency.php (CRUD)
+./live/views/m.warehouse.php:6:    File related 	: - m.warehouse.php (CRUD)
+./live/js-func/ExtExtend.js:176:  url        : '../php-crud/m.currency.php',
+./live/js-func/ExtExtend.js:181:  url        : '../php-crud/m.color.php',
+./live/js-func/ExtExtend.js:216:  url        : '../php-crud/m.um.php',
+./live/js-func/ExtExtend.js:221:  url        : '../php-crud/m.location.php',
+./live/js-func/ExtExtend.js:226:  url        : '../php-crud/m.department.php',
+./live/js-func/ExtExtend.js:231:  url        : '../php-crud/m.warehouse.php',
+./js/m.department.js:25:        url:'../php-crud/m.department.php',
+./js/m.department.js:49:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.department.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./js/m.department.js:131:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.department.php'});
+./js/m.department.js:133:    url: '../php-crud/m.location.php',
+./js/m.department.js:142:		url: '../php-crud/m.department.php',
+./js/m.department.js:149:  let gridEditorDs = new Ext.data.Store({url: '../php-crud/m.department.php', idProperty: 'size', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+./js/m.department.js:187:    url      : '../php-crud/m.department.php',
+./js/m.department.js:247:  let gridDetailDs = new Ext.data.Store({url: '../php-crud/m.department.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+./js/m.department.js:267:  let GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+./js/m.warehouse.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.warehouse.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./js/m.warehouse.js:40:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.warehouse.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');}
+./js/m.warehouse.js:100:  var deleteDs = new Ext.data.Store({url: '../php-crud/m.warehouse.php'});
+./js/m.warehouse.js:102:    url: '../php-crud/m.location.php',
+./js/m.warehouse.js:109:		url: '../php-crud/m.warehouse.php',
+./js/m.warehouse.js:117:    url      : '../php-crud/m.warehouse.php',
+./js/m.warehouse.js:154:  var GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+./js/m.employee.js:179:    url: '../php-crud/m.department.php',
+./js/m.employee.js:192:    url: '../php-crud/m.department.php',
+./js/m.location.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.location.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./js/m.location.js:52:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.location.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./js/m.location.js:113:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.location.php'});
+./js/m.location.js:117:		url: '../php-crud/m.location.php',
+./js/m.location.js:125:    url: '../php-crud/m.location.php',
+./js/m.location.js:130:    url      : '../php-crud/m.location.php',
+./js/m.location.js:220:  let GridHistoryDs = new historyDs({url: '../php-crud/m.location.php'});
+./js/m.form.name.js:137:    url: '../dev/php-crud/m.department.php',
+./js/m.customer.js:188:		url: '../php-crud/m.currency.php',
+./js/m.currency.js:22:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.currency.php',params:{id: dataRecord.id, task: 'read_edit'}});
+./js/m.currency.js:41:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.currency.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./js/m.currency.js:100:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.currency.php'});
+./js/m.currency.js:103:		url: '../php-crud/m.currency.php'
+./js/m.currency.js:115:    url      : '../php-crud/m.currency.php',
+./js/m.currency.js:141:  let GridHistoryDs = new historyDs({url: '../php-crud/m.currency.php'});
+./js/m.department.exc.js:137:      url: '../php-crud/m.department.php',
+./js/m.um.js:22:        url:'../php-crud/m.um.php'
+./js/m.um.js:44:  document.getElementById('printData').onclick = function(event) {window.open("../pdf/m.um.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');};
+./js/m.um.js:105:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.um.php'});
+./js/m.um.js:108:		url: '../php-crud/m.um.php'
+./js/m.um.js:116:    url      : '../php-crud/m.um.php',
+./js/m.um.js:152:  let GridHistoryDs = new historyDs({url: '../php-crud/m.um.php'});
+./js/m.color.js:22:        url:'../php-crud/m.color.php'
+./js/m.color.js:45:    window.open("../pdf/m.color.php", 'sub', 'toolbar=no', 'location=no', 'status=no', 'directories=no', 'menubar=no');
+./js/m.color.js:107:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.color.php'});
+./js/m.color.js:110:		url: '../php-crud/m.color.php'
+./js/m.color.js:118:    url      : '../php-crud/m.color.php',
+./js/m.color.js:154:  let GridHistoryDs = new historyDs({url: '../php-crud/m.color.php'});
+./views/m.color.php:7:    File related  : - m.color.php (CRUD)
+./views/m.um.php:7:  File related  : - m.um.php (CRUD)
+./views/m.location.php:7:  File related  : - m.location.php (CRUD)
+./views/m.location.php:8:                  - m.location.php (Printing)
+./views/m.currency.php:7:    File related  : - m.currency.php (CRUD)
+./views/m.warehouse.php:6:    File related 	: - m.warehouse.php (CRUD)
+./js-func/ExtExtend.js:176:  url        : '../php-crud/m.currency.php',
+./js-func/ExtExtend.js:181:  url        : '../php-crud/m.color.php',
+./js-func/ExtExtend.js:216:  url        : '../php-crud/m.um.php',
+./js-func/ExtExtend.js:221:  url        : '../php-crud/m.location.php',
+./js-func/ExtExtend.js:226:  url        : '../php-crud/m.department.php',
+./js-func/ExtExtend.js:231:  url        : '../php-crud/m.warehouse.php',

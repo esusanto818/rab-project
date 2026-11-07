@@ -185,7 +185,7 @@ Ext.onReady(function() {
     Ext.getCmp('village').allowBlank = false;
   }
 	var currencyDs = new Ext.data.Store({
-		url: '../php-crud/m.currency.php',
+		url: '../php-crud/m.currencyCRD.php',
 		baseParams:{task: 'read'},
 		reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalCount',fields :[{name: 'id', type:'numeric'},{name: 'name', type:'string'}]
 		})

@@ -19,7 +19,7 @@ Ext.onReady(function() {
       frmEditor.getForm().reset();
       task = 'update';
       Ext.getCmp('frmEditor').getForm().load({
-        url:'../php-crud/m.um.php'
+        url:'../php-crud/m.umCRD.php'
         ,params:{id: dataRecord.id, task: 'read_edit'}
         ,success:function(form, action) {}
       });
@@ -102,10 +102,10 @@ Ext.onReady(function() {
     GridHistoryDs.load({params:{id:dataRecord.id}});
   };
   let myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-  let deleteDs = new Ext.data.Store({url: '../php-crud/m.um.php'});
+  let deleteDs = new Ext.data.Store({url: '../php-crud/m.umCRD.php'});
 	let umField = [{name: 'id'},{name: 'init'},{name: 'name'},{name: 'description'},{name: 'remark'}];
 	mainDs = new Ext.data.Store({
-		url: '../php-crud/m.um.php'
+		url: '../php-crud/m.umCRD.php'
 		,idProperty: 'id'
 		,baseParams:{task: 'read', start: 0, limit: PageSize}
 		,reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalRecord',fields :umField})
@@ -113,7 +113,7 @@ Ext.onReady(function() {
 	mainDs.load();
 
   let frmEditor = new stdForm({
-    url      : '../php-crud/m.um.php',
+    url      : '../php-crud/m.umCRD.php',
     id       : 'frmEditor',
     reader   : new Ext.data.JsonReader({root : 'data',fields: umField}),
     renderTo : 'editorFormMain',
@@ -149,7 +149,7 @@ Ext.onReady(function() {
     pageSize:250,
     pageStore:mainDs
   });
-  let GridHistoryDs = new historyDs({url: '../php-crud/m.um.php'});
+  let GridHistoryDs = new historyDs({url: '../php-crud/m.umCRD.php'});
   let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
 
 

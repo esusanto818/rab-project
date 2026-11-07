@@ -176,7 +176,7 @@ Ext.onReady(function() {
 
 	var deleteDs = new Ext.data.Store({url: '../php-crud/m.employeeCRD.php'});
 	var departmentDs = new Ext.data.Store({
-    url: '../php-crud/m.department.php',
+    url: '../php-crud/m.departmentCRD.php',
     baseParams:{task: 'read'},
     reader: new Ext.data.JsonReader({
       root: 'data',
@@ -189,7 +189,7 @@ Ext.onReady(function() {
   });
   departmentDs.load();
   var sectionDs = new Ext.data.Store({
-    url: '../php-crud/m.department.php',
+    url: '../php-crud/m.departmentCRD.php',
     baseParams:{task: 'read_detail'},
     reader: new Ext.data.JsonReader({
       root: 'data',

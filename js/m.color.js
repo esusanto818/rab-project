@@ -19,7 +19,7 @@ Ext.onReady(function() {
       frmEditor.getForm().reset();
       task = 'update';
       Ext.getCmp('frmEditor').getForm().load({
-        url:'../php-crud/m.color.php'
+        url:'../php-crud/m.colorCRD.php'
         ,params:{id: dataRecord.id, task: 'read_edit'}
         ,success:function(form, action) {}
       });
@@ -104,10 +104,10 @@ Ext.onReady(function() {
     GridHistoryDs.load({params:{id:dataRecord.id}});
   };
   let myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-  let deleteDs = new Ext.data.Store({url: '../php-crud/m.color.php'});
+  let deleteDs = new Ext.data.Store({url: '../php-crud/m.colorCRD.php'});
 	let colorField = [{name: 'id'},{name: 'init'},{name: 'name'},{name: 'description'},{name: 'remark'}];
 	mainDs = new Ext.data.Store({
-		url: '../php-crud/m.color.php'
+		url: '../php-crud/m.colorCRD.php'
 		,idProperty: 'id'
 		,baseParams:{task: 'read', start: 0, limit: PageSize}
 		,reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalRecord',fields :colorField})
@@ -115,7 +115,7 @@ Ext.onReady(function() {
 	mainDs.load();
 
   let frmEditor = new stdForm({
-    url      : '../php-crud/m.color.php',
+    url      : '../php-crud/m.colorCRD.php',
     id       : 'frmEditor',
     reader   : new Ext.data.JsonReader({root : 'data',fields: colorField}),
     renderTo : 'editorFormMain',
@@ -151,7 +151,7 @@ Ext.onReady(function() {
     pageSize:250,
     pageStore:mainDs
   });
-  let GridHistoryDs = new historyDs({url: '../php-crud/m.color.php'});
+  let GridHistoryDs = new historyDs({url: '../php-crud/m.colorCRD.php'});
   let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
 
 

@@ -4,7 +4,7 @@
     Created on    : Feb 17, 2016
     Author        : Eddy Susanto
     Description   : Entry master of color
-    File related  : - m.color.php (CRUD)
+    File related  : - m.colorCRD.php (CRUD)
                     - m.color.pdf.php (Printing)
   include "../php-func/user.valid.php";
   include "../includes/many-template-icn.php";

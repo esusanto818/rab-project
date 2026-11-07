@@ -173,12 +173,12 @@ let salesGroupDs = Ext.extend (Ext.data.Store, {
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :salesGroupField})
 });
 let currencyDs = Ext.extend (Ext.data.Store, {
-  url        : '../php-crud/m.currency.php',
+  url        : '../php-crud/m.currencyCRD.php',
   baseParams : {task: 'read'},
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :currencyField})
 });
 let colorDs = Ext.extend (Ext.data.Store, {
-  url        : '../php-crud/m.color.php',
+  url        : '../php-crud/m.colorCRD.php',
   baseParams : {task: 'read', limit:999999},
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :colorField})
 });
@@ -213,22 +213,22 @@ let woodTypeDs = Ext.extend (Ext.data.Store, {
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :woodTypeField})
 });
 let umDs = Ext.extend (Ext.data.Store, {
-  url        : '../php-crud/m.um.php',
+  url        : '../php-crud/m.umCRD.php',
   baseParams : {task: 'read', limit:999999},
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :umField})
 });
 let locationDs = Ext.extend (Ext.data.Store, {
-  url        : '../php-crud/m.location.php',
+  url        : '../php-crud/m.locationCRD.php',
   baseParams : {task: 'read'},
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :locationField})
 });
 let departmentDs = Ext.extend (Ext.data.Store, {
-  url        : '../php-crud/m.department.php',
+  url        : '../php-crud/m.departmentCRD.php',
   baseParams : {task: 'read'},
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :departmentField})
 });
 let warehouseDs = Ext.extend (Ext.data.Store, {
-  url        : '../php-crud/m.warehouse.php',
+  url        : '../php-crud/m.warehouseCRD.php',
   baseParams : {task: 'read'},
   reader     : new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :warehouseField})
 });

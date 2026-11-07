@@ -19,7 +19,7 @@ Ext.onReady(function() {
     if (formAccess==3 || formAccess==4){
       frmEditor.getForm().reset();
       task = 'update';
-      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.currency.php',params:{id: dataRecord.id, task: 'read_edit'}});
+      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.currencyCRD.php',params:{id: dataRecord.id, task: 'read_edit'}});
       document.getElementById('editorWdw').style.display='block';
       document.getElementById("editorFormHeaderText").innerHTML = "Edit Currency";
     }else{
@@ -97,10 +97,10 @@ Ext.onReady(function() {
     GridHistoryDs.load({params:{id:dataRecord.id}});
   };
   let myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-  let deleteDs = new Ext.data.Store({url: '../php-crud/m.currency.php'});
+  let deleteDs = new Ext.data.Store({url: '../php-crud/m.currencyCRD.php'});
 	let currencyField = [{name: 'id'}, {name: 'init'}, {name: 'name'}];
 	mainDs = new Ext.data.Store({
-		url: '../php-crud/m.currency.php'
+		url: '../php-crud/m.currencyCRD.php'
 		,idProperty: 'id'
 		,baseParams:{task: 'read', start: 0, limit: PageSize}
 		,reader: new Ext.data.JsonReader({
@@ -112,7 +112,7 @@ Ext.onReady(function() {
 	mainDs.load();
 
   let frmEditor = new stdForm({
-    url      : '../php-crud/m.currency.php',
+    url      : '../php-crud/m.currencyCRD.php',
     id       : 'frmEditor',
     reader   : new Ext.data.JsonReader({root : 'data',fields: currencyField}),
     renderTo : 'editorFormMain',
@@ -138,7 +138,7 @@ Ext.onReady(function() {
     pageSize:250,
     pageStore:mainDs
   });
-  let GridHistoryDs = new historyDs({url: '../php-crud/m.currency.php'});
+  let GridHistoryDs = new historyDs({url: '../php-crud/m.currencyCRD.php'});
   let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
   
 

@@ -2,14 +2,55 @@
   Global letiable
 */
 Ext.Ajax.on('beforerequest', function(conn, options) {
-    if (options.url) {
-        // Otomatis ubah ../js/, ../css/, ../php-crud/ menjadi path absolut /rab-project/
-        options.url = options.url.replace(/^(\.\.\/)+/, '/rab-project/');
-        if (!options.url.startsWith('/') && !options.url.startsWith('http')) {
-            options.url = '/rab-project/' + options.url;
-        }
+    if (!options.url) {
+        return;
     }
+
+    var pathname = window.location.pathname;
+
+    // Deteksi root aplikasi: /rab-project/dev/ atau /rab-project/live/
+    var match = pathname.match(
+        /^(.*?\/rab-project\/(?:dev|live)\/)/i
+    );
+
+    if (!match) {
+        console.error('APP ROOT tidak ditemukan:', pathname);
+        return;
+    }
+
+    var appRoot = match[1];
+
+    // URL eksternal tidak boleh diubah.
+    if (/^(https?:)?\/\//i.test(options.url)) {
+        return;
+    }
+
+    var url = options.url;
+
+    // URL absolut yang sudah menunjuk ke aplikasi dev/live dipertahankan.
+    if (/^\/rab-project\/(?:dev|live)\//i.test(url)) {
+        return;
+    }
+
+    // URL absolut lama /rab-project/... diarahkan ke root aktif.
+    if (/^\/rab-project\//i.test(url)) {
+        options.url = url.replace(
+            /^\/rab-project\//i,
+            appRoot
+        );
+        return;
+    }
+
+    // Hapus prefix relatif ../ berulang.
+    url = url.replace(/^(\.\.\/)+/, '');
+
+    // Hilangkan prefix dev/ atau live/ jika sudah ada.
+    url = url.replace(/^(?:dev|live)\//i, '');
+
+    // URL dimulai dari root aplikasi aktif.
+    options.url = appRoot + url.replace(/^\/+/, '');
 });
+
 Ext.ns("Ext.ux.renderer");
 let elStyle=0, SearchData='', PageSize=250, EmptyArr=[], task='', dataRecord=[], historyRecord=[], deleteRow=0, deleteGridData=0, deleteRowIndex=0, deleteRecord=null;
 let cssGridEditColumn = 'background-color:rgba(166, 157, 82, .1); color: #228bcd;';

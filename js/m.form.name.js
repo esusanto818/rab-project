@@ -134,7 +134,7 @@ Ext.onReady(function() {
 	});
 	GroupDs.load();
   var departmentDs = new Ext.data.Store({
-    url: '../dev/php-crud/m.department.php',
+    url: '../dev/php-crud/m.departmentCRD.php',
     baseParams:{task: 'read', formId:'3' },
     reader: new Ext.data.JsonReader({
       root: 'data', totalProperty: 'totalCount',

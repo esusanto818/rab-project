@@ -4,7 +4,7 @@
   Created on    : Oct 27, 2016
   Author        : Eddy Susanto
   Description   : Entry master of location
-  File related  : - m.location.php (CRUD)
+  File related  : - m.locationCRD.php (CRUD)
                   - m.location.php (Printing)
   */
   include "../php-func/user.valid.php";

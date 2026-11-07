@@ -1,0 +1,268 @@
+views/dashboard.latest.php:442:const API_ENDPOINT = '../php-crud/dashboardCRD.php';
+views/rab_input.php:27:        <form action="../php-crud/rabCRD.php" method="POST" class="space-y-4">
+views/project.payment.print.php:76:        window.PAYMENT_CRD_URL = '/rab-project/dev/php-crud/project.paymentCRD.php';
+views/m.proyek.print.js:12:var endpoint = appBase + '/php-crud/m.proyekCRD.php';
+views/project.payment.list.print.php:54:window.PAYMENT_LIST_CRD_URL = <?= json_encode($appBase . '/php-crud/project.paymentCRD.php') ?>;
+views/dashboard.php:450:const API_ENDPOINT = '../php-crud/dashboardCRD.php';
+views/dashboardQ.php:2:// php-crud/dashboardCRD.php
+js/balancesheet.js:4:  Backend       : /rab-project/dev/php-crud/balancesheetCRD.php
+js/balancesheet.js:9:    var CRD = main_url + '/php-crud/balancesheetCRD.php';
+js/project.payment.list.print.js:3:    var endpoint = window.PAYMENT_LIST_CRD_URL || '/rab-project/dev/php-crud/project.paymentCRD.php';
+js/bin.location.js:5:  Backend       : /rab-project/dev/php-crud/bin.locationCRD.php
+js/bin.location.js:54:        url: '/rab-project/dev/php-crud/bin.locationCRD.php',
+js/bin.location.js:62:        url: '/rab-project/dev/php-crud/bin.locationCRD.php',
+js/bin.location.js:71:        url: '/rab-project/dev/php-crud/bin.locationCRD.php',
+js/bin.location.js:133:            url: '/rab-project/dev/php-crud/bin.locationCRD.php',
+js/bin.location.js:323:                            url: '/rab-project/dev/php-crud/bin.locationCRD.php',
+js/bin.location.js:361:                url: '/rab-project/dev/php-crud/bin.locationCRD.php',
+js/project.payment.js:16:  Backend       : /rab-project/dev/php-crud/project.paymentCRD.php
+js/project.payment.js:24:    var CRD = '/rab-project/dev/php-crud/project.paymentCRD.php';
+js/stock.transfer.js:4:  Backend     : php-crud/stock.transferCRD.php
+js/stock.transfer.js:10:    var URL = 'php-crud/stock.transferCRD.php';
+js/project.invoice.js:8:  Backend       : php-crud/project.invoiceCRD.php
+js/project.invoice.js:17:    var CRD = main_url + '/php-crud/project.invoiceCRD.php';
+js/settings.js:10:  Backend       : /rab-project/dev/php-crud/settingsCRD.php
+js/settings.js:17:    var CRD = '../php-crud/settingsCRD.php';
+js/project.payment.print.js:11:    var endpoint = window.PAYMENT_CRD_URL || '/rab-project/dev/php-crud/project.paymentCRD.php';
+js/whrcv.js:4:  Backend       : /php-crud/whrcvCRD.php
+js/whrcv.js:82:        url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:90:        url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:98:        url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:104:        url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:124:        url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:193:            url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:556:                        url: '../php-crud/whrcvCRD.php',
+js/whrcv.js:643:            url: '../php-crud/whrcvCRD.php',
+js/m.taxexchangerate.js:71:            url: '../dev/php-crud/m.taxexchangerateCRD.php',
+js/m.taxexchangerate.js:152:        url: '../dev/php-crud/m.taxexchangerateCRD.php',
+js/m.taxexchangerate.js:195:            var targetUrl = "../dev/php-crud/m.taxexchangerate.pdf.php?id=" + hdrId;
+js/m.taxexchangerate.js:204:                    url: '../dev/php-crud/m.taxexchangerateCRD.php',
+js/stock.card.js:4:  Backend     : ../php-crud/stock.cardCRD.php
+js/stock.card.js:36:    // [FIX #1] sebelumnya 'php-crud/stock.cardCRD.php' -> 404 karena halaman berada di /rab-project/views/
+js/stock.card.js:37:    var URL = '../php-crud/stock.cardCRD.php';
+js/trialbalance.js:5:  Backend       : /rab-project/dev/php-crud/trialbalanceCRD.php
+js/trialbalance.js:11:    var CRD = main_url + '/php-crud/trialbalanceCRD.php';
+js/m.supplier.js:49:        url: '../php-crud/m.supplierCRD.php',
+js/m.supplier.js:176:  let deleteDs = new Ext.data.Store({ url: '../php-crud/m.supplierCRD.php' });
+js/m.supplier.js:188:    url: '../php-crud/m.supplierCRD.php',
+js/m.supplier.js:207:    url: '../php-crud/m.supplierCRD.php',
+js/m.supplier.js:263:    url: '../php-crud/m.supplierCRD.php',
+js/m.supplier.js:429:  let GridHistoryDs = new historyDs({ url: '../php-crud/m.form.name.php' });
+js/m.user.system.js:12:    var CRD = main_url + '/php-crud/m.user.systemCRD.php';
+js/m.user.system.js:252:        url: '../dev/php-crud/m.employeeCRD.php',
+js/m.expenses.js:5:Backend       : ../php-crud/m.expensesCRD.php
+js/m.expenses.js:9:    var CRD = main_url + '/php-crud/m.expensesCRD.php';
+js/m.fiscalperiod.js:4:  Backend       : /rab-project/dev/php-crud/m.fiscalperiodCRD.php (tabel accounting_periods)
+js/m.fiscalperiod.js:16:    var CRD = '../php-crud/m.fiscalperiodCRD.php';
+js/invoice.js:6:  Backend       : /inv/php-crud/invoiceCRD.php
+js/invoice.js:105:        url: '../php-crud/invoiceCRD.php',
+js/invoice.js:113:        url: '../php-crud/invoiceCRD.php',
+js/invoice.js:121:        url: '../php-crud/invoiceCRD.php',
+js/invoice.js:128:        url: '../php-crud/invoiceCRD.php',
+js/invoice.js:137:        url: '../php-crud/invoiceCRD.php',
+js/invoice.js:320:            frmEditor.getForm().load({ url: '../php-crud/invoiceCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
+js/invoice.js:361:            url: '../php-crud/invoiceCRD.php',
+js/invoice.js:396:            url: '../php-crud/invoiceCRD.php',
+js/invoice.js:420:            var deleteDs = new Ext.data.Store({ url: '../php-crud/invoiceCRD.php' });
+js/m.materials.js:5:  Backend       : ../php-crud/m.materialsCRD.php
+js/m.materials.js:10:    var CRD = main_url + '/php-crud/m.materialsCRD.php';
+js/m.department.js:25:        url:'../php-crud/m.department.php',
+js/m.department.js:131:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.department.php'});
+js/m.department.js:133:    url: '../php-crud/m.location.php',
+js/m.department.js:142:		url: '../php-crud/m.department.php',
+js/m.department.js:149:  let gridEditorDs = new Ext.data.Store({url: '../php-crud/m.department.php', idProperty: 'size', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+js/m.department.js:187:    url      : '../php-crud/m.department.php',
+js/m.department.js:247:  let gridDetailDs = new Ext.data.Store({url: '../php-crud/m.department.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+js/m.department.js:267:  let GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+js/fiscalconfig.js:4:  Backend       : /rab-project/dev/php-crud/fiscalconfigCRD.php
+js/fiscalconfig.js:42:        url: '../php-crud/m.coaCRD.php',
+js/fiscalconfig.js:49:        url: '../php-crud/fiscalconfigCRD.php',
+js/fiscalconfig.js:100:            url: '../php-crud/fiscalconfigCRD.php',
+js/fiscalconfig.js:224:            frmEditor.getForm().load({ url: '../php-crud/fiscalconfigCRD.php', params: { id: dataRecord.id, task: 'read_edit' } });
+js/fiscalconfig.js:256:            url: '../php-crud/fiscalconfigCRD.php',
+js/fiscalconfig.js:280:            var deleteDs = new Ext.data.Store({ url: '../php-crud/fiscalconfigCRD.php' });
+js/project.wiprelease.js:10:  Backend       : /rab-project/dev/php-crud/project.wipreleaseCRD.php
+js/project.wiprelease.js:17:    var CRD = '../php-crud/project.wipreleaseCRD.php';
+js/warehouse.issuing.js:15:  Backend       : /proyek/php-crud/warehouse.issuingCRD.php
+js/warehouse.issuing.js:17:  Backend       : /rab-project/live/php-crud/warehouse.issuingCRD.php
+js/warehouse.issuing.js:52:    var CRD =  main_url + '/php-crud/warehouse.issuingCRD.php';     // relatif dari /proyek/views/
+js/change.pass.js:246:        url: '/rab-project/dev/php-crud/change.passCRD.php',
+js/change.pass.js:408:        url: '/rab-project/dev/php-crud/change.passCRD.php',
+js/spk.js:9:  Backend       : /proyek/php-crud/spkCRD.php  (kuota: php-func/function.spk.php)
+js/spk.js:16:    var CRD =  main_url + '/php-crud/spkCRD.php';
+js/purchase.planning.js:9:  Backend       : /rab-project/dev/php-crud/purchase.planningCRD.php
+js/purchase.planning.js:15:    var CRD = main_url + '/php-crud/purchase.planningCRD.php';
+js/deposit.report.js:4:  Backend       : /rab-project/dev/php-crud/deposit.reportCRD.php
+js/deposit.report.js:130:            url: '../php-crud/deposit.reportCRD.php',
+js/deposit.report.js:154:            url: '../php-crud/deposit.reportCRD.php',
+js/po.js:16:  Backend       : /proyek/php-crud/poCRD.php   (REMARK: penanda merge conflict git dibersihkan)
+js/po.js:23:    var CRD = main_url + '/php-crud/poCRD.php';
+js/stock.opname.js:8:  Backend       : ../php-crud/stock.opnameCRD.php
+js/stock.opname.js:14:    var CRD = '../php-crud/stock.opnameCRD.php';
+js/m.warehouse.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.warehouse.php',params:{id: dataRecord.id, task: 'read_edit'}});
+js/m.warehouse.js:100:  var deleteDs = new Ext.data.Store({url: '../php-crud/m.warehouse.php'});
+js/m.warehouse.js:102:    url: '../php-crud/m.location.php',
+js/m.warehouse.js:109:		url: '../php-crud/m.warehouse.php',
+js/m.warehouse.js:117:    url      : '../php-crud/m.warehouse.php',
+js/m.warehouse.js:154:  var GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+js/m.proyek.js:6:  Backend       : /rab-project/php-crud/m.proyekCRD.php
+js/m.proyek.js:18:    var CRD = main_url + '/php-crud/m.proyekCRD.php';
+js/financialreport.js:6:  Backend       : /rab-project/dev/php-crud/financialreportCRD.php
+js/financialreport.js:11:    var CRD = main_url + '/php-crud/financialreportCRD.php';
+js/financialreport.js:148:            html += '<p style="color:#ffeb3b;">Kolom YTD belum tersedia: php-crud/financialreportCRD.php di server belum versi terbaru.</p>';
+js/m.employee.js:52:				url:'../php-crud/m.employeeCRD.php',
+js/m.employee.js:177:	var deleteDs = new Ext.data.Store({url: '../php-crud/m.employeeCRD.php'});
+js/m.employee.js:179:    url: '../php-crud/m.department.php',
+js/m.employee.js:192:    url: '../php-crud/m.department.php',
+js/m.employee.js:206:    url: '../php-crud/m.employee.status.php',
+js/m.employee.js:250:		url: '../php-crud/m.employeeCRD.php',
+js/m.employee.js:257:    url: '../php-crud/m.employeeCRD.php',
+js/m.employee.js:379:  var GridHistoryDs = new historyDs({url: '../php-crud/m.employeeCRD.php'});
+js/project.progress.js:9:  Backend       : /rab-project/dev/php-crud/project.progressCRD.php
+js/project.progress.js:67:    var CRD = '../dev/php-crud/project.progressCRD.php';
+js/rab.js:50:            url: '../dev/php-crud/rabCRD.php', method: 'POST',
+js/rab.js:186:        url: '../dev/php-crud/rabCRD.php', baseParams: { task: 'list_materials' },
+js/rab.js:196:        url: '../dev/php-crud/rabCRD.php',
+js/rab.js:204:        url: '../dev/php-crud/rabCRD.php', baseParams: { task: 'list_currencies' },
+js/rab.js:212:        url: '../dev/php-crud/rabCRD.php', idProperty: 'id', baseParams: { task: 'list_projects' },
+js/rab.js:478:            url: '../dev/php-crud/rabCRD.php', method: 'POST', params: { task: 'get_exchange_rate', currency_id: cid, date: ymd(dt) },
+js/rab.js:512:            url: '../dev/php-crud/rabCRD.php', method: 'POST', params: { task: 'load_rab', project_id: dataRecord.id },
+js/rab.js:530:            url: '../dev/php-crud/rabCRD.php', method: 'POST',
+js/clients.js:8:  Backend       : /rab-project/dev/php-crud/clientsCRD.php
+js/clients.js:36:        url: '../php-crud/clientsCRD.php',
+js/clients.js:128:                url: '../php-crud/clientsCRD.php',
+js/clients.js:154:                        url: '../php-crud/clientsCRD.php',
+js/clients.js:188:            url: '../php-crud/clientsCRD.php',
+js/m.form.group.js:41:                url: '../dev/php-crud/m.form.groupCRD.php',
+js/m.form.group.js:153:        url: '../dev/php-crud/m.form.groupCRD.php',
+js/m.form.group.js:172:        url      : '../dev/php-crud/m.form.groupCRD.php',
+js/m.form.group.js:249:    let GridHistoryDs = new historyDs({ url: '../dev/php-crud/m.form.groupCRD.php' });
+js/inventory.recon.js:10:  Backend       : /rab-project/dev/php-crud/inventory.reconCRD.php  (logika: php-func/function.inventory.recon.php)
+js/inventory.recon.js:29:    var CRD = '../php-crud/inventory.reconCRD.php';
+js/m.location.js:21:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.location.php',params:{id: dataRecord.id, task: 'read_edit'}});
+js/m.location.js:113:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.location.php'});
+js/m.location.js:117:		url: '../php-crud/m.location.php',
+js/m.location.js:125:    url: '../php-crud/m.location.php',
+js/m.location.js:130:    url      : '../php-crud/m.location.php',
+js/m.location.js:220:  let GridHistoryDs = new historyDs({url: '../php-crud/m.location.php'});
+js/m.form.name.js:26:			Ext.getCmp('frmEditor').getForm().load({url:'../dev/php-crud/m.form.nameCRD.php', params:{id: dataRecord.id, task: 'read_edit'}});
+js/m.form.name.js:125:	var deleteDs = new Ext.data.Store({url: '../dev/php-crud/m.form.nameCRD.php'});
+js/m.form.name.js:128:		url: '../dev/php-crud/m.form.groupCRD.php',
+js/m.form.name.js:137:    url: '../dev/php-crud/m.department.php',
+js/m.form.name.js:162:		url: '../dev/php-crud/m.form.nameCRD.php',
+js/m.form.name.js:171:    url: '../dev/php-crud/m.form.nameCRD.php',
+js/m.form.name.js:192:    url: '../dev/php-crud/m.form.nameCRD.php',
+js/m.form.name.js:251:    url: '../dev/php-crud/m.form.nameCRD.php',
+js/m.form.name.js:311:    url: '../dev/php-crud/m.form.nameCRD.php',
+js/m.form.name.js:325:  var GridHistoryDs = new historyDs({url: '../dev/php-crud/m.form.nameCRD.php'});
+js/subcon.invoice.js:6:Backend       : ../php-crud/subcon.invoiceCRD.php
+js/subcon.invoice.js:12:    var CRD = main_url + '/php-crud/subcon.invoiceCRD.php';
+js/m.customer.js:37:				url:'../php-crud/m.customerCRD.php',
+js/m.customer.js:166:	var deleteDs = new Ext.data.Store({url: '../php-crud/m.customerCRD.php'});
+js/m.customer.js:188:		url: '../php-crud/m.currency.php',
+js/m.customer.js:195:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:202:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:208:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:213:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:218:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:263:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:286:		url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:336:    url: '../php-crud/m.customerCRD.php',
+js/m.customer.js:557:	var GridHistoryDs = new historyDs({url: '../php-crud/m.customerCRD.php'});
+js/material.leftover.js:9:  Backend       : /proyek/php-crud/material.leftoverCRD.php
+js/material.leftover.js:15:    var CRD = main_url + '/php-crud/material.leftoverCRD.php';
+js/project.progress.m.js:10:  Backend       : /rab-project/dev/php-crud/project.progressCRD.php
+js/project.progress.m.js:15:    var CRD = '/rab-project/dev/php-crud/project.progressCRD.php';   // [PENTING] samakan dengan nama file backend di server
+js/ppn.report.js:10:  Backend       : /proyek/php-crud/ppn.reportCRD.php
+js/ppn.report.js:16:     var CRD = main_url + '/php-crud/ppn.reportCRD.php';
+js/supplier.payment.js:5:  Backend       : ../php-crud/supplier.paymentCRD.php
+js/supplier.payment.js:46:    var CRD = '../live/php-crud/supplier.paymentCRD.php';
+js/m.currency.js:22:      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.currency.php',params:{id: dataRecord.id, task: 'read_edit'}});
+js/m.currency.js:100:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.currency.php'});
+js/m.currency.js:103:		url: '../php-crud/m.currency.php'
+js/m.currency.js:115:    url      : '../php-crud/m.currency.php',
+js/m.currency.js:141:  let GridHistoryDs = new historyDs({url: '../php-crud/m.currency.php'});
+js/grn.js:4:  Backend       : /inv/dev/php-crud/grnCRD.php
+js/grn.js:79:        url: '../dev/php-crud/grnCRD.php',
+js/grn.js:86:        url: '../dev/php-crud/grnCRD.php',
+js/grn.js:115:        url: '../dev/php-crud/grnCRD.php',
+js/grn.js:183:            url: '../dev/php-crud/grnCRD.php',
+js/grn.js:290:            url: '../dev/php-crud/grnCRD.php',
+js/grn.js:554:                url: '../dev/php-crud/grnCRD.php',
+js/grn.js:586:                        url: '../dev/php-crud/grnCRD.php',
+js/grn.js:640:            url: '../dev/php-crud/grnCRD.php',
+js/m.department.exc.js:28:        Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.department.exc.php', params:{id: dataRecord.id, task: 'read_edit'}});
+js/m.department.exc.js:133:    var deleteDs = new Ext.data.Store({url: '../php-crud/m.department.exc.php'});
+js/m.department.exc.js:137:      url: '../php-crud/m.department.php',
+js/m.department.exc.js:152:    var departExcDs = new Ext.data.Store({url: '../php-crud/m.employee.php',baseParams:{task: 'read', formId:'5' },reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalCount',fields :employeeField})
+js/m.department.exc.js:165:    var mainDs = new Ext.data.Store({url: '../php-crud/m.department.exc.php',idProperty: 'id',baseParams:{task: 'read'},reader: new Ext.data.JsonReader({root: 'data',fields :employeeField})});
+js/m.department.exc.js:169:    var gridEditorDs = new Ext.data.Store({url: '../php-crud/m.department.exc.php',idProperty: 'size',baseParams:{task: 'read_detail'},reader: new Ext.data.JsonReader({root: 'data',fields : excField})});
+js/m.department.exc.js:198:      url: '../php-crud/m.department.exc.php',
+js/m.department.exc.js:273:      url: '../php-crud/m.department.exc.php',
+js/m.department.exc.js:316:    var gridDetailDs = new Ext.data.Store({url: '../php-crud/m.department.exc.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : excField})});
+js/m.department.exc.js:332:    var GridHistoryDs = new historyDs({url: '../php-crud/m.employee.php'});
+js/m.um.js:22:        url:'../php-crud/m.um.php'
+js/m.um.js:105:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.um.php'});
+js/m.um.js:108:		url: '../php-crud/m.um.php'
+js/m.um.js:116:    url      : '../php-crud/m.um.php',
+js/m.um.js:152:  let GridHistoryDs = new historyDs({url: '../php-crud/m.um.php'});
+js/profitloss.js:6:  Backend       : /rab-project/dev/php-crud/profitlossCRD.php
+js/profitloss.js:12:    var CRD = main_url + '/php-crud/profitlossCRD.php';
+js/profitloss.js:159:                    'Kolom kumulatif belum tersedia: file php-crud/profitlossCRD.php di server belum versi terbaru (tanpa field amount_cum).</div>';
+js/purchase.order.js:4:  let deleteDs = new Ext.data.Store({url: '../php-crud/purchase.orderCRD.php'});
+js/purchase.order.js:35:        url:'../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:234:    url: '../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:249:    url: '../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:272:    url: '../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:347:    url: '../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:377:    url: '../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:441:    url: '../php-crud/purchase.orderCRD.php',
+js/purchase.order.js:466:  let GridHistoryDs = new historyDs({url: '../php-crud/purchase.orderCRD.php'});
+js/journal.entry.js:4:  Backend       : /rab-project/dev/php-crud/journal.entryCRD.php
+js/journal.entry.js:9:    var CRD = main_url + '/php-crud/journal.entryCRD.php';
+js/journal.entry.js:79:        url: '../dev/php-crud/m.coaCRD.php',
+js/journal.entry.js:87:        url: '../dev/php-crud/m.fiscalperiodCRD.php',
+js/year.closing.js:10:  Backend       : /rab-project/dev/php-crud/year.closingCRD.php
+js/year.closing.js:12:  Backend       : /rab-project/live/php-crud/year.closingCRD.php
+js/year.closing.js:20:    var CRD = '../php-crud/year.closingCRD.php';
+js/subcon.js:9:Backend       : ../php-crud/subconCRD.php
+js/subcon.js:14:    var CRD = main_url + '/php-crud/subconCRD.php';
+js/purchaseinvoice.js:39:        url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:58:        url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:126:            url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:191:            url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:476:            url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:555:        url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:570:        url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:805:                        url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/purchaseinvoice.js:853:                url: '../dev/php-crud/purchaseinvoiceCRD.php',
+js/project.usage.js:7:  Backend       : /proyek/php-crud/project.usageCRD.php   (view: v_project_material_vs_progress, v_project_material_detail_vs_progress)
+js/project.usage.js:22:    var CRD = main_url + '/php-crud/project.usageCRD.php';
+js/m.coa.js:5:  Backend       : /univ/php-crud/m.coaCRD.php (task: read, read_parent, read_edit, create, update, delete)
+js/m.coa.js:45:        url: '../php-crud/m.coaCRD.php',
+js/m.coa.js:55:        url: '../php-crud/m.coaCRD.php',
+js/m.coa.js:175:                url: '../php-crud/m.coaCRD.php',
+js/m.coa.js:215:            url: '../php-crud/m.coaCRD.php',
+js/m.coa.js:243:            var deleteDs = new Ext.data.Store({ url: '../php-crud/m.coaCRD.php' });
+js/m.color.js:22:        url:'../php-crud/m.color.php'
+js/m.color.js:107:  let deleteDs = new Ext.data.Store({url: '../php-crud/m.color.php'});
+js/m.color.js:110:		url: '../php-crud/m.color.php'
+js/m.color.js:118:    url      : '../php-crud/m.color.php',
+js/m.color.js:154:  let GridHistoryDs = new historyDs({url: '../php-crud/m.color.php'});
+js/purchase.return.js:14:  Backend       : ../php-crud/purchase.returnCRD.php
+js/purchase.return.js:62:    var CRD = main_url + '/php-crud/purchase.returnCRD.php';
+js/modules/payment/view.payment.php:70:  const ENDPOINT = '../../php-crud/paymentCRD.php';
+js/generalledger.js:6:  Backend       : /rab-project/dev/php-crud/generalledgerCRD.php
+js/generalledger.js:10:    var CRD = main_url + '/php-crud/generalledgerCRD.php';
+js/rab_err.js:54:            url: '../php-crud/rabCRD.php',
+js/rab_err.js:157:        url: '../php-crud/rabCRD.php',
+js/rab_err.js:164:        url: '../php-crud/rabCRD.php',
+js/rab_err.js:175:        url: '../php-crud/rabCRD.php',
+js/rab_err.js:436:            url: '../php-crud/rabCRD.php', method: 'POST',
+js/rab_err.js:507:            url: '../php-crud/rabCRD.php',
+js/rab_err.js:571:            url: '../php-crud/rabCRD.php',
+php-func/project.analysis.php:5: * Dipakai oleh : php-crud/dashboardCRD.php (read_project_ai, read_project_health)
+php-func/project.analysis.php:6: *                php-crud/project_paymentCRD.php (analyze_project_variance, latest_project_variance)
+php-func/function.spk.php:5: * Logika kuota SPK (Surat Perintah Kerja). Dipakai oleh php-crud/spkCRD.php dan php-crud/warehouse.issuingCRD.php.
+php-func/function.inventory.recon.php:7: * Dipakai bersama oleh php-crud/inventory.reconCRD.php (layar) dan pdf/inventoryrecon.php (cetak).
+router.php:139:    if (preg_match('~(?:^|/)php-crud/([A-Za-z0-9_.-]+\.php)$~i', $requestPath, $matches)) {

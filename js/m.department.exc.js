@@ -134,7 +134,7 @@
     var btnRow='';
 
     var departmentDs = new Ext.data.Store({
-      url: '../php-crud/m.department.php',
+      url: '../php-crud/m.departmentCRD.php',
       baseParams:{task: 'read'},
       reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalCount',fields :[{name: 'id', type:'numeric'},{name: 'name', type:'string'}]})
     });

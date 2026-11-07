@@ -18,7 +18,7 @@ Ext.onReady(function() {
     if (formAccess==3 || formAccess==4){
       frmEditor.getForm().reset();
       task = 'update';
-      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.warehouse.php',params:{id: dataRecord.id, task: 'read_edit'}});
+      Ext.getCmp('frmEditor').getForm().load({url:'../php-crud/m.warehouseCRD.php',params:{id: dataRecord.id, task: 'read_edit'}});
       document.getElementById('editorWdw').style.display='block';
       document.getElementById("editorFormHeaderText").innerHTML = "&nbsp;&nbsp;Edit Warehouse";
     }else{
@@ -97,16 +97,16 @@ Ext.onReady(function() {
     GridHistoryDs.load({params:{id:dataRecord.id}});
   };
   var myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-  var deleteDs = new Ext.data.Store({url: '../php-crud/m.warehouse.php'});
+  var deleteDs = new Ext.data.Store({url: '../php-crud/m.warehouseCRD.php'});
   var LocationDs = new Ext.data.Store({
-    url: '../php-crud/m.location.php',
+    url: '../php-crud/m.locationCRD.php',
     baseParams:{task: 'read'},
     reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalRecord',fields :[{name: 'id'},{name: 'name'}]})
   });
   LocationDs.load();
   var warehouseField = [{name: 'id'}, {name: 'code'}, {name: 'total_row'}, {name: 'col_row'},{name: 'name'}, {name: 'description'}, {name: 'remark'}, {name: 'location_id'}, {name: 'location_name'}, {name: 'location_init'}, {name:'warehouse_name'}];
 	mainDs = new Ext.data.Store({
-		url: '../php-crud/m.warehouse.php',
+		url: '../php-crud/m.warehouseCRD.php',
 		idProperty: 'id',
 		baseParams:{task: 'read', start: 0, limit: PageSize},
 		reader: new Ext.data.JsonReader({root: 'data', totalProperty: 'totalRecord', fields :warehouseField})
@@ -114,7 +114,7 @@ Ext.onReady(function() {
 	mainDs.load();
 
   var frmEditor = new stdForm({
-    url      : '../php-crud/m.warehouse.php',
+    url      : '../php-crud/m.warehouseCRD.php',
     id       : 'frmEditor',
     reader   : new Ext.data.JsonReader({root : 'data',fields: warehouseField}),
     renderTo : 'editorFormMain',
@@ -151,7 +151,7 @@ Ext.onReady(function() {
     pageSize:250,
     pageStore:mainDs
   });
-  var GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+  var GridHistoryDs = new historyDs({url: '../php-crud/m.departmentCRD.php'});
   var GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
   
 

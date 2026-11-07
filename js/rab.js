@@ -168,12 +168,13 @@ Ext.onReady(function () {
     ];
     var materialField = [
         { name: 'id' }, { name: 'material_code' }, { name: 'material_name' }, { name: 'unit' },
-        { name: 'estimated_price', type: 'float' }
+        { name: 'estimated_price', type: 'float' }, { name: 'estimated_price_min', type: 'float' }      // [AI-BOQ] rentang harga master
     ];
     var rabItemField = [
         { name: 'id' }, { name: 'material_id' }, { name: 'expense_id' }, { name: 'material_code' }, { name: 'material_name' },
         { name: 'unit' }, { name: 'category' }, { name: 'item_name' },
         { name: 'budget_qty', type: 'float' }, { name: 'unit_price', type: 'float' },
+        { name: 'master_min', type: 'float' }, { name: 'master_max', type: 'float' },      // [AI-BOQ] rentang harga master (mata uang dasar)
         { name: 'tolerance_pct', type: 'float' },
         { name: 'total_qty_out', type: 'float' }, { name: 'remaining_qty', type: 'float' },
         { name: 'usage_pct', type: 'float' }, { name: 'status' },
@@ -189,7 +190,7 @@ Ext.onReady(function () {
 
     var expenseField = [
         { name: 'id' }, { name: 'expense_code' }, { name: 'expense_name' },
-        { name: 'category' }, { name: 'unit' }, { name: 'default_price', type: 'float' }
+        { name: 'category' }, { name: 'unit' }, { name: 'default_price', type: 'float' }, { name: 'default_price_min', type: 'float' }
     ];
     var expenseDs = new Ext.data.Store({
         url: '../dev/php-crud/rabCRD.php',
@@ -253,6 +254,7 @@ Ext.onReady(function () {
                         if (row) {
                             row.set('category', record.get('v'));
                             row.set('expense_id', null);
+                            row.set('master_min', 0); row.set('master_max', 0);      // [AI-BOQ] rentang harga ikut master item terpilih
                             if (record.get('v') !== 'Material') { 
                                 row.set('material_id', null); 
                                 row.set('material_name', ''); 
@@ -280,7 +282,10 @@ Ext.onReady(function () {
                                 row.set('material_name', record.get('material_name'));
                                 row.set('unit', record.get('unit'));
                                 row.set('category', 'Material');
-                                if (!row.get('unit_price')) row.set('unit_price', record.get('estimated_price'));
+                                // [AI-BOQ] rentang harga = milik master; harga satuan default = harga MAX master (dikonversi ke mata uang anggaran)
+                                row.set('master_min', parseFloat(record.get('estimated_price_min')) || 0);
+                                row.set('master_max', parseFloat(record.get('estimated_price')) || 0);
+                                if ((parseFloat(record.get('estimated_price')) || 0) > 0) row.set('unit_price', Math.round(parseFloat(record.get('estimated_price')) / curRate() * 100) / 100);
                                 updateRabTotalLabel();
                             }
                         }
@@ -308,6 +313,13 @@ Ext.onReady(function () {
             },
             { header: 'Satuan', dataIndex: 'unit', width: 60, align: 'center', editor: new myTextField() },
             { header: 'Qty / Amount', dataIndex: 'budget_qty', width: 100, align: 'right', editor: new myNumberField({ decimalPrecision: 4 }), renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
+            // [AI-BOQ] Rentang harga dari MASTER (read-only). Harga Satuan = default MAX; boleh diubah selama di antara Min dan Max.
+            { header: 'Harga Min (master)', dataIndex: 'master_min', width: 105, align: 'right', renderer: function (v, meta, record) {
+                var l = rabLimits(record); return l ? '<span style="color:#9fc3d1;">' + Ext.util.Format.number(l.min / curRate(), '0,000.00') + '</span>' : '<span style="color:#668894;">-</span>';
+            } },
+            { header: 'Harga Max (master)', dataIndex: 'master_max', width: 105, align: 'right', renderer: function (v, meta, record) {
+                var l = rabLimits(record); return l ? '<span style="color:#9fc3d1;">' + Ext.util.Format.number(l.max / curRate(), '0,000.00') + '</span>' : '<span style="color:#668894;">-</span>';
+            } },
             { header: 'Harga Satuan', dataIndex: 'unit_price', width: 110, align: 'right', editor: new myNumberField({ decimalPrecision: 2 }), renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             { header: 'Total', dataIndex: 'budget_qty', width: 120, align: 'right', renderer: function (v, meta, record) { var total = (parseFloat(record.get('budget_qty')) || 0) * (parseFloat(record.get('unit_price')) || 0); return '<b>' + Ext.util.Format.number(total, '0,000.00') + '</b>'; } },
             { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + Ext.util.Format.htmlEncode(v || '-') + '</span>'; } },
@@ -317,6 +329,18 @@ Ext.onReady(function () {
             }
         ],
         listeners: {
+            // [AI-BOQ] tolak harga satuan di luar rentang min-max master (server tetap memvalidasi ulang)
+            validateedit: function (e) {
+                if (e.field !== 'unit_price') return;
+                var l = rabLimits(e.record);
+                if (!l) return;
+                var pBase = (parseFloat(e.value) || 0) * curRate();
+                if (pBase < l.min * 0.9999 - 0.5 || pBase > l.max * 1.0001 + 0.5) {
+                    var f = function (v) { return Ext.util.Format.number((v || 0) / curRate(), '0,000.00'); };
+                    Ext.Msg.alert('Harga di luar batas master', 'Harga satuan harus di antara <b>' + f(l.min) + '</b> dan <b>' + f(l.max) + '</b> (rentang min-max master). Ubah rentang di master bila memang perlu.');
+                    e.cancel = true;
+                }
+            },
             afteredit: function () { updateRabTotalLabel(); },
             cellclick: function (grid, rowIndex, columnIndex) {
                 if (grid.getColumnModel().getColumnId(columnIndex) === 'rabDeleteCol') { grid.getStore().removeAt(rowIndex); updateRabTotalLabel(); }
@@ -343,7 +367,10 @@ Ext.onReady(function () {
             row.set('expense_id', parseInt(ex.get('id'), 10));
             row.set('item_name', ex.get('expense_name') || '');
             row.set('unit', ex.get('unit') || 'Unit');
-            if (!(parseFloat(row.get('unit_price')) > 0)) row.set('unit_price', parseFloat(ex.get('default_price')) || 0);
+            // [AI-BOQ] rentang harga = milik master biaya; harga satuan default = harga MAX (dikonversi ke mata uang anggaran)
+            row.set('master_min', parseFloat(ex.get('default_price_min')) || 0);
+            row.set('master_max', parseFloat(ex.get('default_price')) || 0);
+            if ((parseFloat(ex.get('default_price')) || 0) > 0) row.set('unit_price', Math.round(parseFloat(ex.get('default_price')) / curRate() * 100) / 100);
             itemGrid.getView().refresh();
             updateRabTotalLabel();
         });
@@ -380,6 +407,11 @@ Ext.onReady(function () {
         updatePlafonBar(total);
     }
     
+    // [AI-BOQ] rentang harga master untuk satu baris (mata uang dasar); null bila master belum punya rentang (min > 0 dan max >= min)
+    function rabLimits(record) {
+        var mn = parseFloat(record.get('master_min')) || 0, mx = parseFloat(record.get('master_max')) || 0;
+        return (mn > 0 && mx >= mn) ? { min: mn, max: mx } : null;
+    }
     function curRate() { return parseFloat(fRate ? fRate.getValue() : rabCur.rate) || parseFloat(rabCur.rate) || 1; }
     
     function plafonCheck(total) {
@@ -469,7 +501,7 @@ Ext.onReady(function () {
     
     function addBlankRow() {
         var RabRecord = rabItemDs.recordType || Ext.data.Record.create(rabItemField);
-        rabItemDs.add(new RabRecord({ id: 0, material_id: null, expense_id: null, material_code: '', material_name: '', unit: 'Unit', category: currentCategory, item_name: '', budget_qty: 0, unit_price: 0, tolerance_pct: 0, total_qty_out: 0, remaining_qty: 0, usage_pct: 0, status: 'ON TRACK', orig_qty: 0, orig_price: 0, is_addendum: false, addendum_reason: '' }));
+        rabItemDs.add(new RabRecord({ id: 0, material_id: null, expense_id: null, material_code: '', material_name: '', unit: 'Unit', category: currentCategory, item_name: '', budget_qty: 0, unit_price: 0, tolerance_pct: 0, total_qty_out: 0, remaining_qty: 0, usage_pct: 0, status: 'ON TRACK', master_min: 0, master_max: 0, orig_qty: 0, orig_price: 0, is_addendum: false, addendum_reason: '' }));
         updateRabTotalLabel();
     }
     

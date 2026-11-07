@@ -4,7 +4,7 @@
   Created on    : Feb 17, 2016
   Author        : Eddy Susanto
   Description   : Entry master of unit measurement
-  File related  : - m.um.php (CRUD)
+  File related  : - m.umCRD.php (CRUD)
                   - m.um.pdf.php (Printing)
   */
   include "../php-func/user.valid.php";

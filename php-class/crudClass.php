@@ -5,10 +5,15 @@ if (!isset($_SESSION)) {
 date_default_timezone_set('Asia/Jakarta');
 
 error_reporting(E_ALL & ~E_NOTICE & ~E_DEPRECATED);
+
 $wwwdoc = $_SERVER["DOCUMENT_ROOT"];
 
-if (file_exists("../php-func/function.all.php")) {
-    include_once "../php-func/function.all.php";
+$functionFile = __DIR__ . '/../php-func/function.all.php';
+
+if (file_exists($functionFile)) {
+    require_once $functionFile;
+} else {
+    error_log('CRUD CLASS: function.all.php tidak ditemukan: ' . $functionFile);
 }
 
 if (!class_exists('crud')) {
@@ -52,12 +57,12 @@ $stmt = $this->query("
 ");
 
 $auditIdentity = $stmt->fetch(PDO::FETCH_ASSOC);
-
+/*
 error_log(
     'AUDIT DATABASE IDENTITY: ' .
     json_encode($auditIdentity)
 );
-
+*/
       } catch (PDOException $e) {
           echo "Koneksi Gagal: " . $e->getMessage();
           exit;

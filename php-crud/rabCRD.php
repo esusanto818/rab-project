@@ -37,6 +37,35 @@ function mb_strlen_safe($str, $len) {
 
 function rab_fmt($n): string { return number_format((float)$n, 2, ',', '.'); }
 
+// [AI-BOQ] Rentang harga MILIK MASTER (mata uang dasar): materials.estimated_price_min .. estimated_price (max),
+// expense_master.default_price_min .. default_price (max). Harga satuan RAB default = max; user boleh mengubahnya di RAB
+// selama masih di dalam rentang master. Rentang hanya berlaku bila master punya min > 0 dan max >= min.
+// Butuh migrasi sql/2026-11-06.budget_items_price_range.sql; belum migrasi -> tanpa batas (perilaku lama).
+function rab_has_master_range($db): bool {
+    static $has = null;
+    if ($has === null) {
+        $st = $db->query("SELECT (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ANY (current_schemas(false)) AND table_name = 'materials' AND column_name = 'estimated_price_min')
+                               + (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ANY (current_schemas(false)) AND table_name = 'expense_master' AND column_name = 'default_price_min')");
+        $has = ((int)$st->fetchColumn() === 2);
+    }
+    return $has;
+}
+function rab_master_limits($db, string $type, int $id): ?array {
+    static $cache = [];
+    $k = $type . $id;
+    if (array_key_exists($k, $cache)) return $cache[$k];
+    $cache[$k] = null;
+    if ($id <= 0 || !rab_has_master_range($db)) return null;
+    if ($type === 'M') $st = $db->prepare("SELECT COALESCE(estimated_price_min,0) AS mn, COALESCE(estimated_price,0) AS mx, material_name AS nm FROM public.materials WHERE id = :id");
+    else               $st = $db->prepare("SELECT COALESCE(default_price_min,0) AS mn, COALESCE(default_price,0) AS mx, expense_name AS nm FROM expense_master WHERE id = :id");
+    $st->execute([':id' => $id]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    if ($r && (float)$r['mn'] > 0 && (float)$r['mx'] >= (float)$r['mn']) {
+        $cache[$k] = ['min' => (float)$r['mn'], 'max' => (float)$r['mx'], 'name' => $r['nm']];
+    }
+    return $cache[$k];
+}
+
 session_start();
 header('Content-Type: application/json');
 $db = new crud();
@@ -200,11 +229,12 @@ try {
          * LIST_MATERIALS
          * ============================================================ */
         case 'list_materials':
-            $stmt = $db->query("SELECT id, material_code, material_name, unit, COALESCE(estimated_price,0) AS estimated_price FROM public.materials WHERE active IS TRUE ORDER BY material_name ASC");
+            $stmt = $db->query("SELECT id, material_code, material_name, unit, COALESCE(estimated_price,0) AS estimated_price, " . (rab_has_master_range($db) ? 'COALESCE(estimated_price_min,0)' : '0') . " AS estimated_price_min FROM public.materials WHERE active IS TRUE ORDER BY material_name ASC");
             $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
             foreach ($materials as &$m) {
                 $m['id'] = (int)$m['id'];
                 $m['estimated_price'] = (float)$m['estimated_price'];
+                $m['estimated_price_min'] = (float)$m['estimated_price_min'];      // [AI-BOQ]
             }
             sendJsonResponse(true, $materials);
             break;
@@ -221,7 +251,7 @@ try {
                 $params[':cat'] = $category;
             }
             $stmt = $db->prepare("
-                SELECT id, expense_code, expense_name, category, unit, default_price
+                SELECT id, expense_code, expense_name, category, unit, default_price, " . (rab_has_master_range($db) ? 'COALESCE(default_price_min,0)' : '0') . " AS default_price_min
                 FROM expense_master
                 {$where}
                 ORDER BY category, expense_name
@@ -231,6 +261,7 @@ try {
             foreach ($rows as &$r) {
                 $r['id'] = (int)$r['id'];
                 $r['default_price'] = (float)$r['default_price'];
+                $r['default_price_min'] = (float)$r['default_price_min'];      // [AI-BOQ]
                 $r['label'] = $r['expense_name'] . ' (' . $r['unit'] . ')';
             }
             sendJsonResponse(true, $rows);
@@ -264,6 +295,9 @@ try {
                 'locked_reason' => rab_currency_lock_reason($db, $projectId),
             ];
             
+            $hasMR = rab_has_master_range($db);                                                      // [AI-BOQ] rentang harga dari master
+            $mnSel = $hasMR ? "CASE WHEN bi.category = 'Material' THEN m.estimated_price_min ELSE em.default_price_min END" : 'NULL';
+            $mxSel = "CASE WHEN bi.category = 'Material' THEN m.estimated_price ELSE em.default_price END";
             // Load ALL categories (Material + Non-Material)
             // [FIX] Hapus LEFT JOIN expense_usage - tidak ada tabel project_expenses
             $sql = RAB_USAGE_CTE . "
@@ -271,6 +305,7 @@ try {
             m.material_code, m.material_name,
             COALESCE(bi.qty_plan, 0) AS budget_qty,
             COALESCE(bi.unit_price_plan, 0) AS unit_price,
+            COALESCE({$mnSel}, 0) AS master_min, COALESCE({$mxSel}, 0) AS master_max,
             COALESCE(bi.tolerance_pct, 0) AS tolerance_pct,
             bi.is_addendum, bi.addendum_reason, bi.addendum_at,
             COALESCE(u.qty_out, 0) AS total_qty_out,
@@ -289,6 +324,7 @@ try {
             END AS status
             FROM public.budget_items bi
             LEFT JOIN public.materials m ON m.id = bi.material_id
+            LEFT JOIN expense_master em ON em.id = bi.expense_id
             LEFT JOIN usage u ON u.project_id = bi.project_id AND u.material_id = bi.material_id
             WHERE bi.project_id = :project_id
             ORDER BY bi.category, COALESCE(m.material_name, bi.item_name) ASC";
@@ -303,6 +339,8 @@ try {
                 $item['expense_id'] = $item['expense_id'] !== null ? (int)$item['expense_id'] : null;
                 $item['budget_qty'] = (float)$item['budget_qty'];
                 $item['unit_price'] = (float)$item['unit_price'];
+                $item['master_min'] = (float)$item['master_min'];       // [AI-BOQ] mata uang dasar
+                $item['master_max'] = (float)$item['master_max'];
                 $item['tolerance_pct'] = (float)$item['tolerance_pct'];
                 $item['total_qty_out'] = (float)$item['total_qty_out'];
                 $item['total_actual_cost'] = (float)$item['total_actual_cost'];
@@ -405,6 +443,18 @@ try {
                     $key = ($cat === 'Material' && $mid > 0) ? 'M' . $mid : 'E' . $cat . '_' . $eid;
                     $oldVal = isset($old[$key]) ? round($old[$key]['qty'] * $old[$key]['price'], 2) : 0.0;
                     $flags[$key] = !isset($old[$key]) || $q > $old[$key]['qty'] + RAB_EPS_QTY || $val > $oldVal + RAB_EPS_VAL;
+                    // [AI-BOQ] harga satuan harus di dalam rentang min-max MASTER (diperiksa hanya untuk item baru / harga yang diubah,
+                    // sehingga data lama yang sudah di luar rentang tidak memblokir simpan). Perbandingan dalam mata uang dasar.
+                    if (!isset($old[$key]) || abs($pr - $old[$key]['price']) > 0.005) {
+                        $lim = ($cat === 'Material') ? rab_master_limits($db, 'M', $mid) : rab_master_limits($db, 'E', $eid);
+                        if ($lim) {
+                            $pBase = $pr * $exchRate;
+                            if ($pBase < $lim['min'] * 0.9999 - 0.5 || $pBase > $lim['max'] * 1.0001 + 0.5) {
+                                throw new RabBusinessError('Harga satuan ' . $lim['name'] . ' (' . rab_fmt($pBase) . ') di luar batas master: min ' . rab_fmt($lim['min']) .
+                                                           ' - max ' . rab_fmt($lim['max']) . '. Ubah harga atau perbarui rentang harga di master terlebih dahulu.');
+                            }
+                        }
+                    }
                 }
                 
                 $totalBase = round($totalCur * $exchRate, 2);

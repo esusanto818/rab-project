@@ -22,7 +22,7 @@ Ext.onReady(function() {
       frmEditor.getForm().reset();
       task = 'update';
       Ext.getCmp('frmEditor').getForm().load({
-        url:'../php-crud/m.department.php',
+        url:'../php-crud/m.departmentCRD.php',
         params:{id: dataRecord.id, task: 'read_edit'},
         success:function(form, action) {}
       });
@@ -128,9 +128,9 @@ Ext.onReady(function() {
   };
   let addSectionCount=0;
   let myMask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-  let deleteDs = new Ext.data.Store({url: '../php-crud/m.department.php'});
+  let deleteDs = new Ext.data.Store({url: '../php-crud/m.departmentCRD.php'});
   let LocationDs = new Ext.data.Store({
-    url: '../php-crud/m.location.php',
+    url: '../php-crud/m.locationCRD.php',
     baseParams:{task: 'read'},
     reader: new Ext.data.JsonReader({root: 'data',totalProperty: 'totalRecord',fields :[{name: 'id'},{name: 'name'}]})
   });
@@ -139,14 +139,14 @@ Ext.onReady(function() {
   let sectionFields = [{name: 'id'}, {name: 'department_id'}, {name: 'seq_no'}, {name: 'section_name'}, {name: 'line_no'}, {name: 'data_output'}, {name: 'warehouse_id'}, {name: 'warehouse'}, {name: 'piece_rate'}, {name: 'operator'}, {name: 'share_amt'},{name: 'remark'}];
   let addSection = Ext.data.Record.create(sectionFields);
 	mainDs = new Ext.data.Store({
-		url: '../php-crud/m.department.php',
+		url: '../php-crud/m.departmentCRD.php',
 		idProperty: 'id',
 		baseParams:{task: 'read', start: 0, limit: PageSize},
 		reader: new Ext.data.JsonReader({root: 'data', totalProperty: 'totalCount', fields :departmentFields})
 	});
 	mainDs.load();
   /*grid editor for main form */
-  let gridEditorDs = new Ext.data.Store({url: '../php-crud/m.department.php', idProperty: 'size', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+  let gridEditorDs = new Ext.data.Store({url: '../php-crud/m.departmentCRD.php', idProperty: 'size', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
   let addRow = Ext.data.Record.create(sectionFields);
   let editorDeleter = new Extensive.grid.ItemDeleter();
   let edDataCheck = new Ext.grid.CheckColumn({id: 'edDataCheck', header: 'Data', dataIndex: 'data_output', width: 80, fixed: true, align: 'center', css: cssGridEditColumn});
@@ -184,7 +184,7 @@ Ext.onReady(function() {
   gridEditor.addClass('x-grid3-gridEditor');
   //Editor Form
   let frmEditor = new stdForm({
-    url      : '../php-crud/m.department.php',
+    url      : '../php-crud/m.departmentCRD.php',
     id       : 'frmEditor',
     reader   : new Ext.data.JsonReader({root : 'data',fields: departmentFields}),
     renderTo : 'editorFormMain',
@@ -244,7 +244,7 @@ Ext.onReady(function() {
   let mainDataCheck = new Ext.grid.CheckColumn({header: 'Data',dataIndex: 'data_output', width: 80, fixed: true, align: 'center', processEvent: function () { return false;}});
   let mainRateCheck = new Ext.grid.CheckColumn({header: 'Calc',dataIndex: 'piece_rate', width: 80, fixed: true, align: 'center', processEvent: function () { return false;}});
   let mainShareCheck = new Ext.grid.CheckColumn({header: 'Share',dataIndex: 'share_amt', width: 80, fixed: true, align: 'center', processEvent: function () { return false;}});
-  let gridDetailDs = new Ext.data.Store({url: '../php-crud/m.department.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
+  let gridDetailDs = new Ext.data.Store({url: '../php-crud/m.departmentCRD.php', baseParams:{task: 'read_detail'}, reader: new Ext.data.JsonReader({root: 'data', fields : sectionFields})});
   gridDetailDs.on('load', function(){addSectionCount = gridDetailDs.getTotalCount();});
   let gridDetail = new stdGrid({
     store  : gridDetailDs,
@@ -264,7 +264,7 @@ Ext.onReady(function() {
   });
 
   /* History */
-  let GridHistoryDs = new historyDs({url: '../php-crud/m.department.php'});
+  let GridHistoryDs = new historyDs({url: '../php-crud/m.departmentCRD.php'});
   let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
 
 

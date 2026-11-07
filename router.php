@@ -226,13 +226,13 @@ try {
     $htmlOutput = ob_get_clean();
 
     $patterns = array(
-        '="../css/'       => '="/proyek/css/',
-        '="../js/'        => '="/proyek/js/',
-        '="../js-ext/'    => '="/proyek/js-ext/',
-        '="../pdf/'       => '="/proyek/pdf/',
-        '="../tcpdf_new/' => '="/proyek/tcpdf_new/',
-        '="../js-func/'   => '="/proyek/js-func/',
-        '="../php-crud/'  => '="/proyek/php-crud/'
+        '="../css/'       => '="/rab-project/dev/css/',
+        '="../js/'        => '="/rab-project/dev/js/',
+        '="../js-ext/'    => '="/rab-project/dev/js-ext/',
+        '="../pdf/'       => '="/rab-project/dev/pdf/',
+        '="../tcpdf_new/' => '="/rab-project/dev/tcpdf_new/',
+        '="../js-func/'   => '="/rab-project/dev/js-func/',
+        '="../php-crud/'  => '="/rab-project/dev/php-crud/'
     );
     echo strtr($htmlOutput, $patterns);
     exit;
