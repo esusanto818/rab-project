@@ -20,6 +20,8 @@ Ext.onReady(function () {
     var dataRecord = null;
     var curRate = 1;
     var fmtRp = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
+    // [AI-BOQ] qty tanpa nol di belakang (Ext 3 tidak mendukung pola '#'): 150 -> "150", 1.5 -> "1.5", 1000 -> "1,000"
+    function fmtQty3(v) { return Ext.util.Format.number(parseFloat(v) || 0, '0,000.000').replace(/\.?0+$/, ''); }
     // [AI-BOQ] penanda plafon: hasil analisis / RAB lebih besar dari budget atau nilai kontrak (aturan sama dengan modul RAB)
     function plafonBanner() {
         var sm = (mainTaskStore && mainTaskStore.reader && mainTaskStore.reader.jsonData) ? mainTaskStore.reader.jsonData.summary : null;
@@ -41,8 +43,8 @@ Ext.onReady(function () {
         Ext.each(items || [], function (it) {
             if (it.kind !== kind) return;
             var pr = (parseFloat(it.pmin) === parseFloat(it.pmax)) ? nf(it.pmax) : nf(it.pmin) + ' - ' + nf(it.pmax);
-            out.push('<div style="margin-bottom:6px;"><b>' + Ext.util.Format.htmlEncode(it.name) + '</b>: ' + Ext.util.Format.number(it.qty, '0,000.###') + ' ' +
-                     Ext.util.Format.htmlEncode(it.unit) + '<div style="color:#8fb3c0;font-size:11px;">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + ' (min - max)</div></div>');
+            out.push('<div style="margin-bottom:6px;"><b>' + Ext.util.Format.htmlEncode(it.name) + '</b>: ' + fmtQty3(it.qty) + ' ' +
+                     Ext.util.Format.htmlEncode(it.unit) + '<div style="color:#8fb3c0;font-size:11px;">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + (parseFloat(it.pmin) === parseFloat(it.pmax) ? ' (rentang master belum diisi)' : ' (min - max)') + '</div></div>');
         });
         return out.length ? out.join('') : '-';
     }
@@ -414,6 +416,8 @@ Ext.onReady(function () {
                             var projRange = res.project_range || {};
                             var meta = res;                        // angka total + peringatan dari server (diperbarui tiap Hitung Ulang)
                             var planWin = null;
+                            var existing = res.existing_tasks || { total: 0, replaceable: 0, kept: 0 };
+                            var saveMode = existing.replaceable > 0 ? 'replace' : 'append';        // replace = task lama (belum dimulai) diganti agar tidak ganda
 
                             // ================================================================
                             // [AI-BOQ][REWORK] Review & EDIT draft sebelum disimpan:
@@ -489,6 +493,20 @@ Ext.onReady(function () {
                                     'Total Material: Rp <span id="aiSumMat">' + fmtIdr(t.mat) + '</span> | Total Biaya: Rp <span id="aiSumExp">' + fmtIdr(t.exp) + '</span><br>' +
                                     '<b>Total (harga MAX, dipakai di RAB): Rp <span id="aiSumMax" style="' + (meta.over_budget || meta.over_contract ? 'color:#ff6b5e;' : '') + '">' + fmtIdr(t.max) + '</span></b> | Total (harga MIN): Rp <span id="aiSumMin">' + fmtIdr(t.min) + '</span></div>';
                             }
+                            // Pilihan: ganti task lama (disarankan) atau tambahkan. Ganti mencegah task dan qty RAB bertambah ganda saat analisis diulang.
+                            function modeHtml() {
+                                if (!existing.total) return '';
+                                var topups = 0;
+                                Ext.each(plan.tasks, function (t) { Ext.each(KINDS, function (k) { Ext.each(t[k] || [], function (m) { if (m.status === 'rab_topup') topups++; }); }); });
+                                var h = '<div style="background:#0b1b28;border:1px solid #52758b;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px;color:#d5e3ec;line-height:1.7;">' +
+                                    '<b>Proyek ini sudah punya ' + existing.total + ' task</b> (' + existing.replaceable + ' belum dimulai dan aman diganti; ' + existing.kept + ' dipertahankan karena sudah berjalan / ada tagihan terbayar).<br>' +
+                                    '<label style="cursor:pointer;"><input type="radio" name="aiMode" class="aiMode" value="replace"' + (saveMode === 'replace' ? ' checked="checked"' : '') + (existing.replaceable ? '' : ' disabled="disabled"') +
+                                    '> <b>Ganti</b> ' + existing.replaceable + ' task lama dengan hasil analisis ini (disarankan: task dan qty RAB tidak menjadi ganda)</label><br>' +
+                                    '<label style="cursor:pointer;"><input type="radio" name="aiMode" class="aiMode" value="append"' + (saveMode === 'append' ? ' checked="checked"' : '') +
+                                    '> <b>Tambahkan</b> sebagai task baru (task lama tetap ada; item yang sama menambah qty RAB)</label>';
+                                if (saveMode === 'append' && topups > 0) h += '<div style="color:#ffe08a;margin-top:4px;">&#9888; ' + topups + ' item akan MENAMBAH qty RAB karena sudah dialokasikan ke task lama.</div>';
+                                return h + '</div>';
+                            }
                             var EXP_CATS = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];     // = kategori biaya di modul RAB
                             function catSelect(id, ti, kind, li, val, extraStyle) {
                                 var h = '<select ' + (id ? 'id="' + id + '" ' : 'class="aiEdit" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" data-field="category" ') +
@@ -539,7 +557,8 @@ Ext.onReady(function () {
                                     '<td align="right" style="' + td + '">' + (fixed ? fmtIdr(pMin(m)) : mfld(ti, kind, li, 'price_min', m.price_min, '100px', 'number')) + '</td>' +
                                     '<td align="right" style="' + td + '">' + (fixed ? fmtIdr(pMax(m)) : mfld(ti, kind, li, 'price_max', m.price_max, '100px', 'number')) + '</td>' +
                                     '<td align="right" id="aiTot_' + ti + '_' + kind + '_' + li + '" style="' + td + 'white-space:nowrap;">' + totCell(m) + '</td>' +
-                                    '<td style="' + td + 'white-space:nowrap;color:' + st[1] + ';font-weight:bold;font-size:12px;">' + st[0] + '</td>' +
+                                    '<td style="' + td + 'white-space:nowrap;color:' + st[1] + ';font-weight:bold;font-size:12px;">' + st[0] +
+                                    ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? '<div style="color:#9ec3d1;font-weight:normal;font-size:11px;">min master diisi: ' + fmtIdr(m.ai_min) + '</div>' : '') + '</td>' +
                                     '<td style="padding:6px;vertical-align:top;"><button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
                                     'style="padding:6px 12px;background:' + BURG + ';color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:bold;font-size:12px;">Hapus</button></td></tr>';
                             }
@@ -553,7 +572,7 @@ Ext.onReady(function () {
                                     var already = false;
                                     Ext.each(plan.tasks[ti][kind] || [], function (x) { if (parseInt(x.budget_item_id, 10) === parseInt(a.budget_item_id, 10)) already = true; });
                                     h += '<option value="' + parseInt(a.budget_item_id, 10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
-                                         enc(a.material_name + ' | sisa RAB: ' + Ext.util.Format.number(a.qty_remaining, '0,000.####') + ' ' + a.unit) + '</option>';
+                                         enc(a.material_name + ' | sisa RAB: ' + fmtQty3(a.qty_remaining) + ' ' + a.unit) + '</option>';
                                 });
                                 h += '</select> <input id="aiSelQty_' + id + '" type="number" min="0" step="any" placeholder="Qty" style="' + IN + 'width:90px;text-align:right;"> ' +
                                      btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) +
@@ -608,7 +627,7 @@ Ext.onReady(function () {
                             }
 
                             function renderTaskPlan() {
-                                var html = alertHtml() + '<div id="aiSummary">' + summaryHtml() + '</div>';
+                                var html = alertHtml() + modeHtml() + '<div id="aiSummary">' + summaryHtml() + '</div>';
                                 if (res.analysis) {
                                     html += '<div style="font-size:14px;line-height:1.55;color:#b0d4e0;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:10px;"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
                                 }
@@ -654,7 +673,7 @@ Ext.onReady(function () {
                             function refresh() {
                                 Ext.Ajax.request({
                                     url: CRD, method: 'POST', timeout: 60000,
-                                    params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan) },
+                                    params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode },
                                     success: function (r) {
                                         var o = null;
                                         try { o = Ext.util.JSON.decode(r.responseText); } catch (e) { o = null; }
@@ -729,6 +748,11 @@ Ext.onReady(function () {
                                         refresh();
                                     };
                                 }
+
+                                els = root.querySelectorAll('.aiMode');                       // ganti / tambah task lama
+                                for (i = 0; i < els.length; i++) { (function (r) {
+                                    r.onclick = function () { saveMode = r.value; refresh(); };
+                                })(els[i]); }
 
                                 els = root.querySelectorAll('.aiRecalc');
                                 for (i = 0; i < els.length; i++) { els[i].onclick = function () { refresh(); }; }
@@ -810,7 +834,7 @@ Ext.onReady(function () {
                                     Ext.MessageBox.wait('Memeriksa anggaran / plafon...', 'Mohon Tunggu');
                                     Ext.Ajax.request({
                                         url: CRD, method: 'POST', timeout: 60000,
-                                        params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan) },
+                                        params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode },
                                         success: function (r) {
                                             Ext.MessageBox.hide();
                                             var o = null;
@@ -842,7 +866,7 @@ Ext.onReady(function () {
                                     params: {
                                         task: 'save_ai_task_plan',
                                         project_id: projId,
-                                        plan_json: Ext.util.JSON.encode(plan)
+                                        plan_json: Ext.util.JSON.encode(plan), mode: saveMode
                                     },
                                     success: function (saveResponse) {
                                         Ext.MessageBox.hide();

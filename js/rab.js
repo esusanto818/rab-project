@@ -323,9 +323,16 @@ Ext.onReady(function () {
             { header: 'Harga Satuan', dataIndex: 'unit_price', width: 110, align: 'right', editor: new myNumberField({ decimalPrecision: 2 }), renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             { header: 'Total', dataIndex: 'budget_qty', width: 120, align: 'right', renderer: function (v, meta, record) { var total = (parseFloat(record.get('budget_qty')) || 0) * (parseFloat(record.get('unit_price')) || 0); return '<b>' + Ext.util.Format.number(total, '0,000.00') + '</b>'; } },
             { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + Ext.util.Format.htmlEncode(v || '-') + '</span>'; } },
-            {
-                id: 'rabDeleteCol', header: '', dataIndex: 'material_id', width: 32, align: 'center', fixed: true,
-                renderer: function () { return '<span class="rabDeleteBtn" style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus baris">&#10005;</span>'; }
+           {
+                id: 'rabDeleteCol',
+                header: '<span title="Hapus Baris" style="display:inline-block;vertical-align:middle;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span>',
+                dataIndex: 'material_id',
+                width: 42,
+                align: 'center',
+                fixed: true,
+                renderer: function () {
+                    return '<span class="rabDeleteBtn" style="cursor:pointer;display:inline-block;vertical-align:middle;" title="Hapus baris"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span>';
+                }
             }
         ],
         listeners: {

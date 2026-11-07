@@ -40,7 +40,7 @@ function router_require_login()
         if (router_is_ajax_request()) {
             router_respond_denied(401, 'Session telah berakhir. Silakan login kembali.');
         }
-        header('Location: index.php');
+        header('Location: ' . rtrim(BASE_URL, '/') . '/index.php');
         exit;
     }
 }
@@ -225,15 +225,18 @@ try {
     include $viewPath;
     $htmlOutput = ob_get_clean();
 
+    $appBase = rtrim(BASE_URL, '/');
+
     $patterns = array(
-        '="../css/'       => '="/rab-project/dev/css/',
-        '="../js/'        => '="/rab-project/dev/js/',
-        '="../js-ext/'    => '="/rab-project/dev/js-ext/',
-        '="../pdf/'       => '="/rab-project/dev/pdf/',
-        '="../tcpdf_new/' => '="/rab-project/dev/tcpdf_new/',
-        '="../js-func/'   => '="/rab-project/dev/js-func/',
-        '="../php-crud/'  => '="/rab-project/dev/php-crud/'
+        '="../css/'       => '="' . $appBase . '/css/',
+        '="../js/'        => '="' . $appBase . '/js/',
+        '="../js-ext/'    => '="' . $appBase . '/js-ext/',
+        '="../pdf/'       => '="' . $appBase . '/pdf/',
+        '="../tcpdf_new/' => '="' . $appBase . '/tcpdf_new/',
+        '="../js-func/'   => '="' . $appBase . '/js-func/',
+        '="../php-crud/'  => '="' . $appBase . '/php-crud/'
     );
+
     echo strtr($htmlOutput, $patterns);
     exit;
 

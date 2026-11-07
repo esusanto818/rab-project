@@ -21,8 +21,8 @@ Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Pembayaran <em>Termin</em>";
 
-    var CRD = '/rab-project/dev/php-crud/project.paymentCRD.php';
-    var PRINT_URL = '/rab-project/dev/views/project.payment.print.php?id=';
+    var CRD = '../php-crud/project.paymentCRD.php';
+    var PRINT_URL = '../views/project.payment.print.php?id=';
     var ACCESS_ADD = 2;      // level akses minimal: input pembayaran / termin
     var ACCESS_EDIT = 3;     // level akses minimal: hapus pembayaran
     var VEPS = 0.01;         // toleransi nilai
@@ -426,8 +426,47 @@ Ext.onReady(function () {
             if (ev && ev.preventDefault) ev.preventDefault();
             if (ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
             else if (ev && ev.stopPropagation) ev.stopPropagation();
-            var w = window.open('/rab-project/views/project.payment.list.print.php', '_blank',
-                                'width=1100,height=800,scrollbars=yes,resizable=yes');
+            ///var w = window.open('../views/project.payment.list.print.php', '_blank','width=1100,height=800,scrollbars=yes,resizable=yes');
+            // patch url
+                    
+            // Deteksi root aplikasi dari lokasi file JS aktif (DEV/LIVE).
+            var appBase = '';
+            var paymentScript = document.querySelector(
+                'script[src*="project.payment.js"]'
+            );
+
+            if (paymentScript) {
+                var scriptPath = new URL(
+                    paymentScript.src,
+                    window.location.href
+                ).pathname;
+
+                var scriptMarker = scriptPath.toLowerCase().lastIndexOf('/js/');
+
+                if (scriptMarker >= 0) {
+                    appBase = scriptPath.substring(0, scriptMarker);
+                }
+            }
+
+            // Fallback jika lokasi script tidak dapat dideteksi.
+            if (!appBase) {
+                var pagePath = window.location.pathname;
+                var pageMarker = pagePath.toLowerCase().indexOf('/views/');
+
+                if (pageMarker >= 0) {
+                    appBase = pagePath.substring(0, pageMarker);
+                }
+            }
+
+            var w = window.open(
+                appBase + '/views/project.payment.list.print.php',
+                '_blank',
+                'width=1100,height=800,scrollbars=yes,resizable=yes'
+            );
+                                    
+
+            // end of patch url
+
             if (!w) {
                 Ext.Msg.alert('Popup diblokir', 'Izinkan pop-up untuk situs ini, lalu klik Printing kembali.');
             }

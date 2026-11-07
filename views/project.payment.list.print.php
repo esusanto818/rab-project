@@ -45,14 +45,13 @@ tfoot td { font-weight: bold; }
 </tr></thead><tbody id="paymentRows"></tbody>
 <tfoot><tr><td colspan="6" class="num">Total Diterima (IDR)</td><td id="grandTotal" class="num"></td><td colspan="3"></td></tr></tfoot>
 </table>
-<div class="footer">Dokumen dihasilkan oleh RAB-Monitor</div>
+<div class="footer">Dokumen dihasilkan oleh RAB-Project</div>
 </main>
 <script>
-<?php
-$appBase = rtrim(dirname(dirname($_SERVER['SCRIPT_NAME'] ?? '')), '/');
-?>
-window.PAYMENT_LIST_CRD_URL = <?= json_encode($appBase . '/php-crud/project.paymentCRD.php') ?>;
+window.PAYMENT_LIST_CRD_URL =
+    <?= json_encode(rtrim(BASE_URL, '/') . '/php-crud/project.paymentCRD.php') ?>;
 </script>
-<script src="<?= htmlspecialchars($appBase . '/js/project.payment.list.print.js', ENT_QUOTES, 'UTF-8') ?>"></script>
+
+<script src="<?= htmlspecialchars(rtrim(BASE_URL, '/'), ENT_QUOTES, 'UTF-8') ?>/js/project.payment.list.print.js?v=20261107-fix2"></script>
 </body>
 </html>

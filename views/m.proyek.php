@@ -29,7 +29,7 @@
     <script type="text/javascript">
         window.formAccess = <?php echo json_encode(intval($_SESSION["FormAccess"] ?? 0)); ?>;
     </script>
-    <script type="text/javascript" src="/rab-project/dev/js/m.proyek.js"></script>
+    <script type="text/javascript" src="../js/m.proyek.js"></script>
     <script type="text/javascript">
         document.getElementById('menu').innerHTML = <?php echo json_encode($_SESSION["linkMenu"] ?? ''); ?>;
         document.getElementById("mainHeaderText").innerHTML = "Master <em>Material</em>";

@@ -1,6 +1,6 @@
 (function () {
     'use strict';
-    var endpoint = window.PAYMENT_LIST_CRD_URL || '/rab-project/dev/php-crud/project.paymentCRD.php';
+    var endpoint = window.PAYMENT_LIST_CRD_URL || '../php-crud/project.paymentCRD.php';
     var status = document.getElementById('listStatus');
     var table = document.getElementById('paymentTable');
     var rowsEl = document.getElementById('paymentRows');

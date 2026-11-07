@@ -410,7 +410,19 @@ function mpHasPriceRange($db) {
 }
 
 // Peta RAB proyek: material (category Material) & expense (MP_EXPENSE_CATEGORY) + master material (untuk cocokkan nama)
-function mpLoadMaterialContext($db, $projectId) {
+// [AI-BOQ] Task lama yang AMAN diganti saat analisis ulang: status 'Belum Mulai' dan tidak punya tagihan yang sudah dibayar
+function mpTaskReplaceInfo($db, $projectId) {
+    $rows = mpFetchAll($db, "SELECT t.id, t.status, COALESCE((SELECT SUM(i.paid_amount) FROM project_invoices i WHERE i.task_id = t.id), 0) AS paid
+                               FROM public.project_tasks t WHERE t.project_id = :p", ['p' => $projectId], 'task_replace_info');
+    $ids = [];
+    foreach ($rows as $r) { if ($r['status'] === 'Belum Mulai' && (float)$r['paid'] <= 0) $ids[] = (int)$r['id']; }
+    return ['total' => count($rows), 'replaceable_ids' => $ids];
+}
+function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }
+
+// $ignoreTaskIds: task yang akan diganti -> alokasinya tidak dihitung (agar analisis ulang tidak menggandakan qty RAB)
+function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
+    $ign = $ignoreTaskIds ? ' AND tm.task_id NOT IN (' . implode(',', array_map('intval', $ignoreTaskIds)) . ')' : '';
     $has = mpHasPriceRange($db);
     $mnSel = $has ? "CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN m.estimated_price_min ELSE em.default_price_min END" : 'NULL';
     $mxSel = "CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN m.estimated_price ELSE em.default_price END";
@@ -421,7 +433,7 @@ function mpLoadMaterialContext($db, $projectId) {
                COALESCE(bi.qty_plan,0) AS qty_plan,
                COALESCE(bi.unit_price_plan,0) AS unit_price_plan,
                COALESCE({$mnSel}, 0) AS master_min, COALESCE({$mxSel}, 0) AS master_max,       -- rentang harga dari MASTER (mata uang dasar)
-               COALESCE((SELECT SUM(tm.qty_budget) FROM public.task_materials tm WHERE tm.budget_item_id = bi.id),0) AS qty_allocated
+               COALESCE((SELECT SUM(tm.qty_budget) FROM public.task_materials tm WHERE tm.budget_item_id = bi.id{$ign}),0) AS qty_allocated
           FROM public.budget_items bi
           LEFT JOIN public.materials m ON m.id = bi.material_id
           LEFT JOIN expense_master em ON em.id = bi.expense_id
@@ -523,6 +535,10 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
                     mpNum($m['price_min'] ?? ($m['unit_price_min'] ?? 0)),
                     mpNum($m['price_max'] ?? ($m['unit_price_max'] ?? ($m['unit_price'] ?? ($m['unit_price_estimate'] ?? 0))))
                 );
+                list($aiMin, $aiMax) = mpNormPrice(                                          // harga asli AI (dipakai mengisi rentang master yang masih kosong)
+                    mpNum($m['ai_min'] ?? ($m['price_min'] ?? ($m['unit_price_min'] ?? 0))),
+                    mpNum($m['ai_max'] ?? ($m['price_max'] ?? ($m['unit_price_max'] ?? ($m['unit_price'] ?? ($m['unit_price_estimate'] ?? 0)))))
+                );
                 $unit = trim((string)($m['unit'] ?? ''));
                 $res = mpResolveLine($ctx, $bidIn, $name, $kind);
                 $key = mpLineKey($res, $name, $kind);
@@ -565,7 +581,7 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
                     'budget_item_id' => $bid, 'material_id' => $mid, 'material_name' => $name,
                     'spec' => trim((string)($m['spec'] ?? '')), 'unit' => $unit, 'qty_estimate' => $qty,
                     'price_min' => $pMin, 'price_max' => $pMax, 'unit_price' => $pMax, 'status' => $status,
-                    'reason' => trim((string)($m['reason'] ?? '')), 'category' => $cat
+                    'reason' => trim((string)($m['reason'] ?? '')), 'category' => $cat, 'ai_min' => $aiMin, 'ai_max' => $aiMax
                 ];
             }
             $t[$kind] = $out;
@@ -786,7 +802,8 @@ try {
             if ($rate <= 0) $rate = 1;
 
             // RAB yang sudah ada: dikirim ke AI agar nama yang sama dipakai ulang; sisa kuota dipakai untuk "tambah dari RAB"
-            $ctx = mpLoadMaterialContext($db, $projectId);
+            $tri = mpTaskReplaceInfo($db, $projectId);                       // [AI-BOQ] task lama yang akan diganti tidak dihitung sebagai alokasi
+            $ctx = mpLoadMaterialContext($db, $projectId, $tri['replaceable_ids']);
             $existingForAi = []; $candMat = []; $candExp = [];
             foreach (['materials' => $ctx['rab'], 'expenses' => $ctx['exp']] as $kind => $list) {
                 foreach ($list as $r) {
@@ -910,6 +927,7 @@ PROMPT;
                 'data' => ['project_id' => $projectId, 'tasks' => $normalizedTasks],
                 'available_materials' => $candMat, 'available_expenses' => $candExp,
                 'project_range' => ['start' => $pStart, 'end' => $pEnd],
+                'existing_tasks' => ['total' => $tri['total'], 'replaceable' => count($tri['replaceable_ids']), 'kept' => $tri['total'] - count($tri['replaceable_ids'])],
                 'material_count' => $cnt['m'], 'expense_count' => $cnt['e'], 'new_material_count' => count($tot['newNames'])
             ], $meta));
             break;
@@ -924,7 +942,8 @@ PROMPT;
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
             $rate = (float)($proj['budget_exch_rate'] ?? 1);
             if ($rate <= 0) $rate = 1;
-            $ctx = mpLoadMaterialContext($db, $projectId);
+            $mode = mpMode($_REQUEST['mode'] ?? 'replace');                  // [AI-BOQ] replace = task lama (belum dimulai) diganti; append = ditambahkan
+            $ctx = mpLoadMaterialContext($db, $projectId, $mode === 'append' ? [] : mpTaskReplaceInfo($db, $projectId)['replaceable_ids']);
             $tasksIn = $plan['tasks'];
             $tot = mpAnnotateTasks($tasksIn, $ctx, $rate, false);                   // qty 0 dipertahankan agar baris yang sedang diedit tidak hilang
             $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $tasksIn);
@@ -957,6 +976,20 @@ PROMPT;
             try {
                 mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $projectId], 'lock_proyek');   // cegah simpan ganda paralel
                 $db->query("SELECT pg_advisory_xact_lock(771001)");                                                       // serialisasi kode material otomatis
+                // [AI-BOQ] Mode ganti: hapus task lama yang belum dimulai (beserta alokasinya) agar analisis ulang TIDAK menggandakan task maupun qty RAB.
+                // Task yang sudah berjalan / punya tagihan terbayar dipertahankan. Tagihan otomatis dilepas dulu dari task lama lalu disambung ulang ke task baru.
+                $mode = mpMode($_REQUEST['mode'] ?? 'replace');
+                $replaced = 0;
+                if ($mode === 'replace') {
+                    $delIds = mpTaskReplaceInfo($db, $projectId)['replaceable_ids'];
+                    if ($delIds) {
+                        $inList = implode(',', array_map('intval', $delIds));
+                        $db->exec("UPDATE project_invoices SET task_id = NULL WHERE task_id IN ({$inList})");
+                        $db->exec("DELETE FROM public.task_materials WHERE task_id IN ({$inList})");
+                        $db->exec("DELETE FROM public.project_tasks WHERE id IN ({$inList})");
+                        $replaced = count($delIds);
+                    }
+                }
                 $ctx = mpLoadMaterialContext($db, $projectId);
 
                 // ---- Pass 1: validasi baris, kelompokkan per item lintas task ----
@@ -982,6 +1015,7 @@ PROMPT;
                             if ($qty <= 0 || ($name === '' && $bid <= 0)) throw new Exception("{$label} pada Task \"{$tName}\" tidak valid (nama / qty).");
                             if (strlen($name) > 255) $name = substr($name, 0, 255);
                             list($pMin, $pMax) = mpNormPrice(mpNum($m['price_min'] ?? 0), mpNum($m['price_max'] ?? ($m['unit_price'] ?? 0)));
+                            list($aiMin, $aiMax) = mpNormPrice(mpNum($m['ai_min'] ?? 0), mpNum($m['ai_max'] ?? 0));
                             $res = mpResolveLine($ctx, $bid, $name, $kind);          // server menentukan sendiri: rab / master / new
                             if ($res['type'] !== 'rab' && $pMax <= 0 && !($res['type'] === 'master' && (float)($kind === 'expenses' ? $res['master']['default_price'] : $res['master']['estimated_price']) > 0)) {
                                 throw new Exception("Harga {$label} \"{$name}\" belum diisi (Task \"{$tName}\").");
@@ -989,7 +1023,7 @@ PROMPT;
                             $key = mpLineKey($res, $name, $kind);
                             if (!isset($agg[$key])) {
                                 $agg[$key] = ['kind' => $kind, 'res' => $res, 'name' => $name, 'unit' => $unit, 'pmin' => $pMin, 'pmax' => $pMax,
-                                              'qty' => 0.0, 'spec' => trim((string)($m['spec'] ?? '')), 'category' => mb_substr($tName, 0, 100),
+                                              'qty' => 0.0, 'spec' => trim((string)($m['spec'] ?? '')), 'category' => mb_substr($tName, 0, 100), 'aimin' => $aiMin, 'aimax' => $aiMax,
                                               'cat' => mpExpCategory($m['category'] ?? '')];     // kategori RAB utk biaya baru
                             }
                             if ($agg[$key]['spec'] === '') $agg[$key]['spec'] = trim((string)($m['spec'] ?? ''));
@@ -1013,9 +1047,29 @@ PROMPT;
                     INSERT INTO public.budget_items (project_id, category, material_id, expense_id, item_name, unit, qty_plan,
                                                      unit_price_plan, tolerance_pct, notes)
                     VALUES (:pid, :cat, :mid, :eid, :iname, :unit, :qty, :pplan, 0, :notes) RETURNING id");   // harga satuan RAB = MAX; rentang min-max ada di master
-                $newMaterials = 0; $newExpMaster = 0; $newRabMat = 0; $newRabExp = 0; $topups = 0; $touched = [];
+                $newMaterials = 0; $newExpMaster = 0; $newRabMat = 0; $newRabExp = 0; $topups = 0; $touched = []; $filledRange = 0;
                 foreach ($agg as $key => &$a) {
                     $res = $a['res'];
+                    // [AI-BOQ] Master yang rentang harganya masih kosong diisi dari estimasi AI (hanya mengisi yang kosong, tidak menimpa nilai yang sudah ada)
+                    $mtype = null; $mid0 = 0; $curMax = 0.0; $curMin = 0.0;
+                    if ($res['type'] === 'rab') {
+                        $r0 = $res['rab'];
+                        if ($r0['material_id'] > 0) { $mtype = 'M'; $mid0 = $r0['material_id']; } elseif ($r0['expense_id'] > 0) { $mtype = 'E'; $mid0 = $r0['expense_id']; }
+                        $curMax = (float)$r0['master_max']; $curMin = (float)$r0['master_min'];
+                    } elseif ($res['type'] === 'master') {
+                        $mtype = ($a['kind'] === 'expenses') ? 'E' : 'M'; $mid0 = (int)$res['master']['id'];
+                        $curMax = (float)($mtype === 'E' ? $res['master']['default_price'] : $res['master']['estimated_price']);
+                        $curMin = (float)($mtype === 'E' ? $res['master']['default_price_min'] : $res['master']['estimated_price_min']);
+                    }
+                    if ($mtype && $mid0 > 0 && ($curMax <= 0 || $curMin <= 0)) {
+                        $nMax = $curMax > 0 ? $curMax : (float)$a['aimax'];
+                        $nMin = $curMin > 0 ? $curMin : (((float)$a['aimin'] > 0 && (float)$a['aimin'] < $nMax) ? (float)$a['aimin'] : 0.0);
+                        if ($nMax > 0 && ($nMax != $curMax || $nMin != $curMin)) {
+                            if ($mtype === 'M') mpExec($db, "UPDATE public.materials SET estimated_price = CAST(:mx AS numeric), estimated_price_min = CASE WHEN CAST(:mn AS numeric) > 0 THEN CAST(:mn AS numeric) ELSE estimated_price_min END WHERE id = :id", ['mx' => $nMax, 'mn' => $nMin, 'id' => $mid0], 'fill_master_range');
+                            else                mpExec($db, "UPDATE expense_master SET default_price = CAST(:mx AS numeric), default_price_min = CASE WHEN CAST(:mn AS numeric) > 0 THEN CAST(:mn AS numeric) ELSE default_price_min END WHERE id = :id", ['mx' => $nMax, 'mn' => $nMin, 'id' => $mid0], 'fill_master_range_exp');
+                            $filledRange++;
+                        }
+                    }
                     if ($res['type'] === 'rab') {
                         $r = $res['rab'];
                         $a['bid'] = (int)$r['budget_item_id'];
@@ -1133,7 +1187,7 @@ PROMPT;
                 }
                 mpJson([
                     'success' => true,
-                    'message' => "{$taskCount} Task dan {$allocCount} alokasi (material + biaya) disimpan. Master baru: {$newMaterials} material, {$newExpMaster} biaya; item RAB baru: {$newRabMat} material, {$newRabExp} biaya; RAB ditambah qty: {$topups}. Task lama tidak dihapus." . $warn,
+                    'message' => "{$taskCount} Task dan {$allocCount} alokasi (material + biaya) disimpan. Master baru: {$newMaterials} material, {$newExpMaster} biaya; item RAB baru: {$newRabMat} material, {$newRabExp} biaya; RAB ditambah qty: {$topups}. " . ($replaced > 0 ? " {$replaced} task lama (belum dimulai) diganti." : ($mode === 'append' ? ' Task lama dipertahankan (mode tambah).' : '')) . ($filledRange > 0 ? " Rentang harga master diisi untuk {$filledRange} item." : '') . $warn,
                     'task_count' => $taskCount, 'allocation_count' => $allocCount,
                     'new_material_count' => $newMaterials, 'new_expense_master_count' => $newExpMaster, 'new_rab_count' => $newRabMat + $newRabExp,
                     'invoice' => $invResult, 'invoice_error' => $invError

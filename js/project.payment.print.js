@@ -116,7 +116,7 @@
         }
 
         root.innerHTML =
-            '<header class="hdr"><div class="l"><div class="co-name">RAB-Monitor</div><div class="co-addr">Sistem Monitoring Proyek</div></div>' +
+            '<header class="hdr"><div class="l"><div class="co-name">RAB-Project</div><div class="co-addr">Sistem Monitoring Proyek</div></div>' +
             '<div class="r"><b>TANDA TERIMA PEMBAYARAN</b><div>No. ' + esc(h.payment_no) + '</div></div></header>' +
             '<h1 class="title">TANDA TERIMA</h1>' +
             '<p>Telah diterima pembayaran dari:</p>' +

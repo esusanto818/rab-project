@@ -12,7 +12,7 @@ $paymentId = intval($_GET['id'] ?? 0);
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Tanda Terima Pembayaran</title>
+    <title>Tanda Terima Pembayaran Proyek</title>
     <style>
         @page { size: A4; margin: 15mm; }
         * { box-sizing: border-box; }
