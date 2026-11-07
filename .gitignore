@@ -20,5 +20,4 @@ backup_crd_migration_20261106_220206
 # Rekomendasi: Mengabaikan semua file backup migrasi di masa depan secara otomatis
 backup_crd_migration_*
 
-changes/
 
