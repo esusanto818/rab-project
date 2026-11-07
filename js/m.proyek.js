@@ -75,6 +75,15 @@ Ext.onReady(function () {
     // [AUTO-INV][NEW] window lebar + scroll (Ext.Msg terlalu sempit untuk tabel). onYes kosong -> hanya tombol Tutup.
     // Tombol footer memakai <button> HTML bergaya sama dengan "Print Task" (tombol Ext bawaan tidak terbaca di tema gelap).
     var planWinSeq = 0;
+    // [DEDUP] penjaga klik ganda: analisis sedang jalan / jendela hasil analisis masih terbuka / simpan sedang jalan
+    var aiBusy = false, aiPlanOpen = false, aiSaving = false;
+    function setAiBtn(disabled) {
+        var b = document.getElementById('customAiBtn');
+        if (!b) return;
+        b.disabled = !!disabled;
+        b.style.opacity = disabled ? '0.45' : '1';
+        b.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    }
     function showPlanWin(title, html, yesText, onYes, onReady, keepOpen) {      // [AI-BOQ] keepOpen: jangan tutup saat Simpan (draft tetap ada bila gagal)
         var w = Math.min(1250, Math.round((window.innerWidth || 1200) * 0.95));      // [AI-BOQ] lebih lebar untuk tabel BoQ
         var h = Math.min(700, Math.round((window.innerHeight || 800) * 0.90));
@@ -398,6 +407,8 @@ Ext.onReady(function () {
                         Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu sebelum menjalankan analisis AI.');
                         return;
                     }
+                    if (aiBusy || aiPlanOpen) return;                  // [DEDUP] abaikan klik berikutnya selama analisis berjalan / hasil belum ditutup
+                    aiBusy = true; setAiBtn(true);
                     Ext.MessageBox.wait('AI sedang menyusun Task, daftar material (BoQ) dan perkiraan harga... (bisa 1-2 menit)', 'Mohon Tunggu');
                     Ext.Ajax.request({
                         url: CRD, method: 'POST',
@@ -405,6 +416,7 @@ Ext.onReady(function () {
                         params: { task: 'ai_generate_tasks', project_id: projId },
                         success: function(response) {
                             Ext.MessageBox.hide();
+                            aiBusy = false; setAiBtn(false);              // [DEDUP]
                             var res;
                             try { res = Ext.util.JSON.decode(response.responseText); }
                             catch (e) { Ext.Msg.alert('Gagal', 'Respons AI tidak valid.'); return; }
@@ -417,7 +429,7 @@ Ext.onReady(function () {
                             var meta = res;                        // angka total + peringatan dari server (diperbarui tiap Hitung Ulang)
                             var planWin = null;
                             var existing = res.existing_tasks || { total: 0, replaceable: 0, kept: 0 };
-                            var saveMode = existing.replaceable > 0 ? 'replace' : 'append';        // replace = task lama (belum dimulai) diganti agar tidak ganda
+                            var saveMode = 'merge';        // [DEDUP] tidak ada pilihan ganti/tambah lagi: server selalu cek 'hampir sama' -> timpa, bila belum ada -> simpan baru
 
                             // ================================================================
                             // [AI-BOQ][REWORK] Review & EDIT draft sebelum disimpan:
@@ -493,18 +505,20 @@ Ext.onReady(function () {
                                     'Total Material: Rp <span id="aiSumMat">' + fmtIdr(t.mat) + '</span> | Total Biaya: Rp <span id="aiSumExp">' + fmtIdr(t.exp) + '</span><br>' +
                                     '<b>Total (harga MAX, dipakai di RAB): Rp <span id="aiSumMax" style="' + (meta.over_budget || meta.over_contract ? 'color:#ff6b5e;' : '') + '">' + fmtIdr(t.max) + '</span></b> | Total (harga MIN): Rp <span id="aiSumMin">' + fmtIdr(t.min) + '</span></div>';
                             }
-                            // Pilihan: ganti task lama (disarankan) atau tambahkan. Ganti mencegah task dan qty RAB bertambah ganda saat analisis diulang.
+                            // [DEDUP] Info hasil cek 'hampir sama' (tanpa pilihan manual): task yang namanya mirip task lama akan DITIMPA, sisanya disimpan baru
                             function modeHtml() {
                                 if (!existing.total) return '';
-                                var topups = 0;
-                                Ext.each(plan.tasks, function (t) { Ext.each(KINDS, function (k) { Ext.each(t[k] || [], function (m) { if (m.status === 'rab_topup') topups++; }); }); });
-                                var h = '<div style="background:#0b1b28;border:1px solid #52758b;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px;color:#d5e3ec;line-height:1.7;">' +
-                                    '<b>Proyek ini sudah punya ' + existing.total + ' task</b> (' + existing.replaceable + ' belum dimulai dan aman diganti; ' + existing.kept + ' dipertahankan karena sudah berjalan / ada tagihan terbayar).<br>' +
-                                    '<label style="cursor:pointer;"><input type="radio" name="aiMode" class="aiMode" value="replace"' + (saveMode === 'replace' ? ' checked="checked"' : '') + (existing.replaceable ? '' : ' disabled="disabled"') +
-                                    '> <b>Ganti</b> ' + existing.replaceable + ' task lama dengan hasil analisis ini (disarankan: task dan qty RAB tidak menjadi ganda)</label><br>' +
-                                    '<label style="cursor:pointer;"><input type="radio" name="aiMode" class="aiMode" value="append"' + (saveMode === 'append' ? ' checked="checked"' : '') +
-                                    '> <b>Tambahkan</b> sebagai task baru (task lama tetap ada; item yang sama menambah qty RAB)</label>';
-                                if (saveMode === 'append' && topups > 0) h += '<div style="color:#ffe08a;margin-top:4px;">&#9888; ' + topups + ' item akan MENAMBAH qty RAB karena sudah dialokasikan ke task lama.</div>';
+                                var tm = meta.task_matches || [], ov = tm.length, nw = Math.max(0, plan.tasks.length - ov);
+                                var h = '<div style=\"background:#0b1b28;border:1px solid #52758b;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px;color:#d5e3ec;line-height:1.7;\">' +
+                                    '<b>Proyek ini sudah punya ' + existing.total + ' task.</b> Saat disimpan, setiap task, material dan biaya dicek dulu: ' +
+                                    'bila namanya <b>hampir sama</b> dengan data lama maka data lama <b>ditimpa</b> / dipakai ulang (tidak dobel); bila belum ada maka <b>disimpan baru</b>.<br>' +
+                                    '<b>Task: <span style=\"color:#ffb74d;\">' + ov + ' akan menimpa task lama</span>, <span style=\"color:#7fe0a0;\">' + nw + ' disimpan baru</span>.</b>';
+                                if (ov) {
+                                    h += '<div style=\"margin-top:4px;color:#b0d4e0;\">';
+                                    Ext.each(tm, function (x) { h += '&bull; ' + enc(x.task_name) + ' &rarr; menimpa <b>' + enc(x.match_task_name) + '</b> (kemiripan ' + Math.round(x.score * 100) + '%)<br>'; });
+                                    h += '</div>';
+                                }
+                                h += '<div style=\"margin-top:4px;color:#9fb8c6;\">Task lama yang sudah berjalan hanya diperbarui deskripsi &amp; alokasinya (nama / tanggal tidak diubah). Klik <b>Hitung Ulang</b> setelah mengubah nama task agar daftar ini diperbarui.</div>';
                                 return h + '</div>';
                             }
                             var EXP_CATS = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];     // = kategori biaya di modul RAB
@@ -749,11 +763,6 @@ Ext.onReady(function () {
                                     };
                                 }
 
-                                els = root.querySelectorAll('.aiMode');                       // ganti / tambah task lama
-                                for (i = 0; i < els.length; i++) { (function (r) {
-                                    r.onclick = function () { saveMode = r.value; refresh(); };
-                                })(els[i]); }
-
                                 els = root.querySelectorAll('.aiRecalc');
                                 for (i = 0; i < els.length; i++) { els[i].onclick = function () { refresh(); }; }
 
@@ -845,6 +854,7 @@ Ext.onReady(function () {
                                                 redraw();
                                             }
                                             if (meta.over_contract) {
+                                                aiSaving = false;                                // [DEDUP]
                                                 Ext.Msg.alert('Tidak dapat disimpan', 'Hasil analisis LEBIH BESAR dari nilai kontrak (plafon). Lihat kotak merah di bagian atas, lalu kurangi qty / harga / item.');
                                                 return;
                                             }
@@ -852,10 +862,10 @@ Ext.onReady(function () {
                                                 var li = '';
                                                 Ext.each(meta.warnings || [], function (w) { li += '<li style="margin-bottom:6px;">' + enc(w.text) + '</li>'; });
                                                 Ext.Msg.confirm('Periksa peringatan sebelum menyimpan', '<ul style="margin:0 0 0 16px;padding:0;">' + li + '</ul><br>Tetap simpan ke master, RAB dan Task?',
-                                                    function (b) { if (b === 'yes') cb(); });
+                                                    function (b) { if (b === 'yes') { cb(); } else { aiSaving = false; } });          // [DEDUP]
                                             } else { cb(); }
                                         },
-                                        failure: function () { Ext.MessageBox.hide(); Ext.Msg.alert('Peringatan', 'Gagal memeriksa plafon ke server. Coba lagi.'); }
+                                        failure: function () { aiSaving = false; Ext.MessageBox.hide(); Ext.Msg.alert('Peringatan', 'Gagal memeriksa plafon ke server. Coba lagi.'); }   // [DEDUP]
                                     });
                                 }
                                 function doSave() {
@@ -870,6 +880,7 @@ Ext.onReady(function () {
                                     },
                                     success: function (saveResponse) {
                                         Ext.MessageBox.hide();
+                                        aiSaving = false;                                    // [DEDUP]
                                         var saved;
                                         try { saved = Ext.util.JSON.decode(saveResponse.responseText); }
                                         catch (e) { Ext.Msg.alert('Gagal', 'Respons penyimpanan tidak valid.'); return; }
@@ -882,19 +893,25 @@ Ext.onReady(function () {
                                     },
                                     failure: function () {
                                         Ext.MessageBox.hide();
+                                        aiSaving = false;                                    // [DEDUP]
                                         Ext.Msg.alert('Gagal', 'Gagal menyimpan. Draft Anda masih terbuka; periksa log PHP.');
                                     }
                                 });
                                 }   // doSave
+                                if (aiSaving) return false;          // [DEDUP] klik Simpan berulang diabaikan selama proses berjalan
+                                aiSaving = true;
                                 preSave(doSave);
                                 return false;
                             }, function (win) {
                                 planWin = win;
+                                aiPlanOpen = true;                                   // [DEDUP] selama jendela hasil terbuka, Analisa tidak bisa diklik lagi
+                                win.on('destroy', function () { aiPlanOpen = false; aiSaving = false; });
                                 bindPlanActions(win);
                             }, true);                  // keepOpen: jendela tetap terbuka sampai simpan berhasil
                         },
                         failure: function() {
                             Ext.MessageBox.hide();
+                            aiBusy = false; setAiBtn(false);              // [DEDUP]
                             Ext.Msg.alert('Gagal', 'Terjadi kesalahan koneksi server.');
                         }
                     });

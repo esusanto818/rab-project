@@ -418,7 +418,82 @@ function mpTaskReplaceInfo($db, $projectId) {
     foreach ($rows as $r) { if ($r['status'] === 'Belum Mulai' && (float)$r['paid'] <= 0) $ids[] = (int)$r['id']; }
     return ['total' => count($rows), 'replaceable_ids' => $ids];
 }
-function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }
+function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }   // [DEDUP] tidak dipakai lagi (simpan selalu cek 'hampir sama'); dibiarkan agar pemanggil lama aman
+
+/* ============================================================
+ * [DEDUP][NEW] Cek 'HAMPIR SAMA' sebelum simpan (task, material, biaya)
+ *  - nama dinormalisasi (huruf kecil, tanpa tanda baca, tanpa kata umum: pekerjaan/pemasangan/dan/...), token diurutkan
+ *  - angka (dimensi / mutu: 300, K350, 50) HARUS sama persis -> 'Baja WF 200' tidak digabung dengan 'Baja WF 300'
+ *  - skor = max(Dice token, similar_text) ; item (material/biaya) >= MP_SIM_ITEM, task >= MP_SIM_TASK
+ *  - mirip dengan data lama -> data lama DITIMPA/dipakai ulang ; tidak ada yang mirip -> simpan baru
+ * ============================================================ */
+const MP_SIM_ITEM = 0.85;     // ambang kemiripan material / biaya (0-1)
+const MP_SIM_TASK = 0.75;     // ambang kemiripan nama task (kalimat lebih longgar)
+function mpTokens($s) {
+    static $cache = [];
+    $k = (string)$s;
+    if (isset($cache[$k])) return $cache[$k];
+    $stop = ['pekerjaan' => 1, 'pemasangan' => 1, 'pasang' => 1, 'pengadaan' => 1, 'dan' => 1, 'untuk' => 1, 'yang' => 1, 'dengan' => 1, 'dgn' => 1, 'material' => 1, 'bahan' => 1];
+    $t = [];
+    foreach (explode(' ', mpNorm($k)) as $w) { if ($w !== '' && !isset($stop[$w])) $t[$w] = true; }
+    $t = array_keys($t); sort($t);
+    return $cache[$k] = $t;
+}
+function mpSimilarity($a, $b) {
+    $ta = mpTokens($a); $tb = mpTokens($b);
+    if (!$ta || !$tb) return (mpNorm($a) !== '' && mpNorm($a) === mpNorm($b)) ? 1.0 : 0.0;
+    preg_match_all('/\d+/', implode(' ', $ta), $ma);
+    preg_match_all('/\d+/', implode(' ', $tb), $mb);
+    $na = $ma[0]; $nb = $mb[0]; sort($na); sort($nb);
+    if ($na !== $nb) return 0.0;                                  // angka berbeda = barang / mutu berbeda
+    $dice = 2 * count(array_intersect($ta, $tb)) / (count($ta) + count($tb));
+    similar_text(implode(' ', $ta), implode(' ', $tb), $pct);     // toleran salah ketik
+    return max($dice, $pct / 100);
+}
+// Cari baris paling mirip pada peta ctx (nilai: array baris); $field = kolom nama pada baris
+function mpFuzzy($name, array $map, $field, $th = MP_SIM_ITEM) {
+    $best = null; $bs = 0.0;
+    foreach ($map as $row) {
+        $sc = mpSimilarity($name, isset($row[$field]) ? $row[$field] : '');
+        if ($sc >= $th && $sc > $bs) { $bs = $sc; $best = $row; }
+    }
+    return $best;
+}
+// Nama baris baru yang hampir sama dalam SATU rencana disatukan (agar tidak membuat 2 material / biaya baru yang kembar)
+function mpCanonName(array &$seen, $kind, $name) {
+    if (!isset($seen[$kind])) $seen[$kind] = [];
+    foreach ($seen[$kind] as $n) { if (mpSimilarity($name, $n) >= MP_SIM_ITEM) return $n; }
+    $seen[$kind][] = $name;
+    return $name;
+}
+// Pasangkan task hasil analisis (indeks => ['id','name']) dengan task lama proyek yang namanya hampir sama (satu-satu)
+function mpMatchTasks($db, $projectId, array $planTasks) {
+    $existing = mpFetchAll($db, "SELECT id, task_name FROM public.project_tasks WHERE project_id = :p ORDER BY id", ['p' => $projectId], 'match_tasks');
+    $pairs = [];
+    foreach (array_values($planTasks) as $i => $t) {
+        $nm = trim((string)(isset($t['task_name']) ? $t['task_name'] : ''));
+        if ($nm === '') continue;
+        foreach ($existing as $e) {
+            $sc = mpSimilarity($nm, $e['task_name']);
+            if ($sc >= MP_SIM_TASK) $pairs[] = ['s' => $sc, 'i' => $i, 'id' => (int)$e['id'], 'n' => $e['task_name']];
+        }
+    }
+    usort($pairs, function ($a, $b) { return $b['s'] <=> $a['s']; });
+    $out = []; $usedId = [];
+    foreach ($pairs as $pr) {
+        if (isset($out[$pr['i']]) || isset($usedId[$pr['id']])) continue;
+        $out[$pr['i']] = ['id' => $pr['id'], 'name' => $pr['n'], 'score' => round($pr['s'], 2)];
+        $usedId[$pr['id']] = true;
+    }
+    return $out;
+}
+function mpMatchIds(array $m) { $ids = []; foreach ($m as $x) $ids[] = (int)$x['id']; return $ids; }
+// Ringkasan untuk UI: daftar task yang akan menimpa task lama
+function mpMatchInfo(array $m, array $planTasks) {
+    $pt = array_values($planTasks); $rows = [];
+    foreach ($m as $i => $x) $rows[] = ['index' => $i, 'task_name' => (string)($pt[$i]['task_name'] ?? ''), 'match_task_id' => $x['id'], 'match_task_name' => $x['name'], 'score' => $x['score']];
+    return ['task_matches' => $rows, 'overwrite_task_count' => count($m), 'new_task_count' => max(0, count($pt) - count($m))];
+}
 
 // $ignoreTaskIds: task yang akan diganti -> alokasinya tidak dihitung (agar analisis ulang tidak menggandakan qty RAB)
 function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
@@ -476,13 +551,19 @@ function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
 }
 
 // type: rab (sudah di RAB proyek) | master (material ada di master, belum di RAB) | new (belum ada)
+// [DEDUP] urutan: id RAB -> nama sama persis (RAB, master) -> nama HAMPIR SAMA (RAB, master) -> baru
 function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
     $k = mpNorm($name);
     if ($kind === 'expenses') {
         if ($bid > 0 && isset($ctx['expById'][$bid])) return ['type' => 'rab', 'rab' => $ctx['expById'][$bid], 'master' => null];
         if ($k !== '' && isset($ctx['expByName'][$k])) return ['type' => 'rab', 'rab' => $ctx['expByName'][$k], 'master' => null];
-        if ($k !== '' && isset($ctx['expMasterByName'][$k])) {                       // ada di expense_master
-            $e = $ctx['expMasterByName'][$k];
+        $e = ($k !== '' && isset($ctx['expMasterByName'][$k])) ? $ctx['expMasterByName'][$k] : null;
+        if (!$e) {
+            $f = mpFuzzy($name, $ctx['expByName'], 'material_name');                         // [DEDUP] hampir sama dgn biaya di RAB
+            if ($f) return ['type' => 'rab', 'rab' => $f, 'master' => null];
+            $e = mpFuzzy($name, $ctx['expMasterByName'], 'expense_name');                    // [DEDUP] hampir sama dgn expense_master
+        }
+        if ($e) {
             if (isset($ctx['expByEid'][(int)$e['id']])) return ['type' => 'rab', 'rab' => $ctx['expByEid'][(int)$e['id']], 'master' => null];
             return ['type' => 'master', 'rab' => null, 'master' => $e];
         }
@@ -490,8 +571,13 @@ function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
     }
     if ($bid > 0 && isset($ctx['rabById'][$bid])) return ['type' => 'rab', 'rab' => $ctx['rabById'][$bid], 'master' => null];
     if ($k !== '' && isset($ctx['rabByName'][$k])) return ['type' => 'rab', 'rab' => $ctx['rabByName'][$k], 'master' => null];
-    if ($k !== '' && isset($ctx['masterByName'][$k])) {
-        $m = $ctx['masterByName'][$k];
+    $m = ($k !== '' && isset($ctx['masterByName'][$k])) ? $ctx['masterByName'][$k] : null;
+    if (!$m) {
+        $f = mpFuzzy($name, $ctx['rabByName'], 'material_name');                             // [DEDUP] hampir sama dgn material di RAB
+        if ($f) return ['type' => 'rab', 'rab' => $f, 'master' => null];
+        $m = mpFuzzy($name, $ctx['masterByName'], 'material_name');                          // [DEDUP] hampir sama dgn master material
+    }
+    if ($m) {
         if (isset($ctx['rabByMid'][(int)$m['id']])) return ['type' => 'rab', 'rab' => $ctx['rabByMid'][(int)$m['id']], 'master' => null];
         return ['type' => 'master', 'rab' => null, 'master' => $m];
     }
@@ -499,6 +585,7 @@ function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
 }
 function mpLineKey($res, $name, $kind = 'materials') {
     if ($res['type'] === 'rab') return 'b' . $res['rab']['budget_item_id'];
+    if ($res['type'] === 'master') return ($kind === 'expenses' ? 'xm' : 'nm') . (int)$res['master']['id'];   // [DEDUP] nama berbeda tapi master sama -> satu baris RAB
     return ($kind === 'expenses' ? 'x' : 'n') . mpNorm($name);
 }
 
@@ -518,7 +605,7 @@ function mpNextMaterialCode($db) {
  * $tasks diubah in-place. Mengembalikan total (mata uang Rupiah):
  *   max/min = total BoQ, mat/exp = pecahan max, add = tambahan nilai RAB bila disimpan, newNames = material baru unik. */
 function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
-    $running = [];
+    $running = []; $seenNew = [];                                              // [DEDUP] $seenNew: nama baris baru dalam rencana ini
     $tot = ['max' => 0.0, 'min' => 0.0, 'mat' => 0.0, 'exp' => 0.0, 'add' => 0.0, 'newNames' => []];
     foreach ($tasks as &$t) {
         foreach (['materials', 'expenses'] as $kind) {
@@ -541,7 +628,7 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
                 );
                 $unit = trim((string)($m['unit'] ?? ''));
                 $res = mpResolveLine($ctx, $bidIn, $name, $kind);
-                $key = mpLineKey($res, $name, $kind);
+                $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   // [DEDUP]
                 $before = $running[$key] ?? 0.0;
                 $running[$key] = $before + $qty;
 
@@ -911,8 +998,13 @@ PROMPT;
                     'expenses'  => is_array($t['expenses'] ?? null) ? $t['expenses'] : []
                 ];
             }
+            // [DEDUP] task hasil analisis yang namanya hampir sama dengan task lama akan MENIMPA task lama saat disimpan
+            // -> alokasi task lama itu tidak dihitung (qty RAB tidak dobel); konteks dimuat ulang dengan pengecualian tsb
+            $taskMatch = mpMatchTasks($db, $projectId, $normalizedTasks);
+            $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));
             $tot = mpAnnotateTasks($normalizedTasks, $ctx, $rate, true);            // cocokkan RAB/master, harga min/max, total
             $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $normalizedTasks);
+            $meta = array_merge($meta, mpMatchInfo($taskMatch, $normalizedTasks));
             $cnt = ['m' => 0, 'e' => 0];
             foreach ($normalizedTasks as $nt) { $cnt['m'] += count($nt['materials']); $cnt['e'] += count($nt['expenses']); }
 
@@ -942,11 +1034,12 @@ PROMPT;
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
             $rate = (float)($proj['budget_exch_rate'] ?? 1);
             if ($rate <= 0) $rate = 1;
-            $mode = mpMode($_REQUEST['mode'] ?? 'replace');                  // [AI-BOQ] replace = task lama (belum dimulai) diganti; append = ditambahkan
-            $ctx = mpLoadMaterialContext($db, $projectId, $mode === 'append' ? [] : mpTaskReplaceInfo($db, $projectId)['replaceable_ids']);
             $tasksIn = $plan['tasks'];
+            $taskMatch = mpMatchTasks($db, $projectId, $tasksIn);             // [DEDUP] task hampir sama dgn task lama -> akan ditimpa saat simpan
+            $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));
             $tot = mpAnnotateTasks($tasksIn, $ctx, $rate, false);                   // qty 0 dipertahankan agar baris yang sedang diedit tidak hilang
             $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $tasksIn);
+            $meta = array_merge($meta, mpMatchInfo($taskMatch, $tasksIn));
             mpJson(array_merge([
                 'success' => true, 'message' => 'OK',
                 'boq_total' => round($tot['max'], 2), 'boq_total_min' => round($tot['min'], 2),
@@ -976,25 +1069,18 @@ PROMPT;
             try {
                 mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $projectId], 'lock_proyek');   // cegah simpan ganda paralel
                 $db->query("SELECT pg_advisory_xact_lock(771001)");                                                       // serialisasi kode material otomatis
-                // [AI-BOQ] Mode ganti: hapus task lama yang belum dimulai (beserta alokasinya) agar analisis ulang TIDAK menggandakan task maupun qty RAB.
-                // Task yang sudah berjalan / punya tagihan terbayar dipertahankan. Tagihan otomatis dilepas dulu dari task lama lalu disambung ulang ke task baru.
-                $mode = mpMode($_REQUEST['mode'] ?? 'replace');
-                $replaced = 0;
-                if ($mode === 'replace') {
-                    $delIds = mpTaskReplaceInfo($db, $projectId)['replaceable_ids'];
-                    if ($delIds) {
-                        $inList = implode(',', array_map('intval', $delIds));
-                        $db->exec("UPDATE project_invoices SET task_id = NULL WHERE task_id IN ({$inList})");
-                        $db->exec("DELETE FROM public.task_materials WHERE task_id IN ({$inList})");
-                        $db->exec("DELETE FROM public.project_tasks WHERE id IN ({$inList})");
-                        $replaced = count($delIds);
-                    }
-                }
-                $ctx = mpLoadMaterialContext($db, $projectId);
+                // [DEDUP] Tidak ada lagi hapus massal task lama. Setiap task hasil analisis dicek: nama HAMPIR SAMA dengan task lama
+                // -> task lama ditimpa (id tetap, tagihan & SPK yang terkait tidak putus); belum ada -> task baru.
+                // Pengecekan ada di dalam transaksi setelah proyek di-lock, jadi klik / simpan berulang tidak lagi menggandakan data.
+                $taskMatch = mpMatchTasks($db, $projectId, array_values($plan['tasks']));
+                $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));   // alokasi task yang akan ditimpa tidak dihitung (qty RAB tidak dobel)
+                $seenNew = [];
 
                 // ---- Pass 1: validasi baris, kelompokkan per item lintas task ----
                 $tasksClean = []; $agg = [];
-                foreach ($plan['tasks'] as $t) {
+                $ti = -1;
+                foreach (array_values($plan['tasks']) as $t) {
+                    $ti++;                                                           // [DEDUP] indeks task = kunci $taskMatch
                     $tName  = trim((string)($t['task_name'] ?? ''));
                     $tDesc  = trim((string)($t['description'] ?? ''));
                     $tStart = (string)($t['start_date'] ?? '');
@@ -1020,7 +1106,7 @@ PROMPT;
                             if ($res['type'] !== 'rab' && $pMax <= 0 && !($res['type'] === 'master' && (float)($kind === 'expenses' ? $res['master']['default_price'] : $res['master']['estimated_price']) > 0)) {
                                 throw new Exception("Harga {$label} \"{$name}\" belum diisi (Task \"{$tName}\").");
                             }
-                            $key = mpLineKey($res, $name, $kind);
+                            $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   // [DEDUP] nama hampir sama dlm satu rencana = satu item
                             if (!isset($agg[$key])) {
                                 $agg[$key] = ['kind' => $kind, 'res' => $res, 'name' => $name, 'unit' => $unit, 'pmin' => $pMin, 'pmax' => $pMax,
                                               'qty' => 0.0, 'spec' => trim((string)($m['spec'] ?? '')), 'category' => mb_substr($tName, 0, 100), 'aimin' => $aiMin, 'aimax' => $aiMax,
@@ -1033,7 +1119,8 @@ PROMPT;
                             $lines[] = ['key' => $key, 'qty' => $qty];
                         }
                     }
-                    $tasksClean[] = ['name' => $tName, 'desc' => $tDesc, 'start' => $tStart, 'end' => $tEnd, 'lines' => $lines];
+                    $tasksClean[] = ['name' => $tName, 'desc' => $tDesc, 'start' => $tStart, 'end' => $tEnd, 'lines' => $lines,
+                                     'match_id' => isset($taskMatch[$ti]) ? (int)$taskMatch[$ti]['id'] : 0];   // [DEDUP] >0 = timpa task lama
                 }
 
                 // ---- Pass 2: master (material / expense_master) bila belum ada -> RAB proyek ----
@@ -1152,19 +1239,50 @@ PROMPT;
                 $stMaterial = $db->prepare("
                     INSERT INTO public.task_materials (task_id, budget_item_id, qty_budget)
                     VALUES (:tid, :bid, :qty)");
-                $taskCount = 0; $allocCount = 0;
+                $taskCount = 0; $allocCount = 0; $taskNew = 0; $taskOver = 0; $allocRemoved = 0;
+                // [DEDUP] task lama yang hampir sama: nama/tanggal hanya ditimpa bila masih 'Belum Mulai' (task berjalan hanya diperbarui deskripsinya)
+                $stTaskUpd = $db->prepare("
+                    UPDATE public.project_tasks SET
+                        task_name   = CASE WHEN status = 'Belum Mulai' THEN :tname ELSE task_name END,
+                        description = :tdesc,
+                        start_date  = CASE WHEN status = 'Belum Mulai' THEN CAST(:tsd AS date) ELSE start_date END,
+                        end_date    = CASE WHEN status = 'Belum Mulai' THEN CAST(:ted AS date) ELSE end_date END
+                     WHERE id = :id AND project_id = :pid");
+                $stAllocSel = $db->prepare("SELECT id, budget_item_id FROM public.task_materials WHERE task_id = :tid");
+                $stAllocUpd = $db->prepare("UPDATE public.task_materials SET qty_budget = :qty WHERE id = :id");     // id baris tetap -> FK spk_task_materials aman
+                $stAllocDel = $db->prepare("DELETE FROM public.task_materials tm WHERE tm.id = :id
+                                               AND NOT EXISTS (SELECT 1 FROM public.spk_task_materials s WHERE s.task_material_id = tm.id)");   // yang sudah dipakai SPK dipertahankan
                 foreach ($tasksClean as $tc) {
-                    $stTask->execute([':pid' => $projectId, ':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end']]);
-                    $taskId = (int)$stTask->fetchColumn();
-                    if ($taskId <= 0) throw new Exception('Gagal mendapatkan ID Task baru.');
+                    $existingAlloc = [];
+                    if ($tc['match_id'] > 0) {                                        // [DEDUP] TIMPA task lama
+                        $taskId = (int)$tc['match_id'];
+                        $stTaskUpd->execute([':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end'], ':id' => $taskId, ':pid' => $projectId]);
+                        $stAllocSel->execute([':tid' => $taskId]);
+                        foreach ($stAllocSel->fetchAll(PDO::FETCH_ASSOC) as $ar) $existingAlloc[(int)$ar['budget_item_id']] = (int)$ar['id'];
+                        $taskOver++;
+                    } else {                                                          // [DEDUP] belum ada -> SIMPAN BARU
+                        $stTask->execute([':pid' => $projectId, ':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end']]);
+                        $taskId = (int)$stTask->fetchColumn();
+                        if ($taskId <= 0) throw new Exception('Gagal mendapatkan ID Task baru.');
+                        $taskNew++;
+                    }
                     $perTask = [];                                                    // item sama di satu task digabung
                     foreach ($tc['lines'] as $ln) {
                         $bid = $agg[$ln['key']]['bid'];
                         $perTask[$bid] = round(($perTask[$bid] ?? 0) + $ln['qty'], 3);
                     }
                     foreach ($perTask as $bid => $qty) {
-                        $stMaterial->execute([':tid' => $taskId, ':bid' => $bid, ':qty' => $qty]);
+                        if (isset($existingAlloc[$bid])) {                            // [DEDUP] item sudah dialokasikan ke task ini -> qty ditimpa
+                            $stAllocUpd->execute([':qty' => $qty, ':id' => $existingAlloc[$bid]]);
+                            unset($existingAlloc[$bid]);
+                        } else {
+                            $stMaterial->execute([':tid' => $taskId, ':bid' => $bid, ':qty' => $qty]);
+                        }
                         $allocCount++;
+                    }
+                    foreach ($existingAlloc as $aid) {                                // alokasi lama yang tidak ada di hasil baru dilepas (bila belum dipakai SPK)
+                        $stAllocDel->execute([':id' => $aid]);
+                        $allocRemoved += $stAllocDel->rowCount();
                     }
                     $taskCount++;
                 }
@@ -1187,8 +1305,8 @@ PROMPT;
                 }
                 mpJson([
                     'success' => true,
-                    'message' => "{$taskCount} Task dan {$allocCount} alokasi (material + biaya) disimpan. Master baru: {$newMaterials} material, {$newExpMaster} biaya; item RAB baru: {$newRabMat} material, {$newRabExp} biaya; RAB ditambah qty: {$topups}. " . ($replaced > 0 ? " {$replaced} task lama (belum dimulai) diganti." : ($mode === 'append' ? ' Task lama dipertahankan (mode tambah).' : '')) . ($filledRange > 0 ? " Rentang harga master diisi untuk {$filledRange} item." : '') . $warn,
-                    'task_count' => $taskCount, 'allocation_count' => $allocCount,
+                    'message' => "{$taskCount} Task dan {$allocCount} alokasi (material + biaya) disimpan. Master baru: {$newMaterials} material, {$newExpMaster} biaya; item RAB baru: {$newRabMat} material, {$newRabExp} biaya; RAB ditambah qty: {$topups}. " . " Task: {$taskNew} baru, {$taskOver} ditimpa (nama hampir sama dengan task lama)." . ($allocRemoved > 0 ? " {$allocRemoved} alokasi lama yang tidak ada di hasil baru dilepas." : '') . ($filledRange > 0 ? " Rentang harga master diisi untuk {$filledRange} item." : '') . $warn,
+                    'task_count' => $taskCount, 'allocation_count' => $allocCount, 'task_new' => $taskNew, 'task_overwritten' => $taskOver,
                     'new_material_count' => $newMaterials, 'new_expense_master_count' => $newExpMaster, 'new_rab_count' => $newRabMat + $newRabExp,
                     'invoice' => $invResult, 'invoice_error' => $invError
                 ]);
