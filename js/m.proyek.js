@@ -94,8 +94,13 @@ Ext.onReady(function () {
                      '<button type="button" id="' + uid + 'Yes" style="' + btnBase + 'background:#066b78;">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
                    : '<button type="button" id="' + uid + 'No" style="' + btnBase + 'background:#066b78;">Tutup</button>') +
             '</div>';
+        if (!document.getElementById('aiPlanWinCss')) {      // [UI-READABLE] judul jendela 20px (default Ext 11px terlalu kecil)
+            Ext.util.CSS.createStyleSheet('.aiPlanWin .x-window-header-text{font-size:20px !important;font-weight:bold;line-height:30px;} ' +
+                                          '.aiPlanWin .x-window-header{padding-top:8px;padding-bottom:6px;} ' +
+                                          '.aiPlanWin .x-tool{margin-top:6px;}', 'aiPlanWinCss');
+        }
         var win = new Ext.Window({
-            title: title, width: w, height: h, modal: true, layout: 'auto', autoScroll: true, closeAction: 'close',
+            cls: 'aiPlanWin', title: title, width: w, height: h, modal: true, layout: 'auto', autoScroll: true, closeAction: 'close',
             bodyStyle: 'padding:14px;', html: html,
             bbar: new Ext.Toolbar({
                 style: 'background:transparent; border:0; padding:6px 10px;',
@@ -504,7 +509,7 @@ Ext.onReady(function () {
                             function mfld(ti, kind, li, field, val, w, type, ph) {
                                 return '<input type="' + (type || 'text') + '" class="aiEdit" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" data-field="' + field + '" value="' +
                                     enc(val === null || val === undefined ? '' : val) + '"' + (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + (ph ? ' placeholder="' + enc(ph) + '"' : '') +
-                                    ' style="' + IN + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
+                                    ' style="' + ING + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
                             }
                             function tfld(ti, field, val, style, type, ph) {
                                 return '<input type="' + (type || 'text') + '" class="aiTaskEdit" data-task="' + ti + '" data-field="' + field + '" value="' + enc(val || '') + '"' +
@@ -512,7 +517,7 @@ Ext.onReady(function () {
                             }
                             function nfld(id, ti, kind, f, ph, w, type) {          // isian form "buat baru"
                                 return '<input id="aiNew_' + id + '_' + f + '" class="aiNewIn" data-task="' + ti + '" data-kind="' + kind + '" type="' + (type || 'text') + '"' +
-                                    (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + ' placeholder="' + enc(ph) + '" style="' + IN + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
+                                    (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + ' placeholder="' + enc(ph) + '" style="' + ING + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
                             }
                             // [DEDUP] Info hasil cek 'hampir sama' (tanpa pilihan manual): task yang namanya mirip task lama akan DITIMPA, sisanya disimpan baru
                             function modeHtml() {
@@ -595,41 +600,43 @@ Ext.onReady(function () {
                                 return h + '</div>';
                             }
 
-                            // ---------- satu baris item = satu kartu ----------
+                            // ---------- [UI-GRID] material / biaya per task = TABEL GRID (satu baris satu item, kolom sejajar) ----------
+                            var ING = IN + 'height:36px;padding:5px 8px;';                       // isian di dalam sel grid
+                            var TH = 'padding:10px 8px;font-size:14px;font-weight:bold;color:#40d7ed;background:#0a1a27;border-bottom:2px solid #2c4a5e;white-space:nowrap;';
+                            var TD = 'padding:8px;vertical-align:top;border-bottom:1px solid #2a485d;font-size:15px;color:#fff;';
                             function lineRow(ti, kind, m, li) {
-                                var st = STATUS_LBL[m.status] || ['Cek ulang', '#b0bec5', 'Klik Hitung Ulang untuk memeriksa status item ini.'], fixed = isFixed(m), nameBlock;
+                                var st = STATUS_LBL[m.status] || ['Cek ulang', '#b0bec5', 'Klik Hitung Ulang untuk memeriksa status item ini.'], fixed = isFixed(m), nameCell;
                                 if (fixed) {
-                                    nameBlock = '<div style="font-size:17px;font-weight:bold;color:#fff;line-height:1.35;">' + enc(m.material_name) + '</div>' +
-                                        (m.spec ? '<div style="font-size:14px;color:#c4dde8;margin-top:3px;line-height:1.5;">' + enc(m.spec) + '</div>' : '') +
-                                        (kind === 'expenses' ? '<div style="font-size:14px;color:#9ec3d1;margin-top:3px;">Kategori: ' + enc(m.category || '-') + '</div>' : '');
+                                    nameCell = '<div style="font-weight:bold;line-height:1.35;">' + enc(m.material_name) + '</div>' +
+                                        (m.spec ? '<div style="font-size:13px;color:#c4dde8;margin-top:2px;line-height:1.4;">' + enc(m.spec) + '</div>' : '') +
+                                        (kind === 'expenses' ? '<div style="font-size:13px;color:#9ec3d1;margin-top:2px;">Kategori: ' + enc(m.category || '-') + '</div>' : '');
                                 } else {
-                                    nameBlock = '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
-                                        fld('Nama', mfld(ti, kind, li, 'material_name', m.material_name, '100%', 'text', KIND[kind].ph), 'flex:2;min-width:260px;') +
-                                        fld('Spesifikasi / keterangan', mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan'), 'flex:2;min-width:260px;') +
-                                        (kind === 'expenses' ? fld('Kategori', catSelect('', ti, kind, li, m.category, 'width:160px;'), '') : '') + '</div>';
+                                    nameCell = mfld(ti, kind, li, 'material_name', m.material_name, '100%', 'text', KIND[kind].ph) +
+                                        '<div style="height:4px;"></div>' + mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan') +
+                                        (kind === 'expenses' ? '<div style="height:4px;"></div>' + catSelect('', ti, kind, li, m.category, 'width:100%;height:36px;padding:5px 8px;') : '');
                                 }
-                                var fields = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">' +
-                                    fld('Satuan', fixed ? roBox(enc(m.unit || '-'), '100px') : mfld(ti, kind, li, 'unit', m.unit, '100px', 'text', 'satuan')) +
-                                    fld('Qty', mfld(ti, kind, li, 'qty_estimate', m.qty_estimate, '120px', 'number')) +
-                                    fld('Harga Min (Rp)', fixed ? roBox(fmtIdr(pMin(m)), '150px', true) : mfld(ti, kind, li, 'price_min', m.price_min, '150px', 'number')) +
-                                    fld('Harga Max (Rp)', fixed ? roBox(fmtIdr(pMax(m)), '150px', true) : mfld(ti, kind, li, 'price_max', m.price_max, '150px', 'number')) +
-                                    '<div style="margin-left:auto;text-align:right;"><span style="' + LBL + '">Total (Max)</span><div id="aiTot_' + ti + '_' + kind + '_' + li + '">' + totCell(m) + '</div></div></div>';
-                                var note = '<div style="font-size:13px;color:' + st[1] + ';margin-top:10px;line-height:1.5;"><b>' + st[0] + '</b> &mdash; ' + st[2] +
-                                    ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? ' Min master akan diisi: ' + fmtIdr(m.ai_min) + '.' : '') + '</div>' +
-                                    (m.reason ? '<div style="font-size:13px;color:#9bb9c6;margin-top:3px;line-height:1.5;">Alasan AI: ' + enc(m.reason) + '</div>' : '');
-                                return '<div style="border:1px solid #34546a;border-left:6px solid ' + st[1] + ';border-radius:7px;background:#0d2133;padding:14px;margin-bottom:12px;">' +
-                                    '<div style="display:flex;gap:12px;align-items:flex-start;"><div style="flex:1;min-width:0;">' + nameBlock + '</div>' +
-                                    '<div style="flex:none;">' + chip(st[0], st[1]) + '</div>' +
-                                    '<div style="flex:none;"><button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
-                                    'style="padding:9px 16px;background:' + BURG + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">Hapus</button></div></div>' +
-                                    fields + note + '</div>';
+                                var tip = st[2] + (m.reason ? ' Alasan AI: ' + m.reason : '') +
+                                    ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? ' Min master akan diisi: ' + fmtIdr(m.ai_min) + '.' : '');
+                                var ro = function (txt, right) { return '<div style="padding:7px 8px;' + (right ? 'text-align:right;' : '') + '">' + txt + '</div>'; };
+                                return '<tr style="background:' + (li % 2 ? '#0f2436' : '#0c1e2e') + ';">' +
+                                    '<td align="center" style="' + TD + 'color:#9ec3d1;border-left:5px solid ' + st[1] + ';">' + (li + 1) + '</td>' +
+                                    '<td style="' + TD + '">' + nameCell + '</td>' +
+                                    '<td style="' + TD + '">' + (fixed ? ro(enc(m.unit || '-')) : mfld(ti, kind, li, 'unit', m.unit, '100%', 'text', 'satuan')) + '</td>' +
+                                    '<td style="' + TD + '">' + mfld(ti, kind, li, 'qty_estimate', m.qty_estimate, '100%', 'number') + '</td>' +
+                                    '<td style="' + TD + '">' + (fixed ? ro(fmtIdr(pMin(m)), true) : mfld(ti, kind, li, 'price_min', m.price_min, '100%', 'number')) + '</td>' +
+                                    '<td style="' + TD + '">' + (fixed ? ro(fmtIdr(pMax(m)), true) : mfld(ti, kind, li, 'price_max', m.price_max, '100%', 'number')) + '</td>' +
+                                    '<td align="right" id="aiTot_' + ti + '_' + kind + '_' + li + '" style="' + TD + 'white-space:nowrap;">' + totCell(m) + '</td>' +
+                                    '<td style="' + TD + '"><span title="' + enc(tip) + '" style="cursor:help;">' + chip(st[0], st[1]) + '</span></td>' +
+                                    '<td align="center" style="' + TD + '"><button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
+                                    'style="padding:7px 12px;background:' + BURG + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">Hapus</button></td></tr>';
                             }
 
-                            function addPanel(ti, kind) {
+                            // Baris tambah item: dua baris yang kolomnya sejajar dengan grid (A = dari RAB, B = buat baru)
+                            function addRows(ti, kind) {
                                 var K = KIND[kind], list = (kind === 'materials') ? availableMaterials : availableExpenses, id = ti + '_' + kind;
-                                var box = 'border:1px solid #34546a;border-radius:7px;padding:14px;margin-top:12px;background:#0a1a27;';
-                                var ttl = 'font-size:15px;font-weight:bold;color:#80deea;margin-bottom:10px;';
-                                var sel = '<select id="aiSel_' + id + '" style="' + IN + 'width:100%;"><option value="">-- pilih dari RAB --</option>';
+                                var ad = 'padding:10px 8px;vertical-align:top;border-bottom:1px solid #2a485d;background:#123350;font-size:15px;color:#fff;';
+                                var lb = 'font-size:13px;font-weight:bold;color:#80deea;margin-bottom:4px;';
+                                var sel = '<select id="aiSel_' + id + '" style="' + ING + 'width:100%;"><option value="">-- pilih dari RAB --</option>';
                                 Ext.each(list, function (a) {
                                     var already = false;
                                     Ext.each(plan.tasks[ti][kind] || [], function (x) { if (parseInt(x.budget_item_id, 10) === parseInt(a.budget_item_id, 10)) already = true; });
@@ -637,35 +644,42 @@ Ext.onReady(function () {
                                            enc(a.material_name + ' | sisa RAB: ' + fmtQty3(a.qty_remaining) + ' ' + a.unit) + '</option>';
                                 });
                                 sel += '</select>';
-                                var h = '<div style="' + box + '"><div style="' + ttl + '">A. ' + K.rabLbl + '</div>' +
-                                    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' + fld('Item di RAB', sel, 'flex:1;min-width:300px;') +
-                                    fld('Qty', '<input id="aiSelQty_' + id + '" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" style="' + IN + 'width:120px;text-align:right;">') +
-                                    '<div>' + btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) + '</div></div></div>';
-                                h += '<div style="' + box + '"><div style="' + ttl + '">B. Atau buat baru <span style="font-weight:normal;color:#9ec3d1;font-size:14px;">(harga min &amp; max per satuan, Rupiah)</span></div>' +
-                                    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
-                                    (kind === 'expenses' ? fld('Kategori', catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:160px;')) : '') +
-                                    fld('Nama', nfld(id, ti, kind, 'name', K.ph, '100%'), 'flex:2;min-width:240px;') +
-                                    fld('Spesifikasi / keterangan', nfld(id, ti, kind, 'spec', 'Spesifikasi / keterangan', '100%'), 'flex:2;min-width:240px;') +
-                                    fld('Satuan', nfld(id, ti, kind, 'unit', 'satuan', '100px')) +
-                                    fld('Qty', nfld(id, ti, kind, 'qty', 'Qty', '110px', 'number')) +
-                                    fld('Harga Min', nfld(id, ti, kind, 'pmin', 'Harga min', '140px', 'number')) +
-                                    fld('Harga Max', nfld(id, ti, kind, 'pmax', 'Harga max', '140px', 'number')) +
-                                    '<div>' + btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</div></div></div>';
+                                var h = '<tr><td align="center" style="' + ad + 'font-weight:bold;color:#80deea;">A</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">' + K.rabLbl + '</div>' + sel + '</td>' +
+                                    '<td style="' + ad + '"></td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Qty</div><input id="aiSelQty_' + id + '" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" style="' + ING + 'width:100%;text-align:right;"></td>' +
+                                    '<td colspan="5" style="' + ad + 'vertical-align:bottom;">' + btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) + '</td></tr>';
+                                h += '<tr><td align="center" style="' + ad + 'font-weight:bold;color:#80deea;">B</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Atau buat baru (harga min &amp; max per satuan, Rp)</div>' +
+                                    nfld(id, ti, kind, 'name', K.ph, '100%') + '<div style="height:4px;"></div>' + nfld(id, ti, kind, 'spec', 'Spesifikasi / keterangan', '100%') +
+                                    (kind === 'expenses' ? '<div style="height:4px;"></div>' + catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:100%;height:36px;padding:5px 8px;') : '') + '</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Satuan</div>' + nfld(id, ti, kind, 'unit', 'satuan', '100%') + '</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Qty</div>' + nfld(id, ti, kind, 'qty', 'Qty', '100%', 'number') + '</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Harga Min</div>' + nfld(id, ti, kind, 'pmin', 'Min', '100%', 'number') + '</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Harga Max</div>' + nfld(id, ti, kind, 'pmax', 'Max', '100%', 'number') + '</td>' +
+                                    '<td colspan="3" style="' + ad + 'vertical-align:bottom;">' + btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</td></tr>';
                                 return h;
                             }
 
                             function kindBlock(ti, kind) {
                                 var K = KIND[kind], lines = plan.tasks[ti][kind] || [], key = ti + '_' + kind, isAddOpen = !!openAdd[key];
-                                var h = '<div style="margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid #2c4a5e;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;">' +
+                                var h = '<div style="margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid #2c4a5e;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;">' +
                                     '<span style="font-size:18px;font-weight:bold;color:' + (kind === 'materials' ? '#80deea' : '#ffcc80') + ';">' + K.title + ' (' + lines.length + ')</span>' +
                                     '<span style="margin-left:auto;font-size:14px;color:#9ec3d1;">Subtotal (Max): <span id="aiSub_' + key + '">' + subCell(taskSub(plan.tasks[ti], kind)) + '</span></span></div>';
+                                h += '<div style="overflow-x:auto;"><table style="width:100%;min-width:1000px;border-collapse:collapse;table-layout:fixed;">' +
+                                    '<colgroup><col style="width:48px;"><col><col style="width:90px;"><col style="width:110px;"><col style="width:140px;"><col style="width:140px;"><col style="width:150px;"><col style="width:150px;"><col style="width:90px;"></colgroup>' +
+                                    '<thead><tr><th style="' + TH + 'text-align:center;">No</th><th style="' + TH + 'text-align:left;">' + (kind === 'materials' ? 'Material / Spesifikasi' : 'Biaya / Keterangan') + '</th>' +
+                                    '<th style="' + TH + 'text-align:left;">Satuan</th><th style="' + TH + 'text-align:right;">Qty</th>' +
+                                    '<th style="' + TH + 'text-align:right;">Harga Min (Rp)</th><th style="' + TH + 'text-align:right;">Harga Max (Rp)</th>' +
+                                    '<th style="' + TH + 'text-align:right;">Total (Max)</th><th style="' + TH + 'text-align:left;">Status</th><th style="' + TH + 'text-align:center;">Aksi</th></tr></thead><tbody>';
                                 if (lines.length) {
                                     Ext.each(lines, function (m, li) { h += lineRow(ti, kind, m, li); });
                                 } else {
-                                    h += '<div style="font-size:15px;color:#ffcc80;margin:6px 0 10px;">' + K.empty + '</div>';
+                                    h += '<tr><td colspan="9" style="padding:14px;font-size:15px;color:#ffcc80;border-bottom:1px solid #2a485d;">' + K.empty + '</td></tr>';
                                 }
-                                h += '<div style="margin-top:6px;">' + btn('aiToggleAdd', ti, kind, isAddOpen ? '&minus; Tutup form tambah' : K.addLbl, isAddOpen ? '#2c4a5e' : TEAL) + '</div>';
-                                if (isAddOpen) h += addPanel(ti, kind);
+                                if (isAddOpen) h += addRows(ti, kind);
+                                h += '</tbody></table></div>';
+                                h += '<div style="margin-top:10px;">' + btn('aiToggleAdd', ti, kind, isAddOpen ? '&minus; Tutup form tambah' : K.addLbl, isAddOpen ? '#2c4a5e' : TEAL) + '</div>';
                                 return h;
                             }
 

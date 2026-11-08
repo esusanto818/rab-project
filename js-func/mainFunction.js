@@ -18,7 +18,7 @@ Ext.Ajax.on('beforerequest', function(conn, options) {
         return;
     }
 
-    var appRoot = match[1];
+    var appRoot = match[1];pathname
 
     // URL eksternal tidak boleh diubah.
     if (/^(https?:)?\/\//i.test(options.url)) {
