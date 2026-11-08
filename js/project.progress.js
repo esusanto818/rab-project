@@ -64,7 +64,8 @@ Ext.onReady(function () {
 
     document.getElementById("mainHeaderText").innerHTML = "Progress <em>Proyek</em>";
 
-    var CRD = '../dev/php-crud/project.progressCRD.php';
+    var APP_BASE_URL = window.APP_BASE_URL || '/';
+  var CRD = APP_BASE_URL + 'php-crud/project.progressCRD.php';
     var ACCESS_REPORT = 2;      // lapor / batalkan klaim
     var ACCESS_VERIFY = 3;      // verifikasi / tolak
     var dataRecord = null;      // baris proyek terpilih

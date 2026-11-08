@@ -12,7 +12,7 @@
 (function () {
     'use strict';
 
-    var CRD = '/rab-project/dev/php-crud/project.progressCRD.php';   // [PENTING] samakan dengan nama file backend di server
+    var CRD = window.APP_BASE_URL + 'php-crud/project.progressCRD.php';
     var ACCESS_REPORT = 2;                                  // samakan dengan PROG_ACCESS_REPORT di backend
     var MAX_PHOTOS = 5, MAX_SIDE = 1280, JPEG_Q = 0.75;
     var LS_PROJECTS = 'prg_claim_projects_cache';
@@ -453,7 +453,13 @@
     // Minta penyimpanan permanen agar antrean (foto) tidak dihapus browser (terutama iOS/Safari)
     if (navigator.storage && navigator.storage.persist) { navigator.storage.persist(); }
 
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/rab-project/sw.progress.js', { scope: '/rab-project/' }).catch(function () {});
+    if ('serviceWorker' in navigator && window.APP_BASE_URL) {
+        var base = window.APP_BASE_URL;
+
+        navigator.serviceWorker.register(base + 'sw.progress.js', {
+            scope: base
+        }).catch(function (error) {
+            console.error('Service Worker registration gagal:', error);
+        });
     }
 })();

@@ -1,25 +1,25 @@
 /*
-  Document    : stock.card.js
-  Description : Stock Card (kartu stok) per item, per gudang / semua gudang. ExtJS 3.4.1
-  Backend     : ../php-crud/stock.cardCRD.php
-  REVISI      : - URL backend relatif terhadap /rab-project/views/ (sama seperti po.js)      [FIX #1]
-                - render ke #divMainGrid (container standar template), bukan #main-content [FIX #2]
-                - header, tombol Add/Edit/Delete dinonaktifkan seperti modul lain          [FIX #3]
-                - popup error menampilkan cuplikan respons server (debug HTTP 200)         [FIX #4]
-                - style toolbar/status bar agar terbaca di tema gelap                      [FIX #5]
-                - format tanggal YYYY-MM-DD disusun manual (ymd) -> 'Y-10-1' bug           [FIX #6]
+Document    : stock.card.js
+Description : Stock Card (kartu stok) per item, per gudang / semua gudang. ExtJS 3.4.1
+Backend     : ../php-crud/stock.cardCRD.php
+
+[REVISI 2026-11-02]
+- Dropdown gudang: HANYA gudang yang punya stok (ada di stock_movements)
+- Dropdown material: SEMUA material aktif (tidak difilter by gudang)
+- warehouse_id tetap dikirim untuk info qty_on_hand di dropdown
+- Auto-load item saat gudang dipilih
+- Auto-clear material saat gudang berubah
 */
 Ext.onReady(function () {
     Ext.QuickTips.init();
-
-    // [FIX #3] judul header + tombol toolbar template tidak dipakai di halaman read-only ini
+    
     if (document.getElementById('mainHeaderText')) {
         document.getElementById('mainHeaderText').innerHTML = 'Kartu <em>Stok</em>';
     }
     try { editDataDisable(); } catch (e) {}
     try { mainBtnDisable('#addData'); mainBtnDisable('#editData'); mainBtnDisable('#deleteData'); } catch (e) {}
-
-    // [FIX #5] CSS tema gelap untuk toolbar filter, tombol, dropdown dan status bar
+    
+    // CSS tema gelap
     Ext.util.CSS.createStyleSheet(
         '.kartu-tbar, .kartu-bbar { background:#0b1d2b !important; border-color:#1d3a52 !important; }' +
         '.kartu-tbar .x-toolbar-text, .kartu-bbar .x-toolbar-text { color:#ffffff !important; font-size:12px; }' +
@@ -32,24 +32,19 @@ Ext.onReady(function () {
         '.x-combo-list .x-combo-selected { background:#2e6da4 !important; }',
         'kartu-stok-css'
     );
-
-    // [FIX #1] sebelumnya 'php-crud/stock.cardCRD.php' -> 404 karena halaman berada di /rab-project/views/
+    
     var URL = '../php-crud/stock.cardCRD.php';
-    // [FIX #2] container standar template
-    var RENDER_TO = 'divMainGrid';
-
+    
     function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
     function fmtQty(v) { return (v === null || v === undefined || v === '') ? '' : Ext.util.Format.number(v, '0,000.0000'); }
     function fmtAmt(v) { return (v === null || v === undefined || v === '') ? '' : Ext.util.Format.number(v, '0,000.00'); }
     function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
-    // [FIX #6] Date.format('Y-m-d') di halaman ini menghasilkan 'Y-10-1' (tahun tidak terformat, tanpa nol depan);
-    //          susun manual YYYY-MM-DD agar sesuai standar backend.
+    
     function ymd(d) {
         var m = d.getMonth() + 1, day = d.getDate();
         return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (day < 10 ? '0' : '') + day;
     }
-
-    // [FIX #4] tampilkan pesan server; bila respons bukan JSON valid tampilkan 300 karakter pertamanya
+    
     function storeError(proxy, type, action, opt, res) {
         var m = 'Gagal memuat data dari server.';
         if (res && res.message) {
@@ -62,24 +57,28 @@ Ext.onReady(function () {
         }
         showErr(m);
     }
-
-    // ---------------- stores ----------------
+    
+    // ============================================================
+    // STORES
+    // ============================================================
     var whDs = new Ext.data.JsonStore({
         url: URL, baseParams: { action: 'lookup_warehouses' }, root: 'data', fields: ['id', 'name'],
         listeners: { exception: storeError }
     });
+    
     var itemDs = new Ext.data.JsonStore({
         url: URL, baseParams: { action: 'lookup_items' }, root: 'data',
-        fields: ['item_id', 'material_code', 'material_name', 'unit'],
+        fields: ['item_id', 'material_code', 'material_name', 'unit', 'qty_on_hand'],
         listeners: { exception: storeError }
     });
-    mainDs = new Ext.data.JsonStore({      // assignment polos (konvensi template)
+    
+    mainDs = new Ext.data.JsonStore({
         url: URL, baseParams: { action: 'card' }, root: 'data', totalProperty: 'totalCount',
         fields: ['row_type', 'movement_date', 'reference_type', 'reference_no', 'warehouse_name', 'remark',
                  'qty_in', 'qty_out', 'unit_cost', 'balance'],
         listeners: {
             exception: storeError,
-            load: function (store) {            // ringkasan periode di status bar
+            load: function (store) {
                 var s = (store.reader.jsonData || {}).summary;
                 if (s) {
                     sumBar.setText('Saldo awal: <b>' + fmtQty(s.opening) + '</b> &nbsp;|&nbsp; Masuk: <b>' + fmtQty(s.total_in) +
@@ -88,42 +87,112 @@ Ext.onReady(function () {
             }
         }
     });
+    
+    // ============================================================
+    // FILTER
+    // ============================================================
+var fWh = new Ext.form.ComboBox({
+    store: whDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all',
+    forceSelection: true, editable: false, width: 190, value: 0,
+    emptyText: '-- Pilih Gudang --',
+    listeners: {
+        select: function (combo, record) { 
+            var wid = record.get('id') || 0;
+            // Clear material saat gudang berubah
+            fItem.clearValue();
+            itemDs.removeAll();
+            itemDs.baseParams.warehouse_id = wid;
+            
+            // [FIX] Enable dropdown Item setelah gudang dipilih
+            fItem.enable();
+            fItem.emptyText = 'Ketik untuk cari material...';
+            
+            // Auto-load item dengan gudang baru
+            itemDs.load({ 
+                params: { query: '', warehouse_id: wid },
+                callback: function(records, operation, success) {
+                    if (success && records.length === 0) {
+                        fItem.setRawValue('(tidak ada material aktif)');
+                    }
+                }
+            });
+        }
+    }
+});
 
-    // ---------------- filter ----------------
-    var fWh = new Ext.form.ComboBox({
-        store: whDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all',
-        forceSelection: true, editable: false, width: 190, value: 0
-    });
+
     var fItem = new Ext.form.ComboBox({
         store: itemDs, displayField: 'material_name', valueField: 'item_id', mode: 'remote', queryParam: 'query',
         minChars: 0, triggerAction: 'all', forceSelection: true, width: 320, listWidth: 440,
-        emptyText: 'Cari item...',
-        tpl: '<tpl for="."><div class="x-combo-list-item">{material_code} - {material_name} ({unit})</div></tpl>',
-        listeners: { beforequery: function () { itemDs.baseParams.warehouse_id = fWh.getValue() || 0; } }
+        emptyText: 'Pilih gudang dulu...',
+        disabled: true,  // [FIX] Disabled sampai gudang dipilih
+        // [FIX] Template dengan info stok
+        tpl: '<tpl for="."><div class="x-combo-list-item">' +
+             '{material_code} - {material_name} ({unit})' +
+             '<tpl if="qty_on_hand > 0">' +
+             ' <span style="color:#2e9e4f;font-weight:bold;">[Stok: {qty_on_hand}]</span>' +
+             '</tpl></div></tpl>',
+        listeners: { 
+            beforequery: function (q) { 
+                // [FIX] warehouse_id wajib
+                if (!fWh.getValue() || fWh.getValue() <= 0) {
+                    showErr('Pilih gudang terlebih dahulu.');
+                    return false;
+                }
+                itemDs.baseParams.warehouse_id = fWh.getValue();
+                itemDs.baseParams.query = q.query || '';
+            },
+            expand: function() {
+                // [FIX] Auto-load saat dropdown dibuka
+                var wid = fWh.getValue();
+                if (wid && wid > 0) {
+                    itemDs.baseParams.warehouse_id = wid;
+                    if (itemDs.getCount() === 0) {
+                        itemDs.load({ params: { query: '', warehouse_id: wid } });
+                    }
+                }
+            }
+        }
     });
+    
     var today = new Date();
     var fFrom = new Ext.form.DateField({ format: 'd/m/Y', value: new Date(today.getFullYear(), today.getMonth(), 1), width: 105 });
     var fTo = new Ext.form.DateField({ format: 'd/m/Y', value: today, width: 105 });
-    var sumBar = new Ext.Toolbar.TextItem('Pilih item lalu klik Tampilkan.');
-
-    fWh.on('select', function () { fItem.clearValue(); });     // daftar item bergantung gudang
-
+    var sumBar = new Ext.Toolbar.TextItem('Pilih gudang & item lalu klik Tampilkan.');
+    
+    // ============================================================
+    // GRID
+    // ============================================================
     function loadCard() {
-        if (!fItem.getValue()) { showErr('Pilih item terlebih dahulu.'); return; }
-        if (!fFrom.getValue() || !fTo.getValue()) { showErr('Periode wajib diisi.'); return; }
-        if (fFrom.getValue() > fTo.getValue()) { showErr('Tanggal awal tidak boleh melebihi tanggal akhir.'); return; }
+        if (!fWh.getValue() || fWh.getValue() <= 0) { 
+            showErr('Pilih gudang terlebih dahulu.'); 
+            return; 
+        }
+        if (!fItem.getValue()) { 
+            showErr('Pilih item terlebih dahulu.'); 
+            return; 
+        }
+        if (!fFrom.getValue() || !fTo.getValue()) { 
+            showErr('Periode wajib diisi.'); 
+            return; 
+        }
+        if (fFrom.getValue() > fTo.getValue()) { 
+            showErr('Tanggal awal tidak boleh melebihi tanggal akhir.'); 
+            return; 
+        }
         mainDs.load({ params: {
-            item_id: fItem.getValue(), warehouse_id: fWh.getValue() || 0,
-            date_from: ymd(fFrom.getValue()), date_to: ymd(fTo.getValue())      // [FIX #6]
-        } });
+            item_id: fItem.getValue(), 
+            warehouse_id: fWh.getValue() || 0,
+            date_from: ymd(fFrom.getValue()), 
+            date_to: ymd(fTo.getValue())
+        }});
     }
-
-    // [FIX #2] tinggi mengikuti helper template (sama seperti po.js)
+    
     var gridHeight = 420;
     try { gridHeight = maxGridHeight(document.getElementById('divMainGrid')); } catch (e) {}
-
+    
     new Ext.grid.GridPanel({
-        store: mainDs, renderTo: RENDER_TO,
+        store: mainDs, renderTo: 'divMainGrid',
         height: gridHeight, loadMask: true, stripeRows: true,
         viewConfig: {
             forceFit: true,
@@ -142,9 +211,10 @@ Ext.onReady(function () {
               renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
             { header: 'Biaya Satuan', dataIndex: 'unit_cost', width: 100, align: 'right', renderer: fmtAmt }
         ],
-        // [FIX #5] toolbar diberi cls agar CSS tema gelap berlaku
         tbar: { cls: 'kartu-tbar', items: ['Gudang:', fWh, ' Item:', fItem, ' Dari:', fFrom, ' s/d:', fTo, { text: 'Tampilkan', handler: loadCard }] },
         bbar: { cls: 'kartu-bbar', items: [sumBar] }
     });
+    
+    // Load gudang saat init
     whDs.load();
 });
