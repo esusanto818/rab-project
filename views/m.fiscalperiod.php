@@ -28,11 +28,7 @@
             }
         </style>
         <title id="page-title">Fiscal Period</title>
-<<<<<<< Updated upstream
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-=======
-        <link rel="stylesheet" type="text/css" href="/rab-project/live/css/header.black.css" />
->>>>>>> Stashed changes
     </head>
     <body>
     </body>
@@ -42,11 +38,7 @@
     </script>
     
     <!-- 2. BARU PANGGIL SKRIP EXTERNAL JS -->
-<<<<<<< Updated upstream
     <script type="text/javascript" src="/rab-project/dev/js/m.fiscalperiod.js"></script>
-=======
-    <script type="text/javascript" src="/rab-project/live/js/m.fiscalperiod.js"></script>
->>>>>>> Stashed changes
     
     <script type="text/javascript">
         document.getElementById('menu').innerHTML = <?php echo json_encode($_SESSION["linkMenu"] ?? ''); ?>;

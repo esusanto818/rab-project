@@ -29,7 +29,7 @@ Ext.onReady(function () {
         var nf = function (v) { return Ext.util.Format.number(v || 0, '0,000'); }, en = Ext.util.Format.htmlEncode;
         var col = { danger: ['#3b1212', '#ff6b5e', '#ffb4ab'], warning: ['#3a2c08', '#e6a817', '#ffe08a'], ok: ['#0f2f22', '#2e9e4f', '#a5e8bd'] }[sm.severity] || ['#132330', '#1c3648', '#ffffff'];
         var title = sm.severity === 'ok' ? '&#10003; Anggaran aman' : ('&#9888; ' + (sm.severity === 'danger' ? 'PERINGATAN ANGGARAN' : 'PERHATIAN ANGGARAN'));
-        var h = '<div style="background:' + col[0] + ';border:2px solid ' + col[1] + ';border-radius:5px;padding:10px;margin-bottom:12px;font-size:13px;line-height:1.6;">' +
+        var h = '<div style="background:' + col[0] + ';border:2px solid ' + col[1] + ';border-radius:5px;padding:10px;margin-bottom:12px;font-size:15px;line-height:1.6;">' +
             '<b style="color:' + col[1] + ';">' + title + '</b><br><span style="color:#d5e3ec;">Total RAB Rp <b>' + nf(sm.rab_after_idr) + '</b> | Estimasi seluruh task (max) Rp <b>' + nf(sm.task_total_max_idr) + '</b>' +
             (sm.budget_idr > 0 ? ' | Budget Rp <b>' + nf(sm.budget_idr) + '</b>' : '') + (sm.contract_idr > 0 ? ' | Nilai kontrak Rp <b>' + nf(sm.contract_idr) + '</b>' : '') + '</span>';
         Ext.each(sm.warnings || [], function (w) {
@@ -44,7 +44,7 @@ Ext.onReady(function () {
             if (it.kind !== kind) return;
             var pr = (parseFloat(it.pmin) === parseFloat(it.pmax)) ? nf(it.pmax) : nf(it.pmin) + ' - ' + nf(it.pmax);
             out.push('<div style="margin-bottom:6px;"><b>' + Ext.util.Format.htmlEncode(it.name) + '</b>: ' + fmtQty3(it.qty) + ' ' +
-                     Ext.util.Format.htmlEncode(it.unit) + '<div style="color:#8fb3c0;font-size:11px;">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + (parseFloat(it.pmin) === parseFloat(it.pmax) ? ' (rentang master belum diisi)' : ' (min - max)') + '</div></div>');
+                     Ext.util.Format.htmlEncode(it.unit) + '<div style="color:#8fb3c0;font-size:13px;">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + (parseFloat(it.pmin) === parseFloat(it.pmax) ? ' (rentang master belum diisi)' : ' (min - max)') + '</div></div>');
         });
         return out.length ? out.join('') : '-';
     }
@@ -56,7 +56,7 @@ Ext.onReady(function () {
         var nw = td + 'white-space:nowrap;';
         var h = '';
         if (analysis) h += '<div style="margin-bottom:12px; text-align:left; line-height:20px;"><b>Analisis AI:</b> ' + Ext.util.Format.htmlEncode(analysis) + '</div>';
-        h += '<table style="border-collapse:collapse; font-size:13px; width:100%; text-align:left; table-layout:auto;">' +
+        h += '<table style="border-collapse:collapse; font-size:15px; width:100%; text-align:left; table-layout:auto;">' +
              '<tr style="font-weight:bold; color:#00bcd4;">' +
              '<td style="' + nw + '">Tagihan</td><td align="right" style="' + nw + '">%</td><td align="right" style="' + nw + '">Total (DPP+PPN)</td>' +
              '<td style="' + nw + '">Tgl Invoice</td><td style="' + nw + '">Jatuh Tempo</td><td style="' + td + '">Task Pemicu</td><td style="' + nw + '">Aksi</td></tr>';
@@ -85,10 +85,10 @@ Ext.onReady(function () {
         b.style.cursor = disabled ? 'not-allowed' : 'pointer';
     }
     function showPlanWin(title, html, yesText, onYes, onReady, keepOpen) {      // [AI-BOQ] keepOpen: jangan tutup saat Simpan (draft tetap ada bila gagal)
-        var w = Math.min(1250, Math.round((window.innerWidth || 1200) * 0.95));      // [AI-BOQ] lebih lebar untuk tabel BoQ
-        var h = Math.min(700, Math.round((window.innerHeight || 800) * 0.90));
+        var w = Math.min(1500, Math.round((window.innerWidth || 1200) * 0.97));      // [UI-READABLE] jendela lebih lebar & tinggi agar kartu tidak sempit
+        var h = Math.min(950, Math.round((window.innerHeight || 800) * 0.94));
         var uid = 'planWin' + (++planWinSeq);
-        var btnBase = 'padding:8px 20px; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold; font-size:13px; margin-left:10px;';
+        var btnBase = 'padding:11px 28px; color:#fff; border:0; border-radius:5px; cursor:pointer; font-weight:bold; font-size:15px; margin-left:12px;';   // [UI-READABLE] tombol lebih besar
         var btnHtml = '<div style="text-align:right; padding:6px 4px;">' +
             (onYes ? '<button type="button" id="' + uid + 'No" style="' + btnBase + 'background:#800020;">Batal</button>' +        // burgundy
                      '<button type="button" id="' + uid + 'Yes" style="' + btnBase + 'background:#066b78;">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
@@ -284,18 +284,18 @@ Ext.onReady(function () {
         var scopeTxt = dataRecord.project_scope || 'Belum ada spesifikasi teknis.';
         
         var html = '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;">' +
-                   '<h3 style="margin:0; font-size:16px; color:#00bcd4;">Detail & Sub-Task Proyek AI: ' + Ext.util.Format.htmlEncode(dataRecord.name) + '</h3>' +
-                   '<span style="color:#a1c4d0; font-size:12px; white-space:nowrap;">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
+                   '<h3 style="margin:0; font-size:18px; color:#00bcd4;">Detail & Sub-Task Proyek AI: ' + Ext.util.Format.htmlEncode(dataRecord.name) + '</h3>' +
+                   '<span style="color:#a1c4d0; font-size:14px; white-space:nowrap;">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
                    '</div>' +
                    '<div style="text-align:left; margin:0 0 12px 0;">' +
                    '<button type="button" id="btnPrintProjectTasks" style="padding:7px 14px; background:#087f8c; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold;">Print Task</button>' +
                    '</div>' +
                    '<div style="background:#132330; padding:10px; border-radius:4px; margin-bottom:12px; border:1px solid #1c3648;">' +
-                   '<b style="color:#00bcd4; font-size:13px;">Definisi / Lingkup Proyek:</b>' +
-                   '<div style="color:#ffffff; font-size:13px; margin-top:4px; line-height:18px;">' + Ext.util.Format.htmlEncode(scopeTxt) + '</div>' +
+                   '<b style="color:#00bcd4; font-size:15px;">Definisi / Lingkup Proyek:</b>' +
+                   '<div style="color:#ffffff; font-size:15px; margin-top:4px; line-height:18px;">' + Ext.util.Format.htmlEncode(scopeTxt) + '</div>' +
                    '</div>' +
                    plafonBanner() +
-                   '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:13px;">' +
+                   '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:15px;">' +
                    '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
                    '<th style="border-bottom:1px solid #2a485d; padding:8px;">Nama Sub-Task (WBS)</th>' +
                    '<th style="border-bottom:1px solid #2a485d; padding:8px;">Deskripsi Pekerjaan</th>' +
@@ -315,21 +315,21 @@ Ext.onReady(function () {
                 html += '<tr style="border-bottom:1px solid #182e3e;">' +
                         '<td style="font-weight:bold; color:#e0f7fa;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
                         '<td style="color:#b0bec5;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
-                        '<td style="color:#80deea;padding:12px 8px;font-size:12px;">' + fmtTaskItems(d.items, 'M') + '</td>' +
-                        '<td style="color:#ffcc80;padding:12px 8px;font-size:12px;">' + fmtTaskItems(d.items, 'E') + '</td>' +
+                        '<td style="color:#80deea;padding:12px 8px;font-size:14px;">' + fmtTaskItems(d.items, 'M') + '</td>' +
+                        '<td style="color:#ffcc80;padding:12px 8px;font-size:14px;">' + fmtTaskItems(d.items, 'E') + '</td>' +
                         '<td align="right" style="color:#e0f7fa;padding:12px 8px;white-space:nowrap;">' + Ext.util.Format.number(d.total_max || 0, '0,000') +
-                        '<div style="color:#8fb3c0;font-size:11px;">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
+                        '<div style="color:#8fb3c0;font-size:13px;">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
                         '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
-                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:11px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
+                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:13px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
                         '</tr>';
             });
         }
         html += '</tbody></table>';
 
         // [AUTO-INV][NEW] tabel tagihan ke klien
-        html += '<h3 style="margin:16px 0 8px 0; font-size:15px; color:#00bcd4;">Tagihan ke Klien</h3>' +
-                '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:13px;">' +
+        html += '<h3 style="margin:16px 0 8px 0; font-size:17px; color:#00bcd4;">Tagihan ke Klien</h3>' +
+                '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:15px;">' +
                 '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
                 '<th style="padding:8px;">No. Invoice</th><th style="padding:8px;">Termin</th>' +
                 '<th align="center" style="padding:8px;">Tgl Invoice</th><th align="center" style="padding:8px;">Jatuh Tempo</th>' +
@@ -342,7 +342,7 @@ Ext.onReady(function () {
                 var amt = parseFloat(iv.amount) || 0, pd = parseFloat(iv.paid_amount) || 0;
                 var st = pd >= amt - 0.005 ? ['Lunas', '#80cbc4'] : (pd > 0 ? ['Sebagian', '#ffd54f'] : ['Belum bayar', '#ff8a80']);
                 html += '<tr style="border-bottom:1px solid #182e3e;">' +
-                        '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.inv_no) + (iv.auto_generated ? ' <span style="color:#00bcd4;font-size:10px;">AUTO</span>' : '') + '</td>' +
+                        '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.inv_no) + (iv.auto_generated ? ' <span style="color:#00bcd4;font-size:13px;">AUTO</span>' : '') + '</td>' +
                         '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.termin_name) + '</td>' +
                         '<td align="center" style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.invoice_date || '-') + '</td>' +
                         '<td align="center" style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.due_date || '-') + '</td>' +
@@ -396,9 +396,9 @@ Ext.onReady(function () {
     var btnAiPanel = new Ext.Panel({
         border: false,
         bodyStyle: 'background:transparent; padding:10px 0;',
-        html: '<div style="text-align: left;"><button type="button" id="customAiBtn" style="background:transparent; border:1px solid #00bcd4; color:#00bcd4; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:12px; letter-spacing:1px; transition:all 0.3s;">ANALISIS & BAGI TASK (AI)</button>' +
+        html: '<div style="text-align: left;"><button type="button" id="customAiBtn" style="background:transparent; border:1px solid #00bcd4; color:#00bcd4; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; transition:all 0.3s;">ANALISIS & BAGI TASK (AI)</button>' +
               // [AUTO-INV][NEW] tombol terbitkan tagihan otomatis (analisis AI + preview + terbitkan)
-              ' <button type="button" id="customInvBtn" style="background:transparent; border:1px solid #ffd54f; color:#ffd54f; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:12px; letter-spacing:1px; margin-left:8px;">TERBITKAN TAGIHAN OTOMATIS</button></div>',
+              ' <button type="button" id="customInvBtn" style="background:transparent; border:1px solid #ffd54f; color:#ffd54f; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px;">TERBITKAN TAGIHAN OTOMATIS</button></div>',
         listeners: {
             afterrender: function() {
                 document.getElementById('customAiBtn').onclick = function() {
@@ -442,16 +442,20 @@ Ext.onReady(function () {
                             var fmtIdr = function (v) { return Ext.util.Format.number(v || 0, '0,000'); };
                             var num = function (v) { return parseFloat(v) || 0; };
                             var TEAL = '#066b78', BURG = '#800020', SLATE = '#37566a';
-                            var IN = 'padding:5px;font-size:12px;background:#061522;color:#fff;border:1px solid #52758b;border-radius:3px;box-sizing:border-box;';
+                            // [UI-READABLE] Font minimum 13px, isian 15px, tinggi kontrol 38px. Setiap baris = KARTU dengan label jelas
+                            // (bukan tabel 8 kolom yang sempit); task bisa dibuka / ditutup; ringkasan total menempel di atas (sticky).
+                            var IN = 'padding:7px 10px;font-size:15px;height:38px;background:#061522;color:#fff;border:1px solid #52758b;border-radius:4px;box-sizing:border-box;';
+                            var LBL = 'display:block;font-size:13px;font-weight:bold;color:#9ec3d1;margin-bottom:4px;';
+                            var openTask = { 0: true }, openAdd = {}, openHelp = false;      // [UI-READABLE] status buka/tutup, bertahan saat redraw
                             var STATUS_LBL = {
-                                'rab':       ['Sudah di RAB',     '#80cbc4'],
-                                'rab_topup': ['Qty RAB ditambah', '#ffd54f'],
-                                'master':    ['Masuk RAB',        '#4fc3f7'],
-                                'new':       ['Baru (dibuat)',    '#ffb74d']
+                                'rab':       ['Sudah di RAB',     '#80cbc4', 'Item sudah ada di RAB proyek, dipakai ulang (nama, satuan, harga mengikuti RAB / master).'],
+                                'rab_topup': ['Qty RAB ditambah', '#ffd54f', 'Item sudah ada di RAB, tetapi qty total task melebihi qty RAB sehingga qty RAB akan ditambah.'],
+                                'master':    ['Masuk RAB',        '#4fc3f7', 'Item sudah ada di master, belum di RAB: akan dimasukkan ke RAB (harga mengikuti master).'],
+                                'new':       ['Baru (dibuat)',    '#ffb74d', 'Belum ada: akan dibuat di master (lengkap harga min-max) lalu dimasukkan ke RAB.']
                             };
                             var KIND = {
-                                materials: { title: 'Material', nameHdr: 'Material / Spesifikasi', ph: 'Nama material baru', btnNew: 'Tambah Material Baru', rabLbl: 'Tambah material dari RAB yang sudah ada', empty: 'Belum ada material.' },
-                                expenses:  { title: 'Biaya / Jasa (Expense)', nameHdr: 'Biaya / Keterangan', ph: 'Nama biaya baru (mis. Jasa ereksi baja)', btnNew: 'Tambah Biaya Baru', rabLbl: 'Tambah biaya dari RAB yang sudah ada', empty: 'Belum ada biaya.' }
+                                materials: { title: 'Material', ph: 'Nama material baru', btnNew: 'Tambah Material Baru', rabLbl: 'Ambil dari RAB yang sudah ada', empty: 'Belum ada material.', addLbl: '+ Tambah Material' },
+                                expenses:  { title: 'Biaya / Jasa (Expense)', ph: 'Nama biaya baru (mis. Jasa ereksi baja)', btnNew: 'Tambah Biaya Baru', rabLbl: 'Ambil dari RAB yang sudah ada', empty: 'Belum ada biaya.', addLbl: '+ Tambah Biaya / Jasa' }
                             };
                             var KINDS = ['materials', 'expenses'];
 
@@ -481,44 +485,49 @@ Ext.onReady(function () {
                                 Ext.each(task[kind] || [], function (m) { s[0] += lnMax(m); s[1] += lnMin(m); });
                                 return s;
                             }
-                            function totCell(m) { return '<b>' + fmtIdr(lnMax(m)) + '</b><div style="color:#8fb3c0;font-size:11px;">min ' + fmtIdr(lnMin(m)) + '</div>'; }
-                            function subCell(s) { return '<b>' + fmtIdr(s[0]) + '</b><div style="color:#8fb3c0;font-size:11px;">min ' + fmtIdr(s[1]) + '</div>'; }
+                            function taskTotalMax(task) { return taskSub(task, 'materials')[0] + taskSub(task, 'expenses')[0]; }
+                            function totCell(m) { return '<b style="font-size:17px;color:#fff;">' + fmtIdr(lnMax(m)) + '</b><div style="color:#9ec3d1;font-size:13px;">min ' + fmtIdr(lnMin(m)) + '</div>'; }
+                            function subCell(s) { return '<b style="font-size:16px;color:#fff;">' + fmtIdr(s[0]) + '</b> <span style="color:#9ec3d1;font-size:13px;">(min ' + fmtIdr(s[1]) + ')</span>'; }
 
+                            // ---------- komponen kecil ----------
                             function btn(cls, ti, kind, label, bg) {
                                 return '<button type="button" class="' + cls + '" data-task="' + ti + '"' + (kind ? ' data-kind="' + kind + '"' : '') +
-                                    ' style="padding:7px 16px;background:' + bg + ';color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:bold;font-size:12px;">' + label + '</button>';
+                                    ' style="padding:9px 18px;background:' + bg + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">' + label + '</button>';
+                            }
+                            function chip(text, color, bg) {
+                                return '<span style="display:inline-block;padding:3px 11px;border-radius:13px;font-size:13px;font-weight:bold;color:' + color + ';background:' + (bg || 'transparent') + ';border:1px solid ' + color + ';white-space:nowrap;">' + text + '</span>';
+                            }
+                            function fld(label, inner, wrapStyle) { return '<div style="' + (wrapStyle || '') + '"><span style="' + LBL + '">' + label + '</span>' + inner + '</div>'; }
+                            function roBox(txt, w, right) {
+                                return '<div style="' + IN + 'width:' + w + ';background:#0a1a27;border-color:#2c4a5e;color:#e0f7fa;display:flex;align-items:center;' + (right ? 'justify-content:flex-end;' : '') + '">' + txt + '</div>';
                             }
                             function mfld(ti, kind, li, field, val, w, type, ph) {
                                 return '<input type="' + (type || 'text') + '" class="aiEdit" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" data-field="' + field + '" value="' +
-                                    enc(val === null || val === undefined ? '' : val) + '"' + (type === 'number' ? ' min="0" step="any"' : '') + (ph ? ' placeholder="' + enc(ph) + '"' : '') +
+                                    enc(val === null || val === undefined ? '' : val) + '"' + (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + (ph ? ' placeholder="' + enc(ph) + '"' : '') +
                                     ' style="' + IN + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
                             }
                             function tfld(ti, field, val, style, type, ph) {
                                 return '<input type="' + (type || 'text') + '" class="aiTaskEdit" data-task="' + ti + '" data-field="' + field + '" value="' + enc(val || '') + '"' +
                                     (ph ? ' placeholder="' + enc(ph) + '"' : '') + ' style="' + IN + style + '">';
                             }
-
-                            function summaryHtml() {
-                                var t = calcTotals();
-                                return '<div style="font-size:15px;line-height:1.55;color:#d5e3ec;margin-bottom:10px;">' + enc(res.message) +
-                                    '<br><b>Task: ' + plan.tasks.length + ' | Baris: ' + t.lines + ' | Material baru (dibuat di master): ' + t.newCount + '</b><br>' +
-                                    'Total Material: Rp <span id="aiSumMat">' + fmtIdr(t.mat) + '</span> | Total Biaya: Rp <span id="aiSumExp">' + fmtIdr(t.exp) + '</span><br>' +
-                                    '<b>Total (harga MAX, dipakai di RAB): Rp <span id="aiSumMax" style="' + (meta.over_budget || meta.over_contract ? 'color:#ff6b5e;' : '') + '">' + fmtIdr(t.max) + '</span></b> | Total (harga MIN): Rp <span id="aiSumMin">' + fmtIdr(t.min) + '</span></div>';
+                            function nfld(id, ti, kind, f, ph, w, type) {          // isian form "buat baru"
+                                return '<input id="aiNew_' + id + '_' + f + '" class="aiNewIn" data-task="' + ti + '" data-kind="' + kind + '" type="' + (type || 'text') + '"' +
+                                    (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + ' placeholder="' + enc(ph) + '" style="' + IN + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
                             }
                             // [DEDUP] Info hasil cek 'hampir sama' (tanpa pilihan manual): task yang namanya mirip task lama akan DITIMPA, sisanya disimpan baru
                             function modeHtml() {
                                 if (!existing.total) return '';
                                 var tm = meta.task_matches || [], ov = tm.length, nw = Math.max(0, plan.tasks.length - ov);
-                                var h = '<div style=\"background:#0b1b28;border:1px solid #52758b;border-radius:6px;padding:10px;margin-bottom:12px;font-size:13px;color:#d5e3ec;line-height:1.7;\">' +
+                                var h = '<div style="background:#0b1b28;border:1px solid #52758b;border-radius:8px;padding:14px;margin-bottom:14px;font-size:15px;color:#e6f2f7;line-height:1.7;">' +
                                     '<b>Proyek ini sudah punya ' + existing.total + ' task.</b> Saat disimpan, setiap task, material dan biaya dicek dulu: ' +
                                     'bila namanya <b>hampir sama</b> dengan data lama maka data lama <b>ditimpa</b> / dipakai ulang (tidak dobel); bila belum ada maka <b>disimpan baru</b>.<br>' +
-                                    '<b>Task: <span style=\"color:#ffb74d;\">' + ov + ' akan menimpa task lama</span>, <span style=\"color:#7fe0a0;\">' + nw + ' disimpan baru</span>.</b>';
+                                    '<b>Task: <span style="color:#ffb74d;">' + ov + ' akan menimpa task lama</span>, <span style="color:#7fe0a0;">' + nw + ' disimpan baru</span>.</b>';
                                 if (ov) {
-                                    h += '<div style=\"margin-top:4px;color:#b0d4e0;\">';
+                                    h += '<div style="margin-top:6px;color:#c4dde8;font-size:14px;">';
                                     Ext.each(tm, function (x) { h += '&bull; ' + enc(x.task_name) + ' &rarr; menimpa <b>' + enc(x.match_task_name) + '</b> (kemiripan ' + Math.round(x.score * 100) + '%)<br>'; });
                                     h += '</div>';
                                 }
-                                h += '<div style=\"margin-top:4px;color:#9fb8c6;\">Task lama yang sudah berjalan hanya diperbarui deskripsi &amp; alokasinya (nama / tanggal tidak diubah). Klik <b>Hitung Ulang</b> setelah mengubah nama task agar daftar ini diperbarui.</div>';
+                                h += '<div style="margin-top:6px;color:#b0cad6;font-size:14px;">Task lama yang sudah berjalan hanya diperbarui deskripsi &amp; alokasinya (nama / tanggal tidak diubah). Klik <b>Hitung Ulang</b> setelah mengubah nama task agar daftar ini diperbarui.</div>';
                                 return h + '</div>';
                             }
                             var EXP_CATS = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];     // = kategori biaya di modul RAB
@@ -528,133 +537,177 @@ Ext.onReady(function () {
                                 Ext.each(EXP_CATS, function (c) { h += '<option value="' + c + '"' + (c === (val || 'Lain-lain') ? ' selected="selected"' : '') + '>' + c + '</option>'; });
                                 return h + '</select>';
                             }
+
+                            // ---------- bar ringkasan yang menempel di atas (selalu terlihat saat menggulir) ----------
+                            function stickyBar() {
+                                var t = calcTotals(), sev = meta.severity || 'ok';
+                                var C = { danger: ['#ff6b5e', 'Melebihi plafon / budget'], warning: ['#e6a817', 'Perhatian anggaran'], ok: ['#2e9e4f', 'Anggaran aman'] }[sev] || ['#2e9e4f', 'Anggaran aman'];
+                                var stat = function (label, valHtml) { return '<div><span style="display:block;font-size:13px;color:#9ec3d1;">' + label + '</span>' + valHtml + '</div>'; };
+                                return '<div id="aiSticky" style="position:sticky;top:-14px;z-index:6;background:#0b1b28;border:1px solid #3b6078;border-radius:8px;padding:12px 16px;margin:0 0 14px 0;box-shadow:0 4px 12px rgba(0,0,0,.5);">' +
+                                    '<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:center;">' +
+                                    stat('Task', '<b style="font-size:20px;color:#fff;">' + plan.tasks.length + '</b>') +
+                                    stat('Baris item', '<b style="font-size:20px;color:#fff;">' + t.lines + '</b>') +
+                                    stat('Material baru', '<b style="font-size:20px;color:#ffb74d;">' + t.newCount + '</b>') +
+                                    stat('Material (Rp)', '<b id="aiSumMat" style="font-size:18px;color:#fff;">' + fmtIdr(t.mat) + '</b>') +
+                                    stat('Biaya (Rp)', '<b id="aiSumExp" style="font-size:18px;color:#fff;">' + fmtIdr(t.exp) + '</b>') +
+                                    stat('TOTAL harga MAX (Rp) - dipakai di RAB', '<b id="aiSumMax" style="font-size:22px;color:' + (meta.over_budget || meta.over_contract ? '#ff6b5e' : '#7fe0a0') + ';">' + fmtIdr(t.max) + '</b>') +
+                                    stat('Total harga MIN (Rp)', '<b id="aiSumMin" style="font-size:18px;color:#c4dde8;">' + fmtIdr(t.min) + '</b>') +
+                                    '<div>' + chip((sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[1], C[0], 'rgba(0,0,0,.25)') + '</div>' +
+                                    '</div>' +
+                                    '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;">' +
+                                    btn('aiRecalc', '', '', 'Hitung Ulang &amp; Cek Status', SLATE) + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) +
+                                    btn('aiExpandAll', '', '', 'Buka Semua Task', '#2c4a5e') + btn('aiCollapseAll', '', '', 'Tutup Semua Task', '#2c4a5e') +
+                                    '<span id="aiStale" style="display:none;font-size:14px;color:#ffe08a;"><i>Qty / harga berubah: klik "Hitung Ulang" agar status &amp; plafon dicek ulang.</i></span>' +
+                                    '</div></div>';
+                            }
                             // Kotak penanda: hasil analisis LEBIH BESAR dari budget / nilai kontrak (merah = ditolak / RAB menolak, kuning = pakai cadangan)
                             function alertHtml() {
                                 var sev = meta.severity || 'ok';
                                 var C = { danger: ['#3b1212', '#ff6b5e', 'PERINGATAN ANGGARAN'], warning: ['#3a2c08', '#e6a817', 'PERHATIAN ANGGARAN'], ok: ['#0f2f22', '#2e9e4f', 'Anggaran aman'] }[sev] || ['#0f2f22', '#2e9e4f', 'Anggaran aman'];
-                                var h = '<div id="aiAlert" style="background:' + C[0] + ';border:2px solid ' + C[1] + ';border-radius:6px;padding:12px;margin-bottom:12px;">' +
-                                    '<div style="font-size:15px;font-weight:bold;color:' + C[1] + ';margin-bottom:4px;">' + (sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[2] + '</div>';
+                                var h = '<div id="aiAlert" style="background:' + C[0] + ';border:2px solid ' + C[1] + ';border-radius:8px;padding:14px;margin-bottom:14px;">' +
+                                    '<div style="font-size:17px;font-weight:bold;color:' + C[1] + ';margin-bottom:4px;">' + (sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[2] + '</div>';
                                 if (sev === 'ok' && num(meta.budget_idr) > 0) {
-                                    h += '<div style="color:#a5e8bd;font-size:13px;">Total RAB setelah disimpan Rp ' + fmtIdr(meta.rab_after_idr) + ' masih dalam budget Rp ' + fmtIdr(meta.budget_idr) +
+                                    h += '<div style="color:#a5e8bd;font-size:15px;">Total RAB setelah disimpan Rp ' + fmtIdr(meta.rab_after_idr) + ' masih dalam budget Rp ' + fmtIdr(meta.budget_idr) +
                                          ' (sisa Rp ' + fmtIdr(num(meta.budget_idr) - num(meta.rab_after_idr)) + ').</div>';
                                 }
                                 Ext.each(meta.warnings || [], function (w) {
-                                    h += '<div style="font-size:13px;line-height:1.5;color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:4px;">&bull; ' + enc(w.text) + '</div>';
+                                    h += '<div style="font-size:15px;line-height:1.55;color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:5px;">&bull; ' + enc(w.text) + '</div>';
                                 });
-                                return h + '<div id="aiStale" style="display:none;font-size:12px;color:#ffe08a;margin-top:6px;"><i>Qty / harga berubah: angka plafon di atas belum dihitung ulang. Klik "Hitung Ulang".</i></div></div>';
+                                return h + '</div>';
                             }
                             function metaHtml() {
-                                var h = '<div style="font-size:13px;color:#b0d4e0;line-height:1.6;">RAB proyek saat ini Rp ' + fmtIdr(meta.rab_existing_idr) +
-                                    ' | tambahan bila disimpan Rp ' + fmtIdr((meta.rab_after_idr || 0) - (meta.rab_existing_idr || 0)) +
-                                    ' | <b>total RAB Rp ' + fmtIdr(meta.rab_after_idr) + '</b>' +
-                                    (num(meta.budget_idr) > 0 ? ' | budget Rp ' + fmtIdr(meta.budget_idr) : '') +
-                                    (num(meta.contract_idr) > 0 ? ' | nilai kontrak (plafon) Rp ' + fmtIdr(meta.contract_idr) : '') + '</div>';
-                                return h;
+                                return '<div style="font-size:15px;color:#c4dde8;line-height:1.7;">RAB proyek saat ini <b>Rp ' + fmtIdr(meta.rab_existing_idr) + '</b>' +
+                                    ' &nbsp;|&nbsp; tambahan bila disimpan <b>Rp ' + fmtIdr((meta.rab_after_idr || 0) - (meta.rab_existing_idr || 0)) + '</b>' +
+                                    ' &nbsp;|&nbsp; <b>total RAB Rp ' + fmtIdr(meta.rab_after_idr) + '</b>' +
+                                    (num(meta.budget_idr) > 0 ? ' &nbsp;|&nbsp; budget Rp ' + fmtIdr(meta.budget_idr) : '') +
+                                    (num(meta.contract_idr) > 0 ? ' &nbsp;|&nbsp; nilai kontrak (plafon) Rp ' + fmtIdr(meta.contract_idr) : '') + '</div>';
                             }
-
-                            function lineRow(ti, kind, m, li) {
-                                var st = STATUS_LBL[m.status] || ['Cek ulang', '#b0bec5'], fixed = isFixed(m), td = 'padding:7px;vertical-align:top;';
-                                var nameCell = fixed
-                                    ? '<b>' + enc(m.material_name) + '</b>' + (m.spec ? '<div style="color:#a1c4d0;font-size:12px;">' + enc(m.spec) + '</div>' : '')
-                                    : mfld(ti, kind, li, 'material_name', m.material_name, '100%', 'text', KIND[kind].ph) + '<div style="height:3px;"></div>' +
-                                      mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan');
-                                var catHtml = '';
-                                if (kind === 'expenses') {
-                                    catHtml = (fixed || m.status === 'master')
-                                        ? '<div style="color:#a1c4d0;font-size:11px;margin-top:2px;">Kategori: ' + enc(m.category || '-') + '</div>'
-                                        : '<div style="margin-top:3px;">' + catSelect('', ti, kind, li, m.category, 'width:130px;') + '</div>';
+                            function helpHtml() {
+                                var h = '<div style="margin-bottom:14px;">' + btn('aiToggleHelp', '', '', (openHelp ? '&#9650; Sembunyikan cara pakai' : '&#9660; Cara pakai &amp; catatan'), '#2c4a5e');
+                                if (openHelp) {
+                                    h += '<div style="font-size:15px;line-height:1.75;color:#d5e3ec;background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-top:8px;">' +
+                                        '<b>Ini DRAFT, belum tersimpan.</b> Klik <b>Simpan ke Master, RAB &amp; Task</b> di bagian bawah jendela bila sudah sesuai.<br>' +
+                                        '&bull; Klik judul task untuk membuka / menutup isinya.<br>' +
+                                        '&bull; Ubah qty / harga langsung di kotak; total dihitung otomatis. Klik <b>Hitung Ulang</b> setelah mengubah nama atau qty agar status dan plafon dicek ulang.<br>' +
+                                        '&bull; <b>Harga satuan RAB = harga MAX.</b> Item <span style="color:#80cbc4;">Sudah di RAB</span> / <span style="color:#4fc3f7;">Masuk RAB</span> mengikuti RAB / master (tidak diubah di sini); item <span style="color:#ffb74d;">Baru</span> dibuat dulu di master lengkap min-max.<br>' +
+                                        '&bull; Nama yang <b>hampir sama</b> dengan data lama akan menimpa / dipakai ulang, bukan digandakan.</div>';
                                 }
-                                return '<tr style="border-top:1px solid #34546a;">' +
-                                    '<td style="' + td + '">' + nameCell + catHtml + (m.reason ? '<div style="color:#688998;font-size:11px;">' + enc(m.reason) + '</div>' : '') + '</td>' +
-                                    '<td align="center" style="' + td + '">' + (fixed ? enc(m.unit || '') : mfld(ti, kind, li, 'unit', m.unit, '62px', 'text', 'satuan')) + '</td>' +
-                                    '<td align="right" style="' + td + '">' + mfld(ti, kind, li, 'qty_estimate', m.qty_estimate, '84px', 'number') + '</td>' +
-                                    '<td align="right" style="' + td + '">' + (fixed ? fmtIdr(pMin(m)) : mfld(ti, kind, li, 'price_min', m.price_min, '100px', 'number')) + '</td>' +
-                                    '<td align="right" style="' + td + '">' + (fixed ? fmtIdr(pMax(m)) : mfld(ti, kind, li, 'price_max', m.price_max, '100px', 'number')) + '</td>' +
-                                    '<td align="right" id="aiTot_' + ti + '_' + kind + '_' + li + '" style="' + td + 'white-space:nowrap;">' + totCell(m) + '</td>' +
-                                    '<td style="' + td + 'white-space:nowrap;color:' + st[1] + ';font-weight:bold;font-size:12px;">' + st[0] +
-                                    ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? '<div style="color:#9ec3d1;font-weight:normal;font-size:11px;">min master diisi: ' + fmtIdr(m.ai_min) + '</div>' : '') + '</td>' +
-                                    '<td style="padding:6px;vertical-align:top;"><button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
-                                    'style="padding:6px 12px;background:' + BURG + ';color:#fff;border:0;border-radius:4px;cursor:pointer;font-weight:bold;font-size:12px;">Hapus</button></td></tr>';
+                                return h + '</div>';
                             }
 
-                            function addBar(ti, kind) {
+                            // ---------- satu baris item = satu kartu ----------
+                            function lineRow(ti, kind, m, li) {
+                                var st = STATUS_LBL[m.status] || ['Cek ulang', '#b0bec5', 'Klik Hitung Ulang untuk memeriksa status item ini.'], fixed = isFixed(m), nameBlock;
+                                if (fixed) {
+                                    nameBlock = '<div style="font-size:17px;font-weight:bold;color:#fff;line-height:1.35;">' + enc(m.material_name) + '</div>' +
+                                        (m.spec ? '<div style="font-size:14px;color:#c4dde8;margin-top:3px;line-height:1.5;">' + enc(m.spec) + '</div>' : '') +
+                                        (kind === 'expenses' ? '<div style="font-size:14px;color:#9ec3d1;margin-top:3px;">Kategori: ' + enc(m.category || '-') + '</div>' : '');
+                                } else {
+                                    nameBlock = '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+                                        fld('Nama', mfld(ti, kind, li, 'material_name', m.material_name, '100%', 'text', KIND[kind].ph), 'flex:2;min-width:260px;') +
+                                        fld('Spesifikasi / keterangan', mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan'), 'flex:2;min-width:260px;') +
+                                        (kind === 'expenses' ? fld('Kategori', catSelect('', ti, kind, li, m.category, 'width:160px;'), '') : '') + '</div>';
+                                }
+                                var fields = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">' +
+                                    fld('Satuan', fixed ? roBox(enc(m.unit || '-'), '100px') : mfld(ti, kind, li, 'unit', m.unit, '100px', 'text', 'satuan')) +
+                                    fld('Qty', mfld(ti, kind, li, 'qty_estimate', m.qty_estimate, '120px', 'number')) +
+                                    fld('Harga Min (Rp)', fixed ? roBox(fmtIdr(pMin(m)), '150px', true) : mfld(ti, kind, li, 'price_min', m.price_min, '150px', 'number')) +
+                                    fld('Harga Max (Rp)', fixed ? roBox(fmtIdr(pMax(m)), '150px', true) : mfld(ti, kind, li, 'price_max', m.price_max, '150px', 'number')) +
+                                    '<div style="margin-left:auto;text-align:right;"><span style="' + LBL + '">Total (Max)</span><div id="aiTot_' + ti + '_' + kind + '_' + li + '">' + totCell(m) + '</div></div></div>';
+                                var note = '<div style="font-size:13px;color:' + st[1] + ';margin-top:10px;line-height:1.5;"><b>' + st[0] + '</b> &mdash; ' + st[2] +
+                                    ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? ' Min master akan diisi: ' + fmtIdr(m.ai_min) + '.' : '') + '</div>' +
+                                    (m.reason ? '<div style="font-size:13px;color:#9bb9c6;margin-top:3px;line-height:1.5;">Alasan AI: ' + enc(m.reason) + '</div>' : '');
+                                return '<div style="border:1px solid #34546a;border-left:6px solid ' + st[1] + ';border-radius:7px;background:#0d2133;padding:14px;margin-bottom:12px;">' +
+                                    '<div style="display:flex;gap:12px;align-items:flex-start;"><div style="flex:1;min-width:0;">' + nameBlock + '</div>' +
+                                    '<div style="flex:none;">' + chip(st[0], st[1]) + '</div>' +
+                                    '<div style="flex:none;"><button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
+                                    'style="padding:9px 16px;background:' + BURG + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">Hapus</button></div></div>' +
+                                    fields + note + '</div>';
+                            }
+
+                            function addPanel(ti, kind) {
                                 var K = KIND[kind], list = (kind === 'materials') ? availableMaterials : availableExpenses, id = ti + '_' + kind;
-                                var h = '<div style="border-top:1px dashed #34546a;margin-top:8px;padding-top:8px;font-size:12px;color:#9ec3d1;">' +
-                                    '<div style="margin-bottom:5px;"><b>' + K.rabLbl + '</b></div>' +
-                                    '<select id="aiSel_' + id + '" style="' + IN + 'width:46%;min-width:200px;"><option value="">-- pilih dari RAB --</option>';
+                                var box = 'border:1px solid #34546a;border-radius:7px;padding:14px;margin-top:12px;background:#0a1a27;';
+                                var ttl = 'font-size:15px;font-weight:bold;color:#80deea;margin-bottom:10px;';
+                                var sel = '<select id="aiSel_' + id + '" style="' + IN + 'width:100%;"><option value="">-- pilih dari RAB --</option>';
                                 Ext.each(list, function (a) {
                                     var already = false;
                                     Ext.each(plan.tasks[ti][kind] || [], function (x) { if (parseInt(x.budget_item_id, 10) === parseInt(a.budget_item_id, 10)) already = true; });
-                                    h += '<option value="' + parseInt(a.budget_item_id, 10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
-                                         enc(a.material_name + ' | sisa RAB: ' + fmtQty3(a.qty_remaining) + ' ' + a.unit) + '</option>';
+                                    sel += '<option value="' + parseInt(a.budget_item_id, 10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
+                                           enc(a.material_name + ' | sisa RAB: ' + fmtQty3(a.qty_remaining) + ' ' + a.unit) + '</option>';
                                 });
-                                h += '</select> <input id="aiSelQty_' + id + '" type="number" min="0" step="any" placeholder="Qty" style="' + IN + 'width:90px;text-align:right;"> ' +
-                                     btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) +
-                                     '<div style="margin:9px 0 5px;"><b>atau buat baru</b> (harga min &amp; max per satuan, Rupiah)</div>' +
-                                     (kind === 'expenses' ? catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:110px;') + ' ' : '') +
-                                     '<input id="aiNew_' + id + '_name" type="text" placeholder="' + enc(K.ph) + '" style="' + IN + 'width:24%;min-width:150px;"> ' +
-                                     '<input id="aiNew_' + id + '_spec" type="text" placeholder="Spesifikasi / keterangan" style="' + IN + 'width:20%;min-width:120px;"> ' +
-                                     '<input id="aiNew_' + id + '_unit" type="text" placeholder="satuan" style="' + IN + 'width:64px;"> ' +
-                                     '<input id="aiNew_' + id + '_qty" type="number" min="0" step="any" placeholder="Qty" style="' + IN + 'width:80px;text-align:right;"> ' +
-                                     '<input id="aiNew_' + id + '_pmin" type="number" min="0" step="any" placeholder="Harga min" style="' + IN + 'width:100px;text-align:right;"> ' +
-                                     '<input id="aiNew_' + id + '_pmax" type="number" min="0" step="any" placeholder="Harga max" style="' + IN + 'width:100px;text-align:right;"> ' +
-                                     btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</div>';
+                                sel += '</select>';
+                                var h = '<div style="' + box + '"><div style="' + ttl + '">A. ' + K.rabLbl + '</div>' +
+                                    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' + fld('Item di RAB', sel, 'flex:1;min-width:300px;') +
+                                    fld('Qty', '<input id="aiSelQty_' + id + '" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" style="' + IN + 'width:120px;text-align:right;">') +
+                                    '<div>' + btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) + '</div></div></div>';
+                                h += '<div style="' + box + '"><div style="' + ttl + '">B. Atau buat baru <span style="font-weight:normal;color:#9ec3d1;font-size:14px;">(harga min &amp; max per satuan, Rupiah)</span></div>' +
+                                    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+                                    (kind === 'expenses' ? fld('Kategori', catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:160px;')) : '') +
+                                    fld('Nama', nfld(id, ti, kind, 'name', K.ph, '100%'), 'flex:2;min-width:240px;') +
+                                    fld('Spesifikasi / keterangan', nfld(id, ti, kind, 'spec', 'Spesifikasi / keterangan', '100%'), 'flex:2;min-width:240px;') +
+                                    fld('Satuan', nfld(id, ti, kind, 'unit', 'satuan', '100px')) +
+                                    fld('Qty', nfld(id, ti, kind, 'qty', 'Qty', '110px', 'number')) +
+                                    fld('Harga Min', nfld(id, ti, kind, 'pmin', 'Harga min', '140px', 'number')) +
+                                    fld('Harga Max', nfld(id, ti, kind, 'pmax', 'Harga max', '140px', 'number')) +
+                                    '<div>' + btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</div></div></div>';
                                 return h;
                             }
 
                             function kindBlock(ti, kind) {
-                                var K = KIND[kind], lines = plan.tasks[ti][kind] || [], th = 'padding:7px;border-bottom:1px solid #34546a;';
-                                var h = '<div style="margin:12px 0 4px;font-size:14px;font-weight:bold;color:#80deea;">' + K.title + '</div>';
+                                var K = KIND[kind], lines = plan.tasks[ti][kind] || [], key = ti + '_' + kind, isAddOpen = !!openAdd[key];
+                                var h = '<div style="margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid #2c4a5e;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;">' +
+                                    '<span style="font-size:18px;font-weight:bold;color:' + (kind === 'materials' ? '#80deea' : '#ffcc80') + ';">' + K.title + ' (' + lines.length + ')</span>' +
+                                    '<span style="margin-left:auto;font-size:14px;color:#9ec3d1;">Subtotal (Max): <span id="aiSub_' + key + '">' + subCell(taskSub(plan.tasks[ti], kind)) + '</span></span></div>';
                                 if (lines.length) {
-                                    h += '<table width="100%" style="border-collapse:collapse;color:#fff;font-size:13px;line-height:1.4;">' +
-                                        '<tr style="color:#40d7ed;background:#0a1a27;">' +
-                                        '<th align="left" style="' + th + '">' + K.nameHdr + '</th><th align="center" style="' + th + '">Satuan</th>' +
-                                        '<th align="right" style="' + th + '">Qty</th><th align="right" style="' + th + '">Harga Min (Rp)</th>' +
-                                        '<th align="right" style="' + th + '">Harga Max (Rp)</th><th align="right" style="' + th + '">Total (Max)</th>' +
-                                        '<th align="left" style="' + th + '">Status</th><th style="' + th + '"></th></tr>';
                                     Ext.each(lines, function (m, li) { h += lineRow(ti, kind, m, li); });
-                                    h += '<tr style="border-top:1px solid #34546a;"><td colspan="5" align="right" style="padding:7px;color:#40d7ed;"><b>Subtotal ' + K.title + '</b></td>' +
-                                         '<td align="right" id="aiSub_' + ti + '_' + kind + '" style="padding:7px;">' + subCell(taskSub(plan.tasks[ti], kind)) + '</td><td colspan="2"></td></tr></table>';
                                 } else {
-                                    h += '<div style="font-size:13px;color:#ffcc80;margin:4px 0;">' + K.empty + '</div>';
+                                    h += '<div style="font-size:15px;color:#ffcc80;margin:6px 0 10px;">' + K.empty + '</div>';
                                 }
-                                return h + addBar(ti, kind);
+                                h += '<div style="margin-top:6px;">' + btn('aiToggleAdd', ti, kind, isAddOpen ? '&minus; Tutup form tambah' : K.addLbl, isAddOpen ? '#2c4a5e' : TEAL) + '</div>';
+                                if (isAddOpen) h += addPanel(ti, kind);
+                                return h;
                             }
 
                             function taskCard(ti) {
-                                var t = plan.tasks[ti], empty = !(t.materials || []).length && !(t.expenses || []).length;
-                                var h = '<div style="border:1px solid ' + (empty ? '#b26a00' : '#3b6078') + ';border-radius:7px;padding:14px;margin:0 0 14px 0;background:#102638;">' +
-                                    '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;"><span style="font-size:17px;font-weight:bold;color:#40d7ed;">' + (ti + 1) + '.</span>' +
-                                    tfld(ti, 'task_name', t.task_name, 'flex:1;font-size:15px;font-weight:bold;', 'text', 'Nama task') +
-                                    btn('aiRemoveTask', ti, '', 'Hapus Task', BURG) + '</div>' +
-                                    tfld(ti, 'description', t.description, 'width:100%;font-size:13px;', 'text', 'Deskripsi pekerjaan') +
-                                    (t.assumption ? '<div style="font-size:12px;color:#a1c4d0;margin:5px 0;"><i>Asumsi: ' + enc(t.assumption) + '</i></div>' : '') +
-                                    '<div style="margin:7px 0 0;font-size:12px;color:#80deea;">Mulai ' + tfld(ti, 'start_date', t.start_date, 'width:140px;', 'date') +
-                                    ' &nbsp;Selesai ' + tfld(ti, 'end_date', t.end_date, 'width:140px;', 'date') + '</div>' +
-                                    (empty ? '<div style="font-size:13px;color:#ffcc80;margin-top:8px;">Task ini belum punya material maupun biaya. Tambahkan minimal satu (biasanya biaya jasa / upah / sewa alat).</div>' : '');
-                                return h + kindBlock(ti, 'materials') + kindBlock(ti, 'expenses') + '</div>';
-                            }
-
-                            function toolbar() {
-                                return '<div style="margin:6px 0 12px;">' + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) + ' &nbsp;' +
-                                       btn('aiRecalc', '', '', 'Hitung Ulang &amp; Cek Status', SLATE) + '</div>';
+                                var t = plan.tasks[ti], mats = t.materials || [], exps = t.expenses || [], empty = !mats.length && !exps.length, isOpen = !!openTask[ti];
+                                var ov = null; Ext.each(meta.task_matches || [], function (x) { if (x.index === ti) ov = x; });
+                                var h = '<div style="border:2px solid ' + (empty ? '#b26a00' : '#3b6078') + ';border-radius:9px;margin:0 0 16px 0;background:#102638;overflow:hidden;">' +
+                                    '<div class="aiToggleTask" data-task="' + ti + '" title="Klik untuk ' + (isOpen ? 'menutup' : 'membuka') + '" style="cursor:pointer;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px;background:#16344a;">' +
+                                    '<span style="font-size:18px;color:#40d7ed;width:20px;">' + (isOpen ? '&#9660;' : '&#9654;') + '</span>' +
+                                    '<span style="font-size:20px;font-weight:bold;color:#40d7ed;">' + (ti + 1) + '.</span>' +
+                                    '<span id="aiHdrName_' + ti + '" style="flex:1;min-width:220px;font-size:18px;font-weight:bold;color:#fff;line-height:1.35;">' + enc(t.task_name || '(tanpa nama)') + '</span>' +
+                                    '<span style="font-size:14px;color:#c4dde8;">' + mats.length + ' material &bull; ' + exps.length + ' biaya</span>' +
+                                    '<span style="font-size:14px;color:#80deea;white-space:nowrap;">' + enc(t.start_date || '-') + ' s/d ' + enc(t.end_date || '-') + '</span>' +
+                                    (ov ? chip('Menimpa: ' + enc(ov.match_task_name), '#ffb74d') : '') +
+                                    (empty ? chip('Belum ada item', '#ffcc80') : '') +
+                                    '<span style="font-size:13px;color:#9ec3d1;">Total (Max) Rp <b id="aiHdrSub_' + ti + '" style="font-size:17px;color:#fff;">' + fmtIdr(taskTotalMax(t)) + '</b></span></div>';
+                                if (isOpen) {
+                                    h += '<div style="padding:16px;">' +
+                                        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+                                        fld('Nama Task', tfld(ti, 'task_name', t.task_name, 'width:100%;font-size:16px;font-weight:bold;', 'text', 'Nama task'), 'flex:3;min-width:280px;') +
+                                        fld('Mulai', tfld(ti, 'start_date', t.start_date, 'width:160px;', 'date')) +
+                                        fld('Selesai', tfld(ti, 'end_date', t.end_date, 'width:160px;', 'date')) +
+                                        '<div>' + btn('aiRemoveTask', ti, '', 'Hapus Task', BURG) + '</div></div>' +
+                                        '<div style="margin-top:12px;">' + fld('Deskripsi pekerjaan', tfld(ti, 'description', t.description, 'width:100%;', 'text', 'Deskripsi pekerjaan')) + '</div>' +
+                                        (t.assumption ? '<div style="font-size:14px;color:#c4dde8;margin-top:10px;line-height:1.55;background:#0b1b28;border:1px solid #31536a;border-radius:6px;padding:10px;"><b>Asumsi perhitungan:</b> ' + enc(t.assumption) + '</div>' : '') +
+                                        (empty ? '<div style="font-size:15px;color:#ffcc80;margin-top:12px;">Task ini belum punya material maupun biaya. Tambahkan minimal satu (biasanya biaya jasa / upah / sewa alat).</div>' : '') +
+                                        kindBlock(ti, 'materials') + kindBlock(ti, 'expenses') + '</div>';
+                                }
+                                return h + '</div>';
                             }
 
                             function renderTaskPlan() {
-                                var html = alertHtml() + modeHtml() + '<div id="aiSummary">' + summaryHtml() + '</div>';
+                                var html = stickyBar() + alertHtml() + modeHtml();
                                 if (res.analysis) {
-                                    html += '<div style="font-size:14px;line-height:1.55;color:#b0d4e0;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:10px;"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
+                                    html += '<div style="font-size:15px;line-height:1.65;color:#d5e3ec;background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-bottom:14px;"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
                                 }
                                 if (res.notes && res.notes.length) {
-                                    html += '<div style="font-size:14px;color:#ffcc80;margin-bottom:10px;">' + enc(res.notes.join(' ')) + '</div>';
+                                    html += '<div style="font-size:15px;color:#ffcc80;margin-bottom:14px;line-height:1.6;">' + enc(res.notes.join(' ')) + '</div>';
                                 }
-                                html += '<div id="aiMetaBox" style="background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:10px;">' + metaHtml() + '</div>' +
-                                    '<div style="font-size:13px;color:#b0bec5;background:#0b1b28;border:1px solid #31536a;padding:10px;margin-bottom:6px;line-height:1.5;">' +
-                                    '<b>Ini draft, belum tersimpan.</b> Ubah Task, material dan biaya sesuka Anda. Harga min dan max disimpan di <b>master</b> (material / biaya baru); <b>harga satuan RAB = harga MAX</b> dan total memakai harga MAX. ' +
-                                    'Saat disimpan: material <span style="color:#ffb74d;">baru</span> dibuat dulu di master (lengkap min-max), lalu material dan biaya masuk ke RAB (lengkap dengan satuan), kemudian Task dan alokasinya disimpan. ' +
-                                    'Item yang sudah ada di master memakai rentang harga master (tidak diubah di sini); di halaman RAB harga satuan boleh diubah selama masih di antara min dan max master. Klik <b>Hitung Ulang</b> setelah mengubah nama / qty agar status dan total plafon dicek ulang.</div>' + toolbar();
+                                html += '<div id="aiMetaBox" style="background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-bottom:14px;">' + metaHtml() + '</div>' + helpHtml();
                                 Ext.each(plan.tasks, function (t, ti) { html += taskCard(ti); });
-                                return html + toolbar();
+                                return html + '<div style="margin:4px 0 8px;">' + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) + '</div>';
                             }
 
                             // Hanya angka (tanpa membangun ulang tabel) agar fokus input tidak hilang saat mengetik
@@ -662,6 +715,7 @@ Ext.onReady(function () {
                                 var t = calcTotals(), set = function (id, v) { var el = document.getElementById(id); if (el) el.innerHTML = fmtIdr(v); };
                                 set('aiSumMat', t.mat); set('aiSumExp', t.exp); set('aiSumMax', t.max); set('aiSumMin', t.min);
                                 Ext.each(plan.tasks, function (task, ti) {
+                                    set('aiHdrSub_' + ti, taskTotalMax(task));
                                     Ext.each(KINDS, function (kind) {
                                         var sub = document.getElementById('aiSub_' + ti + '_' + kind);
                                         if (sub) sub.innerHTML = subCell(taskSub(task, kind));
@@ -709,6 +763,37 @@ Ext.onReady(function () {
                             function bindPlanActions(win) {
                                 var root = win.body.dom, i, els;
 
+                                // [UI-READABLE] buka / tutup task, form tambah, bantuan; buka / tutup semua
+                                els = root.querySelectorAll('.aiToggleTask');
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onclick = function () { var k = parseInt(el.getAttribute('data-task'), 10); openTask[k] = !openTask[k]; redraw(); };
+                                })(els[i]); }
+                                els = root.querySelectorAll('.aiToggleAdd');
+                                for (i = 0; i < els.length; i++) { (function (b) {
+                                    b.onclick = function () { var k = b.getAttribute('data-task') + '_' + b.getAttribute('data-kind'); openAdd[k] = !openAdd[k]; redraw(); };
+                                })(els[i]); }
+                                els = root.querySelectorAll('.aiToggleHelp');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { openHelp = !openHelp; redraw(); }; }
+                                els = root.querySelectorAll('.aiExpandAll');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { for (var k = 0; k < plan.tasks.length; k++) openTask[k] = true; redraw(); }; }
+                                els = root.querySelectorAll('.aiCollapseAll');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { openTask = {}; redraw(); }; }
+
+                                // [UI-READABLE] isian: klik = pilih semua isi (ketik langsung menimpa); Enter = simpan isian / tambah item
+                                els = root.querySelectorAll('input[type="text"],input[type="number"]');
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onfocus = function () { try { el.select(); } catch (e) {} };
+                                    el.onkeydown = function (ev) {
+                                        ev = ev || window.event;
+                                        if ((ev.keyCode || ev.which) !== 13) return;
+                                        if (el.className === 'aiNewIn') {
+                                            var ab = root.querySelector('.aiAddNew[data-task="' + el.getAttribute('data-task') + '"][data-kind="' + el.getAttribute('data-kind') + '"]');
+                                            if (ab) ab.click();
+                                        } else { el.blur(); }
+                                        return false;
+                                    };
+                                })(els[i]); }
+
                                 els = root.querySelectorAll('.aiEdit');                        // ubah qty / harga / nama / satuan baris
                                 for (i = 0; i < els.length; i++) { (function (el) {
                                     el.onchange = function () {
@@ -720,7 +805,7 @@ Ext.onReady(function () {
                                             if (f === 'price_max') m.unit_price = m.price_max;
                                             updateTotalsInPlace();
                                             var stale = document.getElementById('aiStale');         // angka plafon server belum dihitung ulang
-                                            if (stale) stale.style.display = 'block';
+                                            if (stale) stale.style.display = 'inline';
                                         } else { m[f] = el.value; }
                                     };
                                 })(els[i]); }
@@ -728,8 +813,12 @@ Ext.onReady(function () {
                                 els = root.querySelectorAll('.aiTaskEdit');                    // ubah nama / deskripsi / tanggal task
                                 for (i = 0; i < els.length; i++) { (function (el) {
                                     el.onchange = function () {
-                                        var t = plan.tasks[parseInt(el.getAttribute('data-task'), 10)];
+                                        var tk = parseInt(el.getAttribute('data-task'), 10), t = plan.tasks[tk];
                                         if (t) t[el.getAttribute('data-field')] = el.value;
+                                        if (t && el.getAttribute('data-field') === 'task_name') {         // [UI-READABLE] judul kartu ikut berubah
+                                            var hn = document.getElementById('aiHdrName_' + tk);
+                                            if (hn) hn.innerHTML = enc(el.value || '(tanpa nama)');
+                                        }
                                     };
                                 })(els[i]); }
 
@@ -747,7 +836,13 @@ Ext.onReady(function () {
                                     b.onclick = function () {
                                         var ti = parseInt(b.getAttribute('data-task'), 10), t = plan.tasks[ti];
                                         var has = (t.materials || []).length + (t.expenses || []).length;
-                                        var doIt = function () { plan.tasks.splice(ti, 1); refresh(); };
+                                        var doIt = function () {
+                                            plan.tasks.splice(ti, 1);
+                                            var no = {};                                                  // [UI-READABLE] geser status buka/tutup setelah task dihapus
+                                            for (var k in openTask) { k = parseInt(k, 10); if (k < ti) no[k] = openTask[k]; else if (k > ti) no[k - 1] = openTask[k]; }
+                                            openTask = no; openAdd = {};
+                                            refresh();
+                                        };
                                         if (has) {
                                             Ext.Msg.confirm('Hapus Task', 'Hapus Task <b>' + enc(t.task_name) + '</b> beserta ' + has + ' item di dalamnya?', function (a) { if (a === 'yes') doIt(); });
                                         } else { doIt(); }
@@ -759,6 +854,7 @@ Ext.onReady(function () {
                                     els[i].onclick = function () {
                                         var today = ymd(new Date());
                                         plan.tasks.push({ task_name: 'Task Baru', description: '', assumption: '', start_date: projRange.start || today, end_date: projRange.end || today, materials: [], expenses: [] });
+                                        openTask[plan.tasks.length - 1] = true;                              // [UI-READABLE] task baru langsung terbuka
                                         refresh();
                                     };
                                 }

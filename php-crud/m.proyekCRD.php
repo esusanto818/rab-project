@@ -1,1437 +1,1251 @@
-<?php
-/**
- * m.proyekCRD.php
- * ============================================================
- * Backend Controller untuk Master Proyek (public.projects)
- * Beserta Integrasi AI Task Breakdown & Validasi Rentang Tanggal.
- * [AUTO-INV] + Penerbitan tagihan otomatis (DP / Termin 1-3 = 30-20-20-30) berdasar breakdown task.
- * ============================================================
- */
+/*
+  Document      : m.proyek.js
+  Description   : ExtJS Controller untuk pengelolaan Master Proyek dengan Integrasi AI Task Breakdown
+                   - Panel Detail Sub-Task AI di Layar Utama (Main Screen)
+                   - Editor Form Responsif & Tinggi Maksimal
+  Backend       : /rab-project/php-crud/m.proyekCRD.php
+  [AI-BOQ]      : analisis AI -> BoQ lengkap (material + biaya/expense, satuan, qty, harga MIN/MAX); review bisa diedit (task, material, biaya);
+                  simpan = buat material master -> RAB -> task. Butuh migrasi sql/2026-11-06.budget_items_price_range.sql
+  [AUTO-INV]    : + tagihan otomatis (DP/Termin 1-3 = 30-20-20-30) dari breakdown task; tabel tagihan di panel detail
+*/
 
-ini_set('display_errors', '0');
-ob_start();
-
-require_once __DIR__ . '/../php-func/function.all.php';
-require_once __DIR__ . '/../php-class/crudClass.php';
-
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-header('Content-Type: application/json');
-
-$task = $_REQUEST['task'] ?? '';
-$db   = new crud();
-
-function mpJson(array $payload) {
-    if (ob_get_length()) { ob_clean(); }
-    echo json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE);
-    exit;
-}
-
-function PrepOrFailMP($stmt, $context = '') {
-    if ($stmt === false) {
-        throw new Exception(($context ? "[{$context}] " : '') . 'Query gagal dijalankan.');
-    }
-    return $stmt;
-}
-function mpFetchAll($db, $sql, array $params = [], $ctx = '') {
-    $stmt = $db->prepare($sql);
-    PrepOrFailMP($stmt, $ctx);
-    $stmt->execute($params);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-function mpFetchOne($db, $sql, array $params = [], $ctx = '') {
-    $stmt = $db->prepare($sql);
-    PrepOrFailMP($stmt, $ctx);
-    $stmt->execute($params);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    return $row === false ? null : $row;
-}
-function mpExec($db, $sql, array $params = [], $ctx = '') {
-    $stmt = $db->prepare($sql);
-    PrepOrFailMP($stmt, $ctx);
-    $stmt->execute($params);
-    return $stmt;
-}
-
-
-/* ============================================================
- * [AUTO-INV][NEW] Penerbitan tagihan (invoice) otomatis berdasarkan breakdown task AI
- * ------------------------------------------------------------
- * Aturan:
- *  - 4 slot: Down Payment, Termin 1, Termin 2, Pelunasan Proyek = 30-20-20-30 dari Nilai Kontrak
- *    (DP mengikuti projects.dp_min_pct bila diisi; sisanya dibagi proporsional 20:20:30).
- *  - Tgl invoice = tgl mulai task pemicu - 7 hari ; Jatuh tempo = tgl mulai task pemicu - 1 hari.
- *  - DP dipicu task pertama; Termin 1-3 dipicu task yang dipilih AI (fallback: titik 25% / 50% / 75% durasi kerja).
- *  - Analisis data tagihan & pembayaran: belum ada tagihan -> mulai dari DP; sudah ada n tagihan -> lanjut slot ke n+1.
- *  - Slot terakhir menyerap sisa agar total tagihan = Nilai Kontrak (tidak ada selisih pembulatan).
- *  - Tagihan otomatis yang belum dibayar ikut disesuaikan tanggalnya bila task di-breakdown ulang.
- *  - [PPN] Nilai slot = DPP dari Nilai Kontrak (bila ppn_inclusive, DPP = kontrak / (1 + tarif)); PPN Keluaran = DPP x projects.ppn_rate;
- *    amount = DPP + PPN, sama dengan project_invoiceCRD.php.
- *  - [JURNAL] Tiap tagihan diposting lewat AutoPostJournal (PROJECT_INVOICE + PROJECT_INVOICE_PPN) dalam transaksi yang sama; gagal posting = batal semua.
- *    Sinkron tanggal tagihan otomatis = reverse jurnal lama lalu posting ulang di tanggal baru.
- * Butuh migrasi: sql/2026-10-28.project_invoices_auto.sql
- * ============================================================ */
-const MP_INV_LEAD_DAYS    = 7;                                    // tgl invoice = mulai task - 7 hari
-const MP_INV_REST_WEIGHTS = [20, 20, 30];                         // bobot Termin 1..3 (DP dihitung terpisah)
-const MP_INV_NAMES        = ['Down Payment', 'Termin 1', 'Termin 2', 'Pelunasan Proyek'];
-
-const MP_JOURNAL_REF = 'project_invoice';          // sama dengan project_invoiceCRD.php (TI_JOURNAL_REF)
-const MP_PPN_RULE    = 'PROJECT_INVOICE_PPN';      // Dr Piutang Usaha / Cr PPN Keluaran
-
-function mpBool($v) { return $v === true || $v === 't' || $v === '1' || $v === 1; }
-
-// [AUTO-INV][REFACTOR] panggilan Gemini dipakai bersama oleh breakdown task & analisis tagihan
-function mpCallGemini($prompt, $timeout = 20) {
-    $apiKey = getenv('GOOGLE_API_KEY');
-    $candidateModels = ['gemini-3.6-flash','gemini-3.5-flash-lite'];
-    $response = null; $httpCode = 0; $lastErrorMsg = '';
-
-    foreach ($candidateModels as $model) {
-        $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
-        for ($attempt = 1; $attempt <= 2; $attempt++) {
-            $ch = curl_init($apiUrl);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-                'contents' => [['parts' => [['text' => $prompt]]]],
-                'generationConfig' => ['responseMimeType' => 'application/json', 'maxOutputTokens' => 16384]   // [AI-BOQ] BoQ + expense panjang
-            ]));
-            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'x-goog-api-key: ' . $apiKey]);
-            curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($httpCode === 200) break 2;
-            $lastErrorMsg = "Model {$model} (HTTP {$httpCode}): " . $response;
-            if ($httpCode === 503 || $httpCode === 429) sleep(1); else break;
-        }
-    }
-    if ($httpCode !== 200) {
-        throw new Exception("Gagal terhubung ke Gemini API: {$lastErrorMsg}");
-    }
-    $apiResult = json_decode($response, true);
-    $raw = $apiResult['candidates'][0]['content']['parts'][0]['text'] ?? '';
-    return trim(str_replace(['```json', '```'], '', $raw));
-}
-
-// [JURNAL] jurnal penagihan: DPP -> pendapatan, PPN -> PPN Keluaran (sama dengan ti_post_journal)
-function mpPostInvoiceJournal($db, $invId, $invNo, $date, $dpp, $ppn, $projectName) {
-    $jr = AutoPostJournal($db, [
-        'rule_code' => 'PROJECT_INVOICE', 'reference_type' => MP_JOURNAL_REF, 'reference_id' => $invId,
-        'journal_date' => $date, 'amount' => $dpp, 'description' => "Tagihan termin {$invNo} - {$projectName}",
-    ]);
-    if (!$jr['success']) throw new Exception('Gagal posting jurnal penagihan: ' . $jr['message']);
-    if ($ppn > 0.01) {
-        $jr = AutoPostJournal($db, [
-            'rule_code' => MP_PPN_RULE, 'reference_type' => MP_JOURNAL_REF, 'reference_id' => $invId,
-            'journal_date' => $date, 'amount' => $ppn, 'description' => "PPN Keluaran termin {$invNo} - {$projectName}",
-        ]);
-        if (!$jr['success']) throw new Exception('Gagal posting jurnal PPN Keluaran: ' . $jr['message']);
-    }
-}
-function mpHasJournal($db, $invId) {
-    return (bool)mpFetchOne($db, "SELECT 1 AS x FROM public.journal_entries WHERE reference_type::text = :t AND reference_id = :id LIMIT 1",
-                            ['t' => MP_JOURNAL_REF, 'id' => $invId], 'cek jurnal');
-}
-
-// Persentase per slot: DP = dp_min_pct (default 30), sisanya proporsional 20:20:30 -> default 30-20-20-30
-function mpSlotPcts($dpPct) {
-    $dp   = ($dpPct > 0 && $dpPct < 100) ? (float)$dpPct : 30.0;
-    $rest = 100 - $dp;
-    $sw   = array_sum(MP_INV_REST_WEIGHTS);
-    $p    = [$dp];
-    foreach (MP_INV_REST_WEIGHTS as $w) $p[] = round($rest * $w / $sw, 2);
-    return $p;
-}
-
-// Titik pemicu default (index task): DP = task 1; Termin 1-3 = task pertama yang dimulai setelah 25% / 50% / 75% total durasi
-function mpDefaultAnchors(array $tasks) {
-    $n = count($tasks); $cumBefore = []; $cum = 0;
-    foreach ($tasks as $i => $t) {
-        $d = max(1, (int)floor((strtotime($t['end_date']) - strtotime($t['start_date'])) / 86400) + 1);
-        $cumBefore[$i] = $cum; $cum += $d;
-    }
-    $idx = [0];
-    foreach ([0.25, 0.50, 0.75] as $target) {
-        $prev = end($idx); $pick = $n - 1;
-        for ($i = $prev + 1; $i < $n; $i++) {
-            if ($cum > 0 && $cumBefore[$i] / $cum >= $target - 1e-9) { $pick = $i; break; }
-        }
-        $idx[] = $pick;
-    }
-    return $idx;
-}
-
-// Nomor invoice berurutan dari satu nomor awal (CreateRefNo membaca data ter-commit, jadi tidak aman dipanggil berulang dalam 1 transaksi)
-function mpRefPlus($ref, $n) {
-    if ($n === 0) return $ref;
-    if (preg_match('/^(.*?)(\d+)$/', $ref, $m)) {
-        return $m[1] . str_pad((string)((int)$m[2] + $n), strlen($m[2]), '0', STR_PAD_LEFT);
-    }
-    return $ref . '-' . $n;
-}
-
-function mpMinusDays($ymd, $days) { return date('Y-m-d', strtotime($ymd . " -{$days} days")); }
-
-// Analisis data proyek + tagihan + pembayaran klien -> rencana tagihan (belum menyimpan apa pun)
-function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
-    $proj = mpFetchOne($db, "SELECT id, name, client_id, contract_value, dp_min_pct, ppn_rate, ppn_inclusive FROM projects WHERE id = :id", ['id' => $projectId], 'plan_proj');
-    if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-    $cv = round((float)$proj['contract_value'], 2);
-    if ($cv <= 0) throw new Exception('Nilai Kontrak (Plafon) proyek belum diisi, tagihan tidak dapat dihitung.');
-
-    // [PPN] basis DPP: nilai kontrak sudah termasuk PPN -> DPP = kontrak / (1 + tarif)
-    $ppnRate = round((float)$proj['ppn_rate'], 2);
-    $base    = (mpBool($proj['ppn_inclusive']) && $ppnRate > 0) ? round($cv / (1 + $ppnRate / 100), 2) : $cv;
-
-    $tasks = mpFetchAll($db, "SELECT id, task_name, start_date, end_date FROM public.project_tasks WHERE project_id = :p ORDER BY start_date ASC, id ASC", ['p' => $projectId], 'plan_tasks');
-    if (!count($tasks)) throw new Exception('Breakdown task proyek belum ada. Jalankan ANALISIS & BAGI TASK (AI) terlebih dahulu.');
-
-    $existing = mpFetchAll($db,
-        "SELECT id, inv_no, termin_name, invoice_date, due_date, amount, CASE WHEN dpp_amount > 0 THEN dpp_amount ELSE amount END AS dpp,
-                paid_amount, task_id, COALESCE(auto_generated, false) AS auto_generated
-           FROM project_invoices WHERE project_id = :p ORDER BY invoice_date ASC, id ASC", ['p' => $projectId], 'plan_existing');
-    $k = count($existing);
-    $invoiced = 0.0; $invoicedDpp = 0.0; $paid = 0.0;
-    foreach ($existing as $e) { $invoiced += (float)$e['amount']; $invoicedDpp += (float)$e['dpp']; $paid += (float)$e['paid_amount']; }
-
-    // riwayat pembayaran klien (seluruh proyek klien yang sama) sebagai bahan analisis AI
-    $cli = ['inv_count' => 0, 'invoiced' => 0, 'paid' => 0];
-    if ($proj['client_id']) {
-        $cli = mpFetchOne($db,
-            "SELECT COUNT(*) AS inv_count, COALESCE(SUM(i.amount),0) AS invoiced, COALESCE(SUM(i.paid_amount),0) AS paid
-               FROM project_invoices i JOIN projects p ON p.id = i.project_id WHERE p.client_id = :c",
-            ['c' => (int)$proj['client_id']], 'plan_client') ?: $cli;
+Ext.onReady(function () {
+    Ext.QuickTips.init();
+    if (document.getElementById("mainHeaderText")) {
+        document.getElementById("mainHeaderText").innerHTML = " Data <em>Proyek & Kontrak</em>";
     }
 
-    // slot yang bisa disinkronkan = tagihan otomatis yang belum ada pembayaran
-    $syncable = [];
-    for ($j = 0; $j < min($k, 4); $j++) {
-        if (mpBool($existing[$j]['auto_generated']) && (float)$existing[$j]['paid_amount'] <= 0) $syncable[] = $j;
+    var CRD = main_url + '/php-crud/m.proyekCRD.php';
+    var task = '';
+    var dataRecord = null;
+    var curRate = 1;
+    var fmtRp = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
+    // [AI-BOQ] qty tanpa nol di belakang (Ext 3 tidak mendukung pola '#'): 150 -> "150", 1.5 -> "1.5", 1000 -> "1,000"
+    function fmtQty3(v) { return Ext.util.Format.number(parseFloat(v) || 0, '0,000.000').replace(/\.?0+$/, ''); }
+    // [AI-BOQ] penanda plafon: hasil analisis / RAB lebih besar dari budget atau nilai kontrak (aturan sama dengan modul RAB)
+    function plafonBanner() {
+        var sm = (mainTaskStore && mainTaskStore.reader && mainTaskStore.reader.jsonData) ? mainTaskStore.reader.jsonData.summary : null;
+        if (!sm) return '';
+        var nf = function (v) { return Ext.util.Format.number(v || 0, '0,000'); }, en = Ext.util.Format.htmlEncode;
+        var col = { danger: ['#3b1212', '#ff6b5e', '#ffb4ab'], warning: ['#3a2c08', '#e6a817', '#ffe08a'], ok: ['#0f2f22', '#2e9e4f', '#a5e8bd'] }[sm.severity] || ['#132330', '#1c3648', '#ffffff'];
+        var title = sm.severity === 'ok' ? '&#10003; Anggaran aman' : ('&#9888; ' + (sm.severity === 'danger' ? 'PERINGATAN ANGGARAN' : 'PERHATIAN ANGGARAN'));
+        var h = '<div style="background:' + col[0] + ';border:2px solid ' + col[1] + ';border-radius:5px;padding:10px;margin-bottom:12px;font-size:15px;line-height:1.6;">' +
+            '<b style="color:' + col[1] + ';">' + title + '</b><br><span style="color:#d5e3ec;">Total RAB Rp <b>' + nf(sm.rab_after_idr) + '</b> | Estimasi seluruh task (max) Rp <b>' + nf(sm.task_total_max_idr) + '</b>' +
+            (sm.budget_idr > 0 ? ' | Budget Rp <b>' + nf(sm.budget_idr) + '</b>' : '') + (sm.contract_idr > 0 ? ' | Nilai kontrak Rp <b>' + nf(sm.contract_idr) + '</b>' : '') + '</span>';
+        Ext.each(sm.warnings || [], function (w) {
+            h += '<div style="color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:3px;">&bull; ' + en(w.text) + '</div>';
+        });
+        return h + '</div>';
+    }
+    // [AI-BOQ] rincian item task (M = material, E = biaya) dengan harga satuan MIN - MAX (mata uang anggaran proyek)
+    function fmtTaskItems(items, kind) {
+        var out = [], nf = function (v) { return Ext.util.Format.number(v || 0, '0,000'); };
+        Ext.each(items || [], function (it) {
+            if (it.kind !== kind) return;
+            var pr = (parseFloat(it.pmin) === parseFloat(it.pmax)) ? nf(it.pmax) : nf(it.pmin) + ' - ' + nf(it.pmax);
+            out.push('<div style="margin-bottom:6px;"><b>' + Ext.util.Format.htmlEncode(it.name) + '</b>: ' + fmtQty3(it.qty) + ' ' +
+                     Ext.util.Format.htmlEncode(it.unit) + '<div style="color:#8fb3c0;font-size:13px;">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + (parseFloat(it.pmin) === parseFloat(it.pmax) ? ' (rentang master belum diisi)' : ' (min - max)') + '</div></div>');
+        });
+        return out.length ? out.join('') : '-';
     }
 
-    $rows = []; $analysis = ''; $aiUsed = false;
-    $pcts = mpSlotPcts((float)$proj['dp_min_pct']);
-
-    if ($k < 4 || count($syncable)) {
-        // --- titik pemicu: default deterministik, lalu coba disempurnakan AI ---
-        $anchors = mpDefaultAnchors($tasks);
-        $n = count($tasks);
-        if ($useAi && $n >= 4) {
-            try {
-                $tl = [];
-                foreach ($tasks as $t) $tl[] = ['task_id' => (int)$t['id'], 'task_name' => $t['task_name'], 'start_date' => $t['start_date'], 'end_date' => $t['end_date']];
-                $prompt = "Anda adalah Project Controller konstruksi. Tentukan task pemicu penerbitan tagihan termin ke klien.\n" .
-                    "Data proyek: nama={$proj['name']}; nilai kontrak={$cv}; sudah ditagih={$invoiced}; sudah dibayar={$paid}; jumlah tagihan existing={$k}.\n" .
-                    "Riwayat klien (semua proyek): jumlah tagihan={$cli['inv_count']}; total ditagih={$cli['invoiced']}; total dibayar={$cli['paid']}.\n" .
-                    "Skema penagihan: Down Payment " . $pcts[0] . "% (dipicu task pertama), Termin 1 " . $pcts[1] . "%, Termin 2 " . $pcts[2] . "%, Pelunasan Proyek " . $pcts[3] . "%.\n" .
-                    "Daftar task (urut tanggal mulai): " . json_encode($tl, JSON_UNESCAPED_UNICODE) . "\n" .
-                    "Aturan: pilih 3 task BERBEDA dan berurutan (sesuai urutan tanggal mulai), bukan task pertama, sebagai pemicu Termin 1, 2, 3. " .
-                    "Tagihan terbit sebelum task tersebut dimulai, jadi pilih task yang awal tahap kerjanya selaras dengan akumulasi persentase tagihan. " .
-                    "Jika klien punya riwayat bayar lambat/outstanding besar, jelaskan itu di analysis.\n" .
-                    "Jawab JSON MURNI: {\"termin1_task_id\":int,\"termin2_task_id\":int,\"termin3_task_id\":int,\"analysis\":\"2-3 kalimat Bahasa Indonesia\"}";
-                $ai = json_decode(mpCallGemini($prompt), true);
-                if (is_array($ai)) {
-                    $byId = [];
-                    foreach ($tasks as $i => $t) $byId[(int)$t['id']] = $i;
-                    $ids = [(int)($ai['termin1_task_id'] ?? 0), (int)($ai['termin2_task_id'] ?? 0), (int)($ai['termin3_task_id'] ?? 0)];
-                    $ok = true; $prev = 0; $cand = [0];
-                    foreach ($ids as $tid) {
-                        if (!isset($byId[$tid]) || $byId[$tid] <= $prev) { $ok = false; break; }   // wajib ada, berbeda, berurutan, bukan task pertama
-                        $prev = $byId[$tid]; $cand[] = $prev;
-                    }
-                    if ($ok) { $anchors = $cand; $aiUsed = true; }
-                    $analysis = trim((string)($ai['analysis'] ?? ''));
-                }
-            } catch (Throwable $e) {
-                error_log('[m.proyekCRD][auto_invoice AI] ' . $e->getMessage());   // AI gagal -> tetap jalan dengan titik default
-            }
-        }
-        if ($analysis === '') {
-            $analysis = "Tagihan sudah {$k} dari 4 termin; ditagih " . number_format($invoiced, 2) . ", dibayar " . number_format($paid, 2) .
-                        " dari nilai kontrak " . number_format($cv, 2) . ". Titik penagihan dihitung dari porsi durasi task.";
-        }
-
-        // --- susun baris per slot ---
-        $remaining = round($base - $invoicedDpp, 2);     // [PPN] sisa dihitung atas DPP
-        for ($j = 0; $j < 4; $j++) {
-            $t = $tasks[min($anchors[$j], $n - 1)];
-            $invDate = mpMinusDays($t['start_date'], MP_INV_LEAD_DAYS);        // [FIX] persis mulai task - 7 hari (tanpa dibatasi hari ini)
-            $dueDate = mpMinusDays($t['start_date'], 1);                       // jatuh tempo = mulai task - 1 hari
-            $row = ['slot' => $j, 'termin_name' => MP_INV_NAMES[$j], 'pct' => $pcts[$j], 'task_id' => (int)$t['id'],
-                    'task_name' => $t['task_name'], 'task_start' => $t['start_date'],
-                    'invoice_date' => $invDate, 'due_date' => $dueDate];
-            if ($j < $k) {
-                $e = $existing[$j];
-                $row['termin_name'] = $e['termin_name']; $row['inv_no'] = $e['inv_no']; $row['invoice_id'] = (int)$e['id'];
-                $row['amount'] = (float)$e['amount']; $row['dpp'] = (float)$e['dpp']; $row['pct'] = $base > 0 ? round($row['dpp'] / $base * 100, 2) : 0;
-                $same = in_array($j, $syncable, true)
-                    ? ((string)$e['invoice_date'] === $invDate && (string)$e['due_date'] === $dueDate && (int)$e['task_id'] === (int)$t['id']) : true;
-                $row['action'] = (in_array($j, $syncable, true) && !$same) ? 'sync' : 'exists';
-                if ($row['action'] === 'exists') { $row['invoice_date'] = $e['invoice_date']; $row['due_date'] = $e['due_date']; }
-            } else {
-                $planned = round($base * $pcts[$j] / 100, 2);
-                $amt = ($j === 3) ? $remaining : min($planned, $remaining);   // slot terakhir menyerap sisa
-                if ($amt <= 0) { $row['amount'] = 0; $row['dpp'] = 0; $row['ppn'] = 0; $row['action'] = 'skip'; }
-                else {
-                    $amt = round($amt, 2); $ppnAmt = ($ppnRate > 0) ? round($amt * $ppnRate / 100, 2) : 0.0;     // [PPN]
-                    $row['dpp'] = $amt; $row['ppn'] = $ppnAmt; $row['amount'] = round($amt + $ppnAmt, 2);       // amount = total tagihan
-                    $row['pct'] = round($amt / $base * 100, 2); $row['action'] = 'new'; $remaining = round($remaining - $amt, 2);
-                }
-            }
-            $rows[] = $row;
-        }
-    } else {
-        $analysis = 'Seluruh 4 termin sudah terbit untuk proyek ini.';
-        foreach ($existing as $j => $e) {
-            $rows[] = ['slot' => $j, 'termin_name' => $e['termin_name'], 'inv_no' => $e['inv_no'], 'invoice_id' => (int)$e['id'],
-                       'amount' => (float)$e['amount'], 'dpp' => (float)$e['dpp'], 'pct' => round((float)$e['dpp'] / $base * 100, 2), 'invoice_date' => $e['invoice_date'],
-                       'due_date' => $e['due_date'], 'task_id' => $e['task_id'], 'task_name' => '', 'task_start' => '', 'action' => 'exists'];
-        }
+    // [AUTO-INV][NEW] tabel rencana / hasil tagihan (dipakai dialog preview & hasil breakdown)
+    var ACTION_LBL = { 'new': 'Akan diterbitkan', 'sync': 'Sesuaikan tanggal', 'exists': 'Sudah ada', 'skip': 'Dilewati' };
+    function planHtml(rows, analysis) {
+        var td = 'padding:7px 10px; border-bottom:1px solid #2a485d; vertical-align:top;';
+        var nw = td + 'white-space:nowrap;';
+        var h = '';
+        if (analysis) h += '<div style="margin-bottom:12px; text-align:left; line-height:20px;"><b>Analisis AI:</b> ' + Ext.util.Format.htmlEncode(analysis) + '</div>';
+        h += '<table style="border-collapse:collapse; font-size:15px; width:100%; text-align:left; table-layout:auto;">' +
+             '<tr style="font-weight:bold; color:#00bcd4;">' +
+             '<td style="' + nw + '">Tagihan</td><td align="right" style="' + nw + '">%</td><td align="right" style="' + nw + '">Total (DPP+PPN)</td>' +
+             '<td style="' + nw + '">Tgl Invoice</td><td style="' + nw + '">Jatuh Tempo</td><td style="' + td + '">Task Pemicu</td><td style="' + nw + '">Aksi</td></tr>';
+        Ext.each(rows || [], function (r) {
+            h += '<tr><td style="' + nw + '">' + Ext.util.Format.htmlEncode(r.termin_name) + '</td>' +
+                 '<td align="right" style="' + nw + '">' + (r.pct || 0) + '</td>' +
+                 '<td align="right" style="' + nw + '">' + fmtRp(r.amount) + '</td>' +
+                 '<td style="' + nw + '">' + Ext.util.Format.htmlEncode(r.invoice_date || '-') + '</td>' +
+                 '<td style="' + nw + '">' + Ext.util.Format.htmlEncode(r.due_date || '-') + '</td>' +
+                 '<td style="' + td + '">' + Ext.util.Format.htmlEncode(r.task_name || '-') + '</td>' +
+                 '<td style="' + nw + '">' + (ACTION_LBL[r.action] || '') + '</td></tr>';
+        });
+        return h + '</table>';
     }
 
-    $cnt = ['new' => 0, 'sync' => 0];
-    foreach ($rows as $r) { if (isset($cnt[$r['action']])) $cnt[$r['action']]++; }
-    return ['project' => $proj, 'k' => $k, 'rows' => $rows, 'analysis' => $analysis, 'ai_used' => $aiUsed,
-            'new_count' => $cnt['new'], 'sync_count' => $cnt['sync'],
-            'ppn_rate' => $ppnRate, 'summary' => ['contract_value' => $cv, 'dpp_base' => $base, 'invoiced' => round($invoiced, 2), 'paid' => round($paid, 2),
-                          'client_invoiced' => (float)$cli['invoiced'], 'client_paid' => (float)$cli['paid']]];
-}
-
-// Simpan rencana: INSERT tagihan baru + jurnal, dan sinkron tanggal tagihan otomatis yang belum dibayar (satu transaksi)
-function mpApplyInvoicePlan($db, array $plan) {
-    $pid = (int)$plan['project']['id'];
-    $db->beginTransaction();
-    try {
-        mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $pid], 'lock proyek');      // cegah klik ganda / proses paralel
-        $cnt = (int)mpFetchOne($db, "SELECT COUNT(*) AS n FROM project_invoices WHERE project_id = :p", ['p' => $pid], 'recount')['n'];
-        if ($cnt !== (int)$plan['k']) throw new Exception('Data tagihan proyek berubah saat diproses, silakan ulangi.');
-        $pName = (string)$plan['project']['name'];
-
-        $firstRef = null; $seq = 0; $made = 0; $synced = 0;
-        foreach ($plan['rows'] as $r) {
-            if ($r['action'] === 'new') {
-                if ($firstRef === null) {
-                    if (!function_exists('CreateRefNo')) throw new Exception('CreateRefNo() tidak tersedia.');
-                    $firstRef = CreateRefNo('project_invoices', 'inv_no', 'INV');
-                }
-                $invNo  = mpRefPlus($firstRef, $seq++);
-                $remark = "Tagihan otomatis {$r['termin_name']} ({$r['pct']}%): terbit " . MP_INV_LEAD_DAYS .
-                          " hari sebelum task '{$r['task_name']}' dimulai ({$r['task_start']}).";
-                // [PPN] kolom sama dengan project_invoiceCRD.php: amount = DPP + PPN
-                $newId = (int)mpFetchOne($db,
-                    "INSERT INTO project_invoices
-                        (inv_no, project_id, termin_name, invoice_date, due_date, percentage, amount, paid_amount,
-                         dpp_amount, ppn_rate, ppn_amount, remark, task_id, auto_generated, ai_note)
-                     VALUES (:no, :p, :tn, CAST(:idt AS date), CAST(:ddt AS date), :pct, :amt, 0,
-                             :dpp, :pr, :ppn, :rm, :tid, 't', :ai)
-                     RETURNING id",
-                    ['no' => $invNo, 'p' => $pid, 'tn' => $r['termin_name'], 'idt' => $r['invoice_date'], 'ddt' => $r['due_date'],
-                     'pct' => $r['pct'], 'amt' => $r['amount'], 'dpp' => $r['dpp'], 'pr' => $plan['ppn_rate'], 'ppn' => $r['ppn'],
-                     'rm' => $remark, 'tid' => $r['task_id'], 'ai' => $plan['analysis']],
-                    'insert invoice otomatis')['id'];
-                mpPostInvoiceJournal($db, $newId, $invNo, $r['invoice_date'], (float)$r['dpp'], (float)$r['ppn'], $pName);   // [JURNAL]
-                $made++;
-            } elseif ($r['action'] === 'sync') {
-                $cur = mpFetchOne($db,
-                    "SELECT inv_no, paid_amount, dpp_amount, ppn_amount, amount FROM project_invoices
-                      WHERE id = :id AND auto_generated = true FOR UPDATE", ['id' => $r['invoice_id']], 'lock invoice sync');
-                if (!$cur || (float)$cur['paid_amount'] > 0) continue;
-                $pay = mpFetchOne($db, "SELECT COUNT(*) AS n FROM public.project_payment_items WHERE invoice_id = :id", ['id' => $r['invoice_id']], 'cek bayar');
-                if ((int)$pay['n'] > 0) continue;                                   // sudah ada alokasi pembayaran -> jangan diubah
-                mpExec($db,
-                    "UPDATE project_invoices SET invoice_date = CAST(:idt AS date), due_date = CAST(:ddt AS date), task_id = :tid, ai_note = :ai
-                      WHERE id = :id",
-                    ['idt' => $r['invoice_date'], 'ddt' => $r['due_date'], 'tid' => $r['task_id'], 'ai' => $plan['analysis'], 'id' => $r['invoice_id']],
-                    'sync invoice otomatis');
-                // [JURNAL] tanggal berubah -> reverse jurnal lama, posting ulang di tanggal baru (sama dengan edit invoice manual)
-                if (mpHasJournal($db, (int)$r['invoice_id'])) ReverseJournalByReference($db, MP_JOURNAL_REF, (int)$r['invoice_id']);
-                $dpp = (float)$cur['dpp_amount'] > 0 ? (float)$cur['dpp_amount'] : (float)$cur['amount'];
-                mpPostInvoiceJournal($db, (int)$r['invoice_id'], $cur['inv_no'], $r['invoice_date'], $dpp, (float)$cur['ppn_amount'], $pName);
-                $synced++;
-            }
-        }
-        $db->commit();
-        return ['made' => $made, 'synced' => $synced];
-    } catch (Throwable $e) {
-        if ($db->inTransaction()) $db->rollBack();
-        throw $e;
+    // [AUTO-INV][NEW] window lebar + scroll (Ext.Msg terlalu sempit untuk tabel). onYes kosong -> hanya tombol Tutup.
+    // Tombol footer memakai <button> HTML bergaya sama dengan "Print Task" (tombol Ext bawaan tidak terbaca di tema gelap).
+    var planWinSeq = 0;
+    // [DEDUP] penjaga klik ganda: analisis sedang jalan / jendela hasil analisis masih terbuka / simpan sedang jalan
+    var aiBusy = false, aiPlanOpen = false, aiSaving = false;
+    function setAiBtn(disabled) {
+        var b = document.getElementById('customAiBtn');
+        if (!b) return;
+        b.disabled = !!disabled;
+        b.style.opacity = disabled ? '0.45' : '1';
+        b.style.cursor = disabled ? 'not-allowed' : 'pointer';
     }
-}
-
-/* ============================================================
- * [AI-BOQ] Helper analisis proyek -> BoQ (task + material + EXPENSE + harga min/max) -> master material -> RAB
- * ------------------------------------------------------------
- *  - AI memecah proyek menjadi paket pekerjaan (task). Tiap task berisi:
- *      materials : bahan (nama, spesifikasi, satuan, qty, harga MIN dan MAX)
- *      expenses  : biaya non-material (kategori RAB: Upah, Peralatan, Transport, Konsumsi, Lain-lain; master = expense_master) - wajib bila task tanpa material
- *  - Harga MIN dan MAX milik MASTER (materials.estimated_price_min/estimated_price; expense_master.default_price_min/default_price).
- *    Harga satuan RAB = MAX (budget_items.unit_price_plan); di modul RAB user boleh mengubahnya selama masih di antara min-max master.
- *  - Saat SIMPAN (satu transaksi): material baru dibuat di master -> semua material & expense masuk RAB (budget_items)
- *    -> task + alokasi (project_tasks, task_materials) disimpan. Total RAB tidak boleh melebihi nilai kontrak (plafon).
- *  - Butuh migrasi: sql/2026-11-06.budget_items_price_range.sql
- * ============================================================ */
-const MP_EPS = 0.00005;
-const MP_EXPENSE_CATEGORIES = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];   // [AI-BOQ] = RAB_CATEGORIES (rabCRD.php) selain Material
-function mpExpCategory($c) { $c = trim((string)$c); return in_array($c, MP_EXPENSE_CATEGORIES, true) ? $c : 'Lain-lain'; }
-
-function mpNorm($s) {                                   // kunci pencocokan nama
-    $s = strtolower(trim((string)$s));
-    return trim(preg_replace('/[^a-z0-9]+/', ' ', $s));
-}
-function mpNum($v) {                                    // angka dari AI / klien (toleran terhadap string)
-    if (is_numeric($v)) return (float)$v;
-    return (float)preg_replace('/[^0-9.\-]/', '', str_replace(',', '', (string)$v));
-}
-function mpIdr($v) { return number_format((float)$v, 0, ',', '.'); }
-
-// Normalisasi pasangan harga: tidak negatif, min <= max, salah satu kosong -> samakan
-function mpNormPrice($pMin, $pMax) {
-    $pMin = max(0, round((float)$pMin, 2)); $pMax = max(0, round((float)$pMax, 2));
-    if ($pMax <= 0 && $pMin > 0) $pMax = $pMin;
-    if ($pMin > $pMax) { $t = $pMin; $pMin = $pMax; $pMax = $t; }
-    if ($pMin <= 0) $pMin = $pMax;
-    return [$pMin, $pMax];
-}
-
-// Kolom harga min master (materials.estimated_price_min, expense_master.default_price_min) sudah dimigrasi? Bila belum, halaman tetap terbaca; hanya SIMPAN yang ditolak.
-function mpHasPriceRange($db) {
-    static $has = null;
-    if ($has === null) {
-        $r = mpFetchOne($db, "SELECT (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ANY (current_schemas(false)) AND table_name = 'materials' AND column_name = 'estimated_price_min')
-                                   + (SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = ANY (current_schemas(false)) AND table_name = 'expense_master' AND column_name = 'default_price_min') AS n", [], 'has_price_range');
-        $has = ((int)$r['n'] === 2);
+    function showPlanWin(title, html, yesText, onYes, onReady, keepOpen) {      // [AI-BOQ] keepOpen: jangan tutup saat Simpan (draft tetap ada bila gagal)
+        var w = Math.min(1500, Math.round((window.innerWidth || 1200) * 0.97));      // [UI-READABLE] jendela lebih lebar & tinggi agar kartu tidak sempit
+        var h = Math.min(950, Math.round((window.innerHeight || 800) * 0.94));
+        var uid = 'planWin' + (++planWinSeq);
+        var btnBase = 'padding:11px 28px; color:#fff; border:0; border-radius:5px; cursor:pointer; font-weight:bold; font-size:15px; margin-left:12px;';   // [UI-READABLE] tombol lebih besar
+        var btnHtml = '<div style="text-align:right; padding:6px 4px;">' +
+            (onYes ? '<button type="button" id="' + uid + 'No" style="' + btnBase + 'background:#800020;">Batal</button>' +        // burgundy
+                     '<button type="button" id="' + uid + 'Yes" style="' + btnBase + 'background:#066b78;">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
+                   : '<button type="button" id="' + uid + 'No" style="' + btnBase + 'background:#066b78;">Tutup</button>') +
+            '</div>';
+        var win = new Ext.Window({
+            title: title, width: w, height: h, modal: true, layout: 'auto', autoScroll: true, closeAction: 'close',
+            bodyStyle: 'padding:14px;', html: html,
+            bbar: new Ext.Toolbar({
+                style: 'background:transparent; border:0; padding:6px 10px;',
+                items: ['->', { xtype: 'box', autoEl: { tag: 'div', html: btnHtml } }]
+            })
+        });
+        win.show();
+        if (onReady) onReady(win, uid);
+        var no = document.getElementById(uid + 'No'), yes = document.getElementById(uid + 'Yes');
+        if (no) no.onclick = function () { win.close(); };
+        if (yes) yes.onclick = function () { if (keepOpen) { onYes(win); } else { win.close(); onYes(); } };
     }
-    return $has;
-}
 
-// Peta RAB proyek: material (category Material) & expense (MP_EXPENSE_CATEGORY) + master material (untuk cocokkan nama)
-// [AI-BOQ] Task lama yang AMAN diganti saat analisis ulang: status 'Belum Mulai' dan tidak punya tagihan yang sudah dibayar
-function mpTaskReplaceInfo($db, $projectId) {
-    $rows = mpFetchAll($db, "SELECT t.id, t.status, COALESCE((SELECT SUM(i.paid_amount) FROM project_invoices i WHERE i.task_id = t.id), 0) AS paid
-                               FROM public.project_tasks t WHERE t.project_id = :p", ['p' => $projectId], 'task_replace_info');
-    $ids = [];
-    foreach ($rows as $r) { if ($r['status'] === 'Belum Mulai' && (float)$r['paid'] <= 0) $ids[] = (int)$r['id']; }
-    return ['total' => count($rows), 'replaceable_ids' => $ids];
-}
-function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }   // [DEDUP] tidak dipakai lagi (simpan selalu cek 'hampir sama'); dibiarkan agar pemanggil lama aman
+    function storeException(proxy, type, action, options, response) {
+        var msg = 'Gagal memuat data dari server.';
+        try {
+            var r = Ext.util.JSON.decode(response.responseText);
+            if (r && r.message) msg = r.message;
+        } catch (e) { msg += ' (respons bukan JSON, cek error_log PHP)'; }
+        Ext.Msg.alert('Gagal', msg);
+    }
 
-/* ============================================================
- * [DEDUP][NEW] Cek 'HAMPIR SAMA' sebelum simpan (task, material, biaya)
- *  - nama dinormalisasi (huruf kecil, tanpa tanda baca, tanpa kata umum: pekerjaan/pemasangan/dan/...), token diurutkan
- *  - angka (dimensi / mutu: 300, K350, 50) HARUS sama persis -> 'Baja WF 200' tidak digabung dengan 'Baja WF 300'
- *  - skor = max(Dice token, similar_text) ; item (material/biaya) >= MP_SIM_ITEM, task >= MP_SIM_TASK
- *  - mirip dengan data lama -> data lama DITIMPA/dipakai ulang ; tidak ada yang mirip -> simpan baru
- * ============================================================ */
-const MP_SIM_ITEM = 0.85;     // ambang kemiripan material / biaya (0-1)
-const MP_SIM_TASK = 0.75;     // ambang kemiripan nama task (kalimat lebih longgar)
-function mpTokens($s) {
-    static $cache = [];
-    $k = (string)$s;
-    if (isset($cache[$k])) return $cache[$k];
-    $stop = ['pekerjaan' => 1, 'pemasangan' => 1, 'pasang' => 1, 'pengadaan' => 1, 'dan' => 1, 'untuk' => 1, 'yang' => 1, 'dengan' => 1, 'dgn' => 1, 'material' => 1, 'bahan' => 1];
-    $t = [];
-    foreach (explode(' ', mpNorm($k)) as $w) { if ($w !== '' && !isset($stop[$w])) $t[$w] = true; }
-    $t = array_keys($t); sort($t);
-    return $cache[$k] = $t;
-}
-function mpSimilarity($a, $b) {
-    $ta = mpTokens($a); $tb = mpTokens($b);
-    if (!$ta || !$tb) return (mpNorm($a) !== '' && mpNorm($a) === mpNorm($b)) ? 1.0 : 0.0;
-    preg_match_all('/\d+/', implode(' ', $ta), $ma);
-    preg_match_all('/\d+/', implode(' ', $tb), $mb);
-    $na = $ma[0]; $nb = $mb[0]; sort($na); sort($nb);
-    if ($na !== $nb) return 0.0;                                  // angka berbeda = barang / mutu berbeda
-    $dice = 2 * count(array_intersect($ta, $tb)) / (count($ta) + count($tb));
-    similar_text(implode(' ', $ta), implode(' ', $tb), $pct);     // toleran salah ketik
-    return max($dice, $pct / 100);
-}
-// Cari baris paling mirip pada peta ctx (nilai: array baris); $field = kolom nama pada baris
-function mpFuzzy($name, array $map, $field, $th = MP_SIM_ITEM) {
-    $best = null; $bs = 0.0;
-    foreach ($map as $row) {
-        $sc = mpSimilarity($name, isset($row[$field]) ? $row[$field] : '');
-        if ($sc >= $th && $sc > $bs) { $bs = $sc; $best = $row; }
-    }
-    return $best;
-}
-// Nama baris baru yang hampir sama dalam SATU rencana disatukan (agar tidak membuat 2 material / biaya baru yang kembar)
-function mpCanonName(array &$seen, $kind, $name) {
-    if (!isset($seen[$kind])) $seen[$kind] = [];
-    foreach ($seen[$kind] as $n) { if (mpSimilarity($name, $n) >= MP_SIM_ITEM) return $n; }
-    $seen[$kind][] = $name;
-    return $name;
-}
-// Pasangkan task hasil analisis (indeks => ['id','name']) dengan task lama proyek yang namanya hampir sama (satu-satu)
-function mpMatchTasks($db, $projectId, array $planTasks) {
-    $existing = mpFetchAll($db, "SELECT id, task_name FROM public.project_tasks WHERE project_id = :p ORDER BY id", ['p' => $projectId], 'match_tasks');
-    $pairs = [];
-    foreach (array_values($planTasks) as $i => $t) {
-        $nm = trim((string)(isset($t['task_name']) ? $t['task_name'] : ''));
-        if ($nm === '') continue;
-        foreach ($existing as $e) {
-            $sc = mpSimilarity($nm, $e['task_name']);
-            if ($sc >= MP_SIM_TASK) $pairs[] = ['s' => $sc, 'i' => $i, 'id' => (int)$e['id'], 'n' => $e['task_name']];
-        }
-    }
-    usort($pairs, function ($a, $b) { return $b['s'] <=> $a['s']; });
-    $out = []; $usedId = [];
-    foreach ($pairs as $pr) {
-        if (isset($out[$pr['i']]) || isset($usedId[$pr['id']])) continue;
-        $out[$pr['i']] = ['id' => $pr['id'], 'name' => $pr['n'], 'score' => round($pr['s'], 2)];
-        $usedId[$pr['id']] = true;
-    }
-    return $out;
-}
-function mpMatchIds(array $m) { $ids = []; foreach ($m as $x) $ids[] = (int)$x['id']; return $ids; }
-// Ringkasan untuk UI: daftar task yang akan menimpa task lama
-function mpMatchInfo(array $m, array $planTasks) {
-    $pt = array_values($planTasks); $rows = [];
-    foreach ($m as $i => $x) $rows[] = ['index' => $i, 'task_name' => (string)($pt[$i]['task_name'] ?? ''), 'match_task_id' => $x['id'], 'match_task_name' => $x['name'], 'score' => $x['score']];
-    return ['task_matches' => $rows, 'overwrite_task_count' => count($m), 'new_task_count' => max(0, count($pt) - count($m))];
-}
+    // Perhitungan tinggi layar responsif
+    var screenH = window.innerHeight || document.documentElement.clientHeight || 700;
+    var mainGridH = Math.round(screenH * 0.5);
+    var mainDetailH = Math.round(screenH * 0.40);
+    var editorGridH = 220; // Tinggi tetap untuk grid task di dalam editor agar muat dan bisa digeser
 
-// $ignoreTaskIds: task yang akan diganti -> alokasinya tidak dihitung (agar analisis ulang tidak menggandakan qty RAB)
-function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
-    $ign = $ignoreTaskIds ? ' AND tm.task_id NOT IN (' . implode(',', array_map('intval', $ignoreTaskIds)) . ')' : '';
-    $has = mpHasPriceRange($db);
-    $mnSel = $has ? "CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN m.estimated_price_min ELSE em.default_price_min END" : 'NULL';
-    $mxSel = "CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN m.estimated_price ELSE em.default_price END";
-    $rows = mpFetchAll($db, "
-        SELECT bi.id AS budget_item_id, bi.material_id, bi.expense_id, COALESCE(bi.category,'Material') AS category,
-               COALESCE(m.material_name, bi.item_name) AS material_name,
-               COALESCE(NULLIF(bi.unit,''), m.unit, '') AS unit,
-               COALESCE(bi.qty_plan,0) AS qty_plan,
-               COALESCE(bi.unit_price_plan,0) AS unit_price_plan,
-               COALESCE({$mnSel}, 0) AS master_min, COALESCE({$mxSel}, 0) AS master_max,       -- rentang harga dari MASTER (mata uang dasar)
-               COALESCE((SELECT SUM(tm.qty_budget) FROM public.task_materials tm WHERE tm.budget_item_id = bi.id{$ign}),0) AS qty_allocated
-          FROM public.budget_items bi
-          LEFT JOIN public.materials m ON m.id = bi.material_id
-          LEFT JOIN expense_master em ON em.id = bi.expense_id
-         WHERE bi.project_id = :pid
-         ORDER BY bi.id", ['pid' => $projectId], 'ctx_rab');
-    $master = mpFetchAll($db, "SELECT id, material_code, material_name, COALESCE(unit,'') AS unit, COALESCE(estimated_price,0) AS estimated_price,
-                                      " . ($has ? 'COALESCE(estimated_price_min,0)' : '0') . " AS estimated_price_min
-                                 FROM public.materials ORDER BY id", [], 'ctx_master');
-    $expMaster = mpFetchAll($db, "SELECT id, expense_code, expense_name, COALESCE(category,'Lain-lain') AS category, COALESCE(unit,'') AS unit,
-                                         COALESCE(default_price,0) AS default_price, " . ($has ? 'COALESCE(default_price_min,0)' : '0') . " AS default_price_min
-                                    FROM expense_master WHERE active = true ORDER BY id", [], 'ctx_exp_master');
-    $ctx = ['rab' => [], 'exp' => [], 'rabById' => [], 'rabByName' => [], 'rabByMid' => [],
-            'expById' => [], 'expByName' => [], 'expByEid' => [], 'expMasterByName' => [], 'masterByName' => [], 'total_plan' => 0.0];
-    foreach ($rows as $r) {
-        $r['budget_item_id'] = (int)$r['budget_item_id'];
-        $r['material_id'] = $r['material_id'] !== null ? (int)$r['material_id'] : 0;
-        $r['expense_id'] = $r['expense_id'] !== null ? (int)$r['expense_id'] : 0;
-        foreach (['qty_plan','qty_allocated','unit_price_plan','master_min','master_max'] as $f) $r[$f] = (float)$r[$f];
-        $ctx['total_plan'] += $r['qty_plan'] * $r['unit_price_plan'];                 // total RAB proyek saat ini (mata uang anggaran)
-        $k = mpNorm($r['material_name']);
-        if ($r['category'] !== 'Material') {                                   // semua kategori non-material = biaya (Upah, Peralatan, ...)
-            $ctx['exp'][] = $r; $ctx['expById'][$r['budget_item_id']] = $r;
-            if ($k !== '' && !isset($ctx['expByName'][$k])) $ctx['expByName'][$k] = $r;
-            if ($r['expense_id'] > 0 && !isset($ctx['expByEid'][$r['expense_id']])) $ctx['expByEid'][$r['expense_id']] = $r;
-        } elseif ($r['category'] === 'Material' && $r['material_id'] > 0) {
-            $ctx['rab'][] = $r; $ctx['rabById'][$r['budget_item_id']] = $r;
-            if ($k !== '' && !isset($ctx['rabByName'][$k])) $ctx['rabByName'][$k] = $r;
-            if (!isset($ctx['rabByMid'][$r['material_id']])) $ctx['rabByMid'][$r['material_id']] = $r;
-        }
-    }
-    foreach ($expMaster as $e) {
-        $k = mpNorm($e['expense_name']);
-        if ($k !== '' && !isset($ctx['expMasterByName'][$k])) $ctx['expMasterByName'][$k] = $e;
-    }
-    foreach ($master as $m) {
-        $k = mpNorm($m['material_name']);
-        if ($k !== '' && !isset($ctx['masterByName'][$k])) $ctx['masterByName'][$k] = $m;
-    }
-    return $ctx;
-}
+    // 1. Stores
+    var clientDs = new Ext.data.Store({
+        url: CRD,
+        baseParams: { task: 'read_clients' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
+            { name: 'id' }, { name: 'name' }
+        ]),
+        listeners: { exception: storeException }
+    });
+    clientDs.load();
 
-// type: rab (sudah di RAB proyek) | master (material ada di master, belum di RAB) | new (belum ada)
-// [DEDUP] urutan: id RAB -> nama sama persis (RAB, master) -> nama HAMPIR SAMA (RAB, master) -> baru
-function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
-    $k = mpNorm($name);
-    if ($kind === 'expenses') {
-        if ($bid > 0 && isset($ctx['expById'][$bid])) return ['type' => 'rab', 'rab' => $ctx['expById'][$bid], 'master' => null];
-        if ($k !== '' && isset($ctx['expByName'][$k])) return ['type' => 'rab', 'rab' => $ctx['expByName'][$k], 'master' => null];
-        $e = ($k !== '' && isset($ctx['expMasterByName'][$k])) ? $ctx['expMasterByName'][$k] : null;
-        if (!$e) {
-            $f = mpFuzzy($name, $ctx['expByName'], 'material_name');                         // [DEDUP] hampir sama dgn biaya di RAB
-            if ($f) return ['type' => 'rab', 'rab' => $f, 'master' => null];
-            $e = mpFuzzy($name, $ctx['expMasterByName'], 'expense_name');                    // [DEDUP] hampir sama dgn expense_master
-        }
-        if ($e) {
-            if (isset($ctx['expByEid'][(int)$e['id']])) return ['type' => 'rab', 'rab' => $ctx['expByEid'][(int)$e['id']], 'master' => null];
-            return ['type' => 'master', 'rab' => null, 'master' => $e];
-        }
-        return ['type' => 'new', 'rab' => null, 'master' => null];
-    }
-    if ($bid > 0 && isset($ctx['rabById'][$bid])) return ['type' => 'rab', 'rab' => $ctx['rabById'][$bid], 'master' => null];
-    if ($k !== '' && isset($ctx['rabByName'][$k])) return ['type' => 'rab', 'rab' => $ctx['rabByName'][$k], 'master' => null];
-    $m = ($k !== '' && isset($ctx['masterByName'][$k])) ? $ctx['masterByName'][$k] : null;
-    if (!$m) {
-        $f = mpFuzzy($name, $ctx['rabByName'], 'material_name');                             // [DEDUP] hampir sama dgn material di RAB
-        if ($f) return ['type' => 'rab', 'rab' => $f, 'master' => null];
-        $m = mpFuzzy($name, $ctx['masterByName'], 'material_name');                          // [DEDUP] hampir sama dgn master material
-    }
-    if ($m) {
-        if (isset($ctx['rabByMid'][(int)$m['id']])) return ['type' => 'rab', 'rab' => $ctx['rabByMid'][(int)$m['id']], 'master' => null];
-        return ['type' => 'master', 'rab' => null, 'master' => $m];
-    }
-    return ['type' => 'new', 'rab' => null, 'master' => null];
-}
-function mpLineKey($res, $name, $kind = 'materials') {
-    if ($res['type'] === 'rab') return 'b' . $res['rab']['budget_item_id'];
-    if ($res['type'] === 'master') return ($kind === 'expenses' ? 'xm' : 'nm') . (int)$res['master']['id'];   // [DEDUP] nama berbeda tapi master sama -> satu baris RAB
-    return ($kind === 'expenses' ? 'x' : 'n') . mpNorm($name);
-}
+    var picDs = new Ext.data.Store({
+        url: CRD,
+        baseParams: { task: 'read_pics' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
+            { name: 'id' }, { name: 'name' }
+        ]),
+        listeners: { exception: storeException }
+    });
+    picDs.load();
 
-// Kode biaya otomatis EXP-00001 dst (expense_master)
-function mpNextExpenseCode($db) {
-    $r = mpFetchOne($db, "SELECT COALESCE(MAX(CAST(substring(expense_code from '^EXP-([0-9]+)$') AS integer)),0) + 1 AS n FROM expense_master", [], 'next_exp_code');
-    return 'EXP-' . str_pad((string)$r['n'], 5, '0', STR_PAD_LEFT);
-}
+    var locationDs = new Ext.data.Store({
+        url: CRD,
+        baseParams: { task: 'read_locations' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
+            { name: 'id' }, { name: 'name' }
+        ]),
+        listeners: { exception: storeException }
+    });
+    locationDs.load();
 
-// Kode material otomatis MAT-00001 dst (dipanggil di dalam transaksi yang sudah mengunci)
-function mpNextMaterialCode($db) {
-    $r = mpFetchOne($db, "SELECT COALESCE(MAX(CAST(substring(material_code from '^MAT-([0-9]+)$') AS integer)),0) + 1 AS n FROM public.materials", [], 'next_mat_code');
-    return 'MAT-' . str_pad((string)$r['n'], 5, '0', STR_PAD_LEFT);
-}
+    var statusDs = new Ext.data.SimpleStore({
+        fields: ['id', 'name'],
+        data: [
+            ['Belum Mulai', 'Belum Mulai'],
+            ['Berjalan', 'Berjalan'],
+            ['Tertunda', 'Tertunda'],
+            ['Selesai', 'Selesai']
+        ]
+    });
 
-/* Anotasi semua baris (materials + expenses) per task: cocokkan ke RAB/master, set status, harga min/max, total.
- * $tasks diubah in-place. Mengembalikan total (mata uang Rupiah):
- *   max/min = total BoQ, mat/exp = pecahan max, add = tambahan nilai RAB bila disimpan, newNames = material baru unik. */
-function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
-    $running = []; $seenNew = [];                                              // [DEDUP] $seenNew: nama baris baru dalam rencana ini
-    $tot = ['max' => 0.0, 'min' => 0.0, 'mat' => 0.0, 'exp' => 0.0, 'add' => 0.0, 'newNames' => []];
-    foreach ($tasks as &$t) {
-        foreach (['materials', 'expenses'] as $kind) {
-            $in = (isset($t[$kind]) && is_array($t[$kind])) ? $t[$kind] : [];
-            $out = [];
-            foreach ($in as $m) {
-                if (!is_array($m)) continue;
-                $name = trim((string)($m['material_name'] ?? ($m['expense_name'] ?? ($m['item_name'] ?? ($m['name'] ?? '')))));
-                $bidIn = (int)($m['budget_item_id'] ?? 0);
-                $qty = round(mpNum($m['qty_estimate'] ?? 0), 3);
-                if ($name === '' && $bidIn <= 0) continue;
-                if ($dropEmptyQty && $qty <= 0) continue;
-                list($pMin, $pMax) = mpNormPrice(
-                    mpNum($m['price_min'] ?? ($m['unit_price_min'] ?? 0)),
-                    mpNum($m['price_max'] ?? ($m['unit_price_max'] ?? ($m['unit_price'] ?? ($m['unit_price_estimate'] ?? 0))))
-                );
-                list($aiMin, $aiMax) = mpNormPrice(                                          // harga asli AI (dipakai mengisi rentang master yang masih kosong)
-                    mpNum($m['ai_min'] ?? ($m['price_min'] ?? ($m['unit_price_min'] ?? 0))),
-                    mpNum($m['ai_max'] ?? ($m['price_max'] ?? ($m['unit_price_max'] ?? ($m['unit_price'] ?? ($m['unit_price_estimate'] ?? 0)))))
-                );
-                $unit = trim((string)($m['unit'] ?? ''));
-                $res = mpResolveLine($ctx, $bidIn, $name, $kind);
-                $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   // [DEDUP]
-                $before = $running[$key] ?? 0.0;
-                $running[$key] = $before + $qty;
-
-                $status = $res['type']; $bid = null; $mid = null; $cat = '';
-                if ($res['type'] === 'rab') {
-                    $r = $res['rab'];
-                    $bid = (int)$r['budget_item_id']; $mid = $r['material_id'] > 0 ? (int)$r['material_id'] : null;
-                    $name = $r['material_name']; if ($r['unit'] !== '') $unit = $r['unit'];
-                    if ($kind === 'expenses') $cat = mpExpCategory($r['category']);
-                    $pMaxR = $r['unit_price_plan'] * $rate;                                  // harga satuan RAB (Rupiah) = harga yang dipakai
-                    $mnR = (float)$r['master_min'];                                           // batas bawah dari master
-                    list($pMin, $pMax) = mpNormPrice(($mnR > 0 && $mnR < $pMaxR) ? $mnR : $pMaxR, $pMaxR);
-                    $over = $r['qty_allocated'] + $running[$key];
-                    $status = ($over <= $r['qty_plan'] + MP_EPS) ? 'rab' : 'rab_topup';
-                    $shortBefore = max(0, $r['qty_allocated'] + $before - $r['qty_plan']);
-                    $tot['add'] += (max(0, $over - $r['qty_plan']) - $shortBefore) * $pMax;                 // hanya selisih yang menambah RAB
-                } else {
-                    if ($res['type'] === 'master' && $kind === 'materials') {
-                        $mid = (int)$res['master']['id']; $name = $res['master']['material_name'];
-                        if ($unit === '') $unit = $res['master']['unit'];
-                        if ((float)$res['master']['estimated_price'] > 0) list($pMin, $pMax) = mpNormPrice((float)$res['master']['estimated_price_min'] ?: (float)$res['master']['estimated_price'], (float)$res['master']['estimated_price']);   // rentang = milik master
-                    } elseif ($res['type'] === 'master') {                                   // biaya yang sudah ada di expense_master
-                        $name = $res['master']['expense_name']; $cat = mpExpCategory($res['master']['category']);
-                        if ($unit === '') $unit = $res['master']['unit'];
-                        if ((float)$res['master']['default_price'] > 0) list($pMin, $pMax) = mpNormPrice((float)$res['master']['default_price_min'] ?: (float)$res['master']['default_price'], (float)$res['master']['default_price']);   // rentang = milik master
-                    } elseif ($kind === 'materials') {
-                        $tot['newNames'][$key] = true;
-                    } else {
-                        $cat = mpExpCategory($m['category'] ?? '');                          // biaya baru -> dibuat di expense_master
-                    }
-                    $tot['add'] += $qty * $pMax;
-                }
-                if ($unit === '') $unit = ($kind === 'expenses') ? 'ls' : 'unit';
-                $tot['max'] += $qty * $pMax; $tot['min'] += $qty * $pMin;
-                $tot[$kind === 'expenses' ? 'exp' : 'mat'] += $qty * $pMax;
-                $out[] = [
-                    'budget_item_id' => $bid, 'material_id' => $mid, 'material_name' => $name,
-                    'spec' => trim((string)($m['spec'] ?? '')), 'unit' => $unit, 'qty_estimate' => $qty,
-                    'price_min' => $pMin, 'price_max' => $pMax, 'unit_price' => $pMax, 'status' => $status,
-                    'reason' => trim((string)($m['reason'] ?? '')), 'category' => $cat, 'ai_min' => $aiMin, 'ai_max' => $aiMax
-                ];
-            }
-            $t[$kind] = $out;
-        }
-    }
-    unset($t);
-    return $tot;
-}
-
-// Penilaian plafon (Rupiah) - MENIRU aturan modul RAB (rabCRD.php plafonCheck):
-//   total RAB > nilai kontrak            -> DITOLAK (blokir)
-//   proyek 'Belum Mulai' & total > budget -> RAB menolak simpan ulang (tandai MERAH, simpan di sini tetap boleh)
-//   proyek berjalan & total > budget      -> memakai cadangan (tandai KUNING; item ditandai addendum)
-function mpPlafonFlags($proj, $rate, $existingIdr, $addIdr) {
-    $after = $existingIdr + $addIdr;
-    $budgetIdr = (float)($proj['budget'] ?? 0) * $rate;
-    $contractIdr = (float)($proj['contract_value'] ?? 0) * $rate;
-    $planning = (($proj['status'] ?? '') === 'Belum Mulai');
-    $w = []; $sev = 0; $overContract = false; $overBudget = false; $usesReserve = false;
-    if ($contractIdr <= 0) {
-        $w[] = ['level' => 'danger', 'text' => 'Nilai kontrak (plafon) proyek belum diisi. Modul RAB tidak bisa menyimpan RAB sebelum nilai kontrak diisi.']; $sev = 2;
-    } elseif ($after > $contractIdr + 0.01) {
-        $overContract = true; $sev = 2;
-        $w[] = ['level' => 'danger', 'text' => 'Hasil analisis LEBIH BESAR dari nilai kontrak: total RAB Rp ' . mpIdr($after) . ' vs kontrak Rp ' . mpIdr($contractIdr) .
-                ' (lebih Rp ' . mpIdr($after - $contractIdr) . '). Tidak dapat disimpan; kurangi qty / harga / item.'];
-    }
-    if ($budgetIdr > 0 && $after > $budgetIdr + 0.01) {
-        $overBudget = true;
-        $diff = $after - $budgetIdr; $pct = round($diff / $budgetIdr * 100, 1);
-        if ($planning) {
-            $sev = 2;
-            $w[] = ['level' => 'danger', 'text' => 'Hasil analisis LEBIH BESAR dari budget: total RAB Rp ' . mpIdr($after) . ' vs budget Rp ' . mpIdr($budgetIdr) .
-                    ' (lebih Rp ' . mpIdr($diff) . ', ' . $pct . '%). Proyek masih Belum Mulai: modul RAB menolak total di atas budget, sehingga RAB tidak bisa disimpan ulang sampai total <= budget.'];
-        } else {
-            $usesReserve = true; $sev = max($sev, 1);
-            $cad = $contractIdr > 0 ? max($contractIdr - $budgetIdr, 0) : 0;
-            $w[] = ['level' => 'warning', 'text' => 'Hasil analisis LEBIH BESAR dari budget: total RAB Rp ' . mpIdr($after) . ' vs budget Rp ' . mpIdr($budgetIdr) .
-                    ' (lebih Rp ' . mpIdr($diff) . ', ' . $pct . '%). Memakai cadangan Rp ' . mpIdr($diff) . ' dari Rp ' . mpIdr($cad) . '; item yang ditambah ditandai addendum.'];
-        }
-    }
-    return [
-        'rab_existing_idr' => round($existingIdr, 2), 'rab_after_idr' => round($after, 2),
-        'budget_idr' => round($budgetIdr, 2), 'contract_idr' => round($contractIdr, 2),
-        'over_contract' => $overContract, 'over_budget' => $overBudget, 'uses_reserve' => $usesReserve, 'planning' => $planning,
-        'severity' => ($sev >= 2 ? 'danger' : ($sev === 1 ? 'warning' : 'ok')), 'warnings' => $w
+    var mainFields = [
+        { name: 'id' }, { name: 'name' }, { name: 'client_id' }, { name: 'client_name' },
+        { name: 'pic_id' }, { name: 'pic_name' }, { name: 'location_id' }, { name: 'location_name' }, { name: 'location' },
+        { name: 'start_date', type: 'date', dateFormat: 'Y-m-d' },
+        { name: 'end_date', type: 'date', dateFormat: 'Y-m-d' },
+        { name: 'budget', type: 'float' }, { name: 'contract_value', type: 'float' },
+        { name: 'spent', type: 'float' }, { name: 'project_scope' },
+        { name: 'budget_exch_rate', type: 'float' }, { name: 'budget_currency_code' },
+        { name: 'progress', type: 'int' }, { name: 'status' }, { name: 'notes' }
     ];
-}
 
-// Ringkasan angka + peringatan untuk UI review (semua dalam Rupiah)
-function mpPlanMeta($proj, $ctx, $rate, $tot, array $tasks) {
-    $m = mpPlafonFlags($proj, $rate, $ctx['total_plan'] * $rate, $tot['add']);
-    foreach ($tasks as $t) {
-        if (empty($t['materials']) && empty($t['expenses'])) {
-            $m['warnings'][] = ['level' => 'warning', 'text' => "Task '" . ($t['task_name'] ?? '') . "' belum punya material maupun biaya."];
-            if ($m['severity'] === 'ok') $m['severity'] = 'warning';
+    mainDs = new Ext.data.Store({
+        url: CRD,
+        idProperty: 'id',
+        baseParams: { task: 'read' },
+        reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, mainFields),
+        listeners: { exception: storeException }
+    });
+    mainDs.load();
+
+    // 2. Main Grid
+    var gridMain = new Ext.grid.GridPanel({
+        store: mainDs,
+        renderTo: 'divMainGrid',
+        height: mainGridH,
+        columns: [
+            { header: 'Nama Proyek', dataIndex: 'name', width: 180, renderer: CellWrap },
+            { header: 'Klien', dataIndex: 'client_name', width: 140, renderer: CellWrap },
+            { header: 'PIC / PM', dataIndex: 'pic_name', width: 120, renderer: CellWrap },
+            { header: 'Lokasi', dataIndex: 'location_name', width: 120, renderer: CellWrap },
+            { header: 'Tgl Mulai', dataIndex: 'start_date', width: 90, renderer: Ext.util.Format.dateRenderer('d/m/Y') },
+            { header: 'Tgl Selesai', dataIndex: 'end_date', width: 90, renderer: Ext.util.Format.dateRenderer('d/m/Y') },
+            {
+                header: 'Budget', dataIndex: 'budget', width: 120, align: 'right',
+                renderer: function (v, meta, rec) { return (rec.get('budget_currency_code') || 'IDR') + ' ' + fmtRp(v); }
+            },
+            {
+                header: 'Nilai Kontrak (Plafon)', dataIndex: 'contract_value', width: 130, align: 'right',
+                renderer: function (v) { return 'Rp ' + fmtRp(v); }
+            },
+            { header: 'Progress (%)', dataIndex: 'progress', width: 80, align: 'center', renderer: function(v){ return (v || 0) + '%'; } },
+            { header: 'Status', dataIndex: 'status', width: 90, align: 'center' }
+        ],
+        stripeRows : true,
+        viewConfig: { forceFit: true },
+        loadMask: true,
+        listeners: {
+            rowclick: function (grid, rowIndex) {
+                var rec = grid.getStore().getAt(rowIndex);
+                if (rec) {
+                    dataRecord = rec.data;
+                    mainBtnEnable('#deleteData');
+                    editDataEnable();
+                    loadMainDetailPanel(dataRecord.id);
+                }
+            }
         }
+    });
+
+    // Printing seluruh daftar proyek (toolbar kanan atas).
+    var btnPrintProjects = document.getElementById('printData');
+    if (btnPrintProjects) btnPrintProjects.onclick = function (event) {
+        if (event && event.preventDefault) event.preventDefault();
+        var w = window.open('/rab-project/dev/views/m.proyek.print.php?mode=projects', '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
+        if (!w) Ext.Msg.alert('Popup diblokir', 'Izinkan pop-up untuk situs ini, lalu klik Printing kembali.');
+    };
+
+    // ------------------------------------------------------------
+    // 3. Main Screen Detail Panel (Untuk AI Sub-Task di Layar Utama)
+    // ------------------------------------------------------------
+    var gridContainer = document.getElementById('divMainGrid');
+    var mainDtlDiv = document.createElement('div');
+    mainDtlDiv.id = 'projMainDtlContainer';
+    mainDtlDiv.style.display = 'none';
+    mainDtlDiv.style.height = mainDetailH + 'px';
+    mainDtlDiv.style.maxHeight = mainDetailH + 'px';
+    mainDtlDiv.style.overflowY = 'auto';
+    mainDtlDiv.style.marginTop = '15px';
+    mainDtlDiv.style.padding = '14px';
+    mainDtlDiv.style.background = '#0d1821';
+    mainDtlDiv.style.border = '1px solid #1f3a4b';
+    mainDtlDiv.style.borderRadius = '6px';
+
+    if (gridContainer && gridContainer.parentNode) {
+        gridContainer.parentNode.insertBefore(mainDtlDiv, gridContainer.nextSibling);
     }
-    return $m;
-}
 
+    var mainTaskStore = new Ext.data.Store({
+        url: CRD,
+        baseParams: { task: 'read_tasks' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
+            { name: 'id' }, { name: 'task_name' }, { name: 'description' }, { name: 'materials' }, { name: 'expenses' }, { name: 'items' },
+            { name: 'total_max', type: 'float' }, { name: 'total_min', type: 'float' },
+            { name: 'start_date' }, { name: 'end_date' }, { name: 'status' }
+        ])
+    });
 
-$access = intval($_SESSION['FormAccess'] ?? 0);
-
-try {
-    switch ($task) {
-
-        case 'read':
-            $sql = "SELECT p.id, p.name, p.client_id, c.name AS client_name,
-                           p.pic_id, e.employee_name AS pic_name,
-                           p.location_id, loc.name AS location_name, p.location,
-                           p.start_date, p.end_date, p.budget, p.contract_value, p.spent, p.progress,
-                           p.status, p.notes, p.project_scope
-                    FROM projects p
-                    LEFT JOIN clients c ON c.id = p.client_id
-                    LEFT JOIN m_employee e ON e.id = p.pic_id
-                    LEFT JOIN m_location loc ON loc.id = p.location_id
-                    ORDER BY p.id DESC";
-            $data = mpFetchAll($db, $sql, [], 'read');
-            mpJson(['success' => true, 'totalCount' => count($data), 'data' => $data]);
-            break;
-
-        case 'read_one':
-            $id  = (int)($_REQUEST['id'] ?? 0);
-            $row = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $id], 'read_one');
-            if (!$row) throw new Exception('Data proyek tidak ditemukan.');
-            mpJson(['success' => true, 'data' => $row]);
-            break;
-
-        case 'read_clients':
-            mpJson(['success' => true, 'data' => mpFetchAll($db,
-                "SELECT id, name FROM clients ORDER BY name", [], 'read_clients')]);
-            break;
-
-        case 'read_pics':
-            mpJson(['success' => true, 'data' => mpFetchAll($db,
-                "SELECT id, employee_name AS name
-                   FROM m_employee
-                  WHERE employee_name IS NOT NULL
-                    AND (active IS NOT FALSE OR id IN (SELECT pic_id FROM projects WHERE pic_id IS NOT NULL))
-                  ORDER BY employee_name", [], 'read_pics')]);
-            break;
-
-        case 'read_locations':
-            mpJson(['success' => true, 'data' => mpFetchAll($db,
-                "SELECT id, name FROM m_location ORDER BY name", [], 'read_locations')]);
-            break;
-
-        case 'read_tasks':
-            $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            // [AI-BOQ] material & biaya (expense) dipisah; items = rincian JSON utk panel detail (harga min/max); total_* memakai harga MAX
-            $hasRange = mpHasPriceRange($db);
-            $pj0 = mpFetchOne($db, "SELECT COALESCE(NULLIF(budget_exch_rate, 0), 1) AS r FROM projects WHERE id = :id", ['id' => $projectId], 'read_tasks_rate');
-            $rateLit = sprintf('%.6F', ($pj0 && (float)$pj0['r'] > 0) ? (float)$pj0['r'] : 1.0);
-            // harga satuan = unit_price_plan (= MAX); batas bawah dari master (mata uang dasar -> mata uang anggaran)
-            $mnRaw = $hasRange ? "CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN m.estimated_price_min ELSE em.default_price_min END" : 'NULL';
-            $pMaxSql = 'COALESCE(bi.unit_price_plan, 0)';
-            $pMinSql = "LEAST(COALESCE(NULLIF({$mnRaw}, 0) / {$rateLit}, COALESCE(bi.unit_price_plan, 0)), COALESCE(bi.unit_price_plan, 0))";
-            $joins = "JOIN public.budget_items bi ON bi.id = tm.budget_item_id
-                             LEFT JOIN public.materials m ON m.id = bi.material_id
-                             LEFT JOIN expense_master em ON em.id = bi.expense_id";
-            $tasks = mpFetchAll($db, "
-                SELECT t.*,
-                       COALESCE((
-                           SELECT string_agg(bi.item_name || ': ' || tm.qty_budget::text || ' ' || COALESCE(bi.unit,''), ', ' ORDER BY bi.item_name)
-                             FROM public.task_materials tm
-                             {$joins}
-                            WHERE tm.task_id = t.id AND COALESCE(bi.category,'Material') = 'Material'
-                       ), '') AS materials,
-                       COALESCE((
-                           SELECT string_agg(bi.item_name || ': ' || tm.qty_budget::text || ' ' || COALESCE(bi.unit,''), ', ' ORDER BY bi.item_name)
-                             FROM public.task_materials tm
-                             {$joins}
-                            WHERE tm.task_id = t.id AND COALESCE(bi.category,'Material') <> 'Material'
-                       ), '') AS expenses,
-                       COALESCE((
-                           SELECT json_agg(json_build_object(
-                                      'kind', CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN 'M' ELSE 'E' END,
-                                      'name', bi.item_name, 'unit', COALESCE(bi.unit,''), 'qty', tm.qty_budget,
-                                      'pmin', {$pMinSql}, 'pmax', {$pMaxSql})
-                                  ORDER BY (COALESCE(bi.category,'Material') = 'Material') DESC, bi.item_name)
-                             FROM public.task_materials tm
-                             {$joins}
-                            WHERE tm.task_id = t.id
-                       ), '[]') AS items_json,
-                       COALESCE((SELECT SUM(tm.qty_budget * {$pMaxSql}) FROM public.task_materials tm
-                                   {$joins} WHERE tm.task_id = t.id), 0) AS total_max,
-                       COALESCE((SELECT SUM(tm.qty_budget * {$pMinSql}) FROM public.task_materials tm
-                                   {$joins} WHERE tm.task_id = t.id), 0) AS total_min
-                  FROM public.project_tasks t
-                 WHERE t.project_id = :pid
-                 ORDER BY t.start_date ASC, t.id ASC
-            ", ['pid' => $projectId], 'read_tasks');
-            foreach ($tasks as &$tk) {
-                $tk['items'] = json_decode($tk['items_json'], true) ?: [];
-                unset($tk['items_json']);
-                $tk['total_max'] = (float)$tk['total_max']; $tk['total_min'] = (float)$tk['total_min'];
+    function loadMainDetailPanel(projectId) {
+        mainTaskStore.load({
+            params: { project_id: projectId },
+            callback: function (records) {
+                // [AUTO-INV] muat tagihan proyek, lalu render task + tagihan sekaligus
+                Ext.Ajax.request({
+                    url: CRD, method: 'POST', params: { task: 'read_invoices', project_id: projectId },
+                    success: function (resp) {
+                        var o = {}; try { o = Ext.util.JSON.decode(resp.responseText); } catch (e) {}
+                        renderMainDetailPanel(records, o.data || []);
+                    },
+                    failure: function () { renderMainDetailPanel(records, []); }
+                });
             }
-            unset($tk);
-            // [AI-BOQ] penanda plafon: total RAB proyek vs budget / nilai kontrak (aturan sama dengan modul RAB)
-            $summary = null;
-            $pj = mpFetchOne($db, "SELECT status, budget, contract_value, budget_exch_rate FROM projects WHERE id = :id", ['id' => $projectId], 'read_tasks_proj');
-            if ($pj) {
-                $rt = mpFetchOne($db, "SELECT COALESCE(SUM(qty_plan * unit_price_plan),0) AS s FROM public.budget_items WHERE project_id = :p", ['p' => $projectId], 'read_tasks_rab');
-                $rt0 = (float)($pj['budget_exch_rate'] ?? 1); if ($rt0 <= 0) $rt0 = 1;
-                $summary = mpPlafonFlags($pj, $rt0, (float)$rt['s'] * $rt0, 0.0);
-                $tm = 0.0; foreach ($tasks as $tk2) $tm += $tk2['total_max'];
-                $summary['task_total_max_idr'] = round($tm * $rt0, 2);
-            }
-            mpJson(['success' => true, 'data' => $tasks, 'summary' => $summary]);
-            break;
-
-        // [AUTO-INV][NEW] daftar tagihan proyek untuk panel detail
-        case 'read_invoices':
-            $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            $inv = mpFetchAll($db,
-                "SELECT i.id, i.inv_no, i.termin_name, i.invoice_date, i.due_date, i.percentage, i.amount, i.paid_amount, i.remark,
-                        COALESCE(i.auto_generated, false) AS auto_generated, t.task_name
-                   FROM project_invoices i LEFT JOIN public.project_tasks t ON t.id = i.task_id
-                  WHERE i.project_id = :pid ORDER BY i.invoice_date ASC, i.id ASC", ['pid' => $projectId], 'read_invoices');
-            foreach ($inv as &$iv) { $iv['auto_generated'] = mpBool($iv['auto_generated']); }
-            unset($iv);
-            mpJson(['success' => true, 'data' => $inv]);
-            break;
-
-        // [AUTO-INV][NEW] mode=preview: hanya analisis & rencana ; mode=issue: simpan tagihan
-        case 'auto_invoice':
-            if ($access < 3) {
-                mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menerbitkan tagihan.']);
-            }
-            $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            if ($projectId <= 0) throw new Exception('ID Proyek tidak valid.');
-            $mode = ($_REQUEST['mode'] ?? 'preview') === 'issue' ? 'issue' : 'preview';
-
-            $plan = mpBuildInvoicePlan($db, $projectId, true);
-            if ($mode === 'preview') {
-                mpJson(['success' => true, 'data' => $plan['rows'], 'analysis' => $plan['analysis'], 'ai_used' => $plan['ai_used'],
-                        'summary' => $plan['summary'], 'new_count' => $plan['new_count'], 'sync_count' => $plan['sync_count'],
-                        'message' => 'Rencana tagihan siap.']);
-            }
-            if ($plan['new_count'] + $plan['sync_count'] === 0) {
-                mpJson(['success' => true, 'data' => $plan['rows'], 'made' => 0, 'synced' => 0, 'message' => 'Tidak ada tagihan baru yang perlu diterbitkan.']);
-            }
-            $res = mpApplyInvoicePlan($db, $plan);
-            mpJson(['success' => true, 'data' => $plan['rows'], 'analysis' => $plan['analysis'], 'made' => $res['made'], 'synced' => $res['synced'],
-                    'message' => "{$res['made']} tagihan diterbitkan, {$res['synced']} tagihan disesuaikan tanggalnya."]);
-            break;
-
-        // [AI-BOQ][REWORK] Analisis & pecah task + material + expense. Hanya DRAFT: belum ada yang ditulis ke database.
-        case 'ai_generate_tasks':
-            if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
-            set_time_limit(200);                                           // [AI-BOQ] output BoQ panjang -> panggilan AI lebih lama
-            $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            if ($projectId <= 0) throw new Exception('ID Proyek tidak valid.');
-
-            $proj = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $projectId], 'ai_fetch_proj');
-            if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            $rate = (float)($proj['budget_exch_rate'] ?? 1);               // kurs mata uang RAB ke Rupiah
-            if ($rate <= 0) $rate = 1;
-
-            // RAB yang sudah ada: dikirim ke AI agar nama yang sama dipakai ulang; sisa kuota dipakai untuk "tambah dari RAB"
-            $tri = mpTaskReplaceInfo($db, $projectId);                       // [AI-BOQ] task lama yang akan diganti tidak dihitung sebagai alokasi
-            $ctx = mpLoadMaterialContext($db, $projectId, $tri['replaceable_ids']);
-            $existingForAi = []; $candMat = []; $candExp = [];
-            foreach (['materials' => $ctx['rab'], 'expenses' => $ctx['exp']] as $kind => $list) {
-                foreach ($list as $r) {
-                    $existingForAi[] = ['jenis' => ($kind === 'expenses' ? 'expense' : 'material'), 'nama' => $r['material_name'], 'unit' => $r['unit'], 'qty_plan' => $r['qty_plan']];
-                    $remaining = max(0, $r['qty_plan'] - $r['qty_allocated']);
-                    if ($remaining <= MP_EPS) continue;
-                    $cMaxR = $r['unit_price_plan'] * $rate; $cMn = (float)$r['master_min'];
-                    list($cMin, $cMax) = mpNormPrice(($cMn > 0 && $cMn < $cMaxR) ? $cMn : $cMaxR, $cMaxR);   // harga satuan RAB = max; min dari master
-                    $cand = [
-                        'budget_item_id' => $r['budget_item_id'], 'material_id' => $r['material_id'],
-                        'material_name' => $r['material_name'], 'unit' => $r['unit'], 'qty_plan' => $r['qty_plan'],
-                        'qty_already_allocated' => $r['qty_allocated'], 'qty_remaining' => $remaining,
-                        'price_min' => $cMin, 'price_max' => $cMax, 'unit_price' => $cMax,
-                        'category' => ($kind === 'expenses' ? mpExpCategory($r['category']) : '')
-                    ];
-                    if ($kind === 'expenses') $candExp[] = $cand; else $candMat[] = $cand;
-                }
-            }
-
-            $pName  = $proj['name'];
-            $pScope = $proj['project_scope'] ?: 'Tidak ada spesifikasi khusus';
-            $pStart = $proj['start_date'] ?: date('Y-m-d');
-            $pEnd   = $proj['end_date'] ?: date('Y-m-d', strtotime('+30 days'));
-            $pBudget = $proj['budget'];
-            $pYear  = date('Y');
-            $existingJson = json_encode($existingForAi, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
-
-            $prompt = <<<PROMPT
-Anda adalah Construction Project Planner sekaligus Quantity Surveyor (estimator) di Indonesia.
-Susun WBS proyek dan Bill of Quantities (BoQ) kasar: setiap Task adalah satu paket pekerjaan, berisi daftar MATERIAL
-(lengkap dengan spesifikasi standar, satuan, estimasi volume) dan daftar EXPENSE (biaya non-material), keduanya dengan
-kisaran harga pasar {$pYear} (Rupiah): harga MINIMUM dan harga MAKSIMUM per satuan.
-
-DATA PROYEK:
-Nama: {$pName}
-Lingkup / spesifikasi: {$pScope}
-Tanggal mulai: {$pStart}
-Tanggal selesai: {$pEnd}
-Budget: {$pBudget}
-
-ITEM YANG SUDAH ADA DI RAB PROYEK (JSON; pakai nama PERSIS sama bila item yang sama dibutuhkan):
-{$existingJson}
-
-ATURAN:
-1. Buat 5 sampai 9 Task berurutan logis sesuai lingkup (contoh gudang baja: Persiapan & Pekerjaan Tanah; Pondasi/Sipil/Lantai; Struktur Baja & Atap; Dinding & Finishing Arsitektural; MEP/Fasilitas Pelengkap; Pembersihan & Serah Terima). Sesuaikan dengan jenis proyek sebenarnya.
-2. Setiap Task: task_name, description, assumption (asumsi perhitungan volume, contoh "baja 40 kg/m2, luas 3.750 m2"), start_date, end_date (YYYY-MM-DD, wajib di dalam rentang proyek).
-3. Hitung volume dari dimensi pada lingkup. Bila dimensi tidak disebut, buat asumsi wajar dan tuliskan pada assumption.
-4. materials = bahan fisik. Task pekerjaan fisik utama WAJIB memuat material selengkap yang dibutuhkan di lapangan (utama + pendukung + aksesori), umumnya 4 sampai 10 material per Task. Contoh: struktur baja = baja WF, besi CNP/gording, atap spandek, baut & anchor bolt, cat anti karat, insulasi; sipil = ready mix beton (mutu K sesuai fungsi), wiremesh, besi beton, batu belah & semen, floor hardener; dinding = bata ringan, semen mortar, cladding, rolling door, pintu darurat.
-5. expenses = biaya NON-material (setiap expense WAJIB punya category: Upah, Peralatan, Transport, Konsumsi, atau Lain-lain; upah/jasa tenaga/subkon = Upah, sewa alat = Peralatan, angkut/mobilisasi = Transport, makan-minum pekerja = Konsumsi, perizinan/overhead/lainnya = Lain-lain): upah/jasa tenaga kerja, jasa fabrikasi & ereksi, sewa alat berat, subkontraktor, mobilisasi/demobilisasi, perizinan, pekerjaan tanah (cut & fill, pemadatan), MEP berbasis jasa, K3, pembersihan, serah terima, overhead lapangan.
-6. SETIAP Task WAJIB berisi minimal satu item pada materials ATAU expenses; tidak boleh keduanya kosong. Task tanpa material (persiapan lahan, pekerjaan tanah, mobilisasi, perizinan, pembersihan, serah terima) WAJIB diisi expenses yang rinci. Task fisik sebaiknya memuat materials DAN expenses (jasa pasang/ereksi/sewa alat).
-7. Setiap item: nama (material_name atau expense_name, tanpa spesifikasi panjang), spec (spesifikasi/keterangan singkat), unit (satuan baku: kg, m2, m3, m1, batang, lembar, sak, set, pail, roll, unit, truk untuk material; ls, hari, OH, bulan, m2, m3, kg, unit untuk expense), qty_estimate (angka > 0), unit_price_min dan unit_price_max (angka Rupiah per satuan; min <= max, ikuti kisaran harga pasar), reason (singkat).
-8. Gunakan angka murni pada JSON (tanpa titik pemisah ribuan, tanpa teks "Rp").
-9. Item yang sama boleh muncul di beberapa Task dengan qty terbagi; jangan menggandakan kebutuhan. Jangan memasukkan upah/jasa sebagai material; jangan memasukkan bahan sebagai expense.
-10. Berikan analysis: 2-3 kalimat ringkasan estimasi biaya kasar (material dan expense) dan catatan hal yang belum tercakup.
-
-KELUARKAN JSON MURNI berbentuk object:
-{
-  "analysis": "string",
-  "tasks": [
-    {
-      "task_name": "string",
-      "description": "string",
-      "assumption": "string",
-      "start_date": "YYYY-MM-DD",
-      "end_date": "YYYY-MM-DD",
-      "materials": [
-        { "material_name": "string", "spec": "string", "unit": "string", "qty_estimate": 10, "unit_price_min": 90000, "unit_price_max": 110000, "reason": "string" }
-      ],
-      "expenses": [
-        { "expense_name": "string", "category": "Upah", "spec": "string", "unit": "string", "qty_estimate": 1, "unit_price_min": 15000, "unit_price_max": 30000, "reason": "string" }
-      ]
+        });
     }
-  ]
-}
-PROMPT;
 
-            $aiRawText = mpCallGemini($prompt, 120) ?: '{}';
-            $plan = json_decode($aiRawText, true);
-            if (is_array($plan) && isset($plan[0]['task_name'])) $plan = ['tasks' => $plan];   // toleransi: AI mengembalikan array saja
-            if (!is_array($plan) || empty($plan['tasks']) || !is_array($plan['tasks'])) {
-                throw new Exception('AI gagal menghasilkan rencana Task dan material yang valid.');
-            }
+    function renderMainDetailPanel(records, invoices) {
+        if (!dataRecord) return;
+        var scopeTxt = dataRecord.project_scope || 'Belum ada spesifikasi teknis.';
+        
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;">' +
+                   '<h3 style="margin:0; font-size:18px; color:#00bcd4;">Detail & Sub-Task Proyek AI: ' + Ext.util.Format.htmlEncode(dataRecord.name) + '</h3>' +
+                   '<span style="color:#a1c4d0; font-size:14px; white-space:nowrap;">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
+                   '</div>' +
+                   '<div style="text-align:left; margin:0 0 12px 0;">' +
+                   '<button type="button" id="btnPrintProjectTasks" style="padding:7px 14px; background:#087f8c; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold;">Print Task</button>' +
+                   '</div>' +
+                   '<div style="background:#132330; padding:10px; border-radius:4px; margin-bottom:12px; border:1px solid #1c3648;">' +
+                   '<b style="color:#00bcd4; font-size:15px;">Definisi / Lingkup Proyek:</b>' +
+                   '<div style="color:#ffffff; font-size:15px; margin-top:4px; line-height:18px;">' + Ext.util.Format.htmlEncode(scopeTxt) + '</div>' +
+                   '</div>' +
+                   plafonBanner() +
+                   '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:15px;">' +
+                   '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
+                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Nama Sub-Task (WBS)</th>' +
+                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Deskripsi Pekerjaan</th>' +
+                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Material Task</th>' +
+                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Biaya / Jasa Task</th>' +
+                   '<th align="right" style="border-bottom:1px solid #2a485d; padding:8px;">Estimasi (Max)</th>' +
+                   '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Tgl Mulai</th>' +
+                   '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Tgl Selesai</th>' +
+                   '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Status</th>' +
+                   '</tr></thead><tbody>';
 
-            $validDate = function($v) {
-                $d = DateTime::createFromFormat('!Y-m-d', $v);
-                return $d && $d->format('Y-m-d') === $v;
-            };
-            $covered = true; $coverageNotes = []; $normalizedTasks = [];
-            foreach ($plan['tasks'] as $idx => $t) {
-                $tName  = trim((string)($t['task_name'] ?? ''));
-                $tStart = (string)($t['start_date'] ?? '');
-                $tEnd   = (string)($t['end_date'] ?? '');
-                if ($tName === '') throw new Exception('Nama Task ke-' . ($idx + 1) . ' kosong.');
-                if (!$validDate($tStart) || !$validDate($tEnd) || $tStart > $tEnd) {
-                    throw new Exception('Tanggal Task "' . $tName . '" tidak valid.');
-                }
-                if ($tStart < $pStart || $tEnd > $pEnd) {
-                    $covered = false;
-                    $coverageNotes[] = "Task '{$tName}' berada di luar rentang tanggal proyek.";
-                }
-                $normalizedTasks[] = [
-                    'task_name' => $tName, 'description' => trim((string)($t['description'] ?? '')),
-                    'assumption' => trim((string)($t['assumption'] ?? '')), 'start_date' => $tStart, 'end_date' => $tEnd,
-                    'materials' => is_array($t['materials'] ?? null) ? $t['materials'] : [],
-                    'expenses'  => is_array($t['expenses'] ?? null) ? $t['expenses'] : []
-                ];
-            }
-            // [DEDUP] task hasil analisis yang namanya hampir sama dengan task lama akan MENIMPA task lama saat disimpan
-            // -> alokasi task lama itu tidak dihitung (qty RAB tidak dobel); konteks dimuat ulang dengan pengecualian tsb
-            $taskMatch = mpMatchTasks($db, $projectId, $normalizedTasks);
-            $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));
-            $tot = mpAnnotateTasks($normalizedTasks, $ctx, $rate, true);            // cocokkan RAB/master, harga min/max, total
-            $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $normalizedTasks);
-            $meta = array_merge($meta, mpMatchInfo($taskMatch, $normalizedTasks));
-            $cnt = ['m' => 0, 'e' => 0];
-            foreach ($normalizedTasks as $nt) { $cnt['m'] += count($nt['materials']); $cnt['e'] += count($nt['expenses']); }
+        if (!records || !records.length) {
+            html += '<tr><td colspan="8" style="padding:15px; text-align:center; color:#688998;">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
+        } else {
+            Ext.each(records, function (r) {
+                var d = r.data;
+                html += '<tr style="border-bottom:1px solid #182e3e;">' +
+                        '<td style="font-weight:bold; color:#e0f7fa;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
+                        '<td style="color:#b0bec5;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
+                        '<td style="color:#80deea;padding:12px 8px;font-size:14px;">' + fmtTaskItems(d.items, 'M') + '</td>' +
+                        '<td style="color:#ffcc80;padding:12px 8px;font-size:14px;">' + fmtTaskItems(d.items, 'E') + '</td>' +
+                        '<td align="right" style="color:#e0f7fa;padding:12px 8px;white-space:nowrap;">' + Ext.util.Format.number(d.total_max || 0, '0,000') +
+                        '<div style="color:#8fb3c0;font-size:13px;">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
+                        '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
+                        '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
+                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:13px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
+                        '</tr>';
+            });
+        }
+        html += '</tbody></table>';
 
-            mpJson(array_merge([
-                'success' => true,
-                'message' => 'Draft Task, material dan biaya (expense) berhasil dibuat. Periksa dan ubah sebelum menyimpan; total memakai harga MAKSIMUM.',
-                'coverage_valid' => $covered,
-                'notes' => $coverageNotes,
-                'analysis' => trim((string)($plan['analysis'] ?? '')),
-                'boq_total' => round($tot['max'], 2), 'boq_total_min' => round($tot['min'], 2),
-                'mat_total' => round($tot['mat'], 2), 'exp_total' => round($tot['exp'], 2),
-                'data' => ['project_id' => $projectId, 'tasks' => $normalizedTasks],
-                'available_materials' => $candMat, 'available_expenses' => $candExp,
-                'project_range' => ['start' => $pStart, 'end' => $pEnd],
-                'existing_tasks' => ['total' => $tri['total'], 'replaceable' => count($tri['replaceable_ids']), 'kept' => $tri['total'] - count($tri['replaceable_ids'])],
-                'material_count' => $cnt['m'], 'expense_count' => $cnt['e'], 'new_material_count' => count($tot['newNames'])
-            ], $meta));
-            break;
+        // [AUTO-INV][NEW] tabel tagihan ke klien
+        html += '<h3 style="margin:16px 0 8px 0; font-size:17px; color:#00bcd4;">Tagihan ke Klien</h3>' +
+                '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:15px;">' +
+                '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
+                '<th style="padding:8px;">No. Invoice</th><th style="padding:8px;">Termin</th>' +
+                '<th align="center" style="padding:8px;">Tgl Invoice</th><th align="center" style="padding:8px;">Jatuh Tempo</th>' +
+                '<th align="right" style="padding:8px;">Nilai</th><th align="right" style="padding:8px;">Terbayar</th>' +
+                '<th align="center" style="padding:8px;">Status</th><th style="padding:8px;">Task Pemicu</th></tr></thead><tbody>';
+        if (!invoices || !invoices.length) {
+            html += '<tr><td colspan="8" style="padding:15px; text-align:center; color:#688998;">Belum ada tagihan. Jalankan <b>ANALISIS & BAGI TASK (AI)</b> atau <b>TERBITKAN TAGIHAN OTOMATIS</b> di jendela Edit.</td></tr>';
+        } else {
+            Ext.each(invoices, function (iv) {
+                var amt = parseFloat(iv.amount) || 0, pd = parseFloat(iv.paid_amount) || 0;
+                var st = pd >= amt - 0.005 ? ['Lunas', '#80cbc4'] : (pd > 0 ? ['Sebagian', '#ffd54f'] : ['Belum bayar', '#ff8a80']);
+                html += '<tr style="border-bottom:1px solid #182e3e;">' +
+                        '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.inv_no) + (iv.auto_generated ? ' <span style="color:#00bcd4;font-size:13px;">AUTO</span>' : '') + '</td>' +
+                        '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.termin_name) + '</td>' +
+                        '<td align="center" style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.invoice_date || '-') + '</td>' +
+                        '<td align="center" style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.due_date || '-') + '</td>' +
+                        '<td align="right" style="padding:8px;">' + fmtRp(amt) + '</td>' +
+                        '<td align="right" style="padding:8px;">' + fmtRp(pd) + '</td>' +
+                        '<td align="center" style="padding:8px; color:' + st[1] + ';">' + st[0] + '</td>' +
+                        '<td style="padding:8px; color:#b0bec5;">' + Ext.util.Format.htmlEncode(iv.task_name || '-') + '</td></tr>';
+            });
+        }
+        html += '</tbody></table>';
 
-        // [AI-BOQ][NEW] Hitung ulang draft yang diedit user (tanpa AI, tanpa tulis DB): status RAB/master/baru, total, plafon
-        case 'resolve_plan':
-            if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
-            $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            $plan = json_decode($_REQUEST['plan_json'] ?? '', true);
-            if ($projectId <= 0 || !is_array($plan) || !isset($plan['tasks']) || !is_array($plan['tasks'])) throw new Exception('Data draft tidak valid.');
-            $proj = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $projectId], 'resolve_proj');
-            if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            $rate = (float)($proj['budget_exch_rate'] ?? 1);
-            if ($rate <= 0) $rate = 1;
-            $tasksIn = $plan['tasks'];
-            $taskMatch = mpMatchTasks($db, $projectId, $tasksIn);             // [DEDUP] task hampir sama dgn task lama -> akan ditimpa saat simpan
-            $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));
-            $tot = mpAnnotateTasks($tasksIn, $ctx, $rate, false);                   // qty 0 dipertahankan agar baris yang sedang diedit tidak hilang
-            $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $tasksIn);
-            $meta = array_merge($meta, mpMatchInfo($taskMatch, $tasksIn));
-            mpJson(array_merge([
-                'success' => true, 'message' => 'OK',
-                'boq_total' => round($tot['max'], 2), 'boq_total_min' => round($tot['min'], 2),
-                'mat_total' => round($tot['mat'], 2), 'exp_total' => round($tot['exp'], 2),
-                'new_material_count' => count($tot['newNames']),
-                'data' => ['project_id' => $projectId, 'tasks' => $tasksIn]
-            ], $meta));
-            break;
+        mainDtlDiv.innerHTML = html;
+        mainDtlDiv.style.display = 'block';
+        var btnPrintTasks = document.getElementById('btnPrintProjectTasks');
+        if (btnPrintTasks) btnPrintTasks.onclick = function () {
+            var w = window.open('/rab-project/dev/views/m.proyek.print.php?mode=tasks&project_id=' + encodeURIComponent(dataRecord.id), '_blank', 'width=1100,height=800,scrollbars=yes,resizable=yes');
+            if (!w) Ext.Msg.alert('Popup diblokir', 'Izinkan pop-up untuk situs ini, lalu klik Print Task kembali.');
+        };
+    }
 
-        // [AI-BOQ][REWORK] Simpan: (1) buat material master yang belum ada -> (2) material & expense masuk RAB -> (3) task + alokasi.
-        case 'save_ai_task_plan':
-            if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
-            $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            $planRaw = $_REQUEST['plan_json'] ?? '';
-            if ($projectId <= 0 || $planRaw === '') throw new Exception('Data rencana Task tidak lengkap.');
-            $plan = json_decode($planRaw, true);
-            if (!is_array($plan) || empty($plan['tasks']) || !is_array($plan['tasks'])) {
-                throw new Exception('Format rencana Task tidak valid. Minimal satu Task.');
-            }
-            if (!mpHasPriceRange($db)) throw new Exception('Kolom harga min master (materials.estimated_price_min / expense_master.default_price_min) belum ada. Jalankan migrasi sql/2026-11-06.budget_items_price_range.sql terlebih dahulu.');
-            $proj = mpFetchOne($db, "SELECT id, status, start_date, end_date, budget, budget_exch_rate, contract_value FROM projects WHERE id = :id", ['id' => $projectId], 'save_ai_plan_project');
-            if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            $rate = (float)($proj['budget_exch_rate'] ?? 1);
-            if ($rate <= 0) $rate = 1;
+    // ------------------------------------------------------------
+    // 4. Stores & Editor Task Grid (Di Dalam Window Edit)
+    // ------------------------------------------------------------
+    var editorTaskStore = new Ext.data.Store({
+        url: CRD,
+        baseParams: { task: 'read_tasks' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, [
+            { name: 'id' }, { name: 'task_name' }, { name: 'description' }, { name: 'materials' }, { name: 'expenses' }, { name: 'items' },
+            { name: 'total_max', type: 'float' }, { name: 'total_min', type: 'float' },
+            { name: 'start_date' }, { name: 'end_date' }, { name: 'status' }
+        ])
+    });
 
-            $db->beginTransaction();
-            try {
-                mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $projectId], 'lock_proyek');   // cegah simpan ganda paralel
-                $db->query("SELECT pg_advisory_xact_lock(771001)");                                                       // serialisasi kode material otomatis
-                // [DEDUP] Tidak ada lagi hapus massal task lama. Setiap task hasil analisis dicek: nama HAMPIR SAMA dengan task lama
-                // -> task lama ditimpa (id tetap, tagihan & SPK yang terkait tidak putus); belum ada -> task baru.
-                // Pengecekan ada di dalam transaksi setelah proyek di-lock, jadi klik / simpan berulang tidak lagi menggandakan data.
-                $taskMatch = mpMatchTasks($db, $projectId, array_values($plan['tasks']));
-                $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));   // alokasi task yang akan ditimpa tidak dihitung (qty RAB tidak dobel)
-                $seenNew = [];
+    var editorTaskGrid = new Ext.grid.GridPanel({
+        store: editorTaskStore,
+        height: editorGridH,
+        title: 'Rincian Sub-Task Proyek oleh AI (Berdasarkan Definisi & Rentang Tanggal)',
+        columns: [
+            { header: 'Nama Task', dataIndex: 'task_name', width: 160 },
+            { header: 'Deskripsi', dataIndex: 'description', width: 220 },
+            { header: 'Material RAB per Task', dataIndex: 'materials', width: 220, renderer: CellWrap },
+            { header: 'Biaya / Jasa per Task', dataIndex: 'expenses', width: 200, renderer: CellWrap },
+            { header: 'Est. Max', dataIndex: 'total_max', width: 100, align: 'right', renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000'); } },
+            { header: 'Tgl Mulai', dataIndex: 'start_date', width: 90, align: 'center' },
+            { header: 'Tgl Selesai', dataIndex: 'end_date', width: 90, align: 'center' },
+            { header: 'Status', dataIndex: 'status', width: 90, align: 'center' }
+        ],
+        viewConfig: { forceFit: true }
+    });
 
-                // ---- Pass 1: validasi baris, kelompokkan per item lintas task ----
-                $tasksClean = []; $agg = [];
-                $ti = -1;
-                foreach (array_values($plan['tasks']) as $t) {
-                    $ti++;                                                           // [DEDUP] indeks task = kunci $taskMatch
-                    $tName  = trim((string)($t['task_name'] ?? ''));
-                    $tDesc  = trim((string)($t['description'] ?? ''));
-                    $tStart = (string)($t['start_date'] ?? '');
-                    $tEnd   = (string)($t['end_date'] ?? '');
-                    $d1 = DateTime::createFromFormat('!Y-m-d', $tStart);
-                    $d2 = DateTime::createFromFormat('!Y-m-d', $tEnd);
-                    if ($tName === '' || !$d1 || $d1->format('Y-m-d') !== $tStart || !$d2 || $d2->format('Y-m-d') !== $tEnd || $tStart > $tEnd) {
-                        throw new Exception('Data Task "' . $tName . '" tidak valid (nama / tanggal). Simpan dibatalkan.');
+    var btnAiPanel = new Ext.Panel({
+        border: false,
+        bodyStyle: 'background:transparent; padding:10px 0;',
+        html: '<div style="text-align: left;"><button type="button" id="customAiBtn" style="background:transparent; border:1px solid #00bcd4; color:#00bcd4; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; transition:all 0.3s;">ANALISIS & BAGI TASK (AI)</button>' +
+              // [AUTO-INV][NEW] tombol terbitkan tagihan otomatis (analisis AI + preview + terbitkan)
+              ' <button type="button" id="customInvBtn" style="background:transparent; border:1px solid #ffd54f; color:#ffd54f; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px;">TERBITKAN TAGIHAN OTOMATIS</button></div>',
+        listeners: {
+            afterrender: function() {
+                document.getElementById('customAiBtn').onclick = function() {
+                    var projId = Ext.getCmp('id').getValue();
+                    if (!projId) {
+                        Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu sebelum menjalankan analisis AI.');
+                        return;
                     }
-                    $lines = [];
-                    foreach (['materials', 'expenses'] as $kind) {
-                        $label = ($kind === 'expenses') ? 'Biaya' : 'Material';
-                        foreach ((is_array($t[$kind] ?? null) ? $t[$kind] : []) as $m) {
-                            $name = trim((string)($m['material_name'] ?? ($m['expense_name'] ?? '')));
-                            $qty  = round(mpNum($m['qty_estimate'] ?? 0), 3);
-                            $unit = trim((string)($m['unit'] ?? ''));
-                            $bid  = (int)($m['budget_item_id'] ?? 0);
-                            if ($qty <= 0 || ($name === '' && $bid <= 0)) throw new Exception("{$label} pada Task \"{$tName}\" tidak valid (nama / qty).");
-                            if (strlen($name) > 255) $name = substr($name, 0, 255);
-                            list($pMin, $pMax) = mpNormPrice(mpNum($m['price_min'] ?? 0), mpNum($m['price_max'] ?? ($m['unit_price'] ?? 0)));
-                            list($aiMin, $aiMax) = mpNormPrice(mpNum($m['ai_min'] ?? 0), mpNum($m['ai_max'] ?? 0));
-                            $res = mpResolveLine($ctx, $bid, $name, $kind);          // server menentukan sendiri: rab / master / new
-                            if ($res['type'] !== 'rab' && $pMax <= 0 && !($res['type'] === 'master' && (float)($kind === 'expenses' ? $res['master']['default_price'] : $res['master']['estimated_price']) > 0)) {
-                                throw new Exception("Harga {$label} \"{$name}\" belum diisi (Task \"{$tName}\").");
+                    if (aiBusy || aiPlanOpen) return;                  // [DEDUP] abaikan klik berikutnya selama analisis berjalan / hasil belum ditutup
+                    aiBusy = true; setAiBtn(true);
+                    Ext.MessageBox.wait('AI sedang menyusun Task, daftar material (BoQ) dan perkiraan harga... (bisa 1-2 menit)', 'Mohon Tunggu');
+                    Ext.Ajax.request({
+                        url: CRD, method: 'POST',
+                        timeout: 180000,                       // [AI-BOQ] BoQ lengkap butuh waktu analisis lebih lama (default Ext 30 dtk)
+                        params: { task: 'ai_generate_tasks', project_id: projId },
+                        success: function(response) {
+                            Ext.MessageBox.hide();
+                            aiBusy = false; setAiBtn(false);              // [DEDUP]
+                            var res;
+                            try { res = Ext.util.JSON.decode(response.responseText); }
+                            catch (e) { Ext.Msg.alert('Gagal', 'Respons AI tidak valid.'); return; }
+                            if (!res.success) { Ext.Msg.alert('Gagal', res.message || 'Analisis AI gagal.'); return; }
+
+                            var plan = res.data;
+                            var availableMaterials = res.available_materials || [];
+                            var availableExpenses = res.available_expenses || [];
+                            var projRange = res.project_range || {};
+                            var meta = res;                        // angka total + peringatan dari server (diperbarui tiap Hitung Ulang)
+                            var planWin = null;
+                            var existing = res.existing_tasks || { total: 0, replaceable: 0, kept: 0 };
+                            var saveMode = 'merge';        // [DEDUP] tidak ada pilihan ganti/tambah lagi: server selalu cek 'hampir sama' -> timpa, bila belum ada -> simpan baru
+
+                            // ================================================================
+                            // [AI-BOQ][REWORK] Review & EDIT draft sebelum disimpan:
+                            //   Task    : ubah nama / deskripsi / tanggal, tambah, hapus
+                            //   Material: ubah qty, harga min/max, tambah dari RAB atau buat baru, hapus
+                            //   Biaya   : (expense, non-material) sama seperti material
+                            //   Total memakai harga MAX; status RAB/master/baru dicek server (tombol Hitung Ulang) dan saat simpan.
+                            // ================================================================
+                            var enc = Ext.util.Format.htmlEncode;
+                            var fmtIdr = function (v) { return Ext.util.Format.number(v || 0, '0,000'); };
+                            var num = function (v) { return parseFloat(v) || 0; };
+                            var TEAL = '#066b78', BURG = '#800020', SLATE = '#37566a';
+                            // [UI-READABLE] Font minimum 13px, isian 15px, tinggi kontrol 38px. Setiap baris = KARTU dengan label jelas
+                            // (bukan tabel 8 kolom yang sempit); task bisa dibuka / ditutup; ringkasan total menempel di atas (sticky).
+                            var IN = 'padding:7px 10px;font-size:15px;height:38px;background:#061522;color:#fff;border:1px solid #52758b;border-radius:4px;box-sizing:border-box;';
+                            var LBL = 'display:block;font-size:13px;font-weight:bold;color:#9ec3d1;margin-bottom:4px;';
+                            var openTask = { 0: true }, openAdd = {}, openHelp = false;      // [UI-READABLE] status buka/tutup, bertahan saat redraw
+                            var STATUS_LBL = {
+                                'rab':       ['Sudah di RAB',     '#80cbc4', 'Item sudah ada di RAB proyek, dipakai ulang (nama, satuan, harga mengikuti RAB / master).'],
+                                'rab_topup': ['Qty RAB ditambah', '#ffd54f', 'Item sudah ada di RAB, tetapi qty total task melebihi qty RAB sehingga qty RAB akan ditambah.'],
+                                'master':    ['Masuk RAB',        '#4fc3f7', 'Item sudah ada di master, belum di RAB: akan dimasukkan ke RAB (harga mengikuti master).'],
+                                'new':       ['Baru (dibuat)',    '#ffb74d', 'Belum ada: akan dibuat di master (lengkap harga min-max) lalu dimasukkan ke RAB.']
+                            };
+                            var KIND = {
+                                materials: { title: 'Material', ph: 'Nama material baru', btnNew: 'Tambah Material Baru', rabLbl: 'Ambil dari RAB yang sudah ada', empty: 'Belum ada material.', addLbl: '+ Tambah Material' },
+                                expenses:  { title: 'Biaya / Jasa (Expense)', ph: 'Nama biaya baru (mis. Jasa ereksi baja)', btnNew: 'Tambah Biaya Baru', rabLbl: 'Ambil dari RAB yang sudah ada', empty: 'Belum ada biaya.', addLbl: '+ Tambah Biaya / Jasa' }
+                            };
+                            var KINDS = ['materials', 'expenses'];
+
+                            function isFixed(m) { return m.status === 'rab' || m.status === 'rab_topup' || m.status === 'master'; }       // nama, satuan & harga mengikuti RAB / master (min-max = milik master)
+                            function pMax(m) { return Math.max(num(m.price_max) || num(m.unit_price), num(m.price_min)); }
+                            function pMin(m) { var a = num(m.price_min), b = pMax(m); return (a > 0 && a < b) ? a : b; }
+                            function lnMax(m) { return num(m.qty_estimate) * pMax(m); }
+                            function lnMin(m) { return num(m.qty_estimate) * pMin(m); }
+                            function ymd(d) { function p(n) { return (n < 10 ? '0' : '') + n; } return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+
+                            function calcTotals() {
+                                var t = { max: 0, min: 0, mat: 0, exp: 0, lines: 0, newCount: 0 }, news = {};
+                                Ext.each(plan.tasks, function (task) {
+                                    Ext.each(KINDS, function (kind) {
+                                        Ext.each(task[kind] || [], function (m) {
+                                            t.lines++; t.max += lnMax(m); t.min += lnMin(m);
+                                            if (kind === 'materials') { t.mat += lnMax(m); if (m.status === 'new') news[String(m.material_name).toLowerCase()] = true; }
+                                            else { t.exp += lnMax(m); }
+                                        });
+                                    });
+                                });
+                                for (var k in news) { t.newCount++; }
+                                return t;
                             }
-                            $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   // [DEDUP] nama hampir sama dlm satu rencana = satu item
-                            if (!isset($agg[$key])) {
-                                $agg[$key] = ['kind' => $kind, 'res' => $res, 'name' => $name, 'unit' => $unit, 'pmin' => $pMin, 'pmax' => $pMax,
-                                              'qty' => 0.0, 'spec' => trim((string)($m['spec'] ?? '')), 'category' => mb_substr($tName, 0, 100), 'aimin' => $aiMin, 'aimax' => $aiMax,
-                                              'cat' => mpExpCategory($m['category'] ?? '')];     // kategori RAB utk biaya baru
+                            function taskSub(task, kind) {
+                                var s = [0, 0];
+                                Ext.each(task[kind] || [], function (m) { s[0] += lnMax(m); s[1] += lnMin(m); });
+                                return s;
                             }
-                            if ($agg[$key]['spec'] === '') $agg[$key]['spec'] = trim((string)($m['spec'] ?? ''));
-                            $agg[$key]['pmax'] = max($agg[$key]['pmax'], $pMax);
-                            if ($pMin > 0 && ($agg[$key]['pmin'] <= 0 || $pMin < $agg[$key]['pmin'])) $agg[$key]['pmin'] = $pMin;
-                            $agg[$key]['qty'] = round($agg[$key]['qty'] + $qty, 3);
-                            $lines[] = ['key' => $key, 'qty' => $qty];
+                            function taskTotalMax(task) { return taskSub(task, 'materials')[0] + taskSub(task, 'expenses')[0]; }
+                            function totCell(m) { return '<b style="font-size:17px;color:#fff;">' + fmtIdr(lnMax(m)) + '</b><div style="color:#9ec3d1;font-size:13px;">min ' + fmtIdr(lnMin(m)) + '</div>'; }
+                            function subCell(s) { return '<b style="font-size:16px;color:#fff;">' + fmtIdr(s[0]) + '</b> <span style="color:#9ec3d1;font-size:13px;">(min ' + fmtIdr(s[1]) + ')</span>'; }
+
+                            // ---------- komponen kecil ----------
+                            function btn(cls, ti, kind, label, bg) {
+                                return '<button type="button" class="' + cls + '" data-task="' + ti + '"' + (kind ? ' data-kind="' + kind + '"' : '') +
+                                    ' style="padding:9px 18px;background:' + bg + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">' + label + '</button>';
+                            }
+                            function chip(text, color, bg) {
+                                return '<span style="display:inline-block;padding:3px 11px;border-radius:13px;font-size:13px;font-weight:bold;color:' + color + ';background:' + (bg || 'transparent') + ';border:1px solid ' + color + ';white-space:nowrap;">' + text + '</span>';
+                            }
+                            function fld(label, inner, wrapStyle) { return '<div style="' + (wrapStyle || '') + '"><span style="' + LBL + '">' + label + '</span>' + inner + '</div>'; }
+                            function roBox(txt, w, right) {
+                                return '<div style="' + IN + 'width:' + w + ';background:#0a1a27;border-color:#2c4a5e;color:#e0f7fa;display:flex;align-items:center;' + (right ? 'justify-content:flex-end;' : '') + '">' + txt + '</div>';
+                            }
+                            function mfld(ti, kind, li, field, val, w, type, ph) {
+                                return '<input type="' + (type || 'text') + '" class="aiEdit" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" data-field="' + field + '" value="' +
+                                    enc(val === null || val === undefined ? '' : val) + '"' + (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + (ph ? ' placeholder="' + enc(ph) + '"' : '') +
+                                    ' style="' + IN + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
+                            }
+                            function tfld(ti, field, val, style, type, ph) {
+                                return '<input type="' + (type || 'text') + '" class="aiTaskEdit" data-task="' + ti + '" data-field="' + field + '" value="' + enc(val || '') + '"' +
+                                    (ph ? ' placeholder="' + enc(ph) + '"' : '') + ' style="' + IN + style + '">';
+                            }
+                            function nfld(id, ti, kind, f, ph, w, type) {          // isian form "buat baru"
+                                return '<input id="aiNew_' + id + '_' + f + '" class="aiNewIn" data-task="' + ti + '" data-kind="' + kind + '" type="' + (type || 'text') + '"' +
+                                    (type === 'number' ? ' min="0" step="any" inputmode="decimal"' : '') + ' placeholder="' + enc(ph) + '" style="' + IN + 'width:' + w + ';' + (type === 'number' ? 'text-align:right;' : '') + '">';
+                            }
+                            // [DEDUP] Info hasil cek 'hampir sama' (tanpa pilihan manual): task yang namanya mirip task lama akan DITIMPA, sisanya disimpan baru
+                            function modeHtml() {
+                                if (!existing.total) return '';
+                                var tm = meta.task_matches || [], ov = tm.length, nw = Math.max(0, plan.tasks.length - ov);
+                                var h = '<div style="background:#0b1b28;border:1px solid #52758b;border-radius:8px;padding:14px;margin-bottom:14px;font-size:15px;color:#e6f2f7;line-height:1.7;">' +
+                                    '<b>Proyek ini sudah punya ' + existing.total + ' task.</b> Saat disimpan, setiap task, material dan biaya dicek dulu: ' +
+                                    'bila namanya <b>hampir sama</b> dengan data lama maka data lama <b>ditimpa</b> / dipakai ulang (tidak dobel); bila belum ada maka <b>disimpan baru</b>.<br>' +
+                                    '<b>Task: <span style="color:#ffb74d;">' + ov + ' akan menimpa task lama</span>, <span style="color:#7fe0a0;">' + nw + ' disimpan baru</span>.</b>';
+                                if (ov) {
+                                    h += '<div style="margin-top:6px;color:#c4dde8;font-size:14px;">';
+                                    Ext.each(tm, function (x) { h += '&bull; ' + enc(x.task_name) + ' &rarr; menimpa <b>' + enc(x.match_task_name) + '</b> (kemiripan ' + Math.round(x.score * 100) + '%)<br>'; });
+                                    h += '</div>';
+                                }
+                                h += '<div style="margin-top:6px;color:#b0cad6;font-size:14px;">Task lama yang sudah berjalan hanya diperbarui deskripsi &amp; alokasinya (nama / tanggal tidak diubah). Klik <b>Hitung Ulang</b> setelah mengubah nama task agar daftar ini diperbarui.</div>';
+                                return h + '</div>';
+                            }
+                            var EXP_CATS = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];     // = kategori biaya di modul RAB
+                            function catSelect(id, ti, kind, li, val, extraStyle) {
+                                var h = '<select ' + (id ? 'id="' + id + '" ' : 'class="aiEdit" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" data-field="category" ') +
+                                        'style="' + IN + (extraStyle || '') + '">';
+                                Ext.each(EXP_CATS, function (c) { h += '<option value="' + c + '"' + (c === (val || 'Lain-lain') ? ' selected="selected"' : '') + '>' + c + '</option>'; });
+                                return h + '</select>';
+                            }
+
+                            // ---------- bar ringkasan yang menempel di atas (selalu terlihat saat menggulir) ----------
+                            function stickyBar() {
+                                var t = calcTotals(), sev = meta.severity || 'ok';
+                                var C = { danger: ['#ff6b5e', 'Melebihi plafon / budget'], warning: ['#e6a817', 'Perhatian anggaran'], ok: ['#2e9e4f', 'Anggaran aman'] }[sev] || ['#2e9e4f', 'Anggaran aman'];
+                                var stat = function (label, valHtml) { return '<div><span style="display:block;font-size:13px;color:#9ec3d1;">' + label + '</span>' + valHtml + '</div>'; };
+                                return '<div id="aiSticky" style="position:sticky;top:-14px;z-index:6;background:#0b1b28;border:1px solid #3b6078;border-radius:8px;padding:12px 16px;margin:0 0 14px 0;box-shadow:0 4px 12px rgba(0,0,0,.5);">' +
+                                    '<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:center;">' +
+                                    stat('Task', '<b style="font-size:20px;color:#fff;">' + plan.tasks.length + '</b>') +
+                                    stat('Baris item', '<b style="font-size:20px;color:#fff;">' + t.lines + '</b>') +
+                                    stat('Material baru', '<b style="font-size:20px;color:#ffb74d;">' + t.newCount + '</b>') +
+                                    stat('Material (Rp)', '<b id="aiSumMat" style="font-size:18px;color:#fff;">' + fmtIdr(t.mat) + '</b>') +
+                                    stat('Biaya (Rp)', '<b id="aiSumExp" style="font-size:18px;color:#fff;">' + fmtIdr(t.exp) + '</b>') +
+                                    stat('TOTAL harga MAX (Rp) - dipakai di RAB', '<b id="aiSumMax" style="font-size:22px;color:' + (meta.over_budget || meta.over_contract ? '#ff6b5e' : '#7fe0a0') + ';">' + fmtIdr(t.max) + '</b>') +
+                                    stat('Total harga MIN (Rp)', '<b id="aiSumMin" style="font-size:18px;color:#c4dde8;">' + fmtIdr(t.min) + '</b>') +
+                                    '<div>' + chip((sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[1], C[0], 'rgba(0,0,0,.25)') + '</div>' +
+                                    '</div>' +
+                                    '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;">' +
+                                    btn('aiRecalc', '', '', 'Hitung Ulang &amp; Cek Status', SLATE) + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) +
+                                    btn('aiExpandAll', '', '', 'Buka Semua Task', '#2c4a5e') + btn('aiCollapseAll', '', '', 'Tutup Semua Task', '#2c4a5e') +
+                                    '<span id="aiStale" style="display:none;font-size:14px;color:#ffe08a;"><i>Qty / harga berubah: klik "Hitung Ulang" agar status &amp; plafon dicek ulang.</i></span>' +
+                                    '</div></div>';
+                            }
+                            // Kotak penanda: hasil analisis LEBIH BESAR dari budget / nilai kontrak (merah = ditolak / RAB menolak, kuning = pakai cadangan)
+                            function alertHtml() {
+                                var sev = meta.severity || 'ok';
+                                var C = { danger: ['#3b1212', '#ff6b5e', 'PERINGATAN ANGGARAN'], warning: ['#3a2c08', '#e6a817', 'PERHATIAN ANGGARAN'], ok: ['#0f2f22', '#2e9e4f', 'Anggaran aman'] }[sev] || ['#0f2f22', '#2e9e4f', 'Anggaran aman'];
+                                var h = '<div id="aiAlert" style="background:' + C[0] + ';border:2px solid ' + C[1] + ';border-radius:8px;padding:14px;margin-bottom:14px;">' +
+                                    '<div style="font-size:17px;font-weight:bold;color:' + C[1] + ';margin-bottom:4px;">' + (sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[2] + '</div>';
+                                if (sev === 'ok' && num(meta.budget_idr) > 0) {
+                                    h += '<div style="color:#a5e8bd;font-size:15px;">Total RAB setelah disimpan Rp ' + fmtIdr(meta.rab_after_idr) + ' masih dalam budget Rp ' + fmtIdr(meta.budget_idr) +
+                                         ' (sisa Rp ' + fmtIdr(num(meta.budget_idr) - num(meta.rab_after_idr)) + ').</div>';
+                                }
+                                Ext.each(meta.warnings || [], function (w) {
+                                    h += '<div style="font-size:15px;line-height:1.55;color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:5px;">&bull; ' + enc(w.text) + '</div>';
+                                });
+                                return h + '</div>';
+                            }
+                            function metaHtml() {
+                                return '<div style="font-size:15px;color:#c4dde8;line-height:1.7;">RAB proyek saat ini <b>Rp ' + fmtIdr(meta.rab_existing_idr) + '</b>' +
+                                    ' &nbsp;|&nbsp; tambahan bila disimpan <b>Rp ' + fmtIdr((meta.rab_after_idr || 0) - (meta.rab_existing_idr || 0)) + '</b>' +
+                                    ' &nbsp;|&nbsp; <b>total RAB Rp ' + fmtIdr(meta.rab_after_idr) + '</b>' +
+                                    (num(meta.budget_idr) > 0 ? ' &nbsp;|&nbsp; budget Rp ' + fmtIdr(meta.budget_idr) : '') +
+                                    (num(meta.contract_idr) > 0 ? ' &nbsp;|&nbsp; nilai kontrak (plafon) Rp ' + fmtIdr(meta.contract_idr) : '') + '</div>';
+                            }
+                            function helpHtml() {
+                                var h = '<div style="margin-bottom:14px;">' + btn('aiToggleHelp', '', '', (openHelp ? '&#9650; Sembunyikan cara pakai' : '&#9660; Cara pakai &amp; catatan'), '#2c4a5e');
+                                if (openHelp) {
+                                    h += '<div style="font-size:15px;line-height:1.75;color:#d5e3ec;background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-top:8px;">' +
+                                        '<b>Ini DRAFT, belum tersimpan.</b> Klik <b>Simpan ke Master, RAB &amp; Task</b> di bagian bawah jendela bila sudah sesuai.<br>' +
+                                        '&bull; Klik judul task untuk membuka / menutup isinya.<br>' +
+                                        '&bull; Ubah qty / harga langsung di kotak; total dihitung otomatis. Klik <b>Hitung Ulang</b> setelah mengubah nama atau qty agar status dan plafon dicek ulang.<br>' +
+                                        '&bull; <b>Harga satuan RAB = harga MAX.</b> Item <span style="color:#80cbc4;">Sudah di RAB</span> / <span style="color:#4fc3f7;">Masuk RAB</span> mengikuti RAB / master (tidak diubah di sini); item <span style="color:#ffb74d;">Baru</span> dibuat dulu di master lengkap min-max.<br>' +
+                                        '&bull; Nama yang <b>hampir sama</b> dengan data lama akan menimpa / dipakai ulang, bukan digandakan.</div>';
+                                }
+                                return h + '</div>';
+                            }
+
+                            // ---------- satu baris item = satu kartu ----------
+                            function lineRow(ti, kind, m, li) {
+                                var st = STATUS_LBL[m.status] || ['Cek ulang', '#b0bec5', 'Klik Hitung Ulang untuk memeriksa status item ini.'], fixed = isFixed(m), nameBlock;
+                                if (fixed) {
+                                    nameBlock = '<div style="font-size:17px;font-weight:bold;color:#fff;line-height:1.35;">' + enc(m.material_name) + '</div>' +
+                                        (m.spec ? '<div style="font-size:14px;color:#c4dde8;margin-top:3px;line-height:1.5;">' + enc(m.spec) + '</div>' : '') +
+                                        (kind === 'expenses' ? '<div style="font-size:14px;color:#9ec3d1;margin-top:3px;">Kategori: ' + enc(m.category || '-') + '</div>' : '');
+                                } else {
+                                    nameBlock = '<div style="display:flex;gap:12px;flex-wrap:wrap;">' +
+                                        fld('Nama', mfld(ti, kind, li, 'material_name', m.material_name, '100%', 'text', KIND[kind].ph), 'flex:2;min-width:260px;') +
+                                        fld('Spesifikasi / keterangan', mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan'), 'flex:2;min-width:260px;') +
+                                        (kind === 'expenses' ? fld('Kategori', catSelect('', ti, kind, li, m.category, 'width:160px;'), '') : '') + '</div>';
+                                }
+                                var fields = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:12px;">' +
+                                    fld('Satuan', fixed ? roBox(enc(m.unit || '-'), '100px') : mfld(ti, kind, li, 'unit', m.unit, '100px', 'text', 'satuan')) +
+                                    fld('Qty', mfld(ti, kind, li, 'qty_estimate', m.qty_estimate, '120px', 'number')) +
+                                    fld('Harga Min (Rp)', fixed ? roBox(fmtIdr(pMin(m)), '150px', true) : mfld(ti, kind, li, 'price_min', m.price_min, '150px', 'number')) +
+                                    fld('Harga Max (Rp)', fixed ? roBox(fmtIdr(pMax(m)), '150px', true) : mfld(ti, kind, li, 'price_max', m.price_max, '150px', 'number')) +
+                                    '<div style="margin-left:auto;text-align:right;"><span style="' + LBL + '">Total (Max)</span><div id="aiTot_' + ti + '_' + kind + '_' + li + '">' + totCell(m) + '</div></div></div>';
+                                var note = '<div style="font-size:13px;color:' + st[1] + ';margin-top:10px;line-height:1.5;"><b>' + st[0] + '</b> &mdash; ' + st[2] +
+                                    ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? ' Min master akan diisi: ' + fmtIdr(m.ai_min) + '.' : '') + '</div>' +
+                                    (m.reason ? '<div style="font-size:13px;color:#9bb9c6;margin-top:3px;line-height:1.5;">Alasan AI: ' + enc(m.reason) + '</div>' : '');
+                                return '<div style="border:1px solid #34546a;border-left:6px solid ' + st[1] + ';border-radius:7px;background:#0d2133;padding:14px;margin-bottom:12px;">' +
+                                    '<div style="display:flex;gap:12px;align-items:flex-start;"><div style="flex:1;min-width:0;">' + nameBlock + '</div>' +
+                                    '<div style="flex:none;">' + chip(st[0], st[1]) + '</div>' +
+                                    '<div style="flex:none;"><button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
+                                    'style="padding:9px 16px;background:' + BURG + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">Hapus</button></div></div>' +
+                                    fields + note + '</div>';
+                            }
+
+                            function addPanel(ti, kind) {
+                                var K = KIND[kind], list = (kind === 'materials') ? availableMaterials : availableExpenses, id = ti + '_' + kind;
+                                var box = 'border:1px solid #34546a;border-radius:7px;padding:14px;margin-top:12px;background:#0a1a27;';
+                                var ttl = 'font-size:15px;font-weight:bold;color:#80deea;margin-bottom:10px;';
+                                var sel = '<select id="aiSel_' + id + '" style="' + IN + 'width:100%;"><option value="">-- pilih dari RAB --</option>';
+                                Ext.each(list, function (a) {
+                                    var already = false;
+                                    Ext.each(plan.tasks[ti][kind] || [], function (x) { if (parseInt(x.budget_item_id, 10) === parseInt(a.budget_item_id, 10)) already = true; });
+                                    sel += '<option value="' + parseInt(a.budget_item_id, 10) + '"' + (already ? ' disabled="disabled"' : '') + '>' +
+                                           enc(a.material_name + ' | sisa RAB: ' + fmtQty3(a.qty_remaining) + ' ' + a.unit) + '</option>';
+                                });
+                                sel += '</select>';
+                                var h = '<div style="' + box + '"><div style="' + ttl + '">A. ' + K.rabLbl + '</div>' +
+                                    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' + fld('Item di RAB', sel, 'flex:1;min-width:300px;') +
+                                    fld('Qty', '<input id="aiSelQty_' + id + '" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" style="' + IN + 'width:120px;text-align:right;">') +
+                                    '<div>' + btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) + '</div></div></div>';
+                                h += '<div style="' + box + '"><div style="' + ttl + '">B. Atau buat baru <span style="font-weight:normal;color:#9ec3d1;font-size:14px;">(harga min &amp; max per satuan, Rupiah)</span></div>' +
+                                    '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+                                    (kind === 'expenses' ? fld('Kategori', catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:160px;')) : '') +
+                                    fld('Nama', nfld(id, ti, kind, 'name', K.ph, '100%'), 'flex:2;min-width:240px;') +
+                                    fld('Spesifikasi / keterangan', nfld(id, ti, kind, 'spec', 'Spesifikasi / keterangan', '100%'), 'flex:2;min-width:240px;') +
+                                    fld('Satuan', nfld(id, ti, kind, 'unit', 'satuan', '100px')) +
+                                    fld('Qty', nfld(id, ti, kind, 'qty', 'Qty', '110px', 'number')) +
+                                    fld('Harga Min', nfld(id, ti, kind, 'pmin', 'Harga min', '140px', 'number')) +
+                                    fld('Harga Max', nfld(id, ti, kind, 'pmax', 'Harga max', '140px', 'number')) +
+                                    '<div>' + btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</div></div></div>';
+                                return h;
+                            }
+
+                            function kindBlock(ti, kind) {
+                                var K = KIND[kind], lines = plan.tasks[ti][kind] || [], key = ti + '_' + kind, isAddOpen = !!openAdd[key];
+                                var h = '<div style="margin:18px 0 10px;padding-bottom:6px;border-bottom:2px solid #2c4a5e;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;">' +
+                                    '<span style="font-size:18px;font-weight:bold;color:' + (kind === 'materials' ? '#80deea' : '#ffcc80') + ';">' + K.title + ' (' + lines.length + ')</span>' +
+                                    '<span style="margin-left:auto;font-size:14px;color:#9ec3d1;">Subtotal (Max): <span id="aiSub_' + key + '">' + subCell(taskSub(plan.tasks[ti], kind)) + '</span></span></div>';
+                                if (lines.length) {
+                                    Ext.each(lines, function (m, li) { h += lineRow(ti, kind, m, li); });
+                                } else {
+                                    h += '<div style="font-size:15px;color:#ffcc80;margin:6px 0 10px;">' + K.empty + '</div>';
+                                }
+                                h += '<div style="margin-top:6px;">' + btn('aiToggleAdd', ti, kind, isAddOpen ? '&minus; Tutup form tambah' : K.addLbl, isAddOpen ? '#2c4a5e' : TEAL) + '</div>';
+                                if (isAddOpen) h += addPanel(ti, kind);
+                                return h;
+                            }
+
+                            function taskCard(ti) {
+                                var t = plan.tasks[ti], mats = t.materials || [], exps = t.expenses || [], empty = !mats.length && !exps.length, isOpen = !!openTask[ti];
+                                var ov = null; Ext.each(meta.task_matches || [], function (x) { if (x.index === ti) ov = x; });
+                                var h = '<div style="border:2px solid ' + (empty ? '#b26a00' : '#3b6078') + ';border-radius:9px;margin:0 0 16px 0;background:#102638;overflow:hidden;">' +
+                                    '<div class="aiToggleTask" data-task="' + ti + '" title="Klik untuk ' + (isOpen ? 'menutup' : 'membuka') + '" style="cursor:pointer;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px;background:#16344a;">' +
+                                    '<span style="font-size:18px;color:#40d7ed;width:20px;">' + (isOpen ? '&#9660;' : '&#9654;') + '</span>' +
+                                    '<span style="font-size:20px;font-weight:bold;color:#40d7ed;">' + (ti + 1) + '.</span>' +
+                                    '<span id="aiHdrName_' + ti + '" style="flex:1;min-width:220px;font-size:18px;font-weight:bold;color:#fff;line-height:1.35;">' + enc(t.task_name || '(tanpa nama)') + '</span>' +
+                                    '<span style="font-size:14px;color:#c4dde8;">' + mats.length + ' material &bull; ' + exps.length + ' biaya</span>' +
+                                    '<span style="font-size:14px;color:#80deea;white-space:nowrap;">' + enc(t.start_date || '-') + ' s/d ' + enc(t.end_date || '-') + '</span>' +
+                                    (ov ? chip('Menimpa: ' + enc(ov.match_task_name), '#ffb74d') : '') +
+                                    (empty ? chip('Belum ada item', '#ffcc80') : '') +
+                                    '<span style="font-size:13px;color:#9ec3d1;">Total (Max) Rp <b id="aiHdrSub_' + ti + '" style="font-size:17px;color:#fff;">' + fmtIdr(taskTotalMax(t)) + '</b></span></div>';
+                                if (isOpen) {
+                                    h += '<div style="padding:16px;">' +
+                                        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+                                        fld('Nama Task', tfld(ti, 'task_name', t.task_name, 'width:100%;font-size:16px;font-weight:bold;', 'text', 'Nama task'), 'flex:3;min-width:280px;') +
+                                        fld('Mulai', tfld(ti, 'start_date', t.start_date, 'width:160px;', 'date')) +
+                                        fld('Selesai', tfld(ti, 'end_date', t.end_date, 'width:160px;', 'date')) +
+                                        '<div>' + btn('aiRemoveTask', ti, '', 'Hapus Task', BURG) + '</div></div>' +
+                                        '<div style="margin-top:12px;">' + fld('Deskripsi pekerjaan', tfld(ti, 'description', t.description, 'width:100%;', 'text', 'Deskripsi pekerjaan')) + '</div>' +
+                                        (t.assumption ? '<div style="font-size:14px;color:#c4dde8;margin-top:10px;line-height:1.55;background:#0b1b28;border:1px solid #31536a;border-radius:6px;padding:10px;"><b>Asumsi perhitungan:</b> ' + enc(t.assumption) + '</div>' : '') +
+                                        (empty ? '<div style="font-size:15px;color:#ffcc80;margin-top:12px;">Task ini belum punya material maupun biaya. Tambahkan minimal satu (biasanya biaya jasa / upah / sewa alat).</div>' : '') +
+                                        kindBlock(ti, 'materials') + kindBlock(ti, 'expenses') + '</div>';
+                                }
+                                return h + '</div>';
+                            }
+
+                            function renderTaskPlan() {
+                                var html = stickyBar() + alertHtml() + modeHtml();
+                                if (res.analysis) {
+                                    html += '<div style="font-size:15px;line-height:1.65;color:#d5e3ec;background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-bottom:14px;"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
+                                }
+                                if (res.notes && res.notes.length) {
+                                    html += '<div style="font-size:15px;color:#ffcc80;margin-bottom:14px;line-height:1.6;">' + enc(res.notes.join(' ')) + '</div>';
+                                }
+                                html += '<div id="aiMetaBox" style="background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-bottom:14px;">' + metaHtml() + '</div>' + helpHtml();
+                                Ext.each(plan.tasks, function (t, ti) { html += taskCard(ti); });
+                                return html + '<div style="margin:4px 0 8px;">' + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) + '</div>';
+                            }
+
+                            // Hanya angka (tanpa membangun ulang tabel) agar fokus input tidak hilang saat mengetik
+                            function updateTotalsInPlace() {
+                                var t = calcTotals(), set = function (id, v) { var el = document.getElementById(id); if (el) el.innerHTML = fmtIdr(v); };
+                                set('aiSumMat', t.mat); set('aiSumExp', t.exp); set('aiSumMax', t.max); set('aiSumMin', t.min);
+                                Ext.each(plan.tasks, function (task, ti) {
+                                    set('aiHdrSub_' + ti, taskTotalMax(task));
+                                    Ext.each(KINDS, function (kind) {
+                                        var sub = document.getElementById('aiSub_' + ti + '_' + kind);
+                                        if (sub) sub.innerHTML = subCell(taskSub(task, kind));
+                                        Ext.each(task[kind] || [], function (m, li) {
+                                            var c = document.getElementById('aiTot_' + ti + '_' + kind + '_' + li);
+                                            if (c) c.innerHTML = totCell(m);
+                                        });
+                                    });
+                                });
+                            }
+
+                            function redraw() {
+                                var root = planWin.body.dom, sc = root.scrollTop, saved = {}, i, els;
+                                els = root.querySelectorAll('[id^="aiNew_"],[id^="aiSel_"],[id^="aiSelQty_"]');   // isian form tambah jangan hilang
+                                for (i = 0; i < els.length; i++) { saved[els[i].id] = els[i].value; }
+                                planWin.body.update(renderTaskPlan());
+                                for (var id in saved) { var el = document.getElementById(id); if (el && saved[id] !== '') el.value = saved[id]; }
+                                bindPlanActions(planWin);
+                                root.scrollTop = sc;
+                            }
+
+                            // Hitung ulang di server (tanpa AI & tanpa tulis DB): status RAB/master/baru, harga ternormalisasi, total, plafon
+                            function refresh() {
+                                Ext.Ajax.request({
+                                    url: CRD, method: 'POST', timeout: 60000,
+                                    params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode },
+                                    success: function (r) {
+                                        var o = null;
+                                        try { o = Ext.util.JSON.decode(r.responseText); } catch (e) { o = null; }
+                                        if (o && o.success && o.data && o.data.tasks && o.data.tasks.length === plan.tasks.length) {
+                                            Ext.each(plan.tasks, function (t, i) {
+                                                t.materials = o.data.tasks[i].materials || [];
+                                                t.expenses = o.data.tasks[i].expenses || [];
+                                            });
+                                            meta = o;
+                                        } else if (o && !o.success) {
+                                            Ext.Msg.alert('Peringatan', o.message || 'Gagal menghitung ulang draft.');
+                                        }
+                                        redraw();
+                                    },
+                                    failure: function () { redraw(); Ext.Msg.alert('Peringatan', 'Gagal menghubungi server untuk hitung ulang.'); }
+                                });
+                            }
+
+                            function bindPlanActions(win) {
+                                var root = win.body.dom, i, els;
+
+                                // [UI-READABLE] buka / tutup task, form tambah, bantuan; buka / tutup semua
+                                els = root.querySelectorAll('.aiToggleTask');
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onclick = function () { var k = parseInt(el.getAttribute('data-task'), 10); openTask[k] = !openTask[k]; redraw(); };
+                                })(els[i]); }
+                                els = root.querySelectorAll('.aiToggleAdd');
+                                for (i = 0; i < els.length; i++) { (function (b) {
+                                    b.onclick = function () { var k = b.getAttribute('data-task') + '_' + b.getAttribute('data-kind'); openAdd[k] = !openAdd[k]; redraw(); };
+                                })(els[i]); }
+                                els = root.querySelectorAll('.aiToggleHelp');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { openHelp = !openHelp; redraw(); }; }
+                                els = root.querySelectorAll('.aiExpandAll');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { for (var k = 0; k < plan.tasks.length; k++) openTask[k] = true; redraw(); }; }
+                                els = root.querySelectorAll('.aiCollapseAll');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { openTask = {}; redraw(); }; }
+
+                                // [UI-READABLE] isian: klik = pilih semua isi (ketik langsung menimpa); Enter = simpan isian / tambah item
+                                els = root.querySelectorAll('input[type="text"],input[type="number"]');
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onfocus = function () { try { el.select(); } catch (e) {} };
+                                    el.onkeydown = function (ev) {
+                                        ev = ev || window.event;
+                                        if ((ev.keyCode || ev.which) !== 13) return;
+                                        if (el.className === 'aiNewIn') {
+                                            var ab = root.querySelector('.aiAddNew[data-task="' + el.getAttribute('data-task') + '"][data-kind="' + el.getAttribute('data-kind') + '"]');
+                                            if (ab) ab.click();
+                                        } else { el.blur(); }
+                                        return false;
+                                    };
+                                })(els[i]); }
+
+                                els = root.querySelectorAll('.aiEdit');                        // ubah qty / harga / nama / satuan baris
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onchange = function () {
+                                        var t = plan.tasks[parseInt(el.getAttribute('data-task'), 10)], kind = el.getAttribute('data-kind'), f = el.getAttribute('data-field');
+                                        var m = (t && t[kind]) ? t[kind][parseInt(el.getAttribute('data-line'), 10)] : null;
+                                        if (!m) return;
+                                        if (f === 'qty_estimate' || f === 'price_min' || f === 'price_max') {
+                                            m[f] = num(el.value);
+                                            if (f === 'price_max') m.unit_price = m.price_max;
+                                            updateTotalsInPlace();
+                                            var stale = document.getElementById('aiStale');         // angka plafon server belum dihitung ulang
+                                            if (stale) stale.style.display = 'inline';
+                                        } else { m[f] = el.value; }
+                                    };
+                                })(els[i]); }
+
+                                els = root.querySelectorAll('.aiTaskEdit');                    // ubah nama / deskripsi / tanggal task
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onchange = function () {
+                                        var tk = parseInt(el.getAttribute('data-task'), 10), t = plan.tasks[tk];
+                                        if (t) t[el.getAttribute('data-field')] = el.value;
+                                        if (t && el.getAttribute('data-field') === 'task_name') {         // [UI-READABLE] judul kartu ikut berubah
+                                            var hn = document.getElementById('aiHdrName_' + tk);
+                                            if (hn) hn.innerHTML = enc(el.value || '(tanpa nama)');
+                                        }
+                                    };
+                                })(els[i]); }
+
+                                els = root.querySelectorAll('.aiRemoveLine');
+                                for (i = 0; i < els.length; i++) { (function (b) {
+                                    b.onclick = function () {
+                                        var t = plan.tasks[parseInt(b.getAttribute('data-task'), 10)];
+                                        t[b.getAttribute('data-kind')].splice(parseInt(b.getAttribute('data-line'), 10), 1);
+                                        refresh();
+                                    };
+                                })(els[i]); }
+
+                                els = root.querySelectorAll('.aiRemoveTask');
+                                for (i = 0; i < els.length; i++) { (function (b) {
+                                    b.onclick = function () {
+                                        var ti = parseInt(b.getAttribute('data-task'), 10), t = plan.tasks[ti];
+                                        var has = (t.materials || []).length + (t.expenses || []).length;
+                                        var doIt = function () {
+                                            plan.tasks.splice(ti, 1);
+                                            var no = {};                                                  // [UI-READABLE] geser status buka/tutup setelah task dihapus
+                                            for (var k in openTask) { k = parseInt(k, 10); if (k < ti) no[k] = openTask[k]; else if (k > ti) no[k - 1] = openTask[k]; }
+                                            openTask = no; openAdd = {};
+                                            refresh();
+                                        };
+                                        if (has) {
+                                            Ext.Msg.confirm('Hapus Task', 'Hapus Task <b>' + enc(t.task_name) + '</b> beserta ' + has + ' item di dalamnya?', function (a) { if (a === 'yes') doIt(); });
+                                        } else { doIt(); }
+                                    };
+                                })(els[i]); }
+
+                                els = root.querySelectorAll('.aiAddTask');
+                                for (i = 0; i < els.length; i++) {
+                                    els[i].onclick = function () {
+                                        var today = ymd(new Date());
+                                        plan.tasks.push({ task_name: 'Task Baru', description: '', assumption: '', start_date: projRange.start || today, end_date: projRange.end || today, materials: [], expenses: [] });
+                                        openTask[plan.tasks.length - 1] = true;                              // [UI-READABLE] task baru langsung terbuka
+                                        refresh();
+                                    };
+                                }
+
+                                els = root.querySelectorAll('.aiRecalc');
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { refresh(); }; }
+
+                                els = root.querySelectorAll('.aiAddRab');                      // tambah dari RAB yang sudah ada
+                                for (i = 0; i < els.length; i++) { (function (b) {
+                                    b.onclick = function () {
+                                        var ti = parseInt(b.getAttribute('data-task'), 10), kind = b.getAttribute('data-kind'), id = ti + '_' + kind;
+                                        var bid = parseInt(document.getElementById('aiSel_' + id).value, 10), qty = parseFloat(document.getElementById('aiSelQty_' + id).value);
+                                        if (!bid || !qty || qty <= 0) { Ext.Msg.alert('Peringatan', 'Pilih item RAB dan isi Qty lebih besar dari nol.'); return; }
+                                        var list = (kind === 'materials') ? availableMaterials : availableExpenses, cand = null;
+                                        Ext.each(list, function (a) { if (parseInt(a.budget_item_id, 10) === bid) cand = a; });
+                                        if (!cand) { Ext.Msg.alert('Gagal', 'Item tidak ditemukan pada daftar RAB proyek.'); return; }
+                                        var used = 0;
+                                        Ext.each(plan.tasks, function (task) {
+                                            Ext.each(task[kind] || [], function (x) { if (parseInt(x.budget_item_id, 10) === bid) used += num(x.qty_estimate); });
+                                        });
+                                        if (used + qty > num(cand.qty_remaining) + 0.00005) {
+                                            Ext.Msg.alert('Qty melebihi sisa RAB', 'Sisa alokasi ' + cand.material_name + ' hanya ' + cand.qty_remaining + ' ' + cand.unit + '.');
+                                            return;
+                                        }
+                                        plan.tasks[ti][kind] = plan.tasks[ti][kind] || [];
+                                        plan.tasks[ti][kind].push({
+                                            budget_item_id: bid, material_id: cand.material_id || null, material_name: cand.material_name, spec: '', unit: cand.unit,
+                                            qty_estimate: qty, price_min: cand.price_min, price_max: cand.price_max, unit_price: cand.price_max, status: 'rab', category: cand.category || '',
+                                            reason: 'Ditambahkan manual dari RAB'
+                                        });
+                                        refresh();
+                                    };
+                                })(els[i]); }
+
+                                els = root.querySelectorAll('.aiAddNew');                      // buat item baru (material baru / biaya baru)
+                                for (i = 0; i < els.length; i++) { (function (b) {
+                                    b.onclick = function () {
+                                        var ti = parseInt(b.getAttribute('data-task'), 10), kind = b.getAttribute('data-kind'), id = ti + '_' + kind;
+                                        var v = function (f) { return document.getElementById('aiNew_' + id + '_' + f).value; };
+                                        var name = String(v('name')).replace(/^\s+|\s+$/g, ''), unit = String(v('unit')).replace(/^\s+|\s+$/g, '');
+                                        var qty = num(v('qty')), pmin = num(v('pmin')), pmax = num(v('pmax'));
+                                        if (!name) { Ext.Msg.alert('Peringatan', 'Nama wajib diisi.'); return; }
+                                        if (!unit) { Ext.Msg.alert('Peringatan', 'Satuan wajib diisi.'); return; }
+                                        if (qty <= 0) { Ext.Msg.alert('Peringatan', 'Qty harus lebih besar dari nol.'); return; }
+                                        if (pmin <= 0 && pmax <= 0) { Ext.Msg.alert('Peringatan', 'Isi harga min dan/atau max (Rupiah per satuan).'); return; }
+                                        if (pmax <= 0) pmax = pmin;
+                                        if (pmin <= 0 || pmin > pmax) pmin = Math.min(pmin > 0 ? pmin : pmax, pmax);
+                                        plan.tasks[ti][kind] = plan.tasks[ti][kind] || [];
+                                        plan.tasks[ti][kind].push({
+                                            budget_item_id: null, material_id: null, material_name: name, spec: String(v('spec')), unit: unit,
+                                            qty_estimate: qty, price_min: pmin, price_max: pmax, unit_price: pmax, status: 'new', reason: 'Ditambahkan manual',
+                                            category: (kind === 'expenses' && document.getElementById('aiNew_' + id + '_cat')) ? document.getElementById('aiNew_' + id + '_cat').value : ''
+                                        });
+                                        var ids = ['name', 'spec', 'unit', 'qty', 'pmin', 'pmax'];        // kosongkan form (redraw memulihkan isian lama)
+                                        for (var k = 0; k < ids.length; k++) { document.getElementById('aiNew_' + id + '_' + ids[k]).value = ''; }
+                                        refresh();
+                                    };
+                                })(els[i]); }
+                            }
+
+                            showPlanWin('Review & Edit Task, Material, Biaya (AI)', renderTaskPlan(), 'Simpan ke Master, RAB & Task', function () {
+                                var err = '';
+                                if (!plan.tasks.length) err = 'Minimal harus ada satu Task.';
+                                Ext.each(plan.tasks, function (t, i) {
+                                    if (err) return false;
+                                    var n = 'Task ' + (i + 1);
+                                    if (!String(t.task_name || '').replace(/\s+/g, '')) { err = n + ': nama Task kosong.'; return false; }
+                                    if (!t.start_date || !t.end_date || t.start_date > t.end_date) { err = n + ' "' + t.task_name + '": tanggal mulai / selesai tidak valid.'; return false; }
+                                    Ext.each(KINDS, function (kind) {
+                                        Ext.each(t[kind] || [], function (m) {
+                                            if (err) return false;
+                                            if (!String(m.material_name || '').replace(/\s+/g, '')) { err = n + ': ada baris tanpa nama.'; return false; }
+                                            if (!(num(m.qty_estimate) > 0)) { err = n + ' - ' + m.material_name + ': qty harus lebih besar dari nol.'; return false; }
+                                            if (!isFixed(m) && !(pMax(m) > 0)) { err = n + ' - ' + m.material_name + ': harga min / max wajib diisi.'; return false; }
+                                        });
+                                        if (err) return false;
+                                    });
+                                });
+                                if (err) { Ext.Msg.alert('Peringatan', err); return false; }
+
+                                function preSave(cb) {          // [AI-BOQ] cek plafon terbaru; tandai & minta konfirmasi bila hasil analisis lebih besar dari budget / kontrak
+                                    Ext.MessageBox.wait('Memeriksa anggaran / plafon...', 'Mohon Tunggu');
+                                    Ext.Ajax.request({
+                                        url: CRD, method: 'POST', timeout: 60000,
+                                        params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode },
+                                        success: function (r) {
+                                            Ext.MessageBox.hide();
+                                            var o = null;
+                                            try { o = Ext.util.JSON.decode(r.responseText); } catch (e) { o = null; }
+                                            if (o && o.success && o.data && o.data.tasks && o.data.tasks.length === plan.tasks.length) {
+                                                Ext.each(plan.tasks, function (t, i) { t.materials = o.data.tasks[i].materials || []; t.expenses = o.data.tasks[i].expenses || []; });
+                                                meta = o;
+                                                redraw();
+                                            }
+                                            if (meta.over_contract) {
+                                                aiSaving = false;                                // [DEDUP]
+                                                Ext.Msg.alert('Tidak dapat disimpan', 'Hasil analisis LEBIH BESAR dari nilai kontrak (plafon). Lihat kotak merah di bagian atas, lalu kurangi qty / harga / item.');
+                                                return;
+                                            }
+                                            if (meta.severity === 'danger' || meta.severity === 'warning') {
+                                                var li = '';
+                                                Ext.each(meta.warnings || [], function (w) { li += '<li style="margin-bottom:6px;">' + enc(w.text) + '</li>'; });
+                                                Ext.Msg.confirm('Periksa peringatan sebelum menyimpan', '<ul style="margin:0 0 0 16px;padding:0;">' + li + '</ul><br>Tetap simpan ke master, RAB dan Task?',
+                                                    function (b) { if (b === 'yes') { cb(); } else { aiSaving = false; } });          // [DEDUP]
+                                            } else { cb(); }
+                                        },
+                                        failure: function () { aiSaving = false; Ext.MessageBox.hide(); Ext.Msg.alert('Peringatan', 'Gagal memeriksa plafon ke server. Coba lagi.'); }   // [DEDUP]
+                                    });
+                                }
+                                function doSave() {
+                                Ext.MessageBox.wait('Membuat master baru, memasukkan ke RAB, lalu menyimpan Task...', 'Mohon Tunggu');
+                                Ext.Ajax.request({
+                                    url: CRD, method: 'POST',
+                                    timeout: 90000,            // [AI-BOQ] simpan = buat material + RAB + task dalam satu transaksi
+                                    params: {
+                                        task: 'save_ai_task_plan',
+                                        project_id: projId,
+                                        plan_json: Ext.util.JSON.encode(plan), mode: saveMode
+                                    },
+                                    success: function (saveResponse) {
+                                        Ext.MessageBox.hide();
+                                        aiSaving = false;                                    // [DEDUP]
+                                        var saved;
+                                        try { saved = Ext.util.JSON.decode(saveResponse.responseText); }
+                                        catch (e) { Ext.Msg.alert('Gagal', 'Respons penyimpanan tidak valid.'); return; }
+                                        Ext.Msg.alert(saved.success ? 'Sukses' : 'Gagal', saved.message || 'Proses selesai.');
+                                        if (saved.success) {
+                                            if (planWin) planWin.close();            // jendela baru ditutup bila sukses; bila gagal draft tetap bisa diperbaiki
+                                            editorTaskStore.load({ params: { project_id: projId } });
+                                            loadMainDetailPanel(projId);
+                                        }
+                                    },
+                                    failure: function () {
+                                        Ext.MessageBox.hide();
+                                        aiSaving = false;                                    // [DEDUP]
+                                        Ext.Msg.alert('Gagal', 'Gagal menyimpan. Draft Anda masih terbuka; periksa log PHP.');
+                                    }
+                                });
+                                }   // doSave
+                                if (aiSaving) return false;          // [DEDUP] klik Simpan berulang diabaikan selama proses berjalan
+                                aiSaving = true;
+                                preSave(doSave);
+                                return false;
+                            }, function (win) {
+                                planWin = win;
+                                aiPlanOpen = true;                                   // [DEDUP] selama jendela hasil terbuka, Analisa tidak bisa diklik lagi
+                                win.on('destroy', function () { aiPlanOpen = false; aiSaving = false; });
+                                bindPlanActions(win);
+                            }, true);                  // keepOpen: jendela tetap terbuka sampai simpan berhasil
+                        },
+                        failure: function() {
+                            Ext.MessageBox.hide();
+                            aiBusy = false; setAiBtn(false);              // [DEDUP]
+                            Ext.Msg.alert('Gagal', 'Terjadi kesalahan koneksi server.');
                         }
-                    }
-                    $tasksClean[] = ['name' => $tName, 'desc' => $tDesc, 'start' => $tStart, 'end' => $tEnd, 'lines' => $lines,
-                                     'match_id' => isset($taskMatch[$ti]) ? (int)$taskMatch[$ti]['id'] : 0];   // [DEDUP] >0 = timpa task lama
-                }
+                    });
+                };
 
-                // ---- Pass 2: master (material / expense_master) bila belum ada -> RAB proyek ----
-                $stMatIns = $db->prepare("
-                    INSERT INTO public.materials (material_code, material_name, unit, category, active, estimated_price, estimated_price_min)
-                    VALUES (:code, :name, :unit, :cat, true, :pmax, :pmin) RETURNING id");
-                $stExpIns = $db->prepare("
-                    INSERT INTO expense_master (expense_code, expense_name, category, unit, default_price, default_price_min, active)
-                    VALUES (:code, :name, :cat, :unit, :price, :pmin, true) RETURNING id");
-                $stRabIns = $db->prepare("
-                    INSERT INTO public.budget_items (project_id, category, material_id, expense_id, item_name, unit, qty_plan,
-                                                     unit_price_plan, tolerance_pct, notes)
-                    VALUES (:pid, :cat, :mid, :eid, :iname, :unit, :qty, :pplan, 0, :notes) RETURNING id");   // harga satuan RAB = MAX; rentang min-max ada di master
-                $newMaterials = 0; $newExpMaster = 0; $newRabMat = 0; $newRabExp = 0; $topups = 0; $touched = []; $filledRange = 0;
-                foreach ($agg as $key => &$a) {
-                    $res = $a['res'];
-                    // [AI-BOQ] Master yang rentang harganya masih kosong diisi dari estimasi AI (hanya mengisi yang kosong, tidak menimpa nilai yang sudah ada)
-                    $mtype = null; $mid0 = 0; $curMax = 0.0; $curMin = 0.0;
-                    if ($res['type'] === 'rab') {
-                        $r0 = $res['rab'];
-                        if ($r0['material_id'] > 0) { $mtype = 'M'; $mid0 = $r0['material_id']; } elseif ($r0['expense_id'] > 0) { $mtype = 'E'; $mid0 = $r0['expense_id']; }
-                        $curMax = (float)$r0['master_max']; $curMin = (float)$r0['master_min'];
-                    } elseif ($res['type'] === 'master') {
-                        $mtype = ($a['kind'] === 'expenses') ? 'E' : 'M'; $mid0 = (int)$res['master']['id'];
-                        $curMax = (float)($mtype === 'E' ? $res['master']['default_price'] : $res['master']['estimated_price']);
-                        $curMin = (float)($mtype === 'E' ? $res['master']['default_price_min'] : $res['master']['estimated_price_min']);
-                    }
-                    if ($mtype && $mid0 > 0 && ($curMax <= 0 || $curMin <= 0)) {
-                        $nMax = $curMax > 0 ? $curMax : (float)$a['aimax'];
-                        $nMin = $curMin > 0 ? $curMin : (((float)$a['aimin'] > 0 && (float)$a['aimin'] < $nMax) ? (float)$a['aimin'] : 0.0);
-                        if ($nMax > 0 && ($nMax != $curMax || $nMin != $curMin)) {
-                            if ($mtype === 'M') mpExec($db, "UPDATE public.materials SET estimated_price = CAST(:mx AS numeric), estimated_price_min = CASE WHEN CAST(:mn AS numeric) > 0 THEN CAST(:mn AS numeric) ELSE estimated_price_min END WHERE id = :id", ['mx' => $nMax, 'mn' => $nMin, 'id' => $mid0], 'fill_master_range');
-                            else                mpExec($db, "UPDATE expense_master SET default_price = CAST(:mx AS numeric), default_price_min = CASE WHEN CAST(:mn AS numeric) > 0 THEN CAST(:mn AS numeric) ELSE default_price_min END WHERE id = :id", ['mx' => $nMax, 'mn' => $nMin, 'id' => $mid0], 'fill_master_range_exp');
-                            $filledRange++;
-                        }
-                    }
-                    if ($res['type'] === 'rab') {
-                        $r = $res['rab'];
-                        $a['bid'] = (int)$r['budget_item_id'];
-                        $need = round($r['qty_allocated'] + $a['qty'], 3);          // RAB harus menampung seluruh alokasi task
-                        if ($need > $r['qty_plan'] + MP_EPS) {
-                            mpExec($db, "UPDATE public.budget_items SET qty_plan = :q WHERE id = :id", ['q' => $need, 'id' => $a['bid']], 'topup_rab');
-                            $topups++; $touched[$a['bid']] = true;
-                        }
-                        continue;
-                    }
-                    $mid = null; $eid = null; $isExp = ($a['kind'] === 'expenses'); $cat = 'Material';
-                    if (!$isExp) {
-                        if ($res['type'] === 'master') {
-                            $mid = (int)$res['master']['id'];
-                            if ($a['unit'] === '') $a['unit'] = $res['master']['unit'];
-                            if ((float)$res['master']['estimated_price'] > 0) list($a['pmin'], $a['pmax']) = mpNormPrice((float)$res['master']['estimated_price_min'] ?: (float)$res['master']['estimated_price'], (float)$res['master']['estimated_price']);   // pakai rentang master
-                            $a['name'] = $res['master']['material_name'];
-                        } else {                                                      // material baru -> buat dulu di master
-                            if ($a['unit'] === '') $a['unit'] = 'unit';
-                            $stMatIns->execute([':code' => mpNextMaterialCode($db), ':name' => $a['name'], ':unit' => mb_substr($a['unit'], 0, 30),
-                                                ':cat' => $a['category'], ':pmax' => $a['pmax'], ':pmin' => $a['pmin']]);
-                            $mid = (int)$stMatIns->fetchColumn();
-                            if ($mid <= 0) throw new Exception('Gagal membuat material baru "' . $a['name'] . '".');
-                            $newMaterials++;
-                        }
-                    } else {
-                        if ($res['type'] === 'master') {                              // biaya sudah ada di expense_master, belum di RAB
-                            $eid = (int)$res['master']['id']; $cat = mpExpCategory($res['master']['category']);
-                            if ($a['unit'] === '') $a['unit'] = $res['master']['unit'];
-                            if ((float)$res['master']['default_price'] > 0) list($a['pmin'], $a['pmax']) = mpNormPrice((float)$res['master']['default_price_min'] ?: (float)$res['master']['default_price'], (float)$res['master']['default_price']);   // pakai rentang master
-                            $a['name'] = $res['master']['expense_name'];
-                        } else {                                                      // biaya baru -> buat dulu di expense_master
-                            if ($a['unit'] === '') $a['unit'] = 'ls';
-                            $cat = mpExpCategory($a['cat']);
-                            $stExpIns->execute([':code' => mpNextExpenseCode($db), ':name' => mb_substr($a['name'], 0, 150), ':cat' => $cat,
-                                                ':unit' => mb_substr($a['unit'], 0, 30), ':price' => $a['pmax'], ':pmin' => $a['pmin']]);
-                            $eid = (int)$stExpIns->fetchColumn();
-                            if ($eid <= 0) throw new Exception('Gagal membuat biaya baru "' . $a['name'] . '" di master biaya.');
-                            $newExpMaster++;
-                        }
-                    }
-                    $notes = trim(($a['spec'] !== '' ? ($isExp ? 'Keterangan: ' : 'Spesifikasi: ') . $a['spec'] . '. ' : '') .
-                                  ($isExp ? 'Biaya non-material dari analisis AI.' : 'Dibuat dari analisis AI.'));
-                    $stRabIns->execute([
-                        ':pid' => $projectId, ':cat' => $cat, ':mid' => $mid, ':eid' => $eid,
-                        ':iname' => $a['name'], ':unit' => mb_substr($a['unit'], 0, 30), ':qty' => $a['qty'],
-                        ':pplan' => round($a['pmax'] / $rate, 2),                    // harga satuan RAB = MAX (mata uang anggaran)
-                        ':notes' => $notes
-                    ]);
-                    $a['bid'] = (int)$stRabIns->fetchColumn();
-                    if ($a['bid'] <= 0) throw new Exception('Gagal memasukkan "' . $a['name'] . '" ke RAB proyek.');
-                    $touched[$a['bid']] = true;
-                    if ($isExp) $newRabExp++; else $newRabMat++;
-                }
-                unset($a);
-
-                // Plafon: total RAB (qty x harga RAB, mata uang anggaran) tidak boleh melebihi nilai kontrak; budget hanya diperingatkan
-                $rt = mpFetchOne($db, "SELECT COALESCE(SUM(qty_plan * unit_price_plan),0) AS s FROM public.budget_items WHERE project_id = :p", ['p' => $projectId], 'rab_total_after');
-                $rabAfter = (float)$rt['s'];
-                $contract = (float)($proj['contract_value'] ?? 0); $budget = (float)($proj['budget'] ?? 0);
-                if ($contract > 0 && $rabAfter > $contract + 0.01) {
-                    throw new Exception('Total RAB Rp ' . mpIdr($rabAfter * $rate) . ' melebihi nilai kontrak (plafon) Rp ' . mpIdr($contract * $rate) .
-                                        '. Kurangi qty / harga / item lalu simpan lagi. Tidak ada data yang tersimpan.');
-                }
-                // Proyek berjalan & total > budget = memakai cadangan: item yang ditambah ditandai addendum (sama seperti RAB)
-                $usesReserve = (($proj['status'] ?? '') !== 'Belum Mulai') && $budget > 0 && $rabAfter > $budget + 0.01;
-                if ($usesReserve && $touched) {
-                    $uid = (int)($_SESSION['user_id'] ?? 0);
-                    $stAdd = $db->prepare("UPDATE public.budget_items SET is_addendum = true, addendum_reason = :r, addendum_by = :by, addendum_at = NOW() WHERE id = :id");
-                    foreach (array_keys($touched) as $tid) {
-                        $stAdd->execute([':r' => 'Analisis AI: memakai cadangan anggaran', ':by' => $uid > 0 ? $uid : null, ':id' => $tid]);
-                    }
-                }
-
-                // ---- Pass 3: task + alokasi (material & expense memakai task_materials -> budget_items) ----
-                $stTask = $db->prepare("
-                    INSERT INTO public.project_tasks (project_id, task_name, description, start_date, end_date, status)
-                    VALUES (:pid, :tname, :tdesc, :tsd, :ted, 'Belum Mulai')
-                    RETURNING id");
-                $stMaterial = $db->prepare("
-                    INSERT INTO public.task_materials (task_id, budget_item_id, qty_budget)
-                    VALUES (:tid, :bid, :qty)");
-                $taskCount = 0; $allocCount = 0; $taskNew = 0; $taskOver = 0; $allocRemoved = 0;
-                // [DEDUP] task lama yang hampir sama: nama/tanggal hanya ditimpa bila masih 'Belum Mulai' (task berjalan hanya diperbarui deskripsinya)
-                $stTaskUpd = $db->prepare("
-                    UPDATE public.project_tasks SET
-                        task_name   = CASE WHEN status = 'Belum Mulai' THEN :tname ELSE task_name END,
-                        description = :tdesc,
-                        start_date  = CASE WHEN status = 'Belum Mulai' THEN CAST(:tsd AS date) ELSE start_date END,
-                        end_date    = CASE WHEN status = 'Belum Mulai' THEN CAST(:ted AS date) ELSE end_date END
-                     WHERE id = :id AND project_id = :pid");
-                $stAllocSel = $db->prepare("SELECT id, budget_item_id FROM public.task_materials WHERE task_id = :tid");
-                $stAllocUpd = $db->prepare("UPDATE public.task_materials SET qty_budget = :qty WHERE id = :id");     // id baris tetap -> FK spk_task_materials aman
-                $stAllocDel = $db->prepare("DELETE FROM public.task_materials tm WHERE tm.id = :id
-                                               AND NOT EXISTS (SELECT 1 FROM public.spk_task_materials s WHERE s.task_material_id = tm.id)");   // yang sudah dipakai SPK dipertahankan
-                foreach ($tasksClean as $tc) {
-                    $existingAlloc = [];
-                    if ($tc['match_id'] > 0) {                                        // [DEDUP] TIMPA task lama
-                        $taskId = (int)$tc['match_id'];
-                        $stTaskUpd->execute([':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end'], ':id' => $taskId, ':pid' => $projectId]);
-                        $stAllocSel->execute([':tid' => $taskId]);
-                        foreach ($stAllocSel->fetchAll(PDO::FETCH_ASSOC) as $ar) $existingAlloc[(int)$ar['budget_item_id']] = (int)$ar['id'];
-                        $taskOver++;
-                    } else {                                                          // [DEDUP] belum ada -> SIMPAN BARU
-                        $stTask->execute([':pid' => $projectId, ':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end']]);
-                        $taskId = (int)$stTask->fetchColumn();
-                        if ($taskId <= 0) throw new Exception('Gagal mendapatkan ID Task baru.');
-                        $taskNew++;
-                    }
-                    $perTask = [];                                                    // item sama di satu task digabung
-                    foreach ($tc['lines'] as $ln) {
-                        $bid = $agg[$ln['key']]['bid'];
-                        $perTask[$bid] = round(($perTask[$bid] ?? 0) + $ln['qty'], 3);
-                    }
-                    foreach ($perTask as $bid => $qty) {
-                        if (isset($existingAlloc[$bid])) {                            // [DEDUP] item sudah dialokasikan ke task ini -> qty ditimpa
-                            $stAllocUpd->execute([':qty' => $qty, ':id' => $existingAlloc[$bid]]);
-                            unset($existingAlloc[$bid]);
-                        } else {
-                            $stMaterial->execute([':tid' => $taskId, ':bid' => $bid, ':qty' => $qty]);
-                        }
-                        $allocCount++;
-                    }
-                    foreach ($existingAlloc as $aid) {                                // alokasi lama yang tidak ada di hasil baru dilepas (bila belum dipakai SPK)
-                        $stAllocDel->execute([':id' => $aid]);
-                        $allocRemoved += $stAllocDel->rowCount();
-                    }
-                    $taskCount++;
-                }
-                $db->commit();
-
-                $warn = ($budget > 0 && $rabAfter > $budget + 0.01)
-                    ? ' PERHATIAN: total RAB Rp ' . mpIdr($rabAfter * $rate) . ' LEBIH BESAR dari budget proyek Rp ' . mpIdr($budget * $rate) .
-                      ($usesReserve ? ' (memakai cadangan; item ditandai addendum).' : ' (proyek Belum Mulai: RAB tidak bisa disimpan ulang sampai total <= budget).') : '';
-
-                $invResult = null; $invError = '';
-                if ($access >= 3) {
-                    try {
-                        $invoicePlan = mpBuildInvoicePlan($db, $projectId, true);
-                        $invoiceApplied = mpApplyInvoicePlan($db, $invoicePlan);
-                        $invResult = ['made' => $invoiceApplied['made'], 'synced' => $invoiceApplied['synced']];
-                    } catch (Throwable $ie) {
-                        error_log('[m.proyekCRD][auto_invoice_after_ai_plan] ' . $ie->getMessage());
-                        $invError = $ie->getMessage();
-                    }
-                }
-                mpJson([
-                    'success' => true,
-                    'message' => "{$taskCount} Task dan {$allocCount} alokasi (material + biaya) disimpan. Master baru: {$newMaterials} material, {$newExpMaster} biaya; item RAB baru: {$newRabMat} material, {$newRabExp} biaya; RAB ditambah qty: {$topups}. " . " Task: {$taskNew} baru, {$taskOver} ditimpa (nama hampir sama dengan task lama)." . ($allocRemoved > 0 ? " {$allocRemoved} alokasi lama yang tidak ada di hasil baru dilepas." : '') . ($filledRange > 0 ? " Rentang harga master diisi untuk {$filledRange} item." : '') . $warn,
-                    'task_count' => $taskCount, 'allocation_count' => $allocCount, 'task_new' => $taskNew, 'task_overwritten' => $taskOver,
-                    'new_material_count' => $newMaterials, 'new_expense_master_count' => $newExpMaster, 'new_rab_count' => $newRabMat + $newRabExp,
-                    'invoice' => $invResult, 'invoice_error' => $invError
-                ]);
-            } catch (Throwable $ex) {
-                if ($db->inTransaction()) $db->rollBack();
-                throw $ex;
+                // [AUTO-INV][NEW] preview rencana tagihan -> konfirmasi -> terbitkan
+                document.getElementById('customInvBtn').onclick = function () {
+                    var projId = Ext.getCmp('id').getValue();
+                    if (!projId) { Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu.'); return; }
+                    Ext.MessageBox.wait('AI menganalisis tagihan & pembayaran klien...', 'Mohon Tunggu');
+                    Ext.Ajax.request({
+                        url: CRD, method: 'POST', params: { task: 'auto_invoice', project_id: projId, mode: 'preview' },
+                        success: function (response) {
+                            Ext.MessageBox.hide();
+                            var res;
+                            try { res = Ext.util.JSON.decode(response.responseText); } catch (e) { Ext.Msg.alert('Gagal', 'Respons server tidak valid.'); return; }
+                            if (!res.success) { Ext.Msg.alert('Gagal', res.message); return; }
+                            if (!res.new_count && !res.sync_count) {
+                                showPlanWin('Info', 'Tidak ada tagihan baru yang perlu diterbitkan.<br><br>' + planHtml(res.data, res.analysis));
+                                return;
+                            }
+                            showPlanWin('Terbitkan Tagihan Otomatis?',
+                                planHtml(res.data, res.analysis) + '<div style="margin-top:14px;">Terbitkan <b>' + res.new_count + '</b> tagihan baru dan sesuaikan <b>' + res.sync_count + '</b> tagihan?</div>',
+                                'Terbitkan',
+                                function () {
+                                    Ext.Ajax.request({
+                                        url: CRD, method: 'POST', params: { task: 'auto_invoice', project_id: projId, mode: 'issue' },
+                                        success: function (r2) {
+                                            var o2; try { o2 = Ext.util.JSON.decode(r2.responseText); } catch (e) { Ext.Msg.alert('Gagal', 'Respons server tidak valid.'); return; }
+                                            Ext.Msg.alert(o2.success ? 'Sukses' : 'Gagal', o2.message);
+                                            if (o2.success) loadMainDetailPanel(projId);
+                                        },
+                                        failure: function () { Ext.Msg.alert('Gagal', 'Terjadi kesalahan koneksi server.'); }
+                                    });
+                                });
+                        },
+                        failure: function () { Ext.MessageBox.hide(); Ext.Msg.alert('Gagal', 'Terjadi kesalahan koneksi server.'); }
+                    });
+                };
             }
-            break;
+        }
+    });
 
-        case 'create':
-        case 'update':
-            if ($task === 'create' && $access < 2) {
-                mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menambah proyek.']);
-            }
-            if ($task === 'update' && $access < 3) {
-                mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk mengubah proyek.']);
-            }
+    // 5. Form Editor Input/Edit
+    var fldId = new myTextField({ name: 'id', id: 'id', hidden: true });
+    var fldName = new myTextField({ fieldLabel: 'Nama Proyek', id: 'name', name: 'name', allowBlank: false, width: 220 });
+    var fldClient = new myComboField({ fieldLabel: 'Klien', id: 'client_id', name: 'client_id', hiddenName: 'client_id', store: clientDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, width: 220 });
+    var fldPic = new myComboField({ fieldLabel: 'PIC Proyek', id: 'pic_id', name: 'pic_id', hiddenName: 'pic_id', store: picDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, width: 220 });
+    var fldLocation = new myComboField({ fieldLabel: 'Lokasi', id: 'location_id', name: 'location_id', hiddenName: 'location_id', store: locationDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, width: 220 });
+    
+    // Tgl Mulai & Tgl Selesai berdampingan
+    var fldStartDate = new Ext.form.DateField({ fieldLabel: 'Tgl Mulai', id: 'start_date', name: 'start_date', format: 'Y-m-d', width: 110 });
+    var fldEndDate = new Ext.form.DateField({ fieldLabel: 'Tgl Selesai', id: 'end_date', name: 'end_date', format: 'Y-m-d', width: 110 });
+    
+    var dateContainer = new Ext.Container({
+        layout: 'column',
+        border: false,
+        items: [
+            { columnWidth: 0.5, layout: 'form', border: false, items: [fldStartDate] },
+            { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 70, items: [fldEndDate] }
+        ]
+    });
 
-            $id             = (int)($_REQUEST['id'] ?? 0);
-            $name           = trim($_REQUEST['name'] ?? '');
-            $client_id      = ($_REQUEST['client_id'] ?? '') !== '' ? (int)$_REQUEST['client_id'] : null;
-            $pic_id         = ($_REQUEST['pic_id'] ?? '') !== '' ? (int)$_REQUEST['pic_id'] : null;
-            $location_id    = ($_REQUEST['location_id'] ?? '') !== '' ? (int)$_REQUEST['location_id'] : null;
-            $start_date     = ($_REQUEST['start_date'] ?? '') ?: null;
-            $end_date       = ($_REQUEST['end_date'] ?? '') ?: null;
-            $status         = $_REQUEST['status'] ?? 'Berjalan';
-            $notes          = $_REQUEST['notes'] ?? '';
-            $project_scope  = $_REQUEST['project_scope'] ?? '';
+    // Status naik ke bekas tempat Tgl Selesai
+    var fldStatus = new myComboField({ fieldLabel: 'Status', id: 'status', name: 'status', hiddenName: 'status', store: statusDs, displayField: 'name', valueField: 'id', value: 'Berjalan', width: 220 });
+    
+    // Catatan dipindah ke dekat Status, Definisi dinaikkan ke atas grid detail
+    var fldNotes = new Ext.form.TextArea({ fieldLabel: 'Catatan', id: 'notes', name: 'notes', anchor: '100%', height: 45 });
+    var fldScope = new Ext.form.TextArea({ 
+        fieldLabel: 'Definisi / Lingkup Proyek', 
+        id: 'project_scope', 
+        name: 'project_scope', 
+        anchor: '100%', 
+        height: 60,
+        emptyText: 'Contoh: Bangun gudang ukuran 150x50m struktur baja wf lengkap dengan dak lantai & kelistrikan.' 
+    });
 
-            // [PPN][NEW] pengaturan penagihan: tarif PPN, nilai kontrak termasuk PPN, retensi, DP minimum.
-            // Tidak dikirim (UI lama) -> null: saat update nilai lama dipertahankan, saat tambah memakai default kolom.
-            $numOrNull = function ($k) { return (isset($_REQUEST[$k]) && $_REQUEST[$k] !== '') ? (float)str_replace(',', '', $_REQUEST[$k]) : null; };
-            $ppn_rate      = $numOrNull('ppn_rate');
-            $retention_pct = $numOrNull('retention_pct');
-            $dp_min_pct    = $numOrNull('dp_min_pct');
-            $ppn_inclusive = isset($_REQUEST['ppn_inclusive']) && $_REQUEST['ppn_inclusive'] !== ''
-                             ? (in_array((string)$_REQUEST['ppn_inclusive'], ['1', 'true', 't'], true) ? 't' : 'f') : null;   // boolean PDO pgsql: 't' / 'f'
-            foreach (['Tarif PPN' => $ppn_rate, 'Retensi' => $retention_pct, 'DP Minimum' => $dp_min_pct] as $lbl => $v) {
-                if ($v !== null && ($v < 0 || $v > 100)) throw new Exception("{$lbl} harus antara 0 - 100%.");
-            }
+    var fldBudget = new myNumberField({ fieldLabel: 'Budget', id: 'budget', name: 'budget', decimalPrecision: 2, value: 0, width: 140,
+        enableKeyEvents: true, listeners: { change: function () { updateReserve(); }, keyup: function () { updateReserve(); } } });
+    var fldContract = new myNumberField({ fieldLabel: 'Nilai Kontrak (Plafon)', id: 'contract_value', name: 'contract_value', decimalPrecision: 2, value: 0, width: 140,
+        enableKeyEvents: true, listeners: { change: function () { updateReserve(); }, keyup: function () { updateReserve(); } } });
+    var fldReserve = new Ext.form.DisplayField({ fieldLabel: 'Cadangan', value: '-' });
 
-            $budget_raw     = $_REQUEST['budget'] ?? '';
-            $cv_raw         = $_REQUEST['contract_value'] ?? '';
-            
-            $budget         = ($budget_raw !== '') ? (float)str_replace(',', '', $budget_raw) : null;
-            $contract_value = ($cv_raw !== '') ? (float)str_replace(',', '', $cv_raw) : null;
-            $progress       = (isset($_REQUEST['progress']) && $_REQUEST['progress'] !== '') ? (int)$_REQUEST['progress'] : null;
+    var fldPpn = new myNumberField({ fieldLabel: 'Tarif PPN (%)', id: 'ppn_rate', name: 'ppn_rate', decimalPrecision: 2, value: 11, width: 80, minValue: 0, maxValue: 100 });
+    var ppnIncDs = new Ext.data.SimpleStore({ fields: ['id', 'name'], data: [['0', 'Belum termasuk PPN'], ['1', 'Sudah termasuk PPN']] });
+    var fldPpnInc = new myComboField({ fieldLabel: 'Nilai Kontrak', id: 'ppn_inclusive', name: 'ppn_inclusive', hiddenName: 'ppn_inclusive', store: ppnIncDs,
+        displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, editable: false, value: '0', width: 160 });
+    var fldRetention = new myNumberField({ fieldLabel: 'Retensi (%)', id: 'retention_pct', name: 'retention_pct', decimalPrecision: 2, value: 0, width: 80, minValue: 0, maxValue: 100 });
+    var fldDpMin = new myNumberField({ fieldLabel: 'DP Minimum (%)', id: 'dp_min_pct', name: 'dp_min_pct', decimalPrecision: 2, value: 30, width: 80, minValue: 0, maxValue: 100 });
 
-            if ($name === '') throw new Exception('Nama Proyek wajib diisi.');
-            if (!in_array($status, ['Belum Mulai', 'Berjalan', 'Tertunda', 'Selesai'], true)) {
-                throw new Exception('Status proyek tidak valid.');
-            }
-            if ($progress !== null && ($progress < 0 || $progress > 100)) throw new Exception('Progress harus antara 0-100.');
-            if ($end_date && $start_date && $end_date < $start_date) {
-                throw new Exception('Tanggal Selesai tidak boleh sebelum Tanggal Mulai.');
-            }
-
-            if ($task === 'create') {
-                $newId = (int)mpFetchOne($db,
-                    "INSERT INTO projects
-                        (name, client_id, pic_id, location_id, start_date, end_date, budget, contract_value, progress, status, notes, project_scope,
-                         ppn_rate, ppn_inclusive, retention_pct, dp_min_pct, created_at, updated_at)
-                     VALUES (:name, :cid, :pid, :lid, :sd, :ed, :budget, :cv, :progress, :status, :notes, :scope,
-                         COALESCE(CAST(:ppn AS numeric), 0), COALESCE(CAST(:ppninc AS boolean), false), COALESCE(CAST(:ret AS numeric), 0), COALESCE(CAST(:dpmin AS numeric), 30), NOW(), NOW())
-                     RETURNING id",
-                    ['name' => $name, 'cid' => $client_id, 'pid' => $pic_id, 'lid' => $location_id,
-                     'sd' => $start_date, 'ed' => $end_date,
-                     'budget' => $budget ?? 0, 'cv' => $contract_value ?? 0,
-                     'progress' => $progress ?? 0, 'status' => $status, 'notes' => $notes, 'scope' => $project_scope,
-                     'ppn' => $ppn_rate, 'ppninc' => $ppn_inclusive, 'ret' => $retention_pct, 'dpmin' => $dp_min_pct],
-                    'insert projects')['id'];
-                mpJson(['success' => true, 'id' => $newId, 'message' => "Proyek '{$name}' berhasil ditambahkan."]);
-            } else {
-                if (!$id) throw new Exception('ID proyek tidak valid.');
-                mpExec($db,
-                    "UPDATE projects SET
-                        name = :name, client_id = :cid, pic_id = :pid, location_id = :lid,
-                        start_date = :sd, end_date = :ed,
-                        budget = COALESCE(CAST(:budget AS numeric), budget),
-                        contract_value = COALESCE(CAST(:cv AS numeric), contract_value),
-                        progress = COALESCE(CAST(:progress AS smallint), progress),
-                        status = :status, notes = :notes, project_scope = :scope,
-                        ppn_rate = COALESCE(CAST(:ppn AS numeric), ppn_rate),
-                        ppn_inclusive = COALESCE(CAST(:ppninc AS boolean), ppn_inclusive),
-                        retention_pct = COALESCE(CAST(:ret AS numeric), retention_pct),
-                        dp_min_pct = COALESCE(CAST(:dpmin AS numeric), dp_min_pct),
-                        updated_at = NOW()
-                     WHERE id = :id",
-                    ['name' => $name, 'cid' => $client_id, 'pid' => $pic_id, 'lid' => $location_id,
-                     'sd' => $start_date, 'ed' => $end_date,
-                     'budget' => $budget, 'cv' => $contract_value, 'progress' => $progress,
-                     'status' => $status, 'notes' => $notes, 'scope' => $project_scope, 'id' => $id,
-                     'ppn' => $ppn_rate, 'ppninc' => $ppn_inclusive, 'ret' => $retention_pct, 'dpmin' => $dp_min_pct],
-                    'update projects');
-                mpJson(['success' => true, 'message' => "Proyek '{$name}' berhasil diperbarui."]);
-            }
-            break;
-
-        case 'delete':
-            if ($access < 4) {
-                mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menghapus proyek.']);
-            }
-            $id = (int)($_REQUEST['id'] ?? 0);
-            if (!$id) throw new Exception('ID proyek tidak valid.');
-
-            $refs = mpFetchOne($db,
-                "SELECT
-                    (SELECT COUNT(*) FROM purchase_orders WHERE project_id = :id1) AS po_count,
-                    (SELECT COUNT(*) FROM project_invoices WHERE project_id = :id2) AS termin_count,
-                    (SELECT COUNT(*) FROM material_out_header WHERE project_id = :id3) AS mout_count",
-                ['id1' => $id, 'id2' => $id, 'id3' => $id], 'cek referensi proyek');
-            $refCount = (int)$refs['po_count'] + (int)$refs['termin_count'] + (int)$refs['mout_count'];
-            if ($refCount > 0) {
-                throw new Exception("Proyek ini tidak bisa dihapus karena sudah punya transaksi terkait.");
-            }
-
-            mpExec($db, "DELETE FROM projects WHERE id = :id", ['id' => $id], 'delete projects');
-            mpJson(['success' => true, 'message' => 'Proyek berhasil dihapus.']);
-            break;
-
-        default:
-            mpJson(['success' => false, 'message' => 'Task tidak dikenali.']);
-            break;
+    function updateReserve() {
+        var b = parseFloat(fldBudget.getValue()) || 0, c = parseFloat(fldContract.getValue()) || 0, bb = b * curRate;
+        if (c <= 0) { fldReserve.setValue('<span style="color:#e6a817;">isi Nilai Kontrak</span>'); return; }
+        var r = c - bb;
+        fldReserve.setValue(r < 0 ? '<span style="color:#ff6b5e;">Budget melebihi Nilai Kontrak (' + fmtRp(-r) + ')</span>'
+                                  : '<b>' + fmtRp(r) + '</b>');
     }
-} catch (Throwable $e) {
-    error_log('[m.proyekCRD] ' . $e->getMessage());
-    mpJson(['success' => false, 'message' => $e->getMessage() !== '' ? $e->getMessage() : 'Terjadi kesalahan pada server.']);
-}
+
+    var fldProgress = new myNumberField({ fieldLabel: 'Progress (%)', id: 'progress', name: 'progress', decimalPrecision: 0, value: 0, width: 80, readOnly: true });
+
+    // stdForm dengan autoScroll dan tinggi bodi tetap agar slider geser bawah aktif sempurna
+    var frmEditor = new stdForm({
+        id: 'frmEditor',
+        renderTo: 'editorFormMain',
+        labelWidth: 130,
+        autoScroll: true,
+        height: Math.round(screenH * 0.90),
+        bodyStyle: 'padding: 10px; overflow-y: auto;',
+        defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
+        items: [
+            { items: [fldId, fldName, fldClient, fldPic, fldLocation, dateContainer, fldStatus, fldNotes] },
+            { items: [fldBudget, fldContract, fldReserve, fldPpn, fldPpnInc, fldRetention, fldDpMin, fldProgress] },     
+            { columnWidth: 1, items: [fldScope] }, 
+            { columnWidth: 1, items: [btnAiPanel, editorTaskGrid] } 
+        ]
+    });
+
+    // 6. Action Handlers
+    document.getElementById('addData').onclick = function () {
+        task = 'create';
+        frmEditor.getForm().reset();
+        curRate = 1; updateReserve();
+        editorTaskStore.removeAll();
+        document.getElementById('editorWdw').style.display = 'block';
+        document.getElementById('editorFormHeaderText').innerHTML = '&nbsp;&nbsp;Tambah Proyek Baru';
+    };
+
+    document.getElementById('editData').onclick = function () {
+        if (!dataRecord) { Ext.Msg.alert('Peringatan', 'Pilih proyek terlebih dahulu.'); return; }
+        
+        frmEditor.getForm().reset();
+        document.getElementById('editorWdw').style.display = 'block';
+        document.getElementById('editorFormHeaderText').innerHTML = '&nbsp;&nbsp;Edit  Proyek';
+        
+        frmEditor.getForm().load({
+            url: CRD,
+            params: { id: dataRecord.id, task: 'read_one' },
+            success: function (form, action) {
+                var res = Ext.util.JSON.decode(action.response.responseText);
+                var d = res.data || {};
+                
+                Ext.getCmp('id').setValue(d.id);
+                Ext.getCmp('name').setValue(d.name);
+                fldClient.setValue(d.client_id);
+                fldPic.setValue(d.pic_id);
+                fldLocation.setValue(d.location_id);
+                fldStartDate.setValue(d.start_date);
+                fldEndDate.setValue(d.end_date);
+                fldStatus.setValue(d.status);
+                fldBudget.setValue(d.budget);
+                fldContract.setValue(d.contract_value);
+                fldProgress.setValue(d.progress);
+                fldNotes.setValue(d.notes);
+                fldPpn.setValue(d.ppn_rate !== undefined && d.ppn_rate !== null ? d.ppn_rate : 0);
+                fldPpnInc.setValue((d.ppn_inclusive === true || d.ppn_inclusive === 't' || d.ppn_inclusive === '1' || d.ppn_inclusive === 1) ? '1' : '0');
+                fldRetention.setValue(d.retention_pct !== undefined && d.retention_pct !== null ? d.retention_pct : 0);
+                fldDpMin.setValue(d.dp_min_pct !== undefined && d.dp_min_pct !== null ? d.dp_min_pct : 30);
+                Ext.getCmp('project_scope').setValue(d.project_scope);
+
+                curRate = parseFloat(d.budget_exch_rate) || 1; 
+                updateReserve();
+
+                editorTaskStore.load({ params: { project_id: d.id } });
+            },
+            failure: function () {
+                Ext.Msg.alert('Gagal', 'Gagal memuat data proyek.');
+            }
+        });
+    };
+
+    document.getElementById('saveEdit').onclick = function () {
+        if (!frmEditor.getForm().isValid()) return;
+        var cv = parseFloat(fldContract.getValue()) || 0, bv = (parseFloat(fldBudget.getValue()) || 0) * curRate;
+        if (cv > 0 && bv > cv + 0.01) {
+            Ext.Msg.alert('Peringatan', 'Budget tidak boleh melebihi Nilai Kontrak.');
+            return;
+        }
+
+        var currentId = parseInt(Ext.getCmp('id').getValue() || (dataRecord ? dataRecord.id : 0), 10);
+        var submitTask = (currentId > 0) ? 'update' : 'create';
+
+        frmEditor.getForm().submit({
+            url: CRD,
+            method: 'POST',
+            params: { 
+                task: submitTask,
+                id: currentId,
+                client_id: fldClient.getValue(),
+                pic_id: fldPic.getValue(),
+                location_id: fldLocation.getValue()
+            },
+            success: function (form, action) {
+                var res = Ext.util.JSON.decode(action.response.responseText);
+                document.getElementById('popWdwTxt').innerHTML = res.message;
+                document.getElementById('popWdw').style.display = 'block';
+                mainDs.load({ params: { task: 'read' } });
+                document.getElementById('popCancel').innerHTML = 'Close';
+                document.getElementById('editorWdw').style.display = 'none';
+                if (currentId > 0) loadMainDetailPanel(currentId);
+            },
+            failure: function (form, action) {
+                var msg = (action.result && action.result.message) ? action.result.message : 'Gagal menyimpan data.';
+                Ext.Msg.alert('Gagal', msg);
+            }
+        });
+    };
+
+    document.getElementById('deleteData').onclick = function () {
+        if (!dataRecord) { Ext.Msg.alert('Peringatan', 'Pilih proyek terlebih dahulu.'); return; }
+        Ext.Msg.confirm('Konfirmasi', 'Hapus proyek ini?', function (btn) {
+            if (btn === 'yes') {
+                Ext.Ajax.request({
+                    url: CRD,
+                    params: { task: 'delete', id: dataRecord.id },
+                    success: function (response) {
+                        var res;
+                        try { res = Ext.util.JSON.decode(response.responseText); }
+                        catch (e) { Ext.Msg.alert('Gagal', 'Respons server tidak valid.'); return; }
+                        document.getElementById('popWdwTxt').innerHTML = res.message;
+                        document.getElementById('popWdw').style.display = 'block';
+                        if (res.success) {
+                            dataRecord = null;
+                            mainDtlDiv.style.display = 'none';
+                        }
+                        mainDs.load({ params: { task: 'read' } });
+                    },
+                    failure: function () { Ext.Msg.alert('Gagal', 'Gagal menghubungi server.'); }
+                });
+            }
+        });
+    };
+
+    document.getElementById('popOK').onclick = function () {
+        document.getElementById('popWdw').style.display = 'none';
+        if (document.getElementById('popCancel')) {
+            document.getElementById('popCancel').style.display = 'none';
+        }
+    };
+
+    document.getElementById('editorWdw').style.display = 'none';
+});
