@@ -97,15 +97,42 @@ Ext.onReady(function () {
         });
     }
 
+    function normalizeProofUrl(url) {
+        var value = String(url || '').replace(/^\s+|\s+$/g, '');
+        if (!value) { return ''; }
+
+        // URL lama dari lokasi aplikasi sebelumnya.
+        // Hanya path bukti progress yang dinormalisasi.
+        var match = value.match(/^\/(?:proyek|rab-project)\/uploads\/progress\/(.+)$/i)
+                 || value.match(/^\/uploads\/progress\/(.+)$/i);
+
+        if (match) {
+            var base = String(APP_BASE_URL || '/');
+            if (base.charAt(base.length - 1) !== '/') {
+                base += '/';
+            }
+            return base + 'uploads/progress/' + match[1];
+        }
+
+        return value;
+    }
+
     function proofLinks(v) {
         if (!v) { return '-'; }
         var out = [], parts = String(v).split(/\r?\n/);
         for (var i = 0; i < parts.length; i++) {
             var u = parts[i].replace(/^\s+|\s+$/g, '');
             if (!u) { continue; }
-            if (!/^(https?:\/\/|\/)/i.test(u)) { out.push(enc(u)); continue; }
-            var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(u) ? 'Foto' : (/\.pdf(\?.*)?$/i.test(u) ? 'PDF' : 'Link');
-            out.push('<a href="' + enc(u) + '" target="_blank" style="color:#7fe0a0;">' + label + ' ' + (out.length + 1) + '</a>');
+
+            var href = normalizeProofUrl(u);
+
+            if (!/^(https?:\/\/|\/)/i.test(href)) {
+                out.push(enc(href));
+                continue;
+            }
+
+            var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(href) ? 'Foto' : (/\.pdf(\?.*)?$/i.test(href) ? 'PDF' : 'Link');
+            out.push('<a href="' + enc(href) + '" target="_blank" style="color:#7fe0a0;">' + label + ' ' + (out.length + 1) + '</a>');
         }
         return out.length ? out.join(' &nbsp;|&nbsp; ') : '-';
     }

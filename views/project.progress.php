@@ -27,6 +27,7 @@
     <body>
     </body>
     <script type="text/javascript">
+                window.APP_BASE_URL = <?php echo json_encode(rtrim(BASE_URL, '/') . '/'); ?>;
         window.formAccess = <?php echo json_encode(intval($_SESSION["FormAccess"] ?? 0)); ?>;
     </script>
     <script type="text/javascript" src="../js/project.progress.js"></script>

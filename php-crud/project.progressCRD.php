@@ -1,4 +1,5 @@
 <?php
+require_once dirname(__DIR__) . '/php-func/app.url.php';
 /**
  * project.progressCRD.php
  * ============================================================
@@ -229,7 +230,7 @@ try {
             if (!move_uploaded_file($f['tmp_name'], $dir . '/' . $name)) {
                 throw new ProgBusinessError('Gagal menyimpan file. Cek izin tulis folder uploads/progress.');
             }
-            sendJsonResponse(true, ['url' => '/rab-project/uploads/progress/' . $name, 'name' => $name]);
+            sendJsonResponse(true, ['url' => rtrim(BASE_URL, '/') . '/uploads/progress/' . rawurlencode($name), 'name' => $name]);
             break;
 
         /* ------------------------------------------------------------------
