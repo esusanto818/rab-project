@@ -65,7 +65,22 @@ if (empty($_SESSION['user_id'])) {
     sc_inv_send(false, [], 'Sesi berakhir, silakan login ulang.');
 }
 
+
 $task = $_REQUEST['task'] ?? '';
+// Otorisasi aksi: 1 baca, 2 tambah, 3 perubahan/persetujuan, 4 pembatalan transaksi.
+$scInvAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$scInvRequired = 1;
+if ($task === 'save_invoice' || $task === 'save_payment') {
+    $scInvRequired = 2;
+} elseif (in_array($task, ['update_invoice_status', 'approve_invoice'], true)) {
+    $scInvRequired = 3;
+} elseif (in_array($task, ['cancel_invoice', 'cancel_payment'], true)) {
+    $scInvRequired = 4;
+}
+if ($scInvAccess < $scInvRequired) {
+    http_response_code(403);
+    sc_inv_send(false, [], 'Hak akses tidak mencukupi untuk operasi invoice subkontraktor ini.');
+}
 
 try {
     switch ($task) {
