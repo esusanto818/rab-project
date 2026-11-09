@@ -8,6 +8,30 @@ date_default_timezone_set('Asia/Jakarta');
 include_once "../php-class/crudClass.php";
 include_once "../php-func/function.all.php";
 
+// Defense-in-depth: endpoint must have a valid login and a menu permission.
+// Levels follow the application convention: 1=read, 2=create, 3=update, 4=delete/admin.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "status" => "Error", "message" => "Sesi berakhir. Silakan login kembali."]);
+    exit;
+}
+$userAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$requiredAccess = 1;
+if (in_array($task ?? '', ['create', 'add'], true)) $requiredAccess = 2;
+if (in_array($task ?? '', ['update', 'edit'], true)) $requiredAccess = 3;
+if (($task ?? '') === 'delete') $requiredAccess = 4;
+
+// Assigning or changing other users' menu permissions is an administrator operation.
+$permissionPayload = $_POST['form_access'] ?? $_POST['arrForm'] ?? null;
+if (in_array($task ?? '', ['create', 'add', 'update', 'edit'], true) && !empty($permissionPayload)) {
+    $requiredAccess = 4;
+}
+if ($userAccess < $requiredAccess) {
+    http_response_code(403);
+    echo json_encode(["success" => false, "status" => "Error", "message" => "Hak akses tidak mencukupi untuk operasi ini."]);
+    exit;
+}
+
 $searchField = $_POST["query"] ?? $_REQUEST["query"] ?? '';
 $offset      = isset($_POST["start"]) ? intval($_POST["start"]) : 0;
 $limit       = isset($_POST["limit"]) ? intval($_POST["limit"]) : 250;
@@ -203,6 +227,11 @@ switch ($task) {
                 foreach ($dataForm as $row) {
                     $formId    = intval($row['form_id'] ?? 0);
                     $accessLvl = intval($row['access_level'] ?? 1);
+                    if ($accessLvl < 0 || $accessLvl > 4) {
+                        http_response_code(400);
+                        echo json_encode(["success" => false, "status" => "Error", "message" => "Tingkat hak akses harus 0 sampai 4."]);
+                        exit;
+                    }
 
                     if ($formId > 0) {
                         $tableD = "m_user_access_menu";
@@ -276,8 +305,21 @@ switch ($task) {
                         $accessId  = intval($row['id'] ?? 0);
                         $formId    = intval($row['form_id'] ?? 0);
                         $accessLvl = intval($row['access_level'] ?? 1);
+                        if ($accessLvl < 0 || $accessLvl > 4) {
+                            http_response_code(400);
+                            echo json_encode(["success" => false, "status" => "Error", "message" => "Tingkat hak akses harus 0 sampai 4."]);
+                            exit;
+                        }
 
                         if ($accessId > 0) {
+                            // Never allow an access-row ID belonging to another user to be edited.
+                            $ownerCheck = $db->prepare("SELECT 1 FROM m_user_access_menu WHERE id = :id AND user_id = :uid");
+                            $ownerCheck->execute(['id' => $accessId, 'uid' => $userId]);
+                            if (!$ownerCheck->fetchColumn()) {
+                                http_response_code(403);
+                                echo json_encode(["success" => false, "status" => "Error", "message" => "Baris hak akses tidak dimiliki oleh user yang sedang diubah."]);
+                                exit;
+                            }
                             $keepAccessIds[] = $accessId;
                             $tableD = "m_user_access_menu";
                             $dataD  = array("access_level" => $accessLvl);
