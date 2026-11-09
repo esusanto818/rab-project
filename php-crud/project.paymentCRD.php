@@ -171,6 +171,16 @@ if (empty($_SESSION['user_id'])) {
 
 $task = $_REQUEST['task'] ?? '';
 
+$paymentAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$paymentRequired = 1;
+if (in_array($task, ['save_termin', 'save_payment'], true)) $paymentRequired = 2;
+if (in_array($task, ['analyze_project_variance', 'update_faktur_pajak'], true)) $paymentRequired = 3;
+if (in_array($task, ['delete_termin', 'delete_payment'], true)) $paymentRequired = 4;
+if ($paymentAccess < $paymentRequired) {
+    http_response_code(403);
+    sendJsonResponse(false, [], 'Hak akses tidak mencukupi untuk operasi pembayaran proyek ini.');
+}
+
 try {
     switch ($task) {
 
