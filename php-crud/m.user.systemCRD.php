@@ -8,6 +8,9 @@ date_default_timezone_set('Asia/Jakarta');
 include_once "../php-class/crudClass.php";
 include_once "../php-func/function.all.php";
 
+// Tangkap task sebelum pemeriksaan izin operasi.
+$task = $_POST['task'] ?? $_REQUEST['task'] ?? '';
+
 // Defense-in-depth: endpoint must have a valid login and a menu permission.
 // Levels follow the application convention: 1=read, 2=create, 3=update, 4=delete/admin.
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
@@ -41,8 +44,6 @@ $dataArray     = json2Array($itemInfoParam);
 $CheckItemNum  = (empty($dataArray)) ? "[0]" : "[" . $dataArray . "]";
 $CheckItemChar = (empty($dataArray)) ? "['0']" : "[" . $dataArray . "]";
 
-// Tangkap task secara fleksibel dari POST maupun REQUEST
-$task = $_POST['task'] ?? $_REQUEST['task'] ?? '';
 $db   = new crud();
 
 switch ($task) {
