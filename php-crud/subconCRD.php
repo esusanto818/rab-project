@@ -163,7 +163,38 @@ if (empty($_SESSION['user_id'])) {
     sc_send(false, [], 'Sesi berakhir, silakan login ulang.');
 }
 
+
 $task = $_REQUEST['task'] ?? '';
+
+// Otorisasi operasi berdasarkan FormAccess dari router.
+// Level: 1 baca, 2 tambah, 3 ubah/approval, 4 pembatalan finansial/penghapusan.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    sc_send(false, [], 'Sesi berakhir, silakan login ulang.');
+}
+$scAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$scRequired = 1;
+if ($task === 'save_subcontractor') {
+    $scRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+} elseif ($task === 'save_contract') {
+    $scRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+} elseif ($task === 'save_progress') {
+    $scRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+} elseif ($task === 'save_payment') {
+    $scRequired = 2;
+} elseif (in_array($task, ['change_status', 'approve_progress'], true)) {
+    $scRequired = 3;
+} elseif ($task === 'cancel_progress') {
+    $scRequired = 4;
+} elseif ($task === 'cancel_payment') {
+    $scRequired = 4;
+} elseif ($task === 'delete_contract') {
+    $scRequired = 4;
+}
+if ($scAccess < $scRequired) {
+    http_response_code(403);
+    sc_send(false, [], 'Hak akses tidak mencukupi untuk operasi subkontraktor ini.');
+}
 
 try {
     switch ($task) {
