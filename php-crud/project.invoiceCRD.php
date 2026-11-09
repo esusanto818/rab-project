@@ -102,6 +102,16 @@ if (empty($_SESSION['user_id'])) {
 
 $task = $_REQUEST['task'] ?? '';
 
+$invoiceAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$invoiceRequired = 1;
+if ($task === 'save_invoice') $invoiceRequired = 2;
+if ($task === 'update_faktur_pajak') $invoiceRequired = 3;
+if ($task === 'delete_invoice') $invoiceRequired = 4;
+if ($invoiceAccess < $invoiceRequired) {
+    http_response_code(403);
+    ti_send(false, [], 'Hak akses tidak mencukupi untuk operasi invoice proyek ini.');
+}
+
 try {
     switch ($task) {
 
