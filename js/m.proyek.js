@@ -77,6 +77,20 @@ Ext.onReady(function () {
     var planWinSeq = 0;
     // [DEDUP] penjaga klik ganda: analisis sedang jalan / jendela hasil analisis masih terbuka / simpan sedang jalan
     var aiBusy = false, aiPlanOpen = false, aiSaving = false;
+    // [FORM-LIVE] Isian form proyek yang SEDANG diedit (belum disimpan) ikut dikirim di setiap permintaan analisis / hitung ulang / simpan rencana,
+    // sehingga user tidak perlu menyimpan proyek dulu hanya agar budget / nilai kontrak / tanggal terbaru dipakai.
+    function formOv() {
+        var o = {}, g = function (id) { var c = Ext.getCmp(id); return c ? c.getValue() : undefined; };
+        var d = function (id) { var v = g(id); return (v && v.format) ? v.format('Y-m-d') : ''; };
+        var nm = g('name'); if (nm) o.ovr_name = nm;
+        var sc = g('project_scope'); if (sc !== undefined) o.ovr_project_scope = sc;
+        var st = g('status'); if (st) o.ovr_status = st;
+        var sd = d('start_date'); if (sd) o.ovr_start_date = sd;
+        var ed = d('end_date'); if (ed) o.ovr_end_date = ed;
+        var b = g('budget'); if (b !== undefined && b !== '' && b !== null) o.ovr_budget = b;
+        var c = g('contract_value'); if (c !== undefined && c !== '' && c !== null) o.ovr_contract_value = c;
+        return o;
+    }
     function setAiBtn(disabled) {
         var ids = ['customAiBtn', 'customEditBtn'];                  // [EDIT-SAVED] kedua tombol dikunci bersama
         for (var i = 0; i < ids.length; i++) {
@@ -555,8 +569,9 @@ Ext.onReady(function () {
                                     '<div>' + chip((sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[1], C[0], 'rgba(0,0,0,.25)') + '</div>' +
                                     '</div>' +
                                     '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;">' +
-                                    btn('aiRecalc', '', '', 'Hitung Ulang &amp; Cek Status', SLATE) + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) +
+                                    btn('aiRecalc', '', '', '&#8635; Hitung Ulang &amp; Cek Status', '#0a7d8c') + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) +
                                     btn('aiExpandAll', '', '', 'Buka Semua Task', '#2c4a5e') + btn('aiCollapseAll', '', '', 'Tutup Semua Task', '#2c4a5e') +
+                                    (recalcAt ? '<span style="font-size:14px;color:#7fe0a0;">&#10003; Dihitung ulang ' + recalcAt + '</span>' : '') +
                                     '<span id="aiStale" style="display:none;font-size:14px;color:#ffe08a;"><i>Qty / harga berubah: klik "Hitung Ulang" agar status &amp; plafon dicek ulang.</i></span>' +
                                     '</div></div>';
                             }
@@ -573,6 +588,22 @@ Ext.onReady(function () {
                                 Ext.each(meta.warnings || [], function (w) {
                                     h += '<div style="font-size:15px;line-height:1.55;color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:5px;">&bull; ' + enc(w.text) + '</div>';
                                 });
+                                // [FORM-LIVE] ubah Budget / Nilai Kontrak LANGSUNG di sini: Enter / pindah kolom -> form proyek ikut terisi & total dihitung ulang
+                                // (tanpa menutup jendela, tanpa analisis AI ulang, tanpa Simpan proyek dulu)
+                                var bf = Ext.getCmp('budget'), cf = Ext.getCmp('contract_value');
+                                var bin = function (field, label, val) {
+                                    return '<div><span style="' + LBL + '">' + label + '</span><input type="number" min="0" step="any" inputmode="decimal" class="aiBudIn" data-field="' + field + '" value="' +
+                                        enc(val === undefined || val === null ? '' : val) + '" style="' + IN + 'width:190px;text-align:right;"></div>';
+                                };
+                                h += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;">' +
+                                     bin('budget', 'Budget', bf ? bf.getValue() : '') + bin('contract_value', 'Nilai Kontrak (Plafon)', cf ? cf.getValue() : '') +
+                                     '<div style="font-size:14px;color:#d5e3ec;max-width:480px;line-height:1.55;">Ubah angka di sini lalu tekan <b>Enter</b>: total langsung dihitung ulang dan form proyek ikut terisi. ' +
+                                     'Tidak perlu menutup jendela atau analisis ulang.<br>' +
+                                     (meta.form_live ? '<span style="color:#7fe0a0;">&#10003; Dihitung memakai angka dari form (Budget Rp ' + fmtIdr(meta.budget_idr) + ', Kontrak Rp ' + fmtIdr(meta.contract_idr) + ').</span>'
+                                                     : '<span style="color:#ffe08a;">Dihitung memakai angka tersimpan di database (Budget Rp ' + fmtIdr(meta.budget_idr) + ', Kontrak Rp ' + fmtIdr(meta.contract_idr) + '). Bila Anda sudah mengubahnya di form dan angkanya belum berubah, muat ulang halaman (Ctrl+F5) agar file terbaru terpakai.</span>') +
+                                     ((bf && cf && parseFloat(cf.getValue()) > 0 && parseFloat(bf.getValue()) > parseFloat(cf.getValue()) + 0.01)
+                                         ? '<br><span style="color:#ff9e91;">&#9888; Budget lebih besar dari Nilai Kontrak: proyek tidak akan bisa disimpan sampai angkanya diperbaiki.</span>' : '') +
+                                     '</div></div>';
                                 return h + '</div>';
                             }
                             function metaHtml() {
@@ -753,25 +784,38 @@ Ext.onReady(function () {
                             }
 
                             // Hitung ulang di server (tanpa AI & tanpa tulis DB): status RAB/master/baru, harga ternormalisasi, total, plafon
-                            function refresh() {
+                            // [UI-READABLE] ada indikator "menghitung...", pesan error yang jelas, dan jam hitung terakhir (agar user tahu tombol bekerja)
+                            var recalcAt = '', recalcBusy = false;
+                            function refresh(loud) {                     // loud = true: tampilkan indikator "menghitung..." (dari tombol / ubah budget); aksi lain tetap senyap
+                                if (recalcBusy) return;
+                                recalcBusy = true;
+                                if (loud) Ext.MessageBox.wait('Menghitung ulang status, total dan plafon...', 'Mohon Tunggu');
+                                var done = function () { recalcBusy = false; if (loud) Ext.MessageBox.hide(); };
                                 Ext.Ajax.request({
                                     url: CRD, method: 'POST', timeout: 60000,
-                                    params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode, edit_mode: editMode ? 1 : 0, loaded_ids: Ext.util.JSON.encode(loadedIds) },
+                                    params: Ext.apply({ task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode, edit_mode: editMode ? 1 : 0, loaded_ids: Ext.util.JSON.encode(loadedIds) }, formOv()),
                                     success: function (r) {
+                                        done();
                                         var o = null;
                                         try { o = Ext.util.JSON.decode(r.responseText); } catch (e) { o = null; }
-                                        if (o && o.success && o.data && o.data.tasks && o.data.tasks.length === plan.tasks.length) {
+                                        if (!o) {
+                                            redraw();
+                                            Ext.Msg.alert('Gagal menghitung ulang', 'Respons server tidak valid (kemungkinan error PHP, cek error_log).<br><br><small>' + enc(String(r.responseText || '').substr(0, 300)) + '</small>');
+                                            return;
+                                        }
+                                        if (o.success && o.data && o.data.tasks && o.data.tasks.length === plan.tasks.length) {
                                             Ext.each(plan.tasks, function (t, i) {
                                                 t.materials = o.data.tasks[i].materials || [];
                                                 t.expenses = o.data.tasks[i].expenses || [];
                                             });
                                             meta = o;
-                                        } else if (o && !o.success) {
-                                            Ext.Msg.alert('Peringatan', o.message || 'Gagal menghitung ulang draft.');
+                                            recalcAt = new Date().toTimeString().substr(0, 8);
+                                        } else {
+                                            Ext.Msg.alert('Gagal menghitung ulang', enc(o.message || 'Jumlah task pada draft tidak cocok dengan hasil server. Tutup jendela lalu buka ulang.'));
                                         }
                                         redraw();
                                     },
-                                    failure: function () { redraw(); Ext.Msg.alert('Peringatan', 'Gagal menghubungi server untuk hitung ulang.'); }
+                                    failure: function () { done(); redraw(); Ext.Msg.alert('Peringatan', 'Gagal menghubungi server untuk hitung ulang.'); }
                                 });
                             }
 
@@ -786,6 +830,15 @@ Ext.onReady(function () {
                                 els = root.querySelectorAll('.aiToggleAdd');
                                 for (i = 0; i < els.length; i++) { (function (b) {
                                     b.onclick = function () { var k = b.getAttribute('data-task') + '_' + b.getAttribute('data-kind'); openAdd[k] = !openAdd[k]; redraw(); };
+                                })(els[i]); }
+                                els = root.querySelectorAll('.aiBudIn');                       // [FORM-LIVE] budget / nilai kontrak -> isi form proyek + hitung ulang
+                                for (i = 0; i < els.length; i++) { (function (el) {
+                                    el.onchange = function () {
+                                        var f = Ext.getCmp(el.getAttribute('data-field')), v = parseFloat(String(el.value).replace(/,/g, '')) || 0;
+                                        if (f) { f.setValue(v); }
+                                        try { updateReserve(); } catch (e) { }
+                                        refresh(true);
+                                    };
                                 })(els[i]); }
                                 els = root.querySelectorAll('.aiToggleHelp');
                                 for (i = 0; i < els.length; i++) { els[i].onclick = function () { openHelp = !openHelp; redraw(); }; }
@@ -877,7 +930,7 @@ Ext.onReady(function () {
                                 }
 
                                 els = root.querySelectorAll('.aiRecalc');
-                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { refresh(); }; }
+                                for (i = 0; i < els.length; i++) { els[i].onclick = function () { refresh(true); }; }
 
                                 els = root.querySelectorAll('.aiAddRab');                      // tambah dari RAB yang sudah ada
                                 for (i = 0; i < els.length; i++) { (function (b) {
@@ -956,7 +1009,7 @@ Ext.onReady(function () {
                                     Ext.MessageBox.wait('Memeriksa anggaran / plafon...', 'Mohon Tunggu');
                                     Ext.Ajax.request({
                                         url: CRD, method: 'POST', timeout: 60000,
-                                        params: { task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode, edit_mode: editMode ? 1 : 0, loaded_ids: Ext.util.JSON.encode(loadedIds) },
+                                        params: Ext.apply({ task: 'resolve_plan', project_id: projId, plan_json: Ext.util.JSON.encode(plan), mode: saveMode, edit_mode: editMode ? 1 : 0, loaded_ids: Ext.util.JSON.encode(loadedIds) }, formOv()),
                                         success: function (r) {
                                             Ext.MessageBox.hide();
                                             var o = null;
@@ -986,12 +1039,12 @@ Ext.onReady(function () {
                                 Ext.Ajax.request({
                                     url: CRD, method: 'POST',
                                     timeout: 90000,            // [AI-BOQ] simpan = buat material + RAB + task dalam satu transaksi
-                                    params: {
+                                    params: Ext.apply({
                                         task: 'save_ai_task_plan',
                                         project_id: projId,
                                         plan_json: Ext.util.JSON.encode(plan), mode: saveMode,
                                         edit_mode: editMode ? 1 : 0, loaded_ids: Ext.util.JSON.encode(loadedIds)       // [EDIT-SAVED]
-                                    },
+                                    }, formOv()),                                          // [FORM-LIVE] budget / kontrak dari form dipakai & ikut disimpan
                                     success: function (saveResponse) {
                                         Ext.MessageBox.hide();
                                         aiSaving = false;                                    // [DEDUP]
@@ -1026,8 +1079,8 @@ Ext.onReady(function () {
 
                 document.getElementById('customAiBtn').onclick = function() {
                     var projId = Ext.getCmp('id').getValue();
-                    if (!projId) {
-                        Ext.Msg.alert('Peringatan', 'Simpan proyek terlebih dahulu sebelum menjalankan analisis AI.');
+                    if (!projId) {                                     // [FORM-LIVE] proyek baru: simpan otomatis dari isian form, lalu lanjut analisis (tanpa keluar-masuk form)
+                        ensureProjectSaved(function () { document.getElementById('customAiBtn').onclick(); });
                         return;
                     }
                     if (aiBusy || aiPlanOpen) return;                  // [DEDUP] abaikan klik berikutnya selama analisis berjalan / hasil belum ditutup
@@ -1036,7 +1089,7 @@ Ext.onReady(function () {
                     Ext.Ajax.request({
                         url: CRD, method: 'POST',
                         timeout: 180000,                       // [AI-BOQ] BoQ lengkap butuh waktu analisis lebih lama (default Ext 30 dtk)
-                        params: { task: 'ai_generate_tasks', project_id: projId },
+                        params: Ext.apply({ task: 'ai_generate_tasks', project_id: projId }, formOv()),   // [FORM-LIVE] pakai isian form terbaru (belum perlu Simpan proyek)
                         success: function(response) {
                             Ext.MessageBox.hide();
                             aiBusy = false; setAiBtn(false);              // [DEDUP]
@@ -1064,7 +1117,7 @@ Ext.onReady(function () {
                     Ext.MessageBox.wait('Memuat task dan material tersimpan...', 'Mohon Tunggu');
                     Ext.Ajax.request({
                         url: CRD, method: 'POST', timeout: 60000,
-                        params: { task: 'load_task_plan', project_id: projId },
+                        params: Ext.apply({ task: 'load_task_plan', project_id: projId }, formOv()),
                         success: function(response) {
                             Ext.MessageBox.hide();
                             aiBusy = false; setAiBtn(false);
@@ -1246,6 +1299,39 @@ Ext.onReady(function () {
             }
         });
     };
+
+    // [FORM-LIVE][NEW] Proyek yang belum punya ID (entri baru) disimpan otomatis dari isian form saat user menekan Analisis,
+    // lalu form tetap terbuka dengan ID terisi (Simpan berikutnya = update). User tidak perlu Simpan -> keluar -> masuk lagi.
+    var creatingProj = false;
+    function ensureProjectSaved(cb) {
+        if (parseInt(Ext.getCmp('id').getValue() || 0, 10) > 0) { cb(); return; }
+        if (creatingProj) return;
+        if (!frmEditor.getForm().isValid()) { Ext.Msg.alert('Peringatan', 'Lengkapi isian wajib proyek (mis. Nama Proyek) terlebih dahulu.'); return; }
+        var cv = parseFloat(fldContract.getValue()) || 0, bv = (parseFloat(fldBudget.getValue()) || 0) * curRate;
+        if (cv > 0 && bv > cv + 0.01) {
+            Ext.Msg.alert('Peringatan', 'Budget (' + fmtRp(bv) + ') tidak boleh melebihi Nilai Kontrak (' + fmtRp(cv) + '). Perbaiki angkanya lalu tekan Analisis lagi.');
+            return;
+        }
+        creatingProj = true;
+        Ext.MessageBox.wait('Menyimpan data proyek...', 'Mohon Tunggu');
+        frmEditor.getForm().submit({
+            url: CRD, method: 'POST',
+            params: { task: 'create', id: 0, client_id: fldClient.getValue(), pic_id: fldPic.getValue(), location_id: fldLocation.getValue() },
+            success: function (form, action) {
+                creatingProj = false;
+                Ext.MessageBox.hide();
+                var r = Ext.util.JSON.decode(action.response.responseText);
+                if (r && r.id) { Ext.getCmp('id').setValue(r.id); }
+                mainDs.load({ params: { task: 'read' } });
+                if (r && r.id) { cb(); } else { Ext.Msg.alert('Gagal', 'ID proyek baru tidak diterima dari server.'); }
+            },
+            failure: function (form, action) {
+                creatingProj = false;
+                Ext.MessageBox.hide();
+                Ext.Msg.alert('Gagal', (action.result && action.result.message) ? action.result.message : 'Gagal menyimpan data proyek.');
+            }
+        });
+    }
 
     document.getElementById('saveEdit').onclick = function () {
         if (!frmEditor.getForm().isValid()) return;

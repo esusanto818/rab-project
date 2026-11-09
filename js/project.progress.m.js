@@ -379,6 +379,18 @@
         String(v || '').split(/\r?\n/).forEach(function (l) {
             l = l.replace(/^\s+|\s+$/g, '');
             if (!l) return;
+
+            // Normalisasi URL foto lama agar mengikuti base URL DEV/LIVE.
+            var base = String(window.APP_BASE_URL || '/');
+            if (base.charAt(base.length - 1) !== '/') base += '/';
+
+            var match = l.match(/^(?:https?:\/\/[^/]+)?\/(?:proyek|rab-project)\/uploads\/progress\/(.+)$/i)
+                     || l.match(/^(?:https?:\/\/[^/]+)?\/uploads\/progress\/(.+)$/i);
+
+            if (match) {
+                l = base + 'uploads/progress/' + match[1];
+            }
+
             if (!/^(https?:\/\/|\/)/i.test(l)) { texts.push(esc(l)); return; }
             if (/\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(l)) out += '<a href="' + escA(l) + '" target="_blank"><img loading="lazy" src="' + escA(l) + '"></a>';
             else texts.push('<a href="' + escA(l) + '" target="_blank" style="color:#7fe0a0;">Berkas</a>');

@@ -230,6 +230,31 @@ try {
             if (!move_uploaded_file($f['tmp_name'], $dir . '/' . $name)) {
                 throw new ProgBusinessError('Gagal menyimpan file. Cek izin tulis folder uploads/progress.');
             }
+            /*$destination = $dir . '/' . $name;
+
+            $moveResult = move_uploaded_file($f['tmp_name'], $destination);
+
+            if (!$moveResult) {
+                $lastError = error_get_last();
+
+                error_log('PROGRESS UPLOAD DIAGNOSTIC: ' . json_encode([
+                    'tmp_name' => $f['tmp_name'],
+                    'tmp_exists' => file_exists($f['tmp_name']),
+                    'tmp_readable' => is_readable($f['tmp_name']),
+                    'tmp_size' => file_exists($f['tmp_name'])
+                        ? filesize($f['tmp_name']) : null,
+                    'destination' => $destination,
+                    'destination_dir_exists' => is_dir($dir),
+                    'destination_dir_writable' => is_writable($dir),
+                    'disk_free' => @disk_free_space($dir),
+                    'last_error' => $lastError
+                ]));
+
+                throw new ProgBusinessError(
+                    'Gagal menyimpan foto. Silakan hubungi administrator.'
+                );
+            }*/
+
             sendJsonResponse(true, ['url' => rtrim(BASE_URL, '/') . '/uploads/progress/' . rawurlencode($name), 'name' => $name]);
             break;
 

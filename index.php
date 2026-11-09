@@ -2,7 +2,10 @@
 /*
 Document : index.php
 Description : Landing Page RAB-PROJECT - Construction ERP & AI Monitoring System
-Theme : Dark Theme Modern - LENGKAP
+Theme : Dark Theme Modern - RESPONSIVE (Desktop + Mobile)
+[REVISI 2026-11-08]
+  - Hapus button "Login ke Sistem" di CTA SECTION (sisakan "Hubungi Tim Sales")
+  - Perbaiki hamburger menu mobile: background solid, tidak transparan, lebih terbaca
 */
 if (!isset($_SESSION)) { session_start(); }
 date_default_timezone_set('Asia/Jakarta');
@@ -74,7 +77,7 @@ background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
 background-clip: text;
 }
 .glass {
-background: rgba(10, 45, 74, 0.4);
+background: rgba(0, 34, 62, 0.52);
 backdrop-filter: blur(12px);
 -webkit-backdrop-filter: blur(12px);
 border: 1px solid rgba(34, 211, 238, 0.15);
@@ -109,8 +112,6 @@ box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: #051525; }
 ::-webkit-scrollbar-thumb { background: #0891b2; border-radius: 3px; }
-
-/* [BARU] Table styling untuk dashboard preview */
 .data-table {
 width: 100%;
 border-collapse: collapse;
@@ -131,10 +132,102 @@ letter-spacing: 0.05em;
 .data-table tr:hover {
 background: rgba(34, 211, 238, 0.05);
 }
+
+/* ============================================================
+   MOBILE RESPONSIVE
+   ============================================================ */
+.hamburger-line {
+    transition: all 0.3s ease-in-out;
+    transform-origin: center;
+}
+.hamburger-active .hamburger-line:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+.hamburger-active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+.hamburger-active .hamburger-line:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+/* [REVISI 2026-11-08] Mobile menu: background SOLID, tidak transparan, tidak blur */
+.mobile-menu {
+    transform: translateX(100%);
+    transition: transform 0.3s ease-in-out;
+    background: #071d30 !important;          /* SOLID, bukan /95 */
+    backdrop-filter: none !important;        /* HAPUS blur */
+    -webkit-backdrop-filter: none !important;
+    border-left: 2px solid #22d3ee !important; /* Border tebal cyan */
+    box-shadow: -8px 0 30px rgba(0, 0, 0, 0.8) !important; /* Shadow kuat */
+}
+.mobile-menu.open {
+    transform: translateX(0);
+}
+
+/* [REVISI] Link menu mobile: kontras tinggi, hover jelas */
+.mobile-link {
+    color: #e2e8f0 !important;
+    font-size: 15px !important;
+    font-weight: 500 !important;
+    border: 1px solid transparent;
+}
+.mobile-link:hover,
+.mobile-link:active {
+    background: rgba(34, 211, 238, 0.15) !important;
+    border-color: rgba(34, 211, 238, 0.4) !important;
+    color: #22d3ee !important;
+}
+
+/* [REVISI] Header menu mobile: judul MENU lebih jelas */
+.mobile-menu-header {
+    background: #0a2d4a !important;
+    border-bottom: 2px solid #22d3ee !important;
+}
+
+/* [REVISI] Tombol Login di dalam menu mobile: lebih solid */
+.mobile-login-btn {
+    background: #f39c12 !important;
+    color: #071d30 !important;
+    font-weight: 700 !important;
+    border: 2px solid #f39c12 !important;
+}
+.mobile-login-btn:hover {
+    background: #e67e22 !important;
+}
+
+@media (max-width: 768px) {
+    .hero-bg { padding-top: 80px; }
+    .hero-bg h1 { font-size: 1.75rem !important; line-height: 1.3; }
+    .hero-bg p { font-size: 1rem !important; }
+    section h2 { font-size: 1.5rem !important; }
+    section .text-sm { font-size: 0.875rem !important; }
+    .feature-card { padding: 1rem !important; }
+    .feature-card .text-3xl { font-size: 1.75rem !important; }
+    .data-table { font-size: 0.75rem !important; }
+    .data-table th, .data-table td { padding: 0.4rem 0.5rem !important; }
+    .stat-number { font-size: 1.5rem !important; }
+    nav { padding: 0.75rem 1rem !important; }
+    nav .text-xs { font-size: 0.65rem !important; }
+    .px-8 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+    .py-4 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+    .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+    footer .grid > div { margin-bottom: 1.5rem; }
+}
+
+@media (max-width: 480px) {
+    .hero-bg h1 { font-size: 1.5rem !important; }
+    .hero-bg .flex.items-center.gap-8 { gap: 1.5rem !important; }
+    .stat-number { font-size: 1.25rem !important; }
+    section h2 { font-size: 1.25rem !important; }
+}
+
+html, body {
+    overflow-x: hidden;
+    max-width: 100vw;
+}
 </style>
 </head>
 <body class="bg-brand-darker text-slate-100 overflow-x-hidden">
-
 <!-- NAVBAR -->
 <nav class="fixed top-0 left-0 right-0 z-50 glass">
 <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -142,10 +235,12 @@ background: rgba(34, 211, 238, 0.05);
 <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-cyan to-brand-orange flex items-center justify-center font-display font-bold text-brand-dark">R</div>
 <div>
 <div class="font-display font-bold text-lg tracking-wider">RAB-PROJECT</div>
-<div class="text-xs text-slate-400 -mt-1">Smart ERP for Contractors: Zero-Manual Accounting, AI-Driven Insights</div>
+<div class="text-xs text-slate-400 -mt-1 hidden sm:block">Smart ERP for Contractors: Zero-Manual Accounting, AI-Driven Insights</div>
 </div>
 </div>
-<div class="hidden md:flex items-center gap-8 text-sm font-medium">
+<!-- Desktop Menu -->
+<!-- <div class="hidden md:flex items-center gap-8 text-sm font-medium"> -->
+<div class="hidden md:flex items-center gap-8 text-sm font-medium  px-6 py-3 rounded-lg shadow-md">    
 <a href="#dashboard" class="hover:text-brand-cyan transition">Dashboard</a>
 <a href="#features" class="hover:text-brand-cyan transition">Fitur</a>
 <a href="#ai" class="hover:text-brand-cyan transition">AI Features</a>
@@ -153,10 +248,44 @@ background: rgba(34, 211, 238, 0.05);
 <a href="#comparison" class="hover:text-brand-cyan transition">Perbandingan</a>
 <a href="#contact" class="hover:text-brand-cyan transition">Kontak</a>
 </div>
-<a href="login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg">
+
+<div class="flex items-center gap-3">
+<a href="login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg text-sm">
 Login
 </a>
+<!-- Hamburger Button (mobile only) -->
+<button id="hamburgerBtn" class="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30 hover:bg-brand-cyan/20 transition" aria-label="Menu">
+<span class="hamburger-line block w-6 h-0.5 bg-brand-cyan mb-1.5"></span>
+<span class="hamburger-line block w-6 h-0.5 bg-brand-cyan mb-1.5"></span>
+<span class="hamburger-line block w-6 h-0.5 bg-brand-cyan"></span>
+</button>
 </div>
+</div>
+<!-- [REVISI] Mobile Menu: background solid, tidak transparan -->
+<div id="mobileMenu" class="mobile-menu fixed top-0 right-0 w-72 h-full z-50 md:hidden">
+<!-- Header menu -->
+<div class="mobile-menu-header flex justify-between items-center p-4">
+<span class="font-display font-bold text-brand-cyan text-lg">MENU</span>
+<button id="closeMenuBtn" class="text-slate-300 hover:text-brand-cyan transition p-1" aria-label="Tutup menu">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+</button>
+</div>
+<!-- Menu items -->
+<div class="flex flex-col p-4 gap-1 bg-sky-950/90">
+<a href="#dashboard" class="mobile-link py-3 px-4 rounded-lg transition">📊 Dashboard</a>
+<a href="#features" class="mobile-link py-3 px-4 rounded-lg transition">⚡ Fitur</a>
+<a href="#ai" class="mobile-link py-3 px-4 rounded-lg transition">🤖 AI Features</a>
+<a href="#modules" class="mobile-link py-3 px-4 rounded-lg transition">📦 Modul</a>
+<a href="#comparison" class="mobile-link py-3 px-4 rounded-lg transition">⚖️ Perbandingan</a>
+<a href="#contact" class="mobile-link py-3 px-4 rounded-lg transition">📧 Kontak</a>
+<!-- Tombol Login di dalam menu mobile -->
+<div class="mt-4 pt-4 border-t border-brand-cyan/30">
+<a href="login.php" class="mobile-login-btn block w-full text-center py-3 rounded-lg transition">🔐 Login ke Sistem</a>
+</div>
+</div>
+</div>
+<!-- Overlay backdrop -->
+<div id="menuOverlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden md:hidden"></div>
 </nav>
 
 <!-- HERO SECTION -->
@@ -175,14 +304,14 @@ Sistem ERP <strong class="text-white">khusus kontraktor</strong> dengan kontrol 
 <strong class="text-brand-purple">AI Task Breakdown</strong>, <strong class="text-brand-orange">AI Variance Analysis</strong>,
 auto-posting jurnal, dan financial reporting terintegrasi.
 </p>
-<div class="flex flex-wrap gap-">
-<!-- <a href="dev/login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-Login ke Sistem
-</a> -->
-<a href="#dashboard" class="px-8 py-4 glass text-white font-semibold rounded-lg hover:border-brand-cyan transition">
+<div class="flex flex-wrap gap-4">
+    <a href="#dashboard" class="px-8 py-4 glass text-white font-semibold rounded-lg hover:border-brand-cyan transition">
 Lihat Dashboard
-</a>
+    </a>
+    <!-- <a href="login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
+    Login ke Sistem
+    </a> 
 </div>
 <div class="flex items-center gap-8 mt-10 pt-8 border-t border-slate-700/50">
 <div>
@@ -244,7 +373,7 @@ Lihat Dashboard
 </div>
 </section>
 
-<!-- [BARU] DASHBOARD MONITORING SECTION -->
+<!-- DASHBOARD MONITORING SECTION -->
 <section id="dashboard" class="py-20 bg-brand-darker">
 <div class="max-w-7xl mx-auto px-6">
 <div class="text-center mb-16">
@@ -254,11 +383,11 @@ Satu Layar untuk <span class="gradient-text">Semua Keputusan</span>
 </h2>
 <p class="text-slate-400 max-w-2xl mx-auto">Dashboard eksekutif real-time yang menggabungkan financial aging, profitabilitas, monitoring material, dan AI milestone dalam satu tampilan.</p>
 </div>
-
 <div class="grid lg:grid-cols-2 gap-6 mb-6">
 <!-- Financial Aging -->
 <div class="glass rounded-xl p-6 border border-slate-700">
 <h3 class="font-heading text-xl font-bold text-white mb-4">FINANCIAL AGING ANALYSIS</h3>
+<div class="overflow-x-auto">
 <table class="data-table">
 <thead>
 <tr>
@@ -297,12 +426,13 @@ Satu Layar untuk <span class="gradient-text">Semua Keputusan</span>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="text-xs text-slate-500 mt-3 text-right">Umur dihitung dari tanggal invoice, per <?= date('Y-m-d') ?></div>
 </div>
-
 <!-- Profitabilitas -->
 <div class="glass rounded-xl p-6 border border-slate-700">
 <h3 class="font-heading text-xl font-bold text-white mb-4">PROFITABILITAS PROYEK (MARGIN)</h3>
+<div class="overflow-x-auto">
 <table class="data-table">
 <thead>
 <tr>
@@ -341,7 +471,7 @@ Satu Layar untuk <span class="gradient-text">Semua Keputusan</span>
 </table>
 </div>
 </div>
-
+</div>
 <!-- Material Monitoring -->
 <div class="glass rounded-xl p-6 border border-slate-700">
 <h3 class="font-heading text-xl font-bold text-white mb-4">RINCIAN PENGGUNAAN MATERIAL OUT PROYEK</h3>
@@ -518,7 +648,7 @@ Satu Layar untuk <span class="gradient-text">Semua Keputusan</span>
 </div>
 </section>
 
-<!-- [BARU] FINANCIAL REPORT SECTION -->
+<!-- FINANCIAL REPORT SECTION -->
 <section id="financial" class="py-20 bg-brand-dark">
 <div class="max-w-7xl mx-auto px-6">
 <div class="text-center mb-16">
@@ -528,7 +658,6 @@ Dari Jurnal Otomatis hingga <span class="gradient-text">Laporan Keuangan</span>
 </h2>
 <p class="text-slate-400 max-w-2xl mx-auto">Auto-posting jurnal untuk setiap transaksi, fiscal config yang dapat dikustomisasi, dan laporan keuangan real-time.</p>
 </div>
-
 <!-- Fiscal Config -->
 <div class="glass rounded-xl p-6 border border-slate-700 mb-6">
 <h3 class="font-heading text-xl font-bold text-white mb-4">FISCAL CONFIG — AUTO POSTING RULES</h3>
@@ -584,7 +713,6 @@ Dari Jurnal Otomatis hingga <span class="gradient-text">Laporan Keuangan</span>
 </div>
 <div class="mt-4 text-sm text-brand-green font-semibold">✓ 25+ rule auto-posting siap pakai untuk konstruksi</div>
 </div>
-
 <!-- Financial Report -->
 <div class="grid lg:grid-cols-2 gap-6">
 <div class="glass rounded-xl p-6 border border-slate-700">
@@ -623,7 +751,6 @@ Dari Jurnal Otomatis hingga <span class="gradient-text">Laporan Keuangan</span>
 </div>
 </div>
 </div>
-
 <div class="glass rounded-xl p-6 border border-slate-700">
 <h3 class="font-heading text-xl font-bold text-white mb-4">📈 LAPORAN LABA RUGI</h3>
 <div class="space-y-3">
@@ -657,7 +784,7 @@ Dari Jurnal Otomatis hingga <span class="gradient-text">Laporan Keuangan</span>
 </div>
 </section>
 
-<!-- [BARU] MODULES SECTION -->
+<!-- MODULES SECTION -->
 <section id="modules" class="py-20 bg-brand-darker">
 <div class="max-w-7xl mx-auto px-6">
 <div class="text-center mb-16">
@@ -732,7 +859,7 @@ Dari Jurnal Otomatis hingga <span class="gradient-text">Laporan Keuangan</span>
 </div>
 </section>
 
-<!-- [BARU] COMPARISON SECTION -->
+<!-- COMPARISON SECTION -->
 <section id="comparison" class="py-20 bg-brand-dark">
 <div class="max-w-7xl mx-auto px-6">
 <div class="text-center mb-16">
@@ -795,7 +922,7 @@ Mengapa Bukan <span class="gradient-text">ERP Lain?</span>
 </div>
 </section>
 
-<!-- [BARU] KEMAMPUAN SISTEM -->
+<!-- KEMAMPUAN SISTEM -->
 <section class="py-20 bg-brand-darker">
 <div class="max-w-7xl mx-auto px-6">
 <div class="text-center mb-16">
@@ -826,7 +953,6 @@ Dibangun untuk <span class="gradient-text">Efisiensi Nyata</span>
 <p class="text-slate-400 text-sm">AI task breakdown</p>
 </div>
 </div>
-
 <!-- Target Market -->
 <div class="glass rounded-xl p-8 border border-slate-700">
 <h3 class="font-heading text-2xl font-bold text-white mb-6 text-center">💼 Cocok Untuk:</h3>
@@ -852,16 +978,16 @@ Dibangun untuk <span class="gradient-text">Efisiensi Nyata</span>
 </div>
 </section>
 
-<!-- [BARU] KOMITMEN SECTION -->
+<!-- KOMITMEN SECTION -->
 <section class="py-20 bg-brand-dark relative overflow-hidden">
 <div class="absolute inset-0 grid-pattern opacity-30"></div>
 <div class="relative max-w-4xl mx-auto px-6 text-center">
 <div class="text-brand-cyan text-sm font-bold tracking-widest mb-6">🎯 KOMITMEN & FOKUS KAMI</div>
 <blockquote class="glass rounded-2xl p-8 md:p-12 border border-brand-cyan/30">
 <p class="text-lg md:text-xl text-slate-200 italic leading-relaxed mb-6">
-"RAB-PROJECT dibangun dari pengalaman langsung menghadapi tantangan manajemen proyek di lapangan. 
-Kami tidak menjual janji kosong. Sistem ini dirancang dengan logika bisnis yang ketat 
-untuk memastikan setiap rupiah budget terpantau, setiap material teraccountability, dan setiap progres terverifikasi. 
+"RAB-PROJECT dibangun dari pengalaman langsung menghadapi tantangan manajemen proyek di lapangan.
+Kami tidak menjual janji kosong. Sistem ini dirancang dengan logika bisnis yang ketat
+untuk memastikan setiap rupiah budget terpantau, setiap material teraccountability, dan setiap progres terverifikasi.
 Fokus kami adalah memberikan Anda alat pertahanan finansial yang andal sejak hari pertama penggunaan."
 </p>
 <div class="text-brand-cyan font-semibold">— Tim Pengembang RAB-PROJECT</div>
@@ -881,12 +1007,7 @@ Siap <span class="gradient-text">Hentikan Kebocoran</span> & <span class="gradie
 Akses sistem sekarang untuk melihat langsung bagaimana RAB-PROJECT bisa menyelamatkan margin proyek Anda.
 </p>
 <div class="flex flex-wrap justify-center gap-4 mb-8">
-
-<!-- <a href="dev/login.php" class="px-8 py-4 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg glow-orange flex items-center gap-2">
-<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path></svg>
-Login ke Sistem
-</a> -->
-
+<!-- [REVISI 2026-11-08] Button "Login ke Sistem" DIHAPUS, sisakan hanya "Hubungi Tim Sales" -->
 <a href="mailto:eddy.dev1302@gmail.com" class="px-8 py-4 glass text-white font-semibold rounded-lg hover:border-brand-cyan transition flex items-center gap-2">
 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
 Hubungi Tim Sales
@@ -964,9 +1085,11 @@ const target = document.querySelector(this.getAttribute('href'));
 if (target) {
 e.preventDefault();
 target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+closeMobileMenu();
 }
 });
 });
+
 // Fade-in animation
 const observer = new IntersectionObserver((entries) => {
 entries.forEach(entry => {
@@ -981,6 +1104,41 @@ el.style.opacity = '0';
 el.style.transform = 'translateY(20px)';
 el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
 observer.observe(el);
+});
+
+// Mobile Menu Toggle
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const closeMenuBtn = document.getElementById('closeMenuBtn');
+const mobileMenu = document.getElementById('mobileMenu');
+const menuOverlay = document.getElementById('menuOverlay');
+const mobileLinks = document.querySelectorAll('.mobile-link');
+
+function openMobileMenu() {
+    mobileMenu.classList.add('open');
+    menuOverlay.classList.remove('hidden');
+    hamburgerBtn.classList.add('hamburger-active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMobileMenu() {
+    mobileMenu.classList.remove('open');
+    menuOverlay.classList.add('hidden');
+    hamburgerBtn.classList.remove('hamburger-active');
+    document.body.style.overflow = '';
+}
+
+if (hamburgerBtn) hamburgerBtn.addEventListener('click', openMobileMenu);
+if (closeMenuBtn) closeMenuBtn.addEventListener('click', closeMobileMenu);
+if (menuOverlay) menuOverlay.addEventListener('click', closeMobileMenu);
+
+window.addEventListener('resize', function() {
+    if (window.innerWidth >= 768) {
+        closeMobileMenu();
+    }
+});
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeMobileMenu();
 });
 </script>
 </body>

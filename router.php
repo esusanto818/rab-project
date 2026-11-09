@@ -146,9 +146,6 @@ try {
             router_respond_denied(404, 'Endpoint tidak ditemukan.');
         }
 
-        /*if (!router_authorize_endpoint($db, $userId, 'crud', $crudName)) {
-            router_respond_denied(403, 'Anda tidak memiliki hak akses ke modul ini.');
-        }*/
         
         $isDashboardApi = (strcasecmp($crudName, 'dashboardCRD.php') === 0);
 

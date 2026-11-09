@@ -812,6 +812,7 @@ function mpPlafonFlags($proj, $rate, $existingIdr, $addIdr) {
 // Ringkasan angka + peringatan untuk UI review (semua dalam Rupiah)
 function mpPlanMeta($proj, $ctx, $rate, $tot, array $tasks) {
     $m = mpPlafonFlags($proj, $rate, $ctx['total_plan'] * $rate, $tot['add']);
+    $m['form_live'] = isset($_REQUEST['ovr_budget']) || isset($_REQUEST['ovr_contract_value']);   // [FORM-LIVE] true = angka budget / kontrak dari form dipakai
     foreach ($tasks as $t) {
         if (empty($t['materials']) && empty($t['expenses'])) {
             $m['warnings'][] = ['level' => 'warning', 'text' => "Task '" . ($t['task_name'] ?? '') . "' belum punya material maupun biaya."];

@@ -407,7 +407,7 @@ body {
 <div id="resultBox"></div>
 
 <div class="bottom-nav">
-    <a href="dashboard.m.php">🏠 Dashboard</a>
+    <a href="dashboard.php">🏠 Dashboard</a>
     <a href="stock.card.m.php" class="active">📦 Stok</a>
     <a href="project.progress.m.php">📊 Progress</a>
 </div>

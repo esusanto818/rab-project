@@ -35,7 +35,7 @@ $isAjax = (
     || (!empty($_SERVER['HTTP_ACCEPT']) &&
         strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
 );
-
+/*
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id'])
     || intval($_SESSION['user_id']) <= 0) {
     if ($isAjax) {
@@ -46,7 +46,36 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id'])
     }
     header('Location: ' . rtrim(BASE_URL, '/') . '/index.php');
     exit;
+}*/
+
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id'])
+|| intval($_SESSION['user_id']) <= 0) {
+    
+    // Deteksi request type
+    $isJsonRequest = (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false);
+    $isFetchRequest = (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+    $hasActionParam = (isset($_GET['action']) || isset($_POST['action']) || isset($_POST['task']));
+    
+    // Untuk AJAX/Fetch/API request -> return JSON
+    if ($isAjax || $isJsonRequest || $isFetchRequest || $hasActionParam) {
+        http_response_code(401);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => false, 
+            'message' => 'Sesi berakhir. Silakan login kembali.',
+            'auth' => true,
+            'redirect' => rtrim(BASE_URL, '/') . '/login.php'
+        ]);
+        exit;
+    }
+    
+    // Untuk browser biasa -> redirect ke index (tetap seperti sekarang)
+    header('Location: ' . rtrim(BASE_URL, '/') . '/index.php');
+    exit;
 }
+
+
+
 
 if (!$conn) {
     error_log('user.valid.php: PostgreSQL connection is unavailable.');
