@@ -86,20 +86,26 @@ if (!$conn) {
 $userId = intval($_SESSION['user_id']);
 $formId = 0;
 
-if (isset($_REQUEST['menu_id']) && is_numeric($_REQUEST['menu_id'])) {
-    $formId = intval($_REQUEST['menu_id']);
-} elseif (isset($_REQUEST['form_id']) && is_numeric($_REQUEST['form_id'])) {
-    $formId = intval($_REQUEST['form_id']);
-} elseif (
-    preg_match('~(?:^|/)views/router/?$~i', $requestPath)
-    && isset($_GET['id']) && ctype_digit((string)$_GET['id'])
-) {
-    // Legacy /views/router?id=<form_id>; do not confuse record ids with menu ids.
-    $formId = intval($_GET['id']);
-} elseif (isset($_SESSION['form_id']) && is_numeric($_SESSION['form_id'])) {
-    $formId = intval($_SESSION['form_id']);
-} elseif (isset($_SESSION['current_menu_id']) && is_numeric($_SESSION['current_menu_id'])) {
-    $formId = intval($_SESSION['current_menu_id']);
+// Direct physical view requests must authorize by the requested filename,
+// never by a stale session menu ID or a caller-supplied form_id.
+// The legacy menu router is the only path allowed to resolve a requested menu ID.
+$isLegacyMenuRouter = (bool)preg_match('~(?:^|/)views/router/?$~i', $requestPath);
+$isDirectViewFile = (bool)preg_match('~(?:^|/)views/([^/]+\\.php)$~i', $requestPath)
+    && !$isLegacyMenuRouter
+    && strtolower(basename($requestPath)) !== 'dashboard.php';
+
+if (!$isDirectViewFile) {
+    if (isset($_REQUEST['menu_id']) && is_numeric($_REQUEST['menu_id'])) {
+        $formId = intval($_REQUEST['menu_id']);
+    } elseif (isset($_REQUEST['form_id']) && is_numeric($_REQUEST['form_id'])) {
+        $formId = intval($_REQUEST['form_id']);
+    } elseif (
+        $isLegacyMenuRouter
+        && isset($_GET['id']) && ctype_digit((string)$_GET['id'])
+    ) {
+        // Legacy /views/router?id=<form_id>; do not confuse record ids with menu IDs.
+        $formId = intval($_GET['id']);
+    }
 }
 
 $formAccess = null;
