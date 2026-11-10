@@ -2,7 +2,7 @@
 /**
 * stock.cardCRD.php — Stock Card (kartu stok per item, per gudang / semua gudang)
 * Output: baris "Saldo Awal" + mutasi periode + running balance, plus ringkasan.
-* Action: card | lookup_warehouses | lookup_items
+* Action: card | lookup_warehouses | lookup_items | snapshot
 *
 * [FINAL FIX 2026-11-08]
 * RULE:
@@ -10,6 +10,10 @@
 *   - lookup_items: HANYA material yang punya stok di gudang terpilih
 *     (pakai EXISTS stock_movements dengan filter warehouse_id)
 *   - Posisi parameter: $1, $2, $3, ... (bukan :named) untuk pg_query_params()
+*
+* [2026-11-10]
+*   - lookup_items kini mengirim qty_on_hand (sebelumnya dipakai UI tapi tidak pernah dikirim)
+*   - action baru 'snapshot': data mentah 1 gudang untuk dipakai offline di HP
 */
 ob_start();
 ini_set('display_errors', '0');
@@ -24,6 +28,7 @@ try {
         case 'card':              CardLoad(); break;
         case 'lookup_warehouses': CardLookupWarehouses(); break;
         case 'lookup_items':      CardLookupItems(); break;
+        case 'snapshot':          CardSnapshot(); break;
         default: throw new WhException('Action tidak dikenali.');
     }
 } catch (WhException $e) {
@@ -72,7 +77,10 @@ function CardLookupItems() {
     
     // Query: material yang PERNAH ada mutasi di gudang terpilih
     // Posisi parameter: $1 = pattern query, $2 = warehouse_id
-    $sql = "SELECT m.id AS item_id, m.material_code, m.material_name, m.unit
+    $sql = "SELECT m.id AS item_id, m.material_code, m.material_name, m.unit,
+                   (SELECT COALESCE(SUM(CASE WHEN s2.movement_type='IN' THEN s2.qty ELSE -s2.qty END),0)
+                      FROM stock_movements s2
+                     WHERE s2.item_id = m.id AND s2.warehouse_id = $2) AS qty_on_hand
             FROM materials m
             WHERE (m.material_name ILIKE $1 OR m.material_code ILIKE $1)
             AND EXISTS (
@@ -150,4 +158,69 @@ function CardLoad() {
     WhJson(array('success' => true, 'totalCount' => count($data), 'data' => $data,
         'summary' => array('opening' => (float)$o['q'], 'total_in' => round($totIn, 4),
             'total_out' => round($totOut, 4), 'ending' => $balance)));
+}
+
+
+/* ------------------------------------------------------------------
+ * [OFFLINE] Snapshot 1 gudang: daftar material + saldo awal per material
+ * pada date_from + seluruh mutasi sejak date_from.
+ * Client menghitung kartu stok sendiri dari data ini saat tidak ada sinyal.
+ * Default date_from = 90 hari lalu. Batas 50.000 baris mutasi.
+ * Posisi parameter: $1 = warehouse_id, $2 = date_from
+ * ------------------------------------------------------------------ */
+function CardSnapshot() {
+    $wid = (int)WhReq('warehouse_id');
+    if ($wid < 1) { throw new WhException('Gudang wajib dipilih.'); }
+
+    $rawFrom = trim((string)WhReq('date_from'));
+    $from = ($rawFrom === '') ? date('Y-m-d', strtotime('-90 days')) : WhDate($rawFrom, 'Tanggal awal');
+
+    $wh = WhRow("SELECT name FROM warehouses WHERE id=$1", array($wid));
+    if (!$wh) { throw new WhException('Gudang tidak ditemukan.'); }
+
+    $items = WhRows("SELECT m.id AS item_id, m.material_code, m.material_name, m.unit,
+                            COALESCE(SUM(CASE WHEN s.movement_type='IN' THEN s.qty ELSE -s.qty END),0) AS qty_on_hand,
+                            COALESCE(SUM(CASE WHEN s.movement_date < $2
+                                              THEN (CASE WHEN s.movement_type='IN' THEN s.qty ELSE -s.qty END)
+                                              ELSE 0 END),0) AS opening
+                     FROM materials m
+                     JOIN stock_movements s ON s.item_id = m.id
+                     WHERE s.warehouse_id = $1
+                     GROUP BY m.id, m.material_code, m.material_name, m.unit
+                     ORDER BY m.material_name", array($wid, $from));
+
+    $mv = WhRows("SELECT s.id, s.item_id, s.movement_date, s.movement_type, s.qty, s.unit_cost,
+                         s.reference_type, s.reference_no, s.remark
+                  FROM stock_movements s
+                  WHERE s.warehouse_id = $1 AND s.movement_date >= $2
+                  ORDER BY s.movement_date, s.id
+                  LIMIT 50001", array($wid, $from));
+
+    if (count($mv) > 50000) {
+        throw new WhException('Data terlalu besar. Pilih rentang sinkron yang lebih pendek (mis. 30 hari).');
+    }
+
+    foreach ($items as &$it) {
+        $it['item_id']     = (int)$it['item_id'];
+        $it['qty_on_hand'] = round((float)$it['qty_on_hand'], 4);
+        $it['opening']     = round((float)$it['opening'], 4);
+    }
+    unset($it);
+    foreach ($mv as &$r) {
+        $r['id']        = (int)$r['id'];
+        $r['item_id']   = (int)$r['item_id'];
+        $r['qty']       = (float)$r['qty'];
+        $r['unit_cost'] = (float)$r['unit_cost'];
+    }
+    unset($r);
+
+    WhJson(array(
+        'success'        => true,
+        'warehouse_id'   => $wid,
+        'warehouse_name' => $wh['name'],
+        'date_from'      => $from,
+        'generated_at'   => date('c'),
+        'items'          => $items,
+        'movements'      => $mv
+    ));
 }
