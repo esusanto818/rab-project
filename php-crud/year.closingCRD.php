@@ -48,6 +48,7 @@ $db = new crud();
 const YC_EPS = 0.005;
 const YC_REF = 'closing_entry';     // nilai enum journal_entries.reference_type
 const YC_ACCESS = 3;
+const YC_ACCESS_REOPEN = 4;
 
 class YcBusinessError extends Exception {}
 
@@ -377,7 +378,7 @@ try {
 
         /* Buka kembali: hapus penutupan TERAKHIR, buka kunci periode, hapus jurnal penutup */
         case 'delete_closing':
-            if (yc_access() < YC_ACCESS) sendJsonResponse(false, [], 'Anda tidak memiliki hak akses untuk membuka kembali tutup buku.');
+            if (yc_access() < YC_ACCESS_REOPEN) sendJsonResponse(false, [], 'Anda tidak memiliki hak akses untuk membuka kembali tutup buku.');
             $id = (int)($_POST['id'] ?? 0);
             $db->beginTransaction();
             try {
