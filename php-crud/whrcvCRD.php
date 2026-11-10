@@ -41,6 +41,11 @@ if (session_status() === PHP_SESSION_NONE) { session_start(); }
 header('Content-Type: application/json');
 
 $task = $_REQUEST['task'] ?? '';
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { http_response_code(401); echo json_encode(['success'=>false,'message'=>'Sesi berakhir, silakan login ulang.']); exit; }
+$whrcvRequiredAccess = 1;
+if ($task === 'create') $whrcvRequiredAccess = 2;
+if ($task === 'reverse') $whrcvRequiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $whrcvRequiredAccess) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak akses tidak mencukupi untuk penerimaan gudang.']); exit; }
 $db   = new crud(); // PDO Connection (satu-satunya koneksi yang dipakai file ini)
 
 function PrepOrFail($stmt, $context = '') {
