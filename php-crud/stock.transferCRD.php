@@ -12,9 +12,10 @@ require_once '../php-func/function.stock.php';
 
 define('TRANSFER_REF_TYPE', 'STOCK_TRANSFER');
 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $action = WhReq('action', 'list');
 
-$stockUserId = WhUserId();
+$stockUserId = (int)($_SESSION['user_id'] ?? 0);
 if (!$stockUserId || $stockUserId <= 0) {
     http_response_code(401);
     WhFail('Sesi berakhir, silakan login kembali.');
