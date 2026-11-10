@@ -21,6 +21,20 @@ session_start();
 header('Content-Type: application/json');
 
 $task = $_REQUEST['task'] ?? '';
+
+// Endpoint harus memiliki sesi login dan hak minimal baca dari router.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
+    exit;
+}
+$access = (int)($_SESSION['FormAccess'] ?? 0);
+if ($access < 1) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk membaca data klien.']);
+    exit;
+}
+
 $db   = new crud();
 
 function PrepOrFailCL($stmt, $context = '') {
@@ -49,7 +63,7 @@ function clExec($db, $sql, array $params = [], $ctx = '') {
     return $stmt;
 }
 
-$access = intval($_SESSION['FormAccess'] ?? 0);
+$access = (int)($_SESSION['FormAccess'] ?? 0);
 
 try {
     switch ($task) {
