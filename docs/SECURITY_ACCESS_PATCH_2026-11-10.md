@@ -89,4 +89,4 @@ Kebijakan level hak akses yang dipakai:
 | `php-crud/project.wipreleaseCRD.php` | `778da9141bd51453fe31ac8aabfc8872840f17bc` |
 | Dokumen patch | `d35aa528deaddd2f4a1a0b2ca1878f7c240cdcfe` |
 
-HEAD branch dev saat revisi dokumen ini: `006691549f66027d4927ae9116b3d1415d45f908` (akan bergerak saat dokumen revisi dikomit).
+Commit patch terakhir untuk kode aplikasi: `006691549f66027d4927ae9116b3d1415d45f908`. Commit dokumentasi revisi: `da98c187ce8d72a92f087c567d55ef1d2308f43f`.
