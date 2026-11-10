@@ -22,9 +22,9 @@ $WEB_BASE_OVERRIDE = '';
 
 // Menu bawah. Isi href dengan alamat halaman yang sesuai di aplikasi Anda.
 $NAV = array(
-    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => '#',  'active' => false),
-    array('icon' => '📦', 'label' => 'Stok',      'href' => '#',  'active' => true),
-    array('icon' => '📊', 'label' => 'Progress',  'href' => '#',  'active' => false),
+    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => '../views/dashboard.php',  'active' => false),
+    array('icon' => '📦', 'label' => 'Stok',      'href' => '../views/stock.card.m.php',  'active' => true),
+    array('icon' => '📊', 'label' => 'Progress',  'href' => '../views/project.progress.m.php',  'active' => false),
 );
 
 // ---------------------------------------------------------------
