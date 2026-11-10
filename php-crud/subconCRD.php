@@ -175,11 +175,11 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_S
 $scAccess = (int)($_SESSION['FormAccess'] ?? 0);
 $scRequired = 1;
 if ($task === 'save_subcontractor') {
-    $scRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+    $scRequired = 2;
 } elseif ($task === 'save_contract') {
-    $scRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+    $scRequired = 2;
 } elseif ($task === 'save_progress') {
-    $scRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+    $scRequired = 2;
 } elseif ($task === 'save_payment') {
     $scRequired = 2;
 } elseif (in_array($task, ['change_status', 'approve_progress'], true)) {
