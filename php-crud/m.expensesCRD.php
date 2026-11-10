@@ -119,7 +119,7 @@ try {
         case 'save':
         case 'create':
             $id = (int)($_POST['id'] ?? 0);
-            exp_require_access($id > 0 ? 3 : 2, $id > 0
+            exp_require_access($id > 0 ? 2 : 2, $id > 0
                 ? 'Anda tidak memiliki hak akses untuk mengubah Master Expense.'
                 : 'Anda tidak memiliki hak akses untuk menambah Master Expense.');
             $code = trim((string)($_POST['expense_code'] ?? ''));
@@ -190,7 +190,7 @@ try {
          * DELETE - Soft delete (set active = false)
          * -------------------------------------------------------------- */
         case 'delete':
-            exp_require_access(4, 'Anda tidak memiliki hak akses untuk menonaktifkan Master Expense.');
+            exp_require_access(3, 'Anda tidak memiliki hak akses untuk menonaktifkan Master Expense.');
             $id = (int)($_POST['id'] ?? 0);
             if ($id <= 0) exp_send(false, [], 'ID expense tidak valid.');
 
