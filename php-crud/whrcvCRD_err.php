@@ -36,6 +36,16 @@ require_once __DIR__ . '/../php-class/crudClass.php';
 // Koneksi ke Database (Sesuaikan dengan koneksi PDO/PostgreSQL aplikasi Anda)
 //require_once "../config/db.php"; 
 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+$legacyUid = (int)($_SESSION['user_id'] ?? 0);
+if ($legacyUid <= 0) { http_response_code(401); header('Content-Type: application/json'); echo json_encode(['success'=>false,'message'=>'Sesi berakhir, silakan login ulang.']); exit; }
+$legacyAction = $_REQUEST['action'] ?? '';
+$legacyTask = $_REQUEST['task'] ?? '';
+$legacyRequiredAccess = 1;
+if (in_array($legacyAction, ['save'], true) || $legacyTask === 'create') $legacyRequiredAccess = 2;
+if ($legacyAction === 'update') $legacyRequiredAccess = 3;
+if (in_array($legacyAction, ['delete'], true) || $legacyTask === 'reverse') $legacyRequiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $legacyRequiredAccess) { http_response_code(403); header('Content-Type: application/json'); echo json_encode(['success'=>false,'message'=>'Hak akses tidak mencukupi untuk penerimaan gudang.']); exit; }
 $action =$_REQUEST['action'] ?? '';
 
 switch ($action) {
