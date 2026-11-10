@@ -89,7 +89,7 @@ Kebijakan level hak akses yang dipakai:
 | `php-crud/project.wipreleaseCRD.php` | `778da9141bd51453fe31ac8aabfc8872840f17bc` |
 | Dokumen patch | `d35aa528deaddd2f4a1a0b2ca1878f7c240cdcfe` |
 
-Commit patch terakhir untuk kode aplikasi: `006691549f66027d4927ae9116b3d1415d45f908`. Commit dokumentasi revisi: `da98c187ce8d72a92f087c567d55ef1d2308f43f`.
+Referensi commit pada bagian awal adalah commit patch tahap pertama. Patch lanjutan diterapkan dalam commit-commit sesudahnya; HEAD branch dev terbaru dicatat pada bagian Status Verifikasi di bawah.
 
 
 ## Patch lanjutan setelah audit endpoint berikutnya
@@ -135,3 +135,14 @@ Patch berikut juga diterapkan pada branch `dev` setelah pemeriksaan lanjutan:
 10. Periksa log aplikasi dan database setelah setiap uji; gunakan data uji dan backup dev, bukan transaksi production.
 
 **Status akhir audit pada sesi ini: patch statis telah diterapkan, tetapi audit dan validasi runtime belum tuntas. Branch `main` tidak boleh diubah atau menerima merge sampai seluruh tes di atas lulus.**
+
+
+## Status Verifikasi GitHub — 10 November 2026
+
+- Branch `dev` HEAD setelah seluruh patch dan pembaruan dokumen: `8524c26cc2cabb1070b1e45bcfa45223a672c1fe`.
+- Branch `main` saat verifikasi: `9aca8baf196e1047de5295aec7517a3fdc971456`.
+- `main` tidak menerima commit dari pekerjaan ini.
+- Semua patch dan dokumen yang disebut dalam laporan berada pada branch `dev`.
+- Verifikasi ini memastikan keberadaan perubahan di GitHub; bukan bukti bahwa PHP berjalan benar pada server aplikasi.
+
+**Keputusan:** status pekerjaan adalah *patch statis diterapkan — menunggu pengujian runtime*. Jangan melakukan merge/publish ke `main` sebelum checklist pengujian di atas selesai dan hasilnya dicatat.
