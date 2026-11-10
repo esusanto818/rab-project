@@ -72,11 +72,21 @@ case 'get_projects':
 // ============================================================
 case 'read_tax_rates':
     try {
+        $taxReadAccessStmt = $db->prepare("
+            SELECT COALESCE(MAX(u.access_level), 0)
+              FROM m_form_name f
+              JOIN m_user_access_menu u ON u.form_id = f.id
+             WHERE u.user_id = :uid
+               AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'm.taxexchangerate.php'
+        ");
+        $taxReadAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+        $canSyncTax = ((int)$taxReadAccessStmt->fetchColumn() >= 3);
+
         $stmt = $db->prepare("SELECT id, kmk_no, start_date, end_date FROM tax_exchange_rate_hdr ORDER BY id DESC LIMIT 1");
         $stmt->execute();
         $header = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$header) {
-            out(['success' => true, 'kmk_number' => '-', 'start_date' => '-', 'end_date' => '-', 'rates' => []]);
+            out(['success' => true, 'kmk_number' => '-', 'start_date' => '-', 'end_date' => '-', 'rates' => [], 'can_sync' => $canSyncTax]);
         }
         $stmt = $db->prepare("
             SELECT currency_code, currency_name, unit_multiplier, rate, change_amount, change_direction
@@ -92,6 +102,7 @@ case 'read_tax_rates':
             'start_date' => date('d/m/Y', strtotime($header['start_date'])),
             'end_date'   => date('d/m/Y', strtotime($header['end_date'])),
             'rates'      => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'can_sync'   => $canSyncTax,
         ], JSON_NUMERIC_CHECK);
     } catch (Exception $e) {
         out(['success' => false, 'message' => 'Gagal membaca kurs pajak: ' . $e->getMessage()]);
