@@ -260,6 +260,11 @@ try {
          * ------------------------------------------------------------------ */
         case 'save_invoice':
             $id      = (int)($_POST['id'] ?? 0);
+            // Aksi ini melayani penerbitan dan perubahan invoice; perubahan memerlukan level 3.
+            if ($id > 0 && $invoiceAccess < 3) {
+                http_response_code(403);
+                ti_send(false, [], 'Hak ubah invoice proyek tidak tersedia.');
+            }
             $prj     = (int)($_POST['project_id'] ?? 0);
             $cliChk  = (int)($_POST['client_id'] ?? 0);
             $name    = trim((string)($_POST['termin_name'] ?? ''));

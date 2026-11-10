@@ -227,7 +227,7 @@ switch ($task) {
     // ------------------------------------------------------------
     case 'confirm_receipt':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 2) {
+        if ($access < 3) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             exit;
         }
