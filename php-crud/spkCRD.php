@@ -297,7 +297,7 @@ function SpkCancel() {
 
 function SpkDelete() {
     WhRequirePost();
-    SpkNeed(SPK_ACCESS_ACTION, 'Anda tidak memiliki hak akses untuk menghapus SPK.');
+    SpkNeed(SPK_ACCESS_DELETE, 'Anda tidak memiliki hak akses untuk menghapus SPK.');
     $id = (int)WhPost('id');
     WhQ('BEGIN');
     $s = SpkGet($id, true);
