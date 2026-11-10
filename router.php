@@ -70,6 +70,10 @@ function router_authorize_endpoint($db, $userId, $endpointType, $fileName)
         if (preg_match('/CRD\.php$/i', $base)) {
             $candidates[] = preg_replace('/CRD\.php$/i', '.php', $base);
         }
+        // Explicit legacy endpoint alias: print endpoint belongs to Master Kurs Pajak.
+        if (strcasecmp($base, 'm.taxexchangerate.pdf.php') === 0) {
+            $candidates[] = 'm.taxexchangerate.php';
+        }
     } elseif ($endpointType === 'pdf') {
         $candidates[] = $base; // wrapper file inside /pdf
         if (preg_match('/\.pdf\.php$/i', $base)) {
