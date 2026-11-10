@@ -138,7 +138,7 @@ switch ($task) {
     // ------------------------------------------------------------
     case 'update':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 3) {
+        if ($access < 2) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             exit;
         }
@@ -155,7 +155,7 @@ switch ($task) {
     // ------------------------------------------------------------
     case 'delete':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 4) {
+        if ($access < 3) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             exit;
         }
