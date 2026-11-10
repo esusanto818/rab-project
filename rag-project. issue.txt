@@ -1,0 +1,66 @@
+Ya—ada beberapa hal yang sebaiknya dibenahi sebelum mengandalkan flow ini untuk transaksi operasional. Temuan paling penting adalah **SPK diwajibkan di tampilan Warehouse Issuing, tetapi validasi backend issue belum terlihat menerapkan kewajiban itu**.
+
+## Prioritas pembenahan
+
+### P0 — Tegakkan hubungan SPK → issue di backend
+
+Di [`js/warehouse.issuing.js`](https://github.com/esusanto818/rab-project/blob/dev/js/warehouse.issuing.js), form meminta SPK berstatus **Diterbitkan**, mengirim `spk_id`, dan membatasi material berdasarkan sisa kuota SPK. Namun pada [`php-crud/warehouse.issuingCRD.php`](https://github.com/esusanto818/rab-project/blob/dev/php-crud/warehouse.issuingCRD.php), alur simpan issue yang ditinjau tidak tampak memvalidasi SPK atau menyimpan kaitan issue ke SPK. Artinya, validasi yang hanya ada di UI berisiko dilewati oleh jalur permintaan lain; sisa kuota dan pemakaian SPK juga bisa tidak akurat.
+
+**Saran:** backend harus memvalidasi `spk_id`, status SPK, kecocokan proyek, material dan task yang dialokasikan, sisa kuota SPK, serta stok. Simpan `spk_id` pada header issue dan lakukan seluruh validasi serta posting dalam satu transaksi. Jadikan UI hanya lapisan bantu, bukan sumber otorisasi bisnis.
+
+### P0 — Satukan konfigurasi dan koneksi database
+
+Di [`php-func/function.all.php`](https://github.com/esusanto818/rab-project/blob/dev/php-func/function.all.php) dan [`php-class/crudClass.php`](https://github.com/esusanto818/rab-project/blob/dev/php-class/crudClass.php), koneksi database dikonfigurasi terpisah; ada kredensial dalam source, dan pengaturannya tidak konsisten. Aplikasi memakai PDO serta `pg_connect` di modul-modul berbeda. Ini berisiko membuat transaksi, rollback, dan pencatatan audit berjalan lewat koneksi berbeda.
+
+**Saran:** pindahkan semua kredensial ke environment/server config di luar repository, rotasi kredensial yang pernah tersimpan di source, dan gunakan satu koneksi database konsisten per alur transaksi. Audit ulang modul lama yang masih memakai kedua jenis koneksi.
+
+### P1 — Pisahkan draft AI, persetujuan RAB/task, dan penerbitan invoice
+
+Di [`php-crud/m.proyekCRD.php`](https://github.com/esusanto818/rab-project/blob/dev/php-crud/m.proyekCRD.php), AI dapat menghasilkan task, material, dan biaya sebagai draft untuk ditinjau. Setelah draft disimpan, proses tersebut juga dapat mencoba membuat atau menyinkronkan invoice otomatis jika hak akses mencukupi.
+
+Ini mencampur dua keputusan bisnis berbeda: **menyetujui perubahan BoQ/RAB** dan **menerbitkan tagihan kepada klien**. Jika invoice otomatis terbit tanpa konfirmasi yang cukup jelas di alur pengguna, ada risiko tagihan diterbitkan ketika pengguna hanya bermaksud menyimpan perencanaan.
+
+**Saran:** jadikan langkahnya eksplisit dan terpisah:
+1. AI menghasilkan draft.
+2. Pengguna meninjau dan menyimpan task/RAB.
+3. Sistem menampilkan preview invoice.
+4. Pengguna dengan hak yang sesuai secara eksplisit mengonfirmasi penerbitan.
+5. Sistem menerbitkan invoice serta jurnalnya.
+
+Jurnal invoice otomatis harus diselaraskan atau dibatalkan bila penerbitan invoice gagal. Penerbitan invoice otomatis tidak boleh dianggap sama dengan penerimaan pembayaran.
+
+### P1 — Tentukan satu aturan resmi kuota, lalu tampilkan rumusnya
+
+Saat ini kontrol tersebar di beberapa modul: RAB dan PO memiliki toleransi masing-masing; kuota SPK memakai persentase pembayaran dikali 2 dengan batas 100%; issue memeriksa batas RAB +5% dan plafon biaya berdasarkan progres terverifikasi dengan toleransi 5%.
+
+Aturan-aturan tersebut bisa saja memang dimaksudkan berbeda, tetapi pengguna perlu tahu mana yang mengendalikan **RAB**, **PO**, **kuota SPK**, dan **issue aktual**. Jika istilah “budget” atau “kuota” dipakai seolah-olah sama, analisis sistem dan keputusan lapangan menjadi membingungkan.
+
+**Saran:** dokumentasikan dan tampilkan perhitungan per material secara terpisah: RAB, toleransi RAB, qty PO, qty tersedia di gudang, kuota SPK dari pembayaran, qty SPK terpakai, batas biaya dari progres, dan qty maksimum yang boleh di-issue. Pastikan hasil yang dilihat di layar sama dengan validasi backend.
+
+### P1 — Jangan hilangkan jejak audit saat jurnal dibatalkan
+
+Fungsi [`ReverseJournalByReference()`](https://github.com/esusanto818/rab-project/blob/dev/php-func/function.all.php) menghapus baris jurnal terkait. Untuk sistem keuangan, menghapus jurnal dapat menghilangkan jejak koreksi.
+
+**Saran:** gunakan jurnal pembalik (*reversal journal*) yang merujuk jurnal asal, kemudian buat jurnal baru jika transaksi dikoreksi. Batasi penghapusan fisik untuk data uji atau proses administrasi khusus yang memiliki audit trail.
+
+### P1 — Modernisasi autentikasi dan keamanan operasional
+
+[`login.php`](https://github.com/esusanto818/rab-project/blob/dev/login.php) masih menerima beberapa format password legacy, termasuk format yang tidak aman untuk penyimpanan password. Audit security branch juga menyebut beberapa kontrol dan alur URL langsung belum selesai diuji.
+
+**Saran:** migrasikan password ke `password_hash` / `password_verify`, lakukan *rehash* setelah login yang berhasil, lalu hapus dukungan format lama secara bertahap. Pastikan setiap endpoint transaksi tetap memeriksa login, menu, hak operasi, dan kepemilikan data di backend.
+
+### P1 — Jadikan pengujian transaksi end-to-end sebagai syarat rilis
+
+Dokumen audit [`docs/SECURITY_ACCESS_PATCH_2026-11-10.md`](https://github.com/esusanto818/rab-project/blob/dev/docs/SECURITY_ACCESS_PATCH_2026-11-10.md) menyatakan patch sudah diperiksa secara statis, tetapi pengujian runtime dan regression test belum tuntas.
+
+Sebelum rilis, uji minimal jalur berikut dengan data uji:
+- RAB → PO → GRN → WH Receiving → stok masuk dan jurnal.
+- Pembayaran klien → kuota SPK → penerbitan SPK → issue → stok keluar dan jurnal.
+- Klaim progres → verifikasi → perubahan progres → validasi batas issue.
+- Invoice manual dan invoice otomatis → pembayaran → pembatalan/reversal.
+- Penolakan transaksi dan kegagalan jurnal: pastikan tidak ada data parsial.
+- Perubahan atau penghapusan task/RAB yang sudah dipakai SPK, PO, invoice, atau issue.
+
+## Kesimpulan
+
+Flow bisnis dasarnya sudah punya kontrol yang berguna, tetapi batas antara **hasil AI**, **data yang telah disetujui**, **kuota SPK**, **issue aktual**, dan **jurnal akuntansi** perlu ditegakkan konsisten di backend. Urutan yang paling penting untuk dibereskan: **validasi SPK di backend → satu koneksi/transaksi database → konfirmasi invoice AI yang eksplisit → uji end-to-end**.
