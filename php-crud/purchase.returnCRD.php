@@ -45,6 +45,8 @@ $returnRequiredAccess = 1;
 if (in_array($action, ['save', 'upload_evidence'], true)) $returnRequiredAccess = 2;
 if (in_array($action, ['order', 'resolve'], true)) $returnRequiredAccess = 3;
 if (in_array($action, ['cancel_order', 'unsend', 'cancel'], true)) $returnRequiredAccess = 4;
+// save melayani pembuatan dan perubahan retur Diajukan; perubahan wajib level 3.
+if ($action === 'save' && (int)($_POST['id'] ?? 0) > 0) $returnRequiredAccess = 3;
 if ((int)($_SESSION['FormAccess'] ?? 0) < $returnRequiredAccess) {
     http_response_code(403);
     WhFail('Hak akses tidak mencukupi untuk proses retur pembelian.');
