@@ -475,7 +475,9 @@ function IssUploadProof() {
 // Idempotent (retur yang sudah berjurnal dilewati). Satu transaksi: gagal satu (mis. periode ditutup) = batal semua.
 // Tanggal jurnal = tanggal kirim (delivery_date, bila kosong issue_date).
 function IssBackfillReturnJournal() {
-    $userId = WhUserId();       // tanpa WhRequirePost: dibuka lewat URL (GET); aman karena idempotent + wajib FormAccess >= 3
+    // Backfill mengubah jurnal: wajib POST agar tidak dapat dipicu melalui tautan / prefetch browser.
+    WhRequirePost();
+    $userId = WhUserId();
     if (intval(isset($_SESSION['FormAccess']) ? $_SESSION['FormAccess'] : 0) < 3) { throw new WhException('Akses ditolak.'); }
     WhQ('BEGIN');
     $rows = WhRows("SELECT r.id, r.ref_no, COALESCE(mo.delivery_date, mo.issue_date, r.sent_date) AS jdate,
