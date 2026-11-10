@@ -827,19 +827,18 @@ case 'read_project_ai':
     // baru / analisis ulang menyimpan ai_variance_logs, sehingga memerlukan level 3
     // pada menu Pembayaran Proyek. Hak dicek dari tabel user-menu, bukan FormAccess
     // sesi yang dapat berasal dari menu terakhir dibuka.
-    if ($refresh) {
-        $aiAccessStmt = $db->prepare("
-            SELECT COALESCE(MAX(u.access_level), 0)
-              FROM m_form_name f
-              JOIN m_user_access_menu u ON u.form_id = f.id
-             WHERE u.user_id = :uid
-               AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'project.payment.php'
-        ");
-        $aiAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
-        if ((int)$aiAccessStmt->fetchColumn() < 3) {
-            http_response_code(403);
-            out(['success' => false, 'message' => 'Anda dapat melihat hasil analisis yang tersimpan. Hak Analisis Ulang memerlukan level 3 pada menu Pembayaran Proyek.']);
-        }
+    $aiAccessStmt = $db->prepare("
+        SELECT COALESCE(MAX(u.access_level), 0)
+          FROM m_form_name f
+          JOIN m_user_access_menu u ON u.form_id = f.id
+         WHERE u.user_id = :uid
+           AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'project.payment.php'
+    ");
+    $aiAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+    $aiAccessLevel = (int)$aiAccessStmt->fetchColumn();
+    if ($refresh && $aiAccessLevel < 3) {
+        http_response_code(403);
+        out(['success' => false, 'message' => 'Anda dapat melihat hasil analisis yang tersimpan. Hak Analisis Ulang memerlukan level 3 pada menu Pembayaran Proyek.']);
     }
 
     try {
@@ -881,10 +880,12 @@ case 'read_project_ai':
             $result['log_id'] = (int)$row['id'];
             $result['generated_at'] = $row['created_at'];
             $result['cached'] = true;
+            $result['can_refresh'] = ($aiAccessLevel >= 3);
             out(['success' => true, 'data' => $result]);
         }
 
         $result = dash_run_analysis($db, $pid, true, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+        $result['can_refresh'] = true;
         out(['success' => true, 'data' => $result]);
     } catch (Exception $e) {
         error_log('[dashboardCRD] project_ai: ' . $e->getMessage());
