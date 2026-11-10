@@ -118,9 +118,9 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_S
 $rabRequiredAccess = 1;
 if ($task === 'save_rab') {
     $rabProjectId = (int)($_REQUEST['project_id'] ?? 0);
-    $rabExistingStmt = $db->prepare('SELECT EXISTS (SELECT 1 FROM public.budget_items WHERE project_id = :pid)');
+    $rabExistingStmt = $db->prepare('SELECT COUNT(*) FROM public.budget_items WHERE project_id = :pid');
     $rabExistingStmt->execute([':pid' => $rabProjectId]);
-    $rabRequiredAccess = $rabExistingStmt->fetchColumn() ? 3 : 2;
+    $rabRequiredAccess = ((int)$rabExistingStmt->fetchColumn() > 0) ? 3 : 2;
 }
 if ((int)($_SESSION['FormAccess'] ?? 0) < $rabRequiredAccess) {
     http_response_code(403); sendJsonResponse(false, [], 'Hak akses tidak mencukupi untuk membaca atau menyimpan RAB.');
