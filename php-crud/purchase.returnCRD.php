@@ -36,6 +36,7 @@ define('ISSUE_TYPE_RETURN', 'SUPPLIER_RETURN');
 
 $DEFECT_TYPES = array('Cacat Produksi', 'Rusak Saat Pengiriman', 'Tidak Sesuai Spesifikasi',
                       'Kualitas Di Bawah Standar', 'Lainnya');
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $action = WhReq('action', 'list');
 
 $returnUserId = (int)($_SESSION['user_id'] ?? 0);
