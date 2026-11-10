@@ -21,6 +21,18 @@ if (session_status() === PHP_SESSION_NONE) {
 header('Content-Type: application/json');
 
 $task = $_REQUEST['task'] ?? '';
+
+// Perlindungan mandiri: wajib login dan memiliki hak minimal baca modul proyek.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    mpJson(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
+}
+$access = (int)($_SESSION['FormAccess'] ?? 0);
+if ($access < 1) {
+    http_response_code(403);
+    mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk membaca data proyek.']);
+}
+
 $db   = new crud();
 
 function mpJson(array $payload) {
