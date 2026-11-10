@@ -1,0 +1,29 @@
+Saya buat ulang sebagai satu paket utuh. Dua penyebab kegagalan Anda selama ini adalah path file dan URL backend yang saya tebak, jadi di versi ini semua path dihitung otomatis oleh PHP. Saya cek dulu kode JS yang sekarang supaya penyesuaiannya tepat.
+
+Stock card mobile sudah saya buat ulang sebagai satu paket empat file. Logika sinkron dan kartu stok offline sudah saya uji di simulasi (hasilnya benar), tapi belum di browser atau HP sungguhan. File PHP juga belum di-lint karena tidak ada PHP di sini.
+
+Letak file di server
+
+File	Taruh di
+stock.card.m.php	/rab-project/dev/views/ (ganti yang lama)
+stock.card.m.js	/rab-project/dev/views/ (folder yang sama dengan view)
+stock.cardCRD.php	/rab-project/dev/php-crud/
+sw.stockcard.js	/rab-project/dev/ (root, sejajar views/ dan php-crud/)
+
+Yang berubah dari versi sebelumnya
+
+Path tidak lagi ditebak. View menghitung sendiri base aplikasi dari lokasi filenya, lalu mengirim URL JS, backend, dan service worker ke JS. Jadi tidak bergantung lagi pada APP_BASE_URL, localhost, atau router?id=. Kalau hasil hitungannya salah, isi $WEB_BASE_OVERRIDE di bagian atas view.
+Update otomatis sampai ke HP. JS dimuat dengan ?v=<waktu file> dan view mengirim header no-cache. User tidak perlu menghapus cache lagi setiap ada update.
+Error tampil di layar HP. Kalau JS gagal dimuat atau error, pesannya muncul di kotak merah di atas form, jadi tidak perlu DevTools. Panel “Diagnostik koneksi” juga ada.
+Mode offline. Tombol Sinkron mengunduh snapshot gudang (material, saldo awal, mutasi 30/90/180 hari) ke penyimpanan HP. Tanpa sinyal atau saat server tidak merespons, kartu stok dihitung dari snapshot dan diberi label “DATA OFFLINE” beserta waktu sinkron. Saat online, data selalu langsung dari server. Ada juga kolom cari material, karena sebelumnya daftar terpotong di 50 item.
+
+Catatan yang perlu Anda ketahui
+
+HTTPS wajib untuk membuka halaman tanpa sinyal. Lewat http://192.168.1.6 service worker tidak bisa aktif. Lewat ngrok (HTTPS) bisa, jadi uji dari domain ngrok. Untuk produksi di lapangan perlu domain dengan SSL.
+Urutan pakai di lapangan. PIC membuka halaman dan menekan “Sinkron” saat masih ada sinyal. Setelah itu halaman dan datanya bisa dipakai di area tanpa sinyal.
+Menu bawah (Dashboard, Progress) masih href="#" karena saya tidak tahu alamat tujuannya. Isi di array $NAV pada view.
+View tidak memeriksa login. Pemeriksaan sesi tetap di stock.cardCRD.php. Kalau view mobile Anda yang lain punya blok cek login, salin ke bagian atas view ini.
+Data stok tersimpan di HP, termasuk biaya satuan. Tombol “Hapus data offline” disediakan untuk HP yang dipakai bergantian.
+Dua hal baru di backend: action snapshot, dan qty_on_hand yang kini dikirim di lookup_items (dipakai kedua UI tapi sebelumnya tidak pernah dikirim).
+
+Langkah uji: salin keempat file, buka halaman lewat domain ngrok di HP, tunggu status “Aplikasi siap dibuka tanpa sinyal”, tekan Sinkron, lalu matikan data seluler dan coba Tampilkan.
