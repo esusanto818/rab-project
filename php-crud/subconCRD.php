@@ -191,6 +191,11 @@ if ($task === 'save_subcontractor') {
 } elseif ($task === 'delete_contract') {
     $scRequired = 4;
 }
+// Aksi simpan juga dapat mengubah dokumen Draft yang sudah ada; perubahan wajib level 3.
+if (in_array($task, ['save_subcontractor', 'save_contract', 'save_progress'], true)
+    && (int)($_POST['id'] ?? 0) > 0) {
+    $scRequired = 3;
+}
 if ($scAccess < $scRequired) {
     http_response_code(403);
     sc_send(false, [], 'Hak akses tidak mencukupi untuk operasi subkontraktor ini.');
