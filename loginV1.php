@@ -53,10 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     if ($isPasswordValid) {
+                        // Rotasi session saat login; hak modul tidak ditentukan dari kolom user.
+                        session_regenerate_id(true);
                         $_SESSION["user_id"] = $user['id'];
                         $_SESSION["username"] = $user['login_name'];
-                        $_SESSION["FormAccess"] = isset($user['form_access']) ? (int)$user['form_access'] : 0;
-                        session_regenerate_id(true);
+                        unset($_SESSION['FormAccess'], $_SESSION['form_id'], $_SESSION['current_menu_id']);
                         header('Location: views/dashboard.php');
                         exit;
                     } else {

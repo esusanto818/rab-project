@@ -1,6 +1,6 @@
 <?php
-if (!isset($_SESSION)) { 
-    session_start(); 
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
 }
 date_default_timezone_set('Asia/Jakarta');
 

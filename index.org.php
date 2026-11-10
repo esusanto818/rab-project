@@ -33,10 +33,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($user && (password_verify($password, $user['password']) || md5($password) === $user['password'])) {
+                // Rotasi session saat login dan hapus konteks menu lama.
+                // Hak akses modul ditetapkan ulang oleh router dari m_user_access_menu.
+                session_regenerate_id(true);
                 $_SESSION['user_id']    = $user['id'];
                 $_SESSION['username']   = $user['login_name'];
                 $_SESSION['department'] = $user['department'] ?? 'General';
-                $_SESSION['FormAccess'] = 3;
+                unset($_SESSION['FormAccess'], $_SESSION['form_id'], $_SESSION['current_menu_id']);
 
                 header('Location: views/dashboard.php');
                 exit;

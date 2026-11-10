@@ -93,7 +93,7 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menambah klien.']);
                 exit;
             }
-            if ($task === 'update' && $access < 3) {
+            if ($task === 'update' && $access < 2) {
                 echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk mengubah klien.']);
                 exit;
             }
@@ -130,7 +130,7 @@ try {
             break;
 
         case 'delete':
-            if ($access < 4) {
+            if ($access < 3) {
                 echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menghapus klien.']);
                 exit;
             }
