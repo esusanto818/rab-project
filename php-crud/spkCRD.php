@@ -161,6 +161,9 @@ function SpkSave() {
     WhRequirePost();
     SpkNeed(SPK_ACCESS_EDIT, 'Anda tidak memiliki hak akses untuk membuat / mengubah SPK.');
     $id = (int)WhPost('id');
+    if ($id > 0) {
+        SpkNeed(SPK_ACCESS_ACTION, 'Anda tidak memiliki hak akses untuk mengubah SPK Draft.');
+    }
     $projectId = (int)WhPost('project_id');
     $date = WhDate(WhPost('spk_date'), 'Tanggal SPK');
     $foreman = trim(WhPost('foreman')); $desc = trim(WhPost('description')); $remark = trim(WhPost('remark'));
