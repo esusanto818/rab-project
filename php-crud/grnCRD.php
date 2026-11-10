@@ -44,6 +44,22 @@ const GRN_REQUIRE_VEHICLE = false;            // [NEW] true = plat no & nama dri
 $task = $_REQUEST['task'] ?? '';
 $db = new crud();
 
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesi berakhir, silakan login kembali.']);
+    exit;
+}
+$grnAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$grnRequired = 1;
+if ($task === 'create') $grnRequired = 2;
+if ($task === 'update') $grnRequired = 3;
+if ($task === 'delete') $grnRequired = 4;
+if ($grnAccess < $grnRequired) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi GRN ini.']);
+    exit;
+}
+
 function PgOrFail($result, $context = '') {
     if ($result === false) {
         throw new Exception(($context ? "[{$context}] " : '') . pg_last_error());
