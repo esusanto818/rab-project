@@ -38,6 +38,18 @@ $DEFECT_TYPES = array('Cacat Produksi', 'Rusak Saat Pengiriman', 'Tidak Sesuai S
                       'Kualitas Di Bawah Standar', 'Lainnya');
 $action = WhReq('action', 'list');
 
+$returnUserId = WhUserId();
+if (!$returnUserId || (int)$returnUserId <= 0) { http_response_code(401); WhFail('Sesi berakhir, silakan login ulang.'); }
+$returnRequiredAccess = 1;
+if (in_array($action, ['save', 'upload_evidence'], true)) $returnRequiredAccess = 2;
+if (in_array($action, ['order', 'resolve'], true)) $returnRequiredAccess = 3;
+if (in_array($action, ['cancel_order', 'unsend', 'cancel'], true)) $returnRequiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $returnRequiredAccess) {
+    http_response_code(403);
+    WhFail('Hak akses tidak mencukupi untuk proses retur pembelian.');
+}
+
+
 try {
     switch ($action) {
         case 'list':        RtList(); break;
