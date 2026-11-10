@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include_once "../php-class/crudClass.php";
 
 $offset=($_POST["start"]==null)? 0 : $_POST["start"];
