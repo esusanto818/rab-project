@@ -44,7 +44,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $task = $_REQUEST['task'] ?? '';
-if ((int)($_SESSION['FormAccess'] ?? 0) < 1) sendJsonResponse(false, [], 'Hak baca laporan pemakaian proyek tidak tersedia.');
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); sendJsonResponse(false, [], 'Hak baca laporan pemakaian proyek tidak tersedia.'); }
 
 try {
     switch ($task) {
