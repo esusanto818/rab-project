@@ -17,7 +17,7 @@ header('Cache-Control: no-cache, must-revalidate');
 // ---------------------------------------------------------------
 // KONFIGURASI (ubah bila perlu)
 // ---------------------------------------------------------------
-// Diisi hanya jika path otomatis di bawah salah, mis. '/rab-project/dev/'
+// Biarkan kosong. Isi (mis. '/rab-project/dev/') hanya jika alamat relatif tidak cocok dengan struktur folder Anda.
 $WEB_BASE_OVERRIDE = '';
 
 // Menu bawah. Isi href dengan alamat halaman yang sesuai di aplikasi Anda.
@@ -28,31 +28,56 @@ $NAV = array(
 );
 
 // ---------------------------------------------------------------
-// Hitung base URL aplikasi (folder yang berisi views/ dan php-crud/)
+// Alamat dibuat RELATIF terhadap URL halaman ini (views/...), sama seperti halaman desktop
+// ('../js/...', '../php-crud/...'). Browser yang menghitungnya, jadi aman terhadap Alias,
+// RewriteRule, symlink, segmen 'dev', dan akses lewat views/router?id=NN.
 // ---------------------------------------------------------------
-$appRoot = str_replace('\\', '/', (string)realpath(__DIR__ . '/..'));
-$docRoot = str_replace('\\', '/', (string)realpath(isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : ''));
+$appRoot = str_replace('\\', '/', (string)realpath(__DIR__ . '/..'));   // folder induk views/ (untuk mencari file di disk)
+$BASE    = ($WEB_BASE_OVERRIDE !== '') ? ('/' . trim($WEB_BASE_OVERRIDE, '/') . '/') : '../';
 
-if ($WEB_BASE_OVERRIDE !== '') {
-    $WEB_BASE = '/' . trim($WEB_BASE_OVERRIDE, '/') . '/';
-} elseif ($docRoot !== '' && strpos($appRoot, $docRoot) === 0) {
-    $WEB_BASE = rtrim(substr($appRoot, strlen($docRoot)), '/') . '/';
-} else {
-    $WEB_BASE = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME']))), '/') . '/';
+// ---------------------------------------------------------------
+// Cari file JS (utamakan folder views/, lalu js/, lalu folder lain sampai 2 tingkat)
+// ---------------------------------------------------------------
+$jsNames = array('stock.card.m.js', 'stock_card_m.js');
+$jsFile  = '';
+$jsTried = array();
+foreach ($jsNames as $n) {
+    $jsTried[] = __DIR__ . '/' . $n;
+    foreach (array('js', 'assets/js', 'public/js', 'scripts', 'static/js') as $d) {
+        $jsTried[] = $appRoot . '/' . $d . '/' . $n;
+    }
 }
-$WEB_BASE = preg_replace('#/+#', '/', $WEB_BASE);
+foreach ($jsTried as $c) {
+    if (is_file($c)) { $jsFile = $c; break; }
+}
+if ($jsFile === '') {
+    foreach ($jsNames as $n) {
+        $g1 = glob($appRoot . '/*/' . $n);
+        $g2 = glob($appRoot . '/*/*/' . $n);
+        $g  = array_merge($g1 ? $g1 : array(), $g2 ? $g2 : array());
+        if ($g) { $jsFile = $g[0]; break; }
+    }
+}
 
-$jsFile = __DIR__ . '/stock.card.m.js';
-$ver    = file_exists($jsFile) ? filemtime($jsFile) : time();
+$jsMissing = ($jsFile === '');
+if ($jsMissing) {
+    $jsSrc = $BASE . 'views/stock.card.m.js';
+    $ver   = time();
+} else {
+    $real  = str_replace('\\', '/', $jsFile);   // tanpa realpath: folder js/ boleh berupa symlink
+    $rel   = ltrim(substr($real, strlen($appRoot)), '/');
+    $ver   = filemtime($jsFile);
+    $jsSrc = $BASE . $rel . '?v=' . $ver;
+}
 
 $cfg = array(
-    'base'  => $WEB_BASE,
-    'crd'   => $WEB_BASE . 'php-crud/stock.cardCRD.php',
-    'sw'    => $WEB_BASE . 'sw.stockcard.js',
-    'scope' => $WEB_BASE,
+    'base'  => $BASE,
+    'crd'   => $BASE . 'php-crud/stock.cardCRD.php',
+    'sw'    => $BASE . 'sw.stockcard.js',
+    'scope' => $BASE,
     'ver'   => (string)$ver,
+    'js'    => $jsSrc,
 );
-$jsSrc = $WEB_BASE . 'views/stock.card.m.js?v=' . $ver;
 ?><!DOCTYPE html>
 <html lang="id">
 <head>
@@ -115,6 +140,10 @@ pre{background:#050d16;border:1px solid var(--line);border-radius:8px;padding:8p
 
     <div class="bar"><span id="pillNet" class="pill">online</span><span>Stock Card Mobile v2.0</span></div>
 
+    <?php if ($jsMissing): ?>
+    <div class="msg err">File <b>stock.card.m.js</b> tidak ditemukan di server. Salin file itu ke folder
+        <b><?php echo htmlspecialchars(str_replace('\\', '/', __DIR__)); ?>/</b> lalu muat ulang halaman ini.</div>
+    <?php endif; ?>
     <div id="msg" class="msg hidden"></div>
 
     <div class="panel">
