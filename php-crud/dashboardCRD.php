@@ -823,25 +823,68 @@ case 'read_project_ai':
     $refresh = (int)($_REQUEST['refresh'] ?? 0) === 1;
     if ($pid <= 0) out(['success' => false, 'message' => 'project_id wajib diisi.']);
 
-    // Analisis AI menghasilkan dan menyimpan catatan baru. Ini operasi perubahan,
-    // bukan sekadar hak melihat dashboard. Validasi langsung hak modul Pembayaran Proyek
-    // (mesin analisis yang sama juga digunakan oleh modul tersebut), bukan FormAccess
-    // yang mungkin tertinggal dari menu yang terakhir dibuka.
-    $aiAccessStmt = $db->prepare("
-        SELECT COALESCE(MAX(u.access_level), 0)
-          FROM m_form_name f
-          JOIN m_user_access_menu u ON u.form_id = f.id
-         WHERE u.user_id = :uid
-           AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'project.payment.php'
-    ");
-    $aiAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
-    if ((int)$aiAccessStmt->fetchColumn() < 3) {
-        http_response_code(403);
-        out(['success' => false, 'message' => 'Anda dapat melihat dashboard, tetapi hak akses Analisis AI Proyek memerlukan level 3 pada menu Pembayaran Proyek.']);
+    // Melihat hasil analisis tersimpan adalah hak baca dashboard. Membuat analisis
+    // baru / analisis ulang menyimpan ai_variance_logs, sehingga memerlukan level 3
+    // pada menu Pembayaran Proyek. Hak dicek dari tabel user-menu, bukan FormAccess
+    // sesi yang dapat berasal dari menu terakhir dibuka.
+    if ($refresh) {
+        $aiAccessStmt = $db->prepare("
+            SELECT COALESCE(MAX(u.access_level), 0)
+              FROM m_form_name f
+              JOIN m_user_access_menu u ON u.form_id = f.id
+             WHERE u.user_id = :uid
+               AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'project.payment.php'
+        ");
+        $aiAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+        if ((int)$aiAccessStmt->fetchColumn() < 3) {
+            http_response_code(403);
+            out(['success' => false, 'message' => 'Anda dapat melihat hasil analisis yang tersimpan. Hak Analisis Ulang memerlukan level 3 pada menu Pembayaran Proyek.']);
+        }
     }
 
     try {
-        $result = dash_run_analysis($db, $pid, $refresh, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+        if (!$refresh) {
+            // Mode baca murni: jangan memicu analisis baru untuk pengguna dashboard read-only.
+            $hasAnalysis = avl_has_cols($db);
+            $analysisCol = $hasAnalysis ? ', analysis' : '';
+            $st = $db->prepare("SELECT id, risk_level, ai_summary, recommendations, created_at{$analysisCol}
+                                  FROM ai_variance_logs
+                                 WHERE project_id = :pid
+                                 ORDER BY created_at DESC, id DESC
+                                 LIMIT 1");
+            $st->execute([':pid' => $pid]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                out(['success' => false, 'message' => 'Belum ada hasil analisis tersimpan untuk proyek ini. Pengguna dengan level 3 pada menu Pembayaran Proyek dapat menjalankan Analisis Ulang.']);
+            }
+
+            $result = [];
+            if ($hasAnalysis && !empty($row['analysis'])) {
+                $decoded = json_decode((string)$row['analysis'], true);
+                if (is_array($decoded)) $result = $decoded;
+            }
+            if (!$result) {
+                $projectStmt = $db->prepare("SELECT name FROM projects WHERE id = :pid");
+                $projectStmt->execute([':pid' => $pid]);
+                $projectName = (string)($projectStmt->fetchColumn() ?: 'Proyek');
+                $actions = json_decode((string)($row['recommendations'] ?? '[]'), true);
+                if (!is_array($actions)) $actions = [];
+                $result = [
+                    'project_id' => $pid, 'project_name' => $projectName,
+                    'risk' => strtoupper((string)($row['risk_level'] ?? 'LOW')),
+                    'headline' => (string)($row['ai_summary'] ?? 'Hasil analisis tersimpan'),
+                    'summary' => (string)($row['ai_summary'] ?? ''),
+                    'actions' => $actions, 'questions' => [], 'findings' => [],
+                    'ai_used' => false, 'ai_note' => 'Menampilkan ringkasan tersimpan dari format log lama.',
+                ];
+            }
+            $result['log_id'] = (int)$row['id'];
+            $result['generated_at'] = $row['created_at'];
+            $result['cached'] = true;
+            out(['success' => true, 'data' => $result]);
+        }
+
+        $result = dash_run_analysis($db, $pid, true, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
         out(['success' => true, 'data' => $result]);
     } catch (Exception $e) {
         error_log('[dashboardCRD] project_ai: ' . $e->getMessage());
