@@ -139,8 +139,9 @@ Patch berikut juga diterapkan pada branch `dev` setelah pemeriksaan lanjutan:
 
 ## Status Verifikasi GitHub — 10 November 2026
 
-- Branch `dev` HEAD setelah seluruh patch dan pembaruan dokumen: `8524c26cc2cabb1070b1e45bcfa45223a672c1fe`.
+- Commit terakhir yang memuat patch aplikasi sebelum pencatatan status ini: `8524c26cc2cabb1070b1e45bcfa45223a672c1fe`.
 - Branch `main` saat verifikasi: `9aca8baf196e1047de5295aec7517a3fdc971456`.
+- Commit dokumentasi status ini dibuat setelah commit patch aplikasi di atas; lihat riwayat commit branch `dev` untuk HEAD dokumentasi terbaru.
 - `main` tidak menerima commit dari pekerjaan ini.
 - Semua patch dan dokumen yang disebut dalam laporan berada pada branch `dev`.
 - Verifikasi ini memastikan keberadaan perubahan di GitHub; bukan bukti bahwa PHP berjalan benar pada server aplikasi.
