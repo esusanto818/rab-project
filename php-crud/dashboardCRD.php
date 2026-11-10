@@ -100,6 +100,20 @@ case 'read_tax_rates':
 // 3. SYNC KURS DARI BEA CUKAI
 // ============================================================
 case 'sync_tax_rates':
+    // Dashboard API tidak melalui otorisasi menu biasa; cek hak khusus Master Kurs Pajak
+    // langsung dari tabel hak akses user agar FormAccess menu sebelumnya tidak bisa dipakai ulang.
+    $taxAccessStmt = $db->prepare("
+        SELECT COALESCE(MAX(u.access_level), 0)
+          FROM m_form_name f
+          JOIN m_user_access_menu u ON u.form_id = f.id
+         WHERE u.user_id = :uid
+           AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'm.taxexchangerate.php'
+    ");
+    $taxAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+    if ((int)$taxAccessStmt->fetchColumn() < 3) {
+        http_response_code(403);
+        out(['success' => false, 'message' => 'Anda tidak memiliki hak untuk memperbarui Kurs Pajak.']);
+    }
     try {
         if (!function_exists('fetchAndStoreTaxExchangeRates')) {
             out(['success' => false, 'message' => 'Fungsi fetchAndStoreTaxExchangeRates tidak ditemukan.']);
