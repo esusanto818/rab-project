@@ -29,7 +29,7 @@ Ext.onReady(function() {
   };
   document.getElementById('editData').onclick = function(event) {
     task='';
-    if (formAccess==3 || formAccess==4){
+    if (parseInt(formAccess, 10) >= 2) {
       task = 'update';
       Ext.getCmp('frmEditor').getForm().load({
         url:'../php-crud/purchase.orderCRD.php',
