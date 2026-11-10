@@ -24,7 +24,7 @@
  *   (gagal posting = pelepasan dibatalkan).
  * Hapus (reverse): hanya pelepasan TERAKHIR per proyek (agar snapshot pelepasan berikutnya tetap konsisten);
  *   jurnalnya dihapus lewat ReverseJournalByReference.
- * Akses: simpan >= 2, hapus >= 3 ($_SESSION['FormAccess']).
+ * Akses: simpan >= 2, hapus >= 4 ($_SESSION['FormAccess']).
  * Butuh migrasi: sql/2026-10-16.project_wip_release.sql
  * ============================================================
  */
@@ -46,7 +46,7 @@ const WR_EPS = 0.005;                          // toleransi nilai rupiah
 const WR_JOURNAL_REF = 'wip_release';          // nilai enum journal_entries.reference_type
 const WR_JOURNAL_RULE = 'WIP_RELEASE';         // rule_code di fiscal_config
 const WR_ACCESS_ADD = 2;
-const WR_ACCESS_DEL = 3;
+const WR_ACCESS_DEL = 4;
 
 class WrBusinessError extends Exception {}
 
