@@ -423,6 +423,11 @@ try {
          * ------------------------------------------------------------------ */
         case 'save_po':
             $id    = (int)($_POST['id'] ?? 0);
+            // save_po melayani create dan update; update harus level 3.
+            if ($id > 0 && $poAccess < 3) {
+                http_response_code(403);
+                sendJsonResponse(false, [], 'Hak ubah Purchase Order tidak tersedia.');
+            }
             $prj   = (int)($_POST['project_id'] ?? 0);
             $sup   = (int)($_POST['supplier_id'] ?? 0) ?: null;
             $cur   = (int)($_POST['currency_id'] ?? 0) ?: null;
