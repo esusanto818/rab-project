@@ -38,8 +38,8 @@ $DEFECT_TYPES = array('Cacat Produksi', 'Rusak Saat Pengiriman', 'Tidak Sesuai S
                       'Kualitas Di Bawah Standar', 'Lainnya');
 $action = WhReq('action', 'list');
 
-$returnUserId = WhUserId();
-if (!$returnUserId || (int)$returnUserId <= 0) { http_response_code(401); WhFail('Sesi berakhir, silakan login ulang.'); }
+$returnUserId = (int)($_SESSION['user_id'] ?? 0);
+if ($returnUserId <= 0) { http_response_code(401); WhFail('Sesi berakhir, silakan login ulang.'); }
 $returnRequiredAccess = 1;
 if (in_array($action, ['save', 'upload_evidence'], true)) $returnRequiredAccess = 2;
 if (in_array($action, ['order', 'resolve'], true)) $returnRequiredAccess = 3;
