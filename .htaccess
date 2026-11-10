@@ -18,6 +18,9 @@ RewriteRule ^views/dashboard\.php$ - [END,NC]
 # semua pemanggilan langsung sudah dipindahkan
 # RewriteRule ^views/ - [F,END,NC]
 
+# E. Bukti foto progres hanya boleh diakses melalui endpoint photo yang memeriksa sesi login
+RewriteRule ^uploads/progress(/|$) - [F,END,NC]
+
 # F. File dan folder fisik lainnya
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d

@@ -11,10 +11,18 @@
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 header('Content-Type: application/json');
 
 $task = $_REQUEST['task'] ?? '';
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { http_response_code(401); echo json_encode(['success'=>false,'message'=>'Sesi berakhir, silakan login ulang.']); exit; }
+$grnLegacyRequiredAccess = 1;
+if ($task === 'create') $grnLegacyRequiredAccess = 2;
+if ($task === 'update') $grnLegacyRequiredAccess = 3;
+if ($task === 'delete') $grnLegacyRequiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $grnLegacyRequiredAccess) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak akses tidak mencukupi untuk GRN.']); exit; }
+
 $db = new crud();
 
 function PgOrFail($result, $context = '') {

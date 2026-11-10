@@ -21,7 +21,19 @@ require_once '../php-func/function.all.php';
 require_once '../php-class/crudClass.php';
 require_once '../php-func/function.stock.php';
 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $action = WhReq('action', 'card');
+
+$stockCardUserId = (int)($_SESSION['user_id'] ?? 0);
+if ($stockCardUserId <= 0) {
+    http_response_code(401);
+    WhFail('Sesi berakhir, silakan login ulang.');
+}
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    WhFail('Anda tidak memiliki hak baca Kartu Stok.');
+}
+
 
 try {
     switch ($action) {

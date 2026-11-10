@@ -28,7 +28,9 @@ function out(array $data, int $flags = 0): void {
     exit;
 }
 
-if (empty($_SESSION['user_id'])) {
+// Kebijakan dashboard: setiap akun yang login boleh membaca ringkasan SELURUH proyek perusahaan.
+// Jangan gunakan FormAccess modul aktif untuk menyaring data dashboard; hak tulis tetap diperiksa per aksi.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
     http_response_code(401);
     out(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
 }
@@ -70,11 +72,21 @@ case 'get_projects':
 // ============================================================
 case 'read_tax_rates':
     try {
+        $taxReadAccessStmt = $db->prepare("
+            SELECT COALESCE(MAX(u.access_level), 0)
+              FROM m_form_name f
+              JOIN m_user_access_menu u ON u.form_id = f.id
+             WHERE u.user_id = :uid
+               AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'm.taxexchangerate.php'
+        ");
+        $taxReadAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+        $canSyncTax = ((int)$taxReadAccessStmt->fetchColumn() >= 3);
+
         $stmt = $db->prepare("SELECT id, kmk_no, start_date, end_date FROM tax_exchange_rate_hdr ORDER BY id DESC LIMIT 1");
         $stmt->execute();
         $header = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$header) {
-            out(['success' => true, 'kmk_number' => '-', 'start_date' => '-', 'end_date' => '-', 'rates' => []]);
+            out(['success' => true, 'kmk_number' => '-', 'start_date' => '-', 'end_date' => '-', 'rates' => [], 'can_sync' => $canSyncTax]);
         }
         $stmt = $db->prepare("
             SELECT currency_code, currency_name, unit_multiplier, rate, change_amount, change_direction
@@ -90,6 +102,7 @@ case 'read_tax_rates':
             'start_date' => date('d/m/Y', strtotime($header['start_date'])),
             'end_date'   => date('d/m/Y', strtotime($header['end_date'])),
             'rates'      => $stmt->fetchAll(PDO::FETCH_ASSOC),
+            'can_sync'   => $canSyncTax,
         ], JSON_NUMERIC_CHECK);
     } catch (Exception $e) {
         out(['success' => false, 'message' => 'Gagal membaca kurs pajak: ' . $e->getMessage()]);
@@ -820,8 +833,76 @@ case 'read_project_ai':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
     $refresh = (int)($_REQUEST['refresh'] ?? 0) === 1;
     if ($pid <= 0) out(['success' => false, 'message' => 'project_id wajib diisi.']);
+
+    // Melihat hasil analisis tersimpan adalah hak baca dashboard. Membuat analisis
+    // baru / analisis ulang menyimpan ai_variance_logs, sehingga memerlukan level 3
+    // pada menu Pembayaran Proyek. Hak dicek dari tabel user-menu, bukan FormAccess
+    // sesi yang dapat berasal dari menu terakhir dibuka.
+    $aiAccessStmt = $db->prepare("
+        SELECT COALESCE(MAX(u.access_level), 0)
+          FROM m_form_name f
+          JOIN m_user_access_menu u ON u.form_id = f.id
+         WHERE u.user_id = :uid
+           AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'project.payment.php'
+    ");
+    $aiAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+    $aiAccessLevel = (int)$aiAccessStmt->fetchColumn();
+    if ($refresh && $aiAccessLevel < 3) {
+        http_response_code(403);
+        out(['success' => false, 'message' => 'Anda dapat melihat hasil analisis yang tersimpan. Hak Analisis Ulang memerlukan level 3 pada menu Pembayaran Proyek.']);
+    }
+
     try {
-        $result = dash_run_analysis($db, $pid, $refresh, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+        if (!$refresh) {
+            // Mode baca murni: jangan memicu analisis baru untuk pengguna dashboard read-only.
+            $hasAnalysis = avl_has_cols($db);
+            $analysisCol = $hasAnalysis ? ', analysis' : '';
+            $st = $db->prepare("SELECT id, risk_level, ai_summary, recommendations, created_at{$analysisCol}
+                                  FROM ai_variance_logs
+                                 WHERE project_id = :pid
+                                 ORDER BY created_at DESC, id DESC
+                                 LIMIT 1");
+            $st->execute([':pid' => $pid]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                if ($aiAccessLevel >= 3) {
+                    // Pengguna berhak boleh membuat analisis pertama saat membuka panel.
+                    $result = dash_run_analysis($db, $pid, false, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+                    $result['can_refresh'] = true;
+                    out(['success' => true, 'data' => $result]);
+                }
+                out(['success' => false, 'message' => 'Belum ada hasil analisis tersimpan. Minta pengguna dengan level 3 pada menu Pembayaran Proyek untuk membuat analisis pertama.']);
+            }
+
+            $result = [];
+            if ($hasAnalysis && !empty($row['analysis'])) {
+                $decoded = json_decode((string)$row['analysis'], true);
+                if (is_array($decoded)) $result = $decoded;
+            }
+            if (!$result) {
+                $projectStmt = $db->prepare("SELECT name FROM projects WHERE id = :pid");
+                $projectStmt->execute([':pid' => $pid]);
+                $projectName = (string)($projectStmt->fetchColumn() ?: 'Proyek');
+                $actions = json_decode((string)($row['recommendations'] ?? '[]'), true);
+                if (!is_array($actions)) $actions = [];
+                $result = [
+                    'project_id' => $pid, 'project_name' => $projectName,
+                    'risk' => strtoupper((string)($row['risk_level'] ?? 'LOW')),
+                    'headline' => (string)($row['ai_summary'] ?? 'Hasil analisis tersimpan'),
+                    'summary' => (string)($row['ai_summary'] ?? ''),
+                    'actions' => $actions, 'questions' => [], 'findings' => [],
+                    'ai_used' => false, 'ai_note' => 'Menampilkan ringkasan tersimpan dari format log lama.',
+                ];
+            }
+            $result['log_id'] = (int)$row['id'];
+            $result['generated_at'] = $row['created_at'];
+            $result['cached'] = true;
+            $result['can_refresh'] = ($aiAccessLevel >= 3);
+            out(['success' => true, 'data' => $result]);
+        }
+
+        $result = dash_run_analysis($db, $pid, true, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+        $result['can_refresh'] = true;
         out(['success' => true, 'data' => $result]);
     } catch (Exception $e) {
         error_log('[dashboardCRD] project_ai: ' . $e->getMessage());

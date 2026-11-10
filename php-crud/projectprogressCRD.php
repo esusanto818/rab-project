@@ -82,6 +82,8 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $task = $_REQUEST['task'] ?? '';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); sendJsonResponse(false, [], 'Anda tidak memiliki hak baca progres proyek.'); }
+
 
 try {
     switch ($task) {

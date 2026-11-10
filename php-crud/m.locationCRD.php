@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include_once "../php-class/crudClass.php";
 include_once "../php-func/function.all.php";
 
@@ -7,6 +9,22 @@ $searchField = isset($_POST["query"]) ? $_POST["query"] : NULL;
 $offset      = (isset($_POST["start"]) && $_POST["start"] !== null) ? intval($_POST["start"]) : 0;
 $limit       = (isset($_POST["limit"]) && $_POST["limit"] !== null) ? intval($_POST["limit"]) : 250;
 $task        = isset($_POST['task']) ? $_POST['task'] : 'read';
+
+// Otorisasi backend mandiri: login wajib dan hak operasi mengikuti FormAccess menu.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
+    exit;
+}
+$requiredAccess = 1;
+if (in_array($task, ['create', 'add'], true)) $requiredAccess = 2;
+if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 3;
+if ($task === 'delete') $requiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $requiredAccess) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi master ini.']);
+    exit;
+}
 
 // Inisialisasi objek database secara global
 $db = new crud();

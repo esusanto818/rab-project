@@ -1,10 +1,24 @@
 <?php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include_once "../php-class/crudClass.php";
 
 $offset=($_POST["start"]==null)? 0 : $_POST["start"];
 
-switch ($_POST['task']){
+$task = $_POST['task'] ?? 'read';
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
+    exit;
+}
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak baca status persediaan.']);
+    exit;
+}
+
+switch ($task){
 	case ('read'):
     $sResult=searchData($_POST["query"],array("item_name","size","type_group","grade","wood"),250);
     $limit=$sResult["limit"];

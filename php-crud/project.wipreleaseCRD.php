@@ -143,6 +143,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $task = $_REQUEST['task'] ?? '';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) sendJsonResponse(false, [], 'Hak baca pelepasan WIP proyek tidak tersedia.');
 
 try {
     switch ($task) {

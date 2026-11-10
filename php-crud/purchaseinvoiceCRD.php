@@ -42,7 +42,9 @@
          - create: kolom created_by ikut diisi dari sesi (kolom sudah ada di tabel, sebelumnya kosong)
            supaya nama penerima tampil di cetakan. */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if (file_exists('../php-func/function.all.php')) {
     require_once('../php-func/function.all.php');
@@ -53,6 +55,18 @@ if (file_exists('../php-class/crudClass.php')) {
 }
 
 $task = isset($_POST['task']) ? $_POST['task'] : (isset($_GET['task']) ? $_GET['task'] : '');
+
+// Wajib login dan otorisasi setiap operasi invoice supplier.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401); echo json_encode(['success'=>false,'message'=>'Sesi berakhir, silakan login ulang.']); exit;
+}
+$piRequiredAccess = 1;
+if ($task === 'create') $piRequiredAccess = 2;
+if ($task === 'update') $piRequiredAccess = 3;
+if (in_array($task, ['delete', 'backfill_journal'], true)) $piRequiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $piRequiredAccess) {
+    http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak akses tidak mencukupi untuk operasi invoice supplier.']); exit;
+}
 
 @ini_set('display_errors', 0);
 header('Content-Type: application/json; charset=UTF-8');

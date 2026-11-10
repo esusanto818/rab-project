@@ -106,6 +106,8 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $task = $_REQUEST['task'] ?? 'preview';
+$bfRequiredAccess = ($task === 'run') ? 4 : 1;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $bfRequiredAccess) { http_response_code(403); bf_send(false, [], 'Backfill PPN hanya dapat dijalankan oleh admin dengan hak level 4 pada modul ini.'); }
 $pid  = (int)($_REQUEST['project_id'] ?? 0);
 
 try {

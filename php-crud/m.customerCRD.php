@@ -1,6 +1,8 @@
 <?php
 if (!isset($_SESSION)) {
+    if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
 }
 date_default_timezone_set('Asia/Jakarta');
 
@@ -28,6 +30,22 @@ if (empty($dataArray)) {
 
 $db = new crud();
 $task = $_POST['task'] ?? 'read';
+
+// Otorisasi backend mandiri: login wajib dan hak operasi mengikuti FormAccess menu.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
+    exit;
+}
+$requiredAccess = 1;
+if (in_array($task, ['create', 'add'], true)) $requiredAccess = 2;
+if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 3;
+if ($task === 'delete') $requiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $requiredAccess) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi master ini.']);
+    exit;
+}
 
 switch ($task) {
 

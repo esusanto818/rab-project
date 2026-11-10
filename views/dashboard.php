@@ -3,7 +3,7 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php - FINAL VERSION (Tanpa Hamburger Menu)
 // [2026-11-08] Bottom navigation only untuk mobile, hamburger dihapus
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -714,7 +714,7 @@ box.innerHTML = `
 <span class="px-2 py-0.5 text-[11px] font-bold border rounded-md ${rs.badge}">RISK: ${esc(d.risk)}</span>
 <span class="px-2 py-0.5 text-[10px] border rounded-md border-slate-600 text-slate-300">${d.ai_used ? 'Gemini' : 'Analisis sistem'}${d.cached ? ' • cache' : ''}</span>
 <span class="text-[11px] text-slate-500 ml-auto">${esc(d.generated_at || '')}${d.log_id ? ' • log #' + d.log_id : ''}</span>
-<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded bg-[#066b78] text-white cursor-pointer border-0">Analisis Ulang</button>
+${d.can_refresh ? '<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded bg-[#066b78] text-white cursor-pointer border-0">Analisis Ulang</button>' : ''}
 </div>
 <div class="${rs.text} italic text-base mb-2"><b>${esc(d.project_name)}:</b> ${esc(d.headline)}</div>
 <div class="text-sm text-slate-200 mb-2 leading-relaxed">${esc(d.summary)}</div>
@@ -723,7 +723,8 @@ ${d.questions && d.questions.length ? `<div class="text-xs font-bold text-amber-
 ${findings ? `<div class="text-xs font-bold text-slate-400 mt-3 mb-1">Temuan sistem (${d.findings.length})</div>${findings}` : ''}
 ${d.ai_note ? `<div class="text-[11px] text-amber-400 mt-2">${esc(d.ai_note)}</div>` : ''}
 </div>`;
-box.querySelector('.aiRefresh').onclick = () => loadProjectAI(id, true);
+const refreshBtn = box.querySelector('.aiRefresh');
+if (refreshBtn) refreshBtn.onclick = () => loadProjectAI(id, true);
 applyAiRiskToCard(id, d.risk);
 } catch (err) { if (token === aiRequestToken) box.innerHTML = '<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">Error memuat rekomendasi AI</div>'; }
 }
@@ -798,6 +799,7 @@ try {
 const res = await fetch(`${API_ENDPOINT}?action=read_tax_rates`);
 const json = await res.json();
 if (json.success) {
+document.getElementById('btn_sync_tax').style.display = json.can_sync ? '' : 'none';
 badge.innerText = json.kmk_number !== '-' ? `KMK: ${json.kmk_number}` : 'Kosong';
 if (json.start_date && json.end_date) validDateEl.innerText = `(${json.start_date} s/d ${json.end_date})`;
 else if (json.valid_date) validDateEl.innerText = `(${json.valid_date})`;

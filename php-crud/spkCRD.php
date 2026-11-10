@@ -20,6 +20,10 @@ require_once '../php-func/function.spk.php';
 define('SPK_ACCESS_EDIT', 2);
 define('SPK_ACCESS_ACTION', 3);
 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+$spkUserId = (int)($_SESSION['user_id'] ?? 0);
+if ($spkUserId <= 0) { http_response_code(401); WhFail('Sesi berakhir, silakan login ulang.'); }
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); WhFail('Anda tidak memiliki hak baca SPK.'); }
 $action = WhReq('action', 'list');
 
 try {
