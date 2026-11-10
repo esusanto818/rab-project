@@ -822,6 +822,24 @@ case 'read_project_ai':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
     $refresh = (int)($_REQUEST['refresh'] ?? 0) === 1;
     if ($pid <= 0) out(['success' => false, 'message' => 'project_id wajib diisi.']);
+
+    // Analisis AI menghasilkan dan menyimpan catatan baru. Ini operasi perubahan,
+    // bukan sekadar hak melihat dashboard. Validasi langsung hak modul Pembayaran Proyek
+    // (mesin analisis yang sama juga digunakan oleh modul tersebut), bukan FormAccess
+    // yang mungkin tertinggal dari menu yang terakhir dibuka.
+    $aiAccessStmt = $db->prepare("
+        SELECT COALESCE(MAX(u.access_level), 0)
+          FROM m_form_name f
+          JOIN m_user_access_menu u ON u.form_id = f.id
+         WHERE u.user_id = :uid
+           AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'project.payment.php'
+    ");
+    $aiAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+    if ((int)$aiAccessStmt->fetchColumn() < 3) {
+        http_response_code(403);
+        out(['success' => false, 'message' => 'Anda dapat melihat dashboard, tetapi hak akses Analisis AI Proyek memerlukan level 3 pada menu Pembayaran Proyek.']);
+    }
+
     try {
         $result = dash_run_analysis($db, $pid, $refresh, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
         out(['success' => true, 'data' => $result]);
