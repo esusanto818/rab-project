@@ -32,6 +32,20 @@ try {
     $cleanItemNum = (empty($dataArray)) ? "0" : $dataArray;
 
     $task = $_POST['task'] ?? 'read';
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(["success" => false, "message" => "Sesi berakhir. Silakan login kembali."]);
+    exit;
+}
+$formAdminAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$formRequiredAccess = 1;
+if (in_array($task, ['create', 'add', 'update', 'edit', 'delete'], true)) $formRequiredAccess = 4;
+if ($formAdminAccess < $formRequiredAccess) {
+    http_response_code(403);
+    echo json_encode(["success" => false, "message" => "Hak akses tidak mencukupi untuk pengelolaan menu."]);
+    exit;
+}
+
 
     switch ($task) {
         case "create":
