@@ -10,6 +10,22 @@ $offset      = isset($_POST["start"]) ? intval($_POST["start"]) : 0;
 $limit       = isset($_POST["limit"]) ? intval($_POST["limit"]) : 250;
 
 $task       = $_POST['task'] ?? '';
+
+// Otorisasi backend mandiri: login wajib dan hak operasi mengikuti FormAccess menu.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    echo json_encode(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
+    exit;
+}
+$requiredAccess = 1;
+if (in_array($task, ['create', 'add', 'save'], true)) $requiredAccess = 2;
+if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 3;
+if (in_array($task, ['delete'], true)) $requiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $requiredAccess) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi ini.']);
+    exit;
+}
 $updateFoto = 0;
 $foto       = $_POST['photo'] ?? '';
 
