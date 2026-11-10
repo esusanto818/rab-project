@@ -48,6 +48,7 @@ if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
 }
 
 $task = $_POST['task'] ?? $_REQUEST['task'] ?? 'read';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) fp_json(['success'=>false,'message'=>'Hak baca periode akuntansi tidak tersedia.'], 403);
 $db   = new crud();
 
 try {
