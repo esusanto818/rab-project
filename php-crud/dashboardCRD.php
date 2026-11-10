@@ -28,7 +28,9 @@ function out(array $data, int $flags = 0): void {
     exit;
 }
 
-if (empty($_SESSION['user_id'])) {
+// Kebijakan dashboard: setiap akun yang login boleh membaca ringkasan SELURUH proyek perusahaan.
+// Jangan gunakan FormAccess modul aktif untuk menyaring data dashboard; hak tulis tetap diperiksa per aksi.
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
     http_response_code(401);
     out(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
 }
