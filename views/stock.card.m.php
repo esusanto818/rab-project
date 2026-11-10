@@ -1,420 +1,152 @@
 <?php
-/*
-Document        : stock.card.m.php
-Description     : Stock Card Mobile View (PWA-ready, Vanilla JS)
-File related    : - stock.card.m.js
-                  - stock.cardCRD.php
-*/
-include "../php-func/user.valid.php";
-$B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
-$favVer = date('YmdHis');
-?>
-<!DOCTYPE html>
+/**
+ * views/stock.card.m.php  —  Stock Card Mobile v2.0 (bisa offline)
+ *
+ * File yang berpasangan:
+ *   views/stock.card.m.js         (halaman ini memuatnya)
+ *   php-crud/stock.cardCRD.php    (backend)
+ *   sw.stockcard.js               (ROOT aplikasi, sejajar views/ dan php-crud/)
+ *
+ * Semua URL dihitung di sini dan dikirim ke JS lewat window.SC_CFG, jadi tidak bergantung pada
+ * APP_BASE_URL, 'localhost', atau cara halaman dibuka (langsung / lewat router?id=NN).
+ */
+
+// Selalu tanya server dulu supaya update JS/CSS sampai ke HP tanpa user menghapus cache
+header('Cache-Control: no-cache, must-revalidate');
+
+// ---------------------------------------------------------------
+// KONFIGURASI (ubah bila perlu)
+// ---------------------------------------------------------------
+// Diisi hanya jika path otomatis di bawah salah, mis. '/rab-project/dev/'
+$WEB_BASE_OVERRIDE = '';
+
+// Menu bawah. Isi href dengan alamat halaman yang sesuai di aplikasi Anda.
+$NAV = array(
+    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => '#',  'active' => false),
+    array('icon' => '📦', 'label' => 'Stok',      'href' => '#',  'active' => true),
+    array('icon' => '📊', 'label' => 'Progress',  'href' => '#',  'active' => false),
+);
+
+// ---------------------------------------------------------------
+// Hitung base URL aplikasi (folder yang berisi views/ dan php-crud/)
+// ---------------------------------------------------------------
+$appRoot = str_replace('\\', '/', (string)realpath(__DIR__ . '/..'));
+$docRoot = str_replace('\\', '/', (string)realpath(isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] : ''));
+
+if ($WEB_BASE_OVERRIDE !== '') {
+    $WEB_BASE = '/' . trim($WEB_BASE_OVERRIDE, '/') . '/';
+} elseif ($docRoot !== '' && strpos($appRoot, $docRoot) === 0) {
+    $WEB_BASE = rtrim(substr($appRoot, strlen($docRoot)), '/') . '/';
+} else {
+    $WEB_BASE = rtrim(str_replace('\\', '/', dirname(dirname($_SERVER['SCRIPT_NAME']))), '/') . '/';
+}
+$WEB_BASE = preg_replace('#/+#', '/', $WEB_BASE);
+
+$jsFile = __DIR__ . '/stock.card.m.js';
+$ver    = file_exists($jsFile) ? filemtime($jsFile) : time();
+
+$cfg = array(
+    'base'  => $WEB_BASE,
+    'crd'   => $WEB_BASE . 'php-crud/stock.cardCRD.php',
+    'sw'    => $WEB_BASE . 'sw.stockcard.js',
+    'scope' => $WEB_BASE,
+    'ver'   => (string)$ver,
+);
+$jsSrc = $WEB_BASE . 'views/stock.card.m.js?v=' . $ver;
+?><!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0b1d2b">
+<meta charset="utf-8">
+<title>Kartu Stok</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#020812">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Kartu Stok Mobile</title>
-<link rel="shortcut icon" href="<?php echo $B; ?>/../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
-<link rel="apple-touch-icon" href="<?php echo $B; ?>/../favicon.ico?v=<?=$favVer?>">
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #020b14;
-    color: #e2e8f0;
-    padding: 12px;
-    padding-bottom: 80px;
-    min-height: 100vh;
-}
-
-/* Header */
-.header {
-    background: linear-gradient(135deg, #066b78 0%, #0b1d2b 100%);
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-.header h1 {
-    font-size: 20px;
-    color: #22d3ee;
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-.header p {
-    font-size: 12px;
-    color: #94a3b8;
-}
-
-/* Status Bar */
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    font-size: 11px;
-}
-.pill {
-    padding: 4px 10px;
-    border-radius: 12px;
-    background: #1e3a52;
-    color: #22d3ee;
-    font-weight: 600;
-    transition: all 0.3s;
-}
-.pill.off {
-    background: #3b1212;
-    color: #ff6b5e;
-}
-
-/* Message */
-.msg {
-    padding: 10px 14px;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    font-size: 13px;
-    font-weight: 500;
-    animation: slideDown 0.3s ease;
-}
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.msg.err {
-    background: #3b1212;
-    border: 1px solid #c0392b;
-    color: #ff6b5e;
-}
-.msg.ok {
-    background: #0f2f22;
-    border: 1px solid #2e9e4f;
-    color: #7fe0a0;
-}
-.msg.hidden {
-    display: none;
-}
-
-/* Filter Card */
-.filter-card {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 16px;
-}
-.filter-row {
-    margin-bottom: 12px;
-}
-.filter-row label {
-    display: block;
-    font-size: 12px;
-    color: #94a3b8;
-    margin-bottom: 4px;
-    font-weight: 600;
-}
-.filter-row select,
-.filter-row input {
-    width: 100%;
-    padding: 10px 12px;
-    background: #061522;
-    color: #fff;
-    border: 1px solid #1e3a52;
-    border-radius: 6px;
-    font-size: 14px;
-    -webkit-appearance: none;
-    appearance: none;
-    transition: border-color 0.2s;
-}
-.filter-row select:focus,
-.filter-row input:focus {
-    outline: none;
-    border-color: #22d3ee;
-}
-.filter-row input[type="date"] {
-    font-family: inherit;
-}
-.date-row {
-    display: flex;
-    gap: 8px;
-}
-.date-row .filter-row {
-    flex: 1;
-}
-.btn-load {
-    width: 100%;
-    padding: 12px;
-    background: #066b78;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    font-size: 15px;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 8px;
-    transition: all 0.2s;
-}
-.btn-load:active {
-    background: #0891a8;
-    transform: scale(0.98);
-}
-.btn-load:disabled {
-    background: #37566a;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* Summary Cards */
-.summary-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-.sum-card {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    padding: 12px;
-    text-align: center;
-    transition: transform 0.2s;
-}
-.sum-card:active {
-    transform: scale(0.97);
-}
-.sum-card.in {
-    border-left: 4px solid #10b981;
-}
-.sum-card.out {
-    border-left: 4px solid #f43f5e;
-}
-.sum-card.end {
-    border-left: 4px solid #22d3ee;
-    background: #0f253a;
-}
-.sum-lbl {
-    font-size: 11px;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-}
-.sum-val {
-    font-size: 16px;
-    font-weight: 700;
-    color: #fff;
-    font-family: 'Courier New', monospace;
-}
-
-/* Section Title */
-.section-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #22d3ee;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #1e3a52;
-}
-
-/* Transaction Cards */
-.tx-card {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    margin-bottom: 10px;
-    overflow: hidden;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.tx-card:active {
-    transform: scale(0.99);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-}
-.tx-card.open {
-    border-left: 4px solid #e6a817;
-}
-.tx-card.in {
-    border-left: 4px solid #10b981;
-}
-.tx-card.out {
-    border-left: 4px solid #f43f5e;
-}
-.tx-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    background: #0a1929;
-    border-bottom: 1px solid #1e3a52;
-}
-.tx-date {
-    font-size: 13px;
-    font-weight: 600;
-    color: #fff;
-}
-.tx-type {
-    font-size: 11px;
-    padding: 3px 8px;
-    border-radius: 10px;
-    background: #1e3a52;
-    color: #22d3ee;
-}
-.tx-body {
-    padding: 10px 12px;
-}
-.tx-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 0;
-    font-size: 12px;
-    border-bottom: 1px solid rgba(30, 58, 82, 0.4);
-}
-.tx-row:last-child {
-    border-bottom: none;
-}
-.tx-lbl {
-    color: #94a3b8;
-    flex: 0 0 110px;
-}
-.tx-in {
-    color: #10b981;
-    font-weight: 600;
-}
-.tx-out {
-    color: #f43f5e;
-    font-weight: 600;
-}
-.tx-bal {
-    color: #22d3ee;
-    font-weight: 700;
-    font-size: 13px;
-}
-
-/* Empty State */
-.card {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    padding: 14px;
-    text-align: center;
-    color: #94a3b8;
-    font-size: 13px;
-}
-.card.err {
-    border-color: #c0392b;
-    color: #ff6b5e;
-}
-
-/* Bottom Navigation */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #0b1d2b;
-    border-top: 1px solid #1e3a52;
-    padding: 10px;
-    display: flex;
-    justify-content: space-around;
-    z-index: 100;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
-}
-.bottom-nav a {
-    color: #94a3b8;
-    text-decoration: none;
-    font-size: 11px;
-    text-align: center;
-    flex: 1;
-    padding: 6px 0;
-    border-radius: 6px;
-    transition: all 0.2s;
-}
-.bottom-nav a:active {
-    background: rgba(34, 211, 238, 0.1);
-}
-.bottom-nav a.active {
-    color: #22d3ee;
-    font-weight: 700;
-}
-
-/* Loading Spinner */
-.spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 2px solid #1e3a52;
-    border-top-color: #22d3ee;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Responsive */
-@media (min-width: 768px) {
-    body {
-        max-width: 600px;
-        margin: 0 auto;
-    }
-}
+:root{--bg:#020812;--card:#0a1624;--card2:#0d1e30;--line:#16324a;--txt:#e6eef5;--mut:#7f96aa;--acc:#22b8cf;--acc2:#0e7490;--in:#2e9e4f;--out:#e0573f;--warn:#d9822b;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Roboto,"Segoe UI",sans-serif;font-size:15px}
+.app{max-width:560px;margin:0 auto;padding:12px 12px calc(84px + env(safe-area-inset-bottom))}
+.hero{background:linear-gradient(135deg,#0b5566,#06222c 70%);border-radius:18px;padding:18px 18px 16px;margin-bottom:12px}
+.hero h1{margin:0;font-size:22px;color:var(--acc)}
+.hero p{margin:6px 0 0;color:#9db2c2;font-size:13px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin:0 4px 10px;font-size:12px;color:var(--mut)}
+.pill{background:#10283c;color:var(--acc);border-radius:99px;padding:5px 12px;font-weight:600}
+.pill.off{background:#3b2410;color:#f5a14a}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:13px;font-weight:600;color:#9db2c2;margin:10px 0 5px}
+select,input[type=date],input[type=search]{width:100%;padding:12px;background:#050d16;color:var(--txt);border:1px solid var(--line);border-radius:10px;font-size:15px}
+select:focus,input:focus{outline:0;border-color:var(--acc)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#btnLoad{width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:var(--acc2);color:#fff;font-weight:700;font-size:15px}
+#btnLoad:disabled{opacity:.6}
+.msg{border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:13px;line-height:1.4}
+.msg.ok{background:#0c2a1a;color:#7ee2a0;border:1px solid #1b5a36}
+.msg.err{background:#331414;color:#ff9b8a;border:1px solid #6b2a2a}
+.hidden{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.card.err{color:#ff9b8a}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sum-card{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px}
+.sum-card.in{border-left:4px solid var(--in)}.sum-card.out{border-left:4px solid var(--out)}.sum-card.end{border-left:4px solid var(--acc)}
+.sum-lbl{font-size:11px;color:var(--mut);text-transform:uppercase;letter-spacing:.4px}
+.sum-val{font-size:17px;font-weight:700;margin-top:3px;word-break:break-all}
+.section-title{font-weight:700;margin:14px 2px 8px;color:#9db2c2;font-size:13px}
+.tx-card{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--line);border-radius:12px;margin-bottom:8px;overflow:hidden}
+.tx-card.in{border-left-color:var(--in)}.tx-card.out{border-left-color:var(--out)}.tx-card.open{border-left-color:var(--acc)}
+.tx-head{display:flex;justify-content:space-between;padding:9px 12px;background:var(--card2);font-size:13px;font-weight:600}
+.tx-body{padding:8px 12px}
+.tx-row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px}
+.tx-lbl{color:var(--mut);flex:0 0 auto}.tx-row span:last-child{text-align:right;word-break:break-word}
+.tx-in{color:var(--in);font-weight:600}.tx-out{color:var(--out);font-weight:600}.tx-bal{color:var(--acc)}
+details summary{cursor:pointer;color:var(--mut)}
+pre{background:#050d16;border:1px solid var(--line);border-radius:8px;padding:8px;color:#9db2c2}
+.nav{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:space-around;background:#08121d;border-top:1px solid var(--line);padding:10px 0 calc(10px + env(safe-area-inset-bottom))}
+.nav a{color:var(--mut);text-decoration:none;font-size:12px;text-align:center;flex:1}
+.nav a.on{color:var(--acc);font-weight:700}
 </style>
 </head>
 <body>
-<div class="header">
-    <h1>📦 Kartu Stok</h1>
-    <p>Monitoring mutasi stok per gudang</p>
-</div>
+<div class="app">
+    <div class="hero">
+        <h1>📦 Kartu Stok</h1>
+        <p>Monitoring mutasi stok per gudang</p>
+    </div>
 
-<div class="status-bar">
-    <span class="pill" id="pillNet">online</span>
-    <span style="font-size:11px;color:#64748b;">Stock Card Mobile v1.0</span>
-</div>
+    <div class="bar"><span id="pillNet" class="pill">online</span><span>Stock Card Mobile v2.0</span></div>
 
-<div id="msg" class="msg hidden"></div>
+    <div id="msg" class="msg hidden"></div>
 
-<div class="filter-card">
-    <div class="filter-row">
+    <div class="panel">
         <label for="fWh">🏭 Gudang</label>
-        <select id="fWh">
-            <option value="0">-- Memuat gudang... --</option>
-        </select>
-    </div>
-    <div class="filter-row">
+        <select id="fWh"><option value="0">-- Memuat gudang... --</option></select>
+
         <label for="fItem">📦 Material</label>
-        <select id="fItem">
-            <option value="">-- Pilih gudang dulu --</option>
-        </select>
-    </div>
-    <div class="date-row">
-        <div class="filter-row">
-            <label for="fFrom">📅 Dari</label>
-            <input type="date" id="fFrom">
+        <select id="fItem"><option value="">-- Pilih gudang dulu --</option></select>
+
+        <div class="row2">
+            <div><label for="fFrom">📅 Dari</label><input type="date" id="fFrom"></div>
+            <div><label for="fTo">📅 Sampai</label><input type="date" id="fTo"></div>
         </div>
-        <div class="filter-row">
-            <label for="fTo">📅 Sampai</label>
-            <input type="date" id="fTo">
-        </div>
+        <button id="btnLoad" type="button">Tampilkan</button>
     </div>
-    <button class="btn-load" id="btnLoad">Tampilkan</button>
+
+    <div id="resultBox"></div>
+    <noscript><div class="msg err">JavaScript harus aktif untuk memakai halaman ini.</div></noscript>
 </div>
 
-<div id="resultBox"></div>
+<nav class="nav">
+<?php foreach ($NAV as $n): ?>
+    <a href="<?php echo htmlspecialchars($n['href']); ?>"<?php echo $n['active'] ? ' class="on"' : ''; ?>><?php echo $n['icon']; ?><br><?php echo htmlspecialchars($n['label']); ?></a>
+<?php endforeach; ?>
+</nav>
 
-<div class="bottom-nav">
-    <a href="dashboard.php">🏠 Dashboard</a>
-    <a href="stock.card.m.php" class="active">📦 Stok</a>
-    <a href="project.progress.m.php">📊 Progress</a>
-</div>
-
+<!-- penangkap error: di HP tidak ada console, jadi error JS ditampilkan di layar -->
 <script>
-window.APP_BASE_URL = '<?php echo $B; ?>/';
+function scShowErr(t){var m=document.getElementById('msg');if(m){m.className='msg err';m.textContent=t;}}
+window.addEventListener('error',function(e){if(e&&e.message)scShowErr('Error JS: '+e.message+' ('+String(e.filename||'').split('/').pop()+':'+e.lineno+')');});
+window.SC_CFG = <?php echo json_encode($cfg, JSON_UNESCAPED_SLASHES); ?>;
 </script>
-<script src="<?php echo $B; ?>/js/stock.card.m.js"></script>
+<script src="<?php echo htmlspecialchars($jsSrc); ?>" onerror="scShowErr('File JS gagal dimuat: <?php echo htmlspecialchars($jsSrc); ?>')"></script>
 </body>
 </html>
