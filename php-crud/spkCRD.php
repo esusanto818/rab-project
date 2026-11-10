@@ -8,7 +8,7 @@
  *
  * Status : Draft -> Diterbitkan -> Selesai ; Dibatalkan (dari Draft / Diterbitkan yang belum dipakai issue)
  * Action : list | detail | lookup_projects | lookup_materials | quota | save | issue | close | cancel | delete
- * Akses  : buat / ubah >= 2 ; terbitkan / tutup / batalkan / hapus >= 3 ($_SESSION['FormAccess'])
+ * Akses  : buat / ubah >= 2 (ubah form tersimpan perlu 3) ; terbitkan / tutup / batalkan >= 3 ; hapus >= 4
  */
 ob_start();
 ini_set('display_errors', '0');
