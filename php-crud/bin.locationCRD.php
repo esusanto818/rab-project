@@ -11,7 +11,7 @@ require_once __DIR__ . '/../php-class/crudClass.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
+if (!isset($_SESSION["user_id"]) || !is_numeric($_SESSION["user_id"]) || (int)$_SESSION["user_id"] <= 0) {
     http_response_code(401);
     echo json_encode(["success" => false, "message" => "Session expired. Silakan login kembali."]);
     exit;
@@ -138,8 +138,9 @@ switch ($task) {
     // ------------------------------------------------------------
     case 'update':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 2) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+        if ($access < 3) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Akses ubah tidak tersedia.']);
             exit;
         }
         $id = intval($_POST['id'] ?? 0);
@@ -155,8 +156,9 @@ switch ($task) {
     // ------------------------------------------------------------
     case 'delete':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 3) {
-            echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
+        if ($access < 4) {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Akses hapus tidak tersedia.']);
             exit;
         }
         $id = intval($_POST['id'] ?? 0);
