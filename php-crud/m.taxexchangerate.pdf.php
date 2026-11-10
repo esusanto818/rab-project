@@ -9,6 +9,13 @@ if (!isset($_SESSION)) {
 }
 date_default_timezone_set('Asia/Jakarta');
 
+// PDF kurs pajak tetap mengikuti autentikasi dan hak baca menu Master Kurs Pajak.
+require_once __DIR__ . '/../php-func/user.valid.php';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    exit('Anda tidak memiliki hak baca Master Kurs Pajak.');
+}
+
 require_once 'db_connection.PHP';
 
 $hdrId = intval($_GET['id'] ?? $_REQUEST['id'] ?? 0);
