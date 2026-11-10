@@ -22,9 +22,10 @@ define('ISSUE_ALLOWANCE_PCT', 5.0);
 define('ISSUE_REF_TYPE', 'MATERIAL_OUT');    
 define('ISSUE_TYPE_RETURN', 'SUPPLIER_RETURN');   
 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $action = WhReq('action', 'list');
 
-$stockUserId = WhUserId();
+$stockUserId = (int)($_SESSION['user_id'] ?? 0);
 if (!$stockUserId || $stockUserId <= 0) {
     http_response_code(401);
     WhFail('Sesi berakhir, silakan login kembali.');
@@ -34,6 +35,7 @@ $stockRequired = 1;
 if ($action === 'save') $stockRequired = 2;
 if ($action === 'upload_proof') $stockRequired = 2;
 if ($action === 'deliver') $stockRequired = 3;
+if ($action === 'prepare') $stockRequired = 3;
 if ($action === 'reverse') $stockRequired = 4;
 if ($action === 'backfill_return_journal') $stockRequired = 4;
 if ($stockAccess < $stockRequired) {
