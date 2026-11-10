@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include_once "../php-class/crudClass.php";
 
-$offset=($_POST["start"]==null)? 0 : $_POST["start"];
+$offset = max(0, intval($_POST["start"] ?? 0));
 
 $task = $_POST['task'] ?? 'read';
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
@@ -20,7 +20,7 @@ if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
 
 switch ($task){
 	case ('read'):
-    $sResult=searchData($_POST["query"],array("item_name","size","type_group","grade","wood"),250);
+    $sResult=searchData($_POST["query"] ?? "",array("item_name","size","type_group","grade","wood"),250);
     $limit=$sResult["limit"];
     $searchField=$sResult["searchSQL"];
 		$db = new crud();
@@ -57,6 +57,16 @@ switch ($task){
 		echo $result;
 	break;
   case ('readDetail'):
+    $itemId = filter_var($_POST['item_id'] ?? null, FILTER_VALIDATE_INT);
+    $gradeId = filter_var($_POST['grade_id'] ?? null, FILTER_VALIDATE_INT);
+    $woodId = filter_var($_POST['wood_id'] ?? null, FILTER_VALIDATE_INT);
+    if ($itemId === false || $itemId === null || $itemId <= 0
+        || $gradeId === false || $gradeId === null || $gradeId < 0
+        || $woodId === false || $woodId === null || $woodId < 0) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Parameter detail persediaan tidak valid.']);
+        exit;
+    }
     $db = new crud();
     $field  = "*";
     $table = "
@@ -76,21 +86,25 @@ switch ($task){
             left join item_grade g on coalesce(b.grade_id,0)=coalesce(g.id,0)
             left join m_wood_type wo on coalesce(b.wood_type_id,0)=coalesce(wo.id,0)
             left join view_warehouse_name_init w on w.warehouse_id=b.warehouse_id
-            where coalesce(b.item_id,0)=".$_POST['item_id']." 
-              and coalesce(b.grade_id,0)=".$_POST['grade_id']." 
-              and coalesce(b.wood_type_id,0)=".$_POST['wood_id']."
+            where coalesce(b.item_id,0)=".$itemId." 
+              and coalesce(b.grade_id,0)=".$gradeId." 
+              and coalesce(b.wood_type_id,0)=".$woodId."
             order by i.type_group,i.item_name,i.size,g.name,w.location_name||' ~ '||w.warehouse_name
           ) d
         group by type_group,item_id,item_name,size,um_unit,um_packing,grade,grade_id,id_no,warehouse,wood,coalesce(wood_type_id,0)
      )dt
     ";
     $where = "(balance_qty<>0 or balance_packing<>0 or balance_volume<>0) 
-      and item_id=".$_POST['item_id']." and coalesce(grade_id,0)=coalesce(".$_POST['grade_id'].",0) 
-      and coalesce(wood_type_id,0)=coalesce(".$_POST['wood_id'].",0)";
+      and item_id=".$itemId." and coalesce(grade_id,0)=coalesce(".$gradeId.",0) 
+      and coalesce(wood_type_id,0)=coalesce(".$woodId.",0)";
     $order = "warehouse, coalesce(id_no,'')";
     $db->select('data',$table,$field,$where,$order,$limit, $offset);
     $result = $db->getResult();
     echo $result;
+  break;
+  default:
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Task tidak dikenali.']);
   break;
 }
 ?>

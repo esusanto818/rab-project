@@ -52,7 +52,7 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_S
 $grnAccess = (int)($_SESSION['FormAccess'] ?? 0);
 $grnRequired = 1;
 if ($task === 'create') $grnRequired = 2;
-if ($task === 'update') $grnRequired = 2;
+if ($task === 'update') $grnRequired = 3;
 if ($task === 'delete') $grnRequired = 4;
 if ($grnAccess < $grnRequired) {
     http_response_code(403);

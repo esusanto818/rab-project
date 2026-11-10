@@ -8,7 +8,7 @@
  *
  * Status : Draft -> Diterbitkan -> Selesai ; Dibatalkan (dari Draft / Diterbitkan yang belum dipakai issue)
  * Action : list | detail | lookup_projects | lookup_materials | quota | save | issue | close | cancel | delete
- * Akses  : buat / ubah >= 2 ; terbitkan / tutup / batalkan / hapus >= 3 ($_SESSION['FormAccess'])
+ * Akses  : buat / ubah >= 2 (ubah form tersimpan perlu 3) ; terbitkan / tutup / batalkan >= 3 ; hapus >= 4
  */
 ob_start();
 ini_set('display_errors', '0');
@@ -19,6 +19,7 @@ require_once '../php-func/function.spk.php';
 
 define('SPK_ACCESS_EDIT', 2);
 define('SPK_ACCESS_ACTION', 3);
+define('SPK_ACCESS_DELETE', 4);
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $spkUserId = (int)($_SESSION['user_id'] ?? 0);
@@ -296,7 +297,7 @@ function SpkCancel() {
 
 function SpkDelete() {
     WhRequirePost();
-    SpkNeed(SPK_ACCESS_ACTION, 'Anda tidak memiliki hak akses untuk menghapus SPK.');
+    SpkNeed(SPK_ACCESS_DELETE, 'Anda tidak memiliki hak akses untuk menghapus SPK.');
     $id = (int)WhPost('id');
     WhQ('BEGIN');
     $s = SpkGet($id, true);
