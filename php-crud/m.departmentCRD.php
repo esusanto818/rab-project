@@ -2,7 +2,9 @@
 // add w/h id for direct update univ from production
 // alter table department_section add column warehouse_id bigint
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include_once "../php-class/crudClass.php";
 include_once "../php-func/function.all.php";
 
