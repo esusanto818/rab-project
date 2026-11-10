@@ -26,6 +26,7 @@ if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
 }
 
 $task = $_POST['task'] ?? $_REQUEST['task'] ?? 'read_trial_balance';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak baca neraca saldo tidak tersedia.']); exit; }
 $db   = new crud();
 
 switch ($task) {
