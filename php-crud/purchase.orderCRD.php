@@ -41,7 +41,7 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_S
 }
 $requiredAccess = 1;
 if (in_array($task, ['create', 'add', 'save'], true)) $requiredAccess = 2;
-if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 2;
+if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 3;
 if (in_array($task, ['delete'], true)) $requiredAccess = 4;
 if ((int)($_SESSION['FormAccess'] ?? 0) < $requiredAccess) {
     http_response_code(403);
@@ -453,7 +453,7 @@ switch ($task) {
                         "disc_item"         => floatval(str_replace(",", "", $item->disc_item ?? 0)),
                         "disc_item_percent" => $item->disc_item_percent ?? 'false'
                     );
-                    $where  = "id = " . $poDtlId;
+                    $where  = "id = " . $poDtlId . " AND po_hdr_id = " . $poId;
                     $queryC .= updateQ($table, $data, $where) . ";";
                 }
             }
@@ -481,7 +481,7 @@ switch ($task) {
                         "amount"     => floatval(str_replace(",", "", $cost->amount ?? 0)),
                         "po_include" => $cost->po_include ?? 'false'
                     );
-                    $where  = "id = " . $poCostId;
+                    $where  = "id = " . $poCostId . " AND po_id = " . $poId;
                     $queryC .= updateQ($table, $data, $where) . ";";
                 }
             }
