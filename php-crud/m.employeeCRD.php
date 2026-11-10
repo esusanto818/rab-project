@@ -19,8 +19,8 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_S
 }
 $requiredAccess = 1;
 if (in_array($task, ['create', 'add', 'save'], true)) $requiredAccess = 2;
-if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 3;
-if (in_array($task, ['delete'], true)) $requiredAccess = 4;
+if (in_array($task, ['update', 'edit'], true)) $requiredAccess = 2;
+if (in_array($task, ['delete'], true)) $requiredAccess = 3;
 if ((int)($_SESSION['FormAccess'] ?? 0) < $requiredAccess) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi ini.']);
