@@ -854,7 +854,13 @@ case 'read_project_ai':
             $st->execute([':pid' => $pid]);
             $row = $st->fetch(PDO::FETCH_ASSOC);
             if (!$row) {
-                out(['success' => false, 'message' => 'Belum ada hasil analisis tersimpan untuk proyek ini. Pengguna dengan level 3 pada menu Pembayaran Proyek dapat menjalankan Analisis Ulang.']);
+                if ($aiAccessLevel >= 3) {
+                    // Pengguna berhak boleh membuat analisis pertama saat membuka panel.
+                    $result = dash_run_analysis($db, $pid, false, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
+                    $result['can_refresh'] = true;
+                    out(['success' => true, 'data' => $result]);
+                }
+                out(['success' => false, 'message' => 'Belum ada hasil analisis tersimpan. Minta pengguna dengan level 3 pada menu Pembayaran Proyek untuk membuat analisis pertama.']);
             }
 
             $result = [];
