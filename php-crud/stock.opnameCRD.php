@@ -30,9 +30,10 @@ define('SO_REQUIRE_OTHER_APPROVER', false);             // true = penyetuju haru
 define('SO_EPS', 0.00005);
 
 $SO_REASONS = array('Salah Hitung / Salah Catat', 'Rusak', 'Hilang / Susut', 'Kelebihan Penerimaan', 'Salah Pengeluaran', 'Lainnya');
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $action = WhReq('action', 'list');
 
-$stockUserId = WhUserId();
+$stockUserId = (int)($_SESSION['user_id'] ?? 0);
 if (!$stockUserId || $stockUserId <= 0) {
     http_response_code(401);
     WhFail('Sesi berakhir, silakan login kembali.');
