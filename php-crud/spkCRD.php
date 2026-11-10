@@ -19,6 +19,7 @@ require_once '../php-func/function.spk.php';
 
 define('SPK_ACCESS_EDIT', 2);
 define('SPK_ACCESS_ACTION', 3);
+define('SPK_ACCESS_DELETE', 4);
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $spkUserId = (int)($_SESSION['user_id'] ?? 0);
