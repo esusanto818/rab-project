@@ -17,6 +17,7 @@ require_once '../php-func/function.all.php';
 require_once '../php-class/crudClass.php';
 require_once '../php-func/function.stock.php';
 
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $action = WhReq('action', 'card');
 
 $stockCardUserId = (int)($_SESSION['user_id'] ?? 0);
