@@ -42,7 +42,9 @@
          - create: kolom created_by ikut diisi dari sesi (kolom sudah ada di tabel, sebelumnya kosong)
            supaya nama penerima tampil di cetakan. */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 if (file_exists('../php-func/function.all.php')) {
     require_once('../php-func/function.all.php');
