@@ -1,29 +1,30 @@
 /*
-Document      : stock.card.m.js
-Description   : Stock Card Mobile (read-only monitoring stok per gudang/item/periode)
-                Vanilla JS + PWA (tanpa ExtJS)
-Backend       : ../php-crud/stock.cardCRD.php
-Service Worker: sw.stockcard.js  (taruh di root aplikasi, sejajar views/ dan php-crud/)
-View          : ../views/stock.card.m.php
+Document      : stock.card.m.js   (v2.0)
+Description   : Stock Card Mobile - monitoring stok per gudang/item/periode, BISA OFFLINE.
+                Vanilla JS (tanpa ExtJS). Dimuat oleh views/stock.card.m.php.
+Backend       : php-crud/stock.cardCRD.php  (action: lookup_warehouses | lookup_items | card | snapshot)
+Service Worker: sw.stockcard.js (root aplikasi)
 
-[REVISI 2026-11-10]
-1. Perbaikan "list gudang kosong di HP":
-   - Base URL tidak lagi percaya mentah pada window.APP_BASE_URL. Kalau origin-nya beda dengan
-     halaman yang sedang dibuka (mis. 'localhost' / IP lain), dipakai URL relatif terhadap halaman.
-   - fetch pakai cache:'no-store' + parameter anti-cache.
-   - Pesan error tidak lagi selalu "Offline"; ada panel "Diagnostik koneksi" yang bisa dibuka di HP.
-2. Mode offline untuk PIC proyek:
-   - Tombol "Sinkron" mengunduh snapshot gudang (material + saldo awal + mutasi N hari) ke IndexedDB.
-   - Tanpa sinyal / timeout, kartu stok dihitung lokal dari snapshot.
-   - Service Worker menyimpan halaman + JS/CSS supaya aplikasi bisa dibuka tanpa sinyal (butuh HTTPS).
-   - Data server selalu diutamakan saat online; data offline hanya fallback dan diberi label.
+Semua URL (backend, service worker, scope, versi) datang dari window.SC_CFG yang ditulis
+oleh view PHP, jadi tidak ada path yang ditebak di sisi browser.
+
+Alur offline:
+  - Saat online : data selalu dari server (live).
+  - Tombol "Sinkron": unduh snapshot gudang (material, saldo awal, mutasi N hari) ke IndexedDB.
+  - Tanpa sinyal / timeout: kartu stok dihitung lokal dari snapshot, diberi label "DATA OFFLINE".
+  - Service Worker menyimpan halaman + JS agar aplikasi terbuka tanpa sinyal (butuh HTTPS).
 */
 (function () {
 'use strict';
 
-var CRD_FILE = 'php-crud/stock.cardCRD.php';
-var SW_FILE = 'sw.stockcard.js';
-var SHELL_VER = '1';
+var CFG = window.SC_CFG || {};
+function absUrl(u, fallback) {
+    try { return new URL(u || fallback, location.href).href; } catch (e) { return new URL(fallback, location.href).href; }
+}
+var CRD = absUrl(CFG.crd, '../php-crud/stock.cardCRD.php');
+var SW_URL = absUrl(CFG.sw, '../sw.stockcard.js');
+var SW_SCOPE = absUrl(CFG.scope, '../');
+var SHELL_VER = String(CFG.ver || '1');
 
 var LS_LAST_RESULT = 'scm_last_result_cache';
 var DB_NAME = 'stockCardMobile';
@@ -77,30 +78,6 @@ function ageText(s) {
     return Math.floor(h / 24) + ' hari lalu';
 }
 
-// ============================================================
-// 1. Base URL  [FIX: jangan percaya APP_BASE_URL yang beda origin]
-// ============================================================
-function resolveBase() {
-    var b = window.APP_BASE_URL || '';
-    if (b) {
-        try {
-            var u = new URL(b, location.href);
-            if (u.origin !== location.origin) {
-                // mis. APP_BASE_URL = http://localhost/app/ tapi halaman dibuka via 127.0.0.1 atau IP LAN:
-                // pakai PATH-nya saja, host mengikuti halaman yang sedang dibuka
-                console.warn('[StockCard.m] APP_BASE_URL (' + b + ') beda origin dengan halaman (' + location.origin + '); pakai path-nya saja.');
-            }
-            return location.origin + u.pathname.replace(/\/?$/, '/');
-        } catch (e) {}
-    }
-    // halaman ada di <root>/views/stock.card.m.php  ->  root = ../
-    return new URL('../', location.href).href;
-}
-var APP_BASE = resolveBase();
-// Override eksplisit bila perlu: di view tulis  window.STOCKCARD_CRD_URL = '/rab-project/xxx/php-crud/stock.cardCRD.php';
-var CRD = window.STOCKCARD_CRD_URL
-    ? new URL(window.STOCKCARD_CRD_URL, location.href).href
-    : APP_BASE + CRD_FILE;
 console.info('[StockCard.m] Backend:', CRD);
 
 // ============================================================
@@ -159,7 +136,7 @@ function cacheList(prefix) {
 // ============================================================
 function isNetFail(e) { return !!(e && (e.offline || (e.http && e.http >= 500))); }
 
-function apiOnce(params, opt) {
+function api(params, opt) {
     opt = opt || {};
     var p = {}, k;
     for (k in params) { if (params.hasOwnProperty(k)) p[k] = params[k]; }
@@ -179,7 +156,7 @@ function apiOnce(params, opt) {
     var timedOut = false;
     var timer = setTimeout(function () { timedOut = true; if (ctl) ctl.abort(); }, opt.timeout || 20000);
 
-    return fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+    return fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { 'ngrok-skip-browser-warning': '1' }, signal: ctl ? ctl.signal : undefined })
         .then(function (r) {
             lastDiag.status = r.status + ' ' + r.statusText;
             return r.text().then(function (txt) {
@@ -190,7 +167,7 @@ function apiOnce(params, opt) {
                 }
                 var json = null;
                 try { json = JSON.parse(txt); } catch (e) {}
-                if (json && typeof json === 'object') { crdConfirmed = true; return json; }
+                if (json && typeof json === 'object') return json;
                 if (!r.ok) return Promise.reject({ http: r.status, message: 'Server error (' + r.status + ').' });
                 return Promise.reject({ notJson: true,
                     message: 'Respons server bukan JSON (sesi login habis atau URL backend salah). Lihat "Diagnostik koneksi".' });
@@ -205,31 +182,6 @@ function apiOnce(params, opt) {
                     'Tidak bisa terhubung ke server. Lihat "Diagnostik koneksi".' });
         })
         .then(function (r) { renderDiag(); return r; }, function (e) { renderDiag(); return Promise.reject(e); });
-}
-
-// Auto-temukan folder php-crud bila 404: coba naik satu folder demi satu dari lokasi halaman
-// (mis. /rab-project/dev/views/ -> /rab-project/dev/ -> /rab-project/ -> /). Tidak aktif bila
-// window.STOCKCARD_CRD_URL diisi eksplisit atau backend sudah pernah menjawab JSON.
-var crdConfirmed = !!window.STOCKCARD_CRD_URL;
-var crdTried = {};
-crdTried[CRD] = true;
-function nextCrdCandidate() {
-    var parts = location.pathname.replace(/[^\/]*$/, '').split('/').filter(Boolean);
-    while (true) {
-        var cand = location.origin + '/' + parts.join('/') + (parts.length ? '/' : '') + CRD_FILE;
-        if (!crdTried[cand]) { crdTried[cand] = true; return cand; }
-        if (!parts.length) return null;
-        parts.pop();
-    }
-}
-function api(params, opt) {
-    return apiOnce(params, opt).catch(function (e) {
-        if (!crdConfirmed && e && (e.http === 404 || e.notJson)) {
-            var next = nextCrdCandidate();
-            if (next) { console.info('[StockCard.m] Coba backend:', next); CRD = next; return api(params, opt); }
-        }
-        return Promise.reject(e);
-    });
 }
 
 function showMsg(t, type) {
@@ -252,7 +204,7 @@ function renderDiag() {
     el.textContent =
         'Halaman      : ' + location.href + '\n' +
         'Backend      : ' + CRD + '\n' +
-        'APP_BASE_URL : ' + (window.APP_BASE_URL || '(kosong)') + '\n' +
+        'Service Worker: ' + SW_URL + '\n' +
         'HTTPS/aman   : ' + (window.isSecureContext ? 'ya' : 'TIDAK (offline app tidak bisa aktif)') + '\n' +
         'navigator.onLine : ' + navigator.onLine + '\n' +
         'Request akhir: ' + lastDiag.url + '\n' +
@@ -645,7 +597,7 @@ function setupServiceWorker() {
     }
     if (!('serviceWorker' in navigator)) { st('Browser ini tidak mendukung Service Worker.', false); return; }
 
-    navigator.serviceWorker.register(APP_BASE + SW_FILE, { scope: APP_BASE }).then(function () {
+    navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE }).then(function () {
         return navigator.serviceWorker.ready;
     }).then(function (reg) {
         var done = false;
@@ -672,7 +624,7 @@ function setupServiceWorker() {
         reg.active.postMessage({ type: 'precache', urls: urls }, [ch.port2]);
     }).catch(function (e) {
         st('Service Worker gagal aktif: ' + ((e && e.message) || e) +
-           ' - pastikan ' + APP_BASE + SW_FILE + ' bisa dibuka di browser dan bertipe JavaScript.', false);
+           ' - pastikan ' + SW_URL + ' bisa dibuka di browser dan bertipe JavaScript.', false);
     });
 }
 
