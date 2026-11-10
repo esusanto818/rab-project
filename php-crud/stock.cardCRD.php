@@ -19,8 +19,8 @@ require_once '../php-func/function.stock.php';
 
 $action = WhReq('action', 'card');
 
-$stockCardUserId = WhUserId();
-if (!$stockCardUserId || (int)$stockCardUserId <= 0) {
+$stockCardUserId = (int)($_SESSION['user_id'] ?? 0);
+if ($stockCardUserId <= 0) {
     http_response_code(401);
     WhFail('Sesi berakhir, silakan login ulang.');
 }
