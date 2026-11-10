@@ -799,6 +799,7 @@ try {
 const res = await fetch(`${API_ENDPOINT}?action=read_tax_rates`);
 const json = await res.json();
 if (json.success) {
+document.getElementById('btn_sync_tax').style.display = json.can_sync ? '' : 'none';
 badge.innerText = json.kmk_number !== '-' ? `KMK: ${json.kmk_number}` : 'Kosong';
 if (json.start_date && json.end_date) validDateEl.innerText = `(${json.start_date} s/d ${json.end_date})`;
 else if (json.valid_date) validDateEl.innerText = `(${json.valid_date})`;
