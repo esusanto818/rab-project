@@ -67,7 +67,7 @@ Kebijakan level hak akses yang dipakai:
 
 ## Temuan yang masih perlu dituntaskan sebelum dinyatakan selesai
 
-1. Audit menyeluruh 62 endpoint PHP di `php-crud/` masih perlu diselesaikan per operasi, termasuk pemetaan setiap endpoint ke menu induk dan pemeriksaan object-level authorization.
+1. Inventaris awal seluruh 62 endpoint PHP di `php-crud/` telah dilakukan. Audit mendalam per operasi dan pemeriksaan object-level authorization untuk modul-modul selain kasus PO yang sudah diperbaiki masih perlu diselesaikan.
 2. `inventory.status.php` bukan nama standar berakhiran `CRD.php`, sehingga tidak otomatis cocok dengan pemetaan endpoint standar di router. Perlu ditelusuri apakah endpoint ini masih dipakai; jangan menambahkan alias tanpa memastikan menu induknya.
 3. `router.php` memiliki pengecualian otorisasi menu untuk `dashboardCRD.php`. File tersebut memeriksa login dan memiliki pemeriksaan hak khusus untuk sinkronisasi kurs pajak, tetapi semua action dashboard perlu dipastikan hanya baca atau memiliki pemeriksaan khusus yang sesuai.
 4. `.htaccess` sementara mengizinkan akses fisik file view. View utama yang diperiksa, `views/dashboard.php`, memeriksa sesi login; audit perlu memastikan seluruh view yang dapat diakses langsung melakukan pemeriksaan yang tepat.
@@ -76,3 +76,17 @@ Kebijakan level hak akses yang dipakai:
 ## Status rilis
 
 **Patch berada di branch dev untuk audit dan pengujian. Jangan merge atau publish ke main sebelum seluruh temuan terselesaikan dan seluruh pengujian dinyatakan lulus.**
+
+## Referensi commit patch
+
+| File | Commit |
+|---|---|
+| `php-crud/bin.locationCRD.php` | `4f0772045e8d2e26624e266b54c24e6c67623475` |
+| `php-crud/purchase.orderCRD.php` | `9c5e376245b0742654cf0b03df7b4dd8fde965db` |
+| `php-crud/inventory.status.php` | `9f6cae05dc76f785900a0730de5c772dfa129835` |
+| `php-crud/clientsCRD.php` | `6882998994fe09dd779d21e8ee36dc9302e652ce` |
+| `php-crud/spkCRD.php` | `88bebb4f2430b511fade01025d2731f1511244fe` |
+| `php-crud/project.wipreleaseCRD.php` | `778da9141bd51453fe31ac8aabfc8872840f17bc` |
+| Dokumen patch | `d35aa528deaddd2f4a1a0b2ca1878f7c240cdcfe` |
+
+HEAD branch dev setelah pencatatan dokumen: `d35aa528deaddd2f4a1a0b2ca1878f7c240cdcfe`.
