@@ -85,8 +85,8 @@ Kebijakan level hak akses yang dipakai:
 | `php-crud/purchase.orderCRD.php` | `9c5e376245b0742654cf0b03df7b4dd8fde965db` |
 | `php-crud/inventory.status.php` | `9f6cae05dc76f785900a0730de5c772dfa129835` |
 | `php-crud/clientsCRD.php` | `6882998994fe09dd779d21e8ee36dc9302e652ce` |
-| `php-crud/spkCRD.php` | `88bebb4f2430b511fade01025d2731f1511244fe` |
+| `php-crud/spkCRD.php` | `006691549f66027d4927ae9116b3d1415d45f908` (level 4 delete guard) |
 | `php-crud/project.wipreleaseCRD.php` | `778da9141bd51453fe31ac8aabfc8872840f17bc` |
 | Dokumen patch | `d35aa528deaddd2f4a1a0b2ca1878f7c240cdcfe` |
 
-HEAD branch dev setelah pencatatan dokumen: `d35aa528deaddd2f4a1a0b2ca1878f7c240cdcfe`.
+HEAD branch dev saat revisi dokumen ini: `006691549f66027d4927ae9116b3d1415d45f908` (akan bergerak saat dokumen revisi dikomit).
