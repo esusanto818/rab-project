@@ -77,6 +77,10 @@ if ($task === 'save_invoice' || $task === 'save_payment') {
 } elseif (in_array($task, ['cancel_invoice', 'cancel_payment'], true)) {
     $scInvRequired = 4;
 }
+// save_invoice melayani create dan update; update invoice Draft wajib level 3.
+if ($task === 'save_invoice' && (int)($_POST['id'] ?? 0) > 0) {
+    $scInvRequired = 3;
+}
 if ($scInvAccess < $scInvRequired) {
     http_response_code(403);
     sc_inv_send(false, [], 'Hak akses tidak mencukupi untuk operasi invoice subkontraktor ini.');
