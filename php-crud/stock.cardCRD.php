@@ -19,6 +19,17 @@ require_once '../php-func/function.stock.php';
 
 $action = WhReq('action', 'card');
 
+$stockCardUserId = WhUserId();
+if (!$stockCardUserId || (int)$stockCardUserId <= 0) {
+    http_response_code(401);
+    WhFail('Sesi berakhir, silakan login ulang.');
+}
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    WhFail('Anda tidak memiliki hak baca Kartu Stok.');
+}
+
+
 try {
     switch ($action) {
         case 'card':              CardLoad(); break;
