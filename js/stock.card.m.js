@@ -85,15 +85,23 @@ function resolveBase() {
     if (b) {
         try {
             var u = new URL(b, location.href);
-            if (u.origin === location.origin) return u.href.replace(/\/?$/, '/');
-            console.warn('[StockCard.m] APP_BASE_URL (' + b + ') beda origin dengan halaman (' + location.origin + '), diabaikan.');
+            if (u.origin !== location.origin) {
+                // mis. APP_BASE_URL = http://localhost/app/ tapi halaman dibuka via 127.0.0.1 atau IP LAN:
+                // pakai PATH-nya saja, host mengikuti halaman yang sedang dibuka
+                console.warn('[StockCard.m] APP_BASE_URL (' + b + ') beda origin dengan halaman (' + location.origin + '); pakai path-nya saja.');
+            }
+            return location.origin + u.pathname.replace(/\/?$/, '/');
         } catch (e) {}
     }
     // halaman ada di <root>/views/stock.card.m.php  ->  root = ../
     return new URL('../', location.href).href;
 }
 var APP_BASE = resolveBase();
-var CRD = APP_BASE + CRD_FILE;
+// Override eksplisit bila perlu: di view tulis  window.STOCKCARD_CRD_URL = '/rab-project/xxx/php-crud/stock.cardCRD.php';
+var CRD = window.STOCKCARD_CRD_URL
+    ? new URL(window.STOCKCARD_CRD_URL, location.href).href
+    : APP_BASE + CRD_FILE;
+console.info('[StockCard.m] Backend:', CRD);
 
 // ============================================================
 // 2. IndexedDB
@@ -151,7 +159,7 @@ function cacheList(prefix) {
 // ============================================================
 function isNetFail(e) { return !!(e && (e.offline || (e.http && e.http >= 500))); }
 
-function api(params, opt) {
+function apiOnce(params, opt) {
     opt = opt || {};
     var p = {}, k;
     for (k in params) { if (params.hasOwnProperty(k)) p[k] = params[k]; }
@@ -182,7 +190,7 @@ function api(params, opt) {
                 }
                 var json = null;
                 try { json = JSON.parse(txt); } catch (e) {}
-                if (json && typeof json === 'object') return json;
+                if (json && typeof json === 'object') { crdConfirmed = true; return json; }
                 if (!r.ok) return Promise.reject({ http: r.status, message: 'Server error (' + r.status + ').' });
                 return Promise.reject({ notJson: true,
                     message: 'Respons server bukan JSON (sesi login habis atau URL backend salah). Lihat "Diagnostik koneksi".' });
@@ -197,6 +205,31 @@ function api(params, opt) {
                     'Tidak bisa terhubung ke server. Lihat "Diagnostik koneksi".' });
         })
         .then(function (r) { renderDiag(); return r; }, function (e) { renderDiag(); return Promise.reject(e); });
+}
+
+// Auto-temukan folder php-crud bila 404: coba naik satu folder demi satu dari lokasi halaman
+// (mis. /rab-project/dev/views/ -> /rab-project/dev/ -> /rab-project/ -> /). Tidak aktif bila
+// window.STOCKCARD_CRD_URL diisi eksplisit atau backend sudah pernah menjawab JSON.
+var crdConfirmed = !!window.STOCKCARD_CRD_URL;
+var crdTried = {};
+crdTried[CRD] = true;
+function nextCrdCandidate() {
+    var parts = location.pathname.replace(/[^\/]*$/, '').split('/').filter(Boolean);
+    while (true) {
+        var cand = location.origin + '/' + parts.join('/') + (parts.length ? '/' : '') + CRD_FILE;
+        if (!crdTried[cand]) { crdTried[cand] = true; return cand; }
+        if (!parts.length) return null;
+        parts.pop();
+    }
+}
+function api(params, opt) {
+    return apiOnce(params, opt).catch(function (e) {
+        if (!crdConfirmed && e && (e.http === 404 || e.notJson)) {
+            var next = nextCrdCandidate();
+            if (next) { console.info('[StockCard.m] Coba backend:', next); CRD = next; return api(params, opt); }
+        }
+        return Promise.reject(e);
+    });
 }
 
 function showMsg(t, type) {
