@@ -74,7 +74,7 @@ switch ($task) {
     // ==============================================================
     case 'create':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 2) {
+        if ($access < 4) {
             echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Akses ditolak.']);
             exit;
         }
