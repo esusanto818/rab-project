@@ -56,7 +56,7 @@ try {
 
         /* [PERBAIKAN] satu tombol: posting jurnal yang kurang untuk dokumen stok yang belum berjurnal */
         case 'fix_missing_journals':
-            if (intval($_SESSION['FormAccess'] ?? 0) < 3) sendJsonResponse(false, [], 'Anda tidak memiliki hak akses untuk memproses perbaikan.');
+            if (intval($_SESSION['FormAccess'] ?? 0) < 4) { http_response_code(403); sendJsonResponse(false, [], 'Anda tidak memiliki hak akses untuk memproses perbaikan.'); }
             $asOf = (string)($_POST['as_of'] ?? date('Y-m-d'));
             $accId = (int)($_POST['account_id'] ?? 0);
             $fx = ir_fix_missing($db, $asOf, $accId);
