@@ -135,7 +135,7 @@ $task = $_REQUEST['task'] ?? '';
 
 $poAccess = (int)($_SESSION['FormAccess'] ?? 0);
 $poRequired = 1;
-if ($task === 'save_po') $poRequired = ((int)($_POST['id'] ?? 0) > 0) ? 3 : 2;
+if ($task === 'save_po') $poRequired = 2;
 if ($task === 'change_status') $poRequired = 3;
 if ($task === 'delete_po') $poRequired = 4;
 if ($poAccess < $poRequired) {
