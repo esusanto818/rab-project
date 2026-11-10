@@ -74,7 +74,7 @@ switch ($task) {
     // ==============================================================
     case 'create':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 4) {
+        if ($access < 2) {
             echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Akses ditolak.']);
             exit;
         }
@@ -106,7 +106,7 @@ switch ($task) {
     // ==============================================================
     case 'update':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 2) {
+        if ($access < 3) {
             echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Akses ditolak.']);
             exit;
         }
@@ -142,7 +142,7 @@ switch ($task) {
     // punya sub-akun sebaiknya tidak dihapus permanen, cukup nonaktifkan.
     case 'delete':
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 3) {
+        if ($access < 4) {
             echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Akses ditolak.']);
             exit;
         }
