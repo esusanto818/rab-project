@@ -54,3 +54,33 @@ Patch dibuat langsung pada branch **dev** repository `esusanto818/rab-project`. 
 
 ## Catatan rilis
 Patch ini hanya berada di branch `dev`. Jangan merge ke `main` sebelum audit endpoint yang tersisa, pengujian runtime, dan validasi hak akses per menu selesai.
+
+
+## Patch lanjutan — audit endpoint master data (branch dev)
+
+Pada tahap audit berikutnya, delapan endpoint master data ditemukan memakai level update 3 dan delete 4. Ambang tersebut diselaraskan ke level update 2 dan delete 3:
+- `php-crud/m.locationCRD.php`
+- `php-crud/m.umCRD.php`
+- `php-crud/m.colorCRD.php`
+- `php-crud/m.currencyCRD.php`
+- `php-crud/m.customerCRD.php`
+- `php-crud/m.departmentCRD.php`
+- `php-crud/m.employeeCRD.php`
+- `php-crud/m.warehouseCRD.php`
+
+Endpoint `php-crud/m.expensesCRD.php` juga diselaraskan: operasi `save` (create maupun update) memerlukan level 2, sedangkan soft-delete memerlukan level 3. Endpoint ini memanggil `user.valid.php` untuk login dan pemetaan hak menu sebelum memproses task.
+
+### Efek pengguna dari patch lanjutan
+- Pengguna dengan level 2 dapat menambah dan mengubah data master tersebut.
+- Pengguna dengan level 3 dapat menghapus/nonaktifkan data master.
+- Level 1 tetap hanya dapat membaca.
+- Pengelolaan menu, grup menu, hak akses pengguna, konfigurasi fiskal, dan tindakan keuangan/stock khusus tetap menggunakan ambang lebih tinggi karena merupakan operasi administratif atau berdampak pada pembukuan/persediaan.
+
+### Catatan audit router
+- `.htaccess` mengarahkan endpoint `php-crud/*.php` ke `router.php`.
+- Router memeriksa login dan mencocokkan endpoint CRUD dengan nama halaman induk di `m_form_name` serta hak pengguna pada `m_user_access_menu`; setelah itu endpoint tetap wajib memeriksa level operasi.
+- `dashboardCRD.php` merupakan pengecualian pemetaan menu. File tersebut mewajibkan login; operasi sensitif yang diperiksa pada bagian yang dibaca melakukan pemeriksaan hak menu khusus dari database. Pengecualian ini perlu dipertahankan hanya selama seluruh aksi tulis dashboard telah diaudit.
+- `m.form.groupCRD.php`, `m.form.nameCRD.php`, dan perubahan hak pada `m.user.systemCRD.php` tetap dibatasi level 4 sebagai administrasi akses.
+
+### Status audit setelah patch lanjutan
+Patch pada file-file di atas sudah dikirim ke branch `dev`. Belum dilakukan PHP lint dan uji HTTP/database runtime. Audit belum selesai: setiap task di endpoint transaksi/keuangan dan endpoint lama/alternatif masih harus ditinjau per aksi, termasuk verifikasi bahwa file legacy tidak menjadi jalur akses yang tidak terpetakan.
