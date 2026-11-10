@@ -29,7 +29,10 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 header('Content-Type: application/json');
 
-$db = new crud();
+$db = new crud();if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { http_response_code(401); rpt_send(false, [], 'Sesi berakhir, silakan login ulang.'); }
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); rpt_send(false, [], 'Hak baca laporan PPN tidak tersedia.'); }
+
+
 
 class RptError extends Exception {}
 
