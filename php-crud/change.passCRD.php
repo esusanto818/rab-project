@@ -3,7 +3,7 @@
 Document : php-crud/change.passCRD.php
 Description : Change Password Handler - Fixed
 */
-session_start();
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
 include_once "../php-class/crudClass.php";
 include_once "../php-func/function.all.php";
 
@@ -13,7 +13,8 @@ if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
     exit;
 }
 
-$userId = (int)($_POST['id'] ?? $_SESSION['user_id']);
+// Endpoint ubah password hanya boleh menyentuh akun milik sesi aktif.
+$userId = (int)$_SESSION['user_id'];
 $task = $_POST['task'] ?? '';
 
 switch ($task) {
