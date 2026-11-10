@@ -276,7 +276,7 @@ Ext.onReady(function () {
                 Ext.Msg.alert('Peringatan', 'Pilih data yang ingin diedit.');
                 return;
             }
-            if (getFormAccess() >= 3) {
+            if (getFormAccess() >= 2) {
                 task = 'update';
                 frmEditor.getForm().reset();
 
@@ -316,7 +316,7 @@ Ext.onReady(function () {
                 Ext.Msg.alert('Peringatan', 'Pilih data yang ingin dihapus.');
                 return;
             }
-            if (getFormAccess() >= 4) {
+            if (getFormAccess() >= 3) {
                 Ext.Msg.confirm('Konfirmasi Hapus', "Hapus Bin Location '" + dataRecord.code + "'?", function (btn) {
                     if (btn === 'yes') {
                         Ext.Ajax.request({
