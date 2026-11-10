@@ -88,6 +88,10 @@ if (empty($_SESSION['user_id'])) {
 }
 $userId = (int)$_SESSION['user_id'];
 $task = $_REQUEST['task'] ?? '';
+$loRequiredAccess = 1;
+if ($task === 'save') $loRequiredAccess = 2;
+if ($task === 'reverse') $loRequiredAccess = 4;
+if ((int)($_SESSION['FormAccess'] ?? 0) < $loRequiredAccess) { http_response_code(403); lo_send(false, [], 'Hak akses tidak mencukupi untuk transaksi sisa material.'); }
 
 try {
     switch ($task) {
