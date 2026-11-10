@@ -66,7 +66,9 @@ function rab_master_limits($db, string $type, int $id): ?array {
     return $cache[$k];
 }
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 header('Content-Type: application/json');
 $db = new crud();
 
