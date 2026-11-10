@@ -93,7 +93,8 @@ try {
                 echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menambah klien.']);
                 exit;
             }
-            if ($task === 'update' && $access < 2) {
+            if ($task === 'update' && $access < 3) {
+                http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk mengubah klien.']);
                 exit;
             }
