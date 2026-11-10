@@ -3,7 +3,7 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php - FINAL VERSION (Tanpa Hamburger Menu)
 // [2026-11-08] Bottom navigation only untuk mobile, hamburger dihapus
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
