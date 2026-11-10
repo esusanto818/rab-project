@@ -32,6 +32,23 @@ define('SO_EPS', 0.00005);
 $SO_REASONS = array('Salah Hitung / Salah Catat', 'Rusak', 'Hilang / Susut', 'Kelebihan Penerimaan', 'Salah Pengeluaran', 'Lainnya');
 $action = WhReq('action', 'list');
 
+$stockUserId = WhUserId();
+if (!$stockUserId || $stockUserId <= 0) {
+    http_response_code(401);
+    WhFail('Sesi berakhir, silakan login kembali.');
+}
+$stockAccess = (int)($_SESSION['FormAccess'] ?? 0);
+$stockRequired = 1;
+if ($action === 'save') $stockRequired = 2;
+if ($action === 'submit') $stockRequired = 3;
+if ($action === 'refresh') $stockRequired = 3;
+if ($action === 'approve') $stockRequired = 3;
+if ($action === 'cancel') $stockRequired = 4;
+if ($stockAccess < $stockRequired) {
+    http_response_code(403);
+    WhFail('Hak akses tidak mencukupi untuk operasi persediaan ini.');
+}
+
 try {
     switch ($action) {
         case 'list':              SoList(); break;
