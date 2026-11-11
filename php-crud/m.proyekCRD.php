@@ -1368,7 +1368,7 @@ PROMPT;
                             $masterMin = 0.0;
                         }
                         if ($res['type'] !== 'new' && ($masterMax <= 0 || $masterMin <= 0)
-                            && (float)$a['aimax'] > 0) {
+                            && ((float)$a['aimax'] > 0 || (float)$a['aimin'] > 0)) {
                             throw new Exception('Master "' . $a['name'] . '" perlu dilengkapi rentang harga. Hak ubah (level 3) diperlukan.');
                         }
                     }
