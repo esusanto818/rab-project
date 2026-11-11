@@ -198,6 +198,7 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
 8. Uji halaman cetak supplier, mobile stock card, halaman input RAB, dan halaman dashboard.
 9. Uji CSRF secara terpisah. POST-only belum membuktikan perlindungan CSRF.
 10. Uji IDOR/object-level authorization dengan ID proyek, PO, GRN, SPK, invoice, pembayaran, gudang, dan record milik entitas lain.
+11. Audit dan tetapkan atribut cookie sesi `Secure`, `HttpOnly`, dan `SameSite` secara konsisten pada seluruh entry point yang memanggil `session_start()`.
 11. Set environment database pada server dev sebelum pengujian: `RAB_DB_HOST`, `RAB_DB_PORT`, `RAB_DB_NAME`, `RAB_DB_USER`, dan `RAB_DB_PASSWORD` (atau nama umum `DB_*`). Jika password tidak disediakan, kode memakai password kosong sehingga hanya cocok untuk PostgreSQL yang mengizinkan trust/peer auth.
 12. Rotasi kredensial database yang pernah ada di riwayat Git; periksa juga akses repo dan riwayat commit sesuai kebijakan organisasi.
 
