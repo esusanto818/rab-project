@@ -98,6 +98,7 @@ function router_authorize_endpoint($db, $userId, $endpointType, $fileName)
         INNER JOIN m_user_access_menu u ON u.form_id = f.id
         WHERE u.user_id = :user_id
           AND COALESCE(u.access_level, 0) > 0
+        ORDER BY u.access_level ASC, f.id ASC
     ";
     $stmt = $db->prepare($sql);
     $stmt->execute(array('user_id' => $userId));
