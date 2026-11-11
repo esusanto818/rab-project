@@ -1341,6 +1341,39 @@ PROMPT;
                                      'loaded_alloc' => array_map('intval', is_array($t['loaded_alloc_ids'] ?? null) ? $t['loaded_alloc_ids'] : [])];   // [EDIT-SAVED] alokasi asal
                 }
 
+                // Level 2 hanya boleh menambahkan data baru. Simpan AI dapat menimpa task lama,
+                // menambah qty item RAB yang sudah ada, atau melengkapi rentang harga master.
+                // Perubahan terhadap data yang sudah ada wajib level 3.
+                if ($access < 3) {
+                    foreach ($tasksClean as $tc) {
+                        if ((int)$tc['match_id'] > 0) {
+                            throw new Exception('Hasil AI cocok dengan task yang sudah tersimpan. Hak ubah (level 3) diperlukan agar task lama tidak tertimpa.');
+                        }
+                    }
+                    foreach ($agg as $a) {
+                        $res = $a['res'];
+                        if ($res['type'] === 'rab') {
+                            $r0 = $res['rab'];
+                            $need = round((float)$r0['qty_allocated'] + (float)$a['qty'], 3);
+                            if ($need > (float)$r0['qty_plan'] + MP_EPS) {
+                                throw new Exception('Item RAB "' . $a['name'] . '" perlu penambahan qty. Hak ubah (level 3) diperlukan.');
+                            }
+                            $masterMax = (float)$r0['master_max'];
+                            $masterMin = (float)$r0['master_min'];
+                        } elseif ($res['type'] === 'master') {
+                            $masterMax = (float)($a['kind'] === 'expenses' ? $res['master']['default_price'] : $res['master']['estimated_price']);
+                            $masterMin = (float)($a['kind'] === 'expenses' ? $res['master']['default_price_min'] : $res['master']['estimated_price_min']);
+                        } else {
+                            $masterMax = 0.0;
+                            $masterMin = 0.0;
+                        }
+                        if ($res['type'] !== 'new' && ($masterMax <= 0 || $masterMin <= 0)
+                            && (float)$a['aimax'] > 0) {
+                            throw new Exception('Master "' . $a['name'] . '" perlu dilengkapi rentang harga. Hak ubah (level 3) diperlukan.');
+                        }
+                    }
+                }
+
                 // ---- Pass 2: master (material / expense_master) bila belum ada -> RAB proyek ----
                 $stMatIns = $db->prepare("
                     INSERT INTO public.materials (material_code, material_name, unit, category, active, estimated_price, estimated_price_min)
