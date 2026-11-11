@@ -19,6 +19,11 @@ if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
 
 $task = $_POST['task'] ?? $_REQUEST['task'] ?? 'read';
 if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak baca konfigurasi fiskal tidak tersedia.']); exit; }
+if (in_array($task, ['create', 'update', 'delete'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Metode harus POST untuk perubahan konfigurasi fiskal.']);
+    exit;
+}
 $db   = new crud();
 
 switch ($task) {
