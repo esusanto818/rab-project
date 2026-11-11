@@ -83,6 +83,10 @@ if (!$conn) {
     exit('Terjadi kesalahan koneksi server. Silakan hubungi administrator.');
 }
 
+if (function_exists('app_require_same_origin_post')) {
+    app_require_same_origin_post();
+}
+
 $userId = intval($_SESSION['user_id']);
 $formId = 0;
 
