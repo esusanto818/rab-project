@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * spkCRD.php — SPK (Surat Perintah Kerja)
  *
@@ -8,7 +7,15 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  * (lihat php-func/function.spk.php). Warehouse Issuing proyek wajib memilih SPK dan qty issue dibatasi sisa jatah SPK.
  *
  * Status : Draft -> Diterbitkan -> Selesai ; Dibatalkan (dari Draft / Diterbitkan yang belum dipakai issue)
- * Action : list | detail | lookup_projects | lookup_materials | quota | save | issue | close | cancel | delete
+ * Action : list | detail | lookup_projects | lookup_tasks | lookup_subcontractors | lookup_materials | quota | save | issue | close | cancel | delete
+ *
+ * [2026-11-11] SPK INTERNAL atau SUBCON (database/subcontract_management_ddl.sql, Langkah 1 SUBCONTRACT_MANAGEMENT_DESIGN.md)
+ *   - spk_type INTERNAL (default, perilaku lama tidak berubah) atau SUBCON (execution_subcontractor_id wajib).
+ *   - SPK SUBCON boleh tanpa baris material (pekerjaan murni). Kalau ada material, aturan kuota + stok tetap sama.
+ *   - Syarat 'harus ada pembayaran klien' tetap untuk semua SPK yang melepas material; SPK SUBCON tanpa material
+ *     tidak dikenai syarat itu (ubah lewat SPK_SUBCON_REQUIRE_CLIENT_PAYMENT).
+ *   - Tipe SPK tidak bisa diubah setelah disimpan. Kontrak subkon (subcon_contracts.spk_id) menempel ke SPK SUBCON.
+ *   - Kode tetap jalan di database yang belum menjalankan DDL tersebut (kolom baru dicek dulu).
  * Akses  : buat / ubah >= 2 (ubah form tersimpan perlu 3) ; terbitkan / tutup / batalkan >= 3 ; hapus >= 4
  */
 ob_start();
@@ -21,6 +28,10 @@ require_once '../php-func/function.spk.php';
 define('SPK_ACCESS_EDIT', 2);
 define('SPK_ACCESS_ACTION', 3);
 define('SPK_ACCESS_DELETE', 4);
+// SPK SUBCON tanpa material gudang: apakah tetap wajib menunggu pembayaran klien sebelum diterbitkan?
+define('SPK_SUBCON_REQUIRE_CLIENT_PAYMENT', false);
+// SPK SUBCON hanya boleh diterbitkan bila kontrak subkon yang terhubung berstatus Disetujui (set false untuk mematikan aturan ini)
+define('SPK_SUBCON_REQUIRE_CONTRACT_ON_ISSUE', true);
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $spkUserId = (int)($_SESSION['user_id'] ?? 0);
@@ -34,6 +45,7 @@ try {
         case 'detail':           SpkDetail(); break;
         case 'lookup_projects':  SpkLookupProjects(); break;
         case 'lookup_tasks':     SpkLookupTasks(); break;
+        case 'lookup_subcontractors': SpkLookupSubcontractors(); break;
         case 'lookup_materials': SpkLookupMaterials(); break;
         case 'quota':            SpkQuotaInfo(); break;
         case 'save':             SpkSave(); break;
@@ -56,6 +68,17 @@ try {
 function SpkNeed($level, $msg) {
     $a = isset($_SESSION['FormAccess']) ? (int)$_SESSION['FormAccess'] : 0;
     if ($a < $level) { throw new WhException($msg); }
+}
+
+// Apakah database ini sudah menjalankan DDL SPK subkon (kolom execution_subcontractor_id ada)?
+function SpkHasSubconSchema() {
+    static $ok = null;
+    if ($ok === null) {
+        $r = WhRow("SELECT 1 AS x FROM information_schema.columns
+                    WHERE table_schema='public' AND table_name='spk' AND column_name='execution_subcontractor_id' LIMIT 1");
+        $ok = $r ? true : false;
+    }
+    return $ok;
 }
 
 function SpkGet($id, $lock = false) {
@@ -99,9 +122,16 @@ function SpkList() {
     $c = WhRow("SELECT COUNT(*) AS n FROM spk s JOIN projects p ON p.id=s.project_id WHERE $where", $params);
     $params[] = $limit;  $pl = '$' . count($params);
     $params[] = $start;  $ps = '$' . count($params);
-    $rows = WhRows("SELECT s.id, s.spk_no, s.spk_date, s.project_id, p.name AS project_name, s.foreman, s.description, s.status, s.remark,
+    $ready = SpkHasSubconSchema();
+    $sx = $ready
+        ? ", s.spk_type, s.execution_subcontractor_id, sb.name AS subcontractor_name, sc.id AS contract_id, sc.spk_no AS contract_no, sc.status AS contract_status"
+        : ", 'INTERNAL'::text AS spk_type, NULL::int AS execution_subcontractor_id, NULL::text AS subcontractor_name, NULL::int AS contract_id, NULL::text AS contract_no, NULL::text AS contract_status";
+    $jx = $ready
+        ? " LEFT JOIN subcontractors sb ON sb.id=s.execution_subcontractor_id LEFT JOIN subcon_contracts sc ON sc.spk_id=s.id"
+        : "";
+    $rows = WhRows("SELECT s.id, s.spk_no, s.spk_date, s.project_id, p.name AS project_name, s.foreman, s.description, s.status, s.remark $sx,
                            (SELECT COUNT(DISTINCT x.material_id) FROM spk_items x WHERE x.spk_id=s.id) AS item_count
-                    FROM spk s JOIN projects p ON p.id=s.project_id
+                    FROM spk s JOIN projects p ON p.id=s.project_id $jx
                     WHERE $where ORDER BY s.spk_date DESC, s.id DESC LIMIT $pl OFFSET $ps", $params);
     // persen terpakai = rata-rata (issue / qty SPK, maks 100%) per material
     foreach ($rows as &$r) {
@@ -121,13 +151,29 @@ function SpkDetail() {
     $pay = SpkProjectPaid($s['project_id']);
     $tasks = WhRows("SELECT t.id, t.task_name, COALESCE(t.description,'') AS description, t.start_date, t.end_date, COALESCE(t.status,'') AS status
                      FROM spk_tasks st JOIN public.project_tasks t ON t.id=st.task_id WHERE st.spk_id=$1 ORDER BY t.start_date NULLS LAST, t.id", array($id));
+    $sub = null; $contract = null;
+    if (SpkHasSubconSchema()) {
+        if (!empty($s['execution_subcontractor_id'])) {
+            $sub = WhRow("SELECT id, name, COALESCE(code,'') AS code FROM subcontractors WHERE id=$1", array((int)$s['execution_subcontractor_id']));
+        }
+        $contract = WhRow("SELECT id, spk_no AS contract_no, title, contract_value, status FROM subcon_contracts WHERE spk_id=$1", array($id));
+    }
     WhJson(array('success' => true, 'header' => array_merge($s, array('project_name' => $p['name'], 'client_name' => $p['client_name'])),
-                 'pay' => $pay, 'items' => SpkItemsWithUsage($id), 'tasks' => $tasks, 'issue_count' => SpkIssueCount($id)));
+                 'pay' => $pay, 'items' => SpkItemsWithUsage($id), 'tasks' => $tasks, 'issue_count' => SpkIssueCount($id),
+                 'subcontractor' => $sub ? $sub : null, 'contract' => $contract ? $contract : null));
 }
 
 function SpkLookupProjects() {
     $q = WhReq('query');
     $rows = WhRows("SELECT p.id, p.name FROM projects p WHERE p.name ILIKE $1 ORDER BY p.name LIMIT 100", array('%' . $q . '%'));
+    WhJson(array('success' => true, 'totalCount' => count($rows), 'data' => $rows));
+}
+
+function SpkLookupSubcontractors() {
+    if (!SpkHasSubconSchema()) { WhJson(array('success' => true, 'totalCount' => 0, 'data' => array())); return; }
+    $q = WhReq('query');
+    $rows = WhRows("SELECT id, name, COALESCE(code,'') AS code FROM subcontractors
+                    WHERE active AND (name ILIKE $1 OR COALESCE(code,'') ILIKE $1) ORDER BY name LIMIT 100", array('%' . $q . '%'));
     WhJson(array('success' => true, 'totalCount' => count($rows), 'data' => $rows));
 }
 
@@ -162,15 +208,29 @@ function SpkSave() {
     WhRequirePost();
     SpkNeed(SPK_ACCESS_EDIT, 'Anda tidak memiliki hak akses untuk membuat / mengubah SPK.');
     $id = (int)WhPost('id');
-    if ($id > 0) {
-        SpkNeed(SPK_ACCESS_ACTION, 'Anda tidak memiliki hak akses untuk mengubah SPK Draft.');
-    }
     $projectId = (int)WhPost('project_id');
     $date = WhDate(WhPost('spk_date'), 'Tanggal SPK');
     $foreman = trim(WhPost('foreman')); $desc = trim(WhPost('description')); $remark = trim(WhPost('remark'));
+    $type = strtoupper(trim((string)WhPost('spk_type')));
+    if ($type === '') { $type = 'INTERNAL'; }
+    if ($type !== 'INTERNAL' && $type !== 'SUBCON') { throw new WhException('Tipe SPK tidak valid.'); }
+    $subId = (int)WhPost('execution_subcontractor_id');
+    $ws = trim((string)WhPost('work_start_date')); $we = trim((string)WhPost('work_end_date'));
+    $ws = ($ws === '') ? null : WhDate($ws, 'Tanggal mulai kerja');
+    $we = ($we === '') ? null : WhDate($we, 'Tanggal selesai kerja');
+    if ($ws !== null && $we !== null && $we < $ws) { throw new WhException('Tanggal selesai kerja tidak boleh lebih awal dari tanggal mulai.'); }
+    $subconReady = SpkHasSubconSchema();
+    if ($type === 'SUBCON') {
+        if (!$subconReady) { throw new WhException('SPK subkon belum aktif: jalankan database/subcontract_management_ddl.sql di database ini.'); }
+        if ($subId < 1 || !WhRow('SELECT 1 FROM subcontractors WHERE id=$1 AND active', array($subId))) {
+            throw new WhException('Pilih subkontraktor yang aktif untuk SPK subkon.');
+        }
+    } else { $subId = 0; }
     $detailsRaw = isset($_POST['details']) ? $_POST['details'] : '[]';
     $details = is_array($detailsRaw) ? $detailsRaw : json_decode((string)$detailsRaw, true);
-    if (!is_array($details) || !count($details)) { throw new WhException('Tambahkan minimal satu material.'); }
+    if (!is_array($details)) { $details = array(); }
+    // SPK internal wajib punya material (izin issue gudang). SPK subkon boleh pekerjaan murni tanpa material.
+    if ($type === 'INTERNAL' && !count($details)) { throw new WhException('Tambahkan minimal satu material.'); }
     $taskRaw = isset($_POST['task_details']) ? $_POST['task_details'] : '[]';
     $taskDetails = is_array($taskRaw) ? $taskRaw : json_decode((string)$taskRaw, true);
     if (!is_array($taskDetails) || !count($taskDetails)) { throw new WhException('Pilih minimal satu task proyek untuk SPK.'); }
@@ -193,7 +253,7 @@ function SpkSave() {
         $lines[$mid]['qty'] = round($lines[$mid]['qty'] + $qty, 4);
         if (!empty($d['notes'])) { $lines[$mid]['notes'] = trim($d['notes']); }
     }
-    if (!count($lines)) { throw new WhException('Tambahkan minimal satu material.'); }
+    if ($type === 'INTERNAL' && !count($lines)) { throw new WhException('Tambahkan minimal satu material.'); }
 
     WhQ('BEGIN');
     // Lock proyek agar kalkulasi kuota tidak berubah saat SPK disimpan.
@@ -219,16 +279,33 @@ function SpkSave() {
     if ($id > 0) {
         $s = SpkGet($id, true);
         if ($s['status'] !== 'Draft') { throw new WhException('Hanya SPK berstatus Draft yang dapat diubah.'); }
-        WhQ('UPDATE spk SET spk_date=$2, project_id=$3, foreman=$4, description=$5, remark=$6, updated_at=now() WHERE id=$1',
-            array($id, $date, $projectId, $foreman, $desc, $remark));
+        $oldType = isset($s['spk_type']) ? $s['spk_type'] : 'INTERNAL';
+        if ($oldType !== $type) { throw new WhException('Tipe SPK tidak dapat diubah. Buat SPK baru dengan tipe yang diinginkan.'); }
+        if ($subconReady) {
+            $lc = WhRow('SELECT 1 AS x FROM subcon_contracts WHERE spk_id=$1', array($id));
+            if ($lc && ((int)$s['project_id'] !== $projectId || (int)$s['execution_subcontractor_id'] !== $subId)) {
+                throw new WhException('SPK ini sudah terhubung ke kontrak subkon: proyek dan subkontraktor tidak dapat diubah.');
+            }
+            WhQ('UPDATE spk SET spk_date=$2, project_id=$3, foreman=$4, description=$5, remark=$6, execution_subcontractor_id=$7, work_start_date=$8, work_end_date=$9, updated_at=now() WHERE id=$1',
+                array($id, $date, $projectId, $foreman, $desc, $remark, $subId > 0 ? $subId : null, $ws, $we));
+        } else {
+            WhQ('UPDATE spk SET spk_date=$2, project_id=$3, foreman=$4, description=$5, remark=$6, updated_at=now() WHERE id=$1',
+                array($id, $date, $projectId, $foreman, $desc, $remark));
+        }
         WhQ('DELETE FROM spk_items WHERE spk_id=$1', array($id));
         WhQ('DELETE FROM spk_tasks WHERE spk_id=$1', array($id));
         $spkNo = $s['spk_no'];
     } else {
         $spkNo = CreateRefNo('spk', 'spk_no', 'SPK');
-        $h = WhRow("INSERT INTO spk (spk_no, spk_date, project_id, foreman, description, status, remark, created_by)
-                    VALUES ($1,$2,$3,$4,$5,'Draft',$6,$7) RETURNING id",
-                   array($spkNo, $date, $projectId, $foreman, $desc, $remark, $userId));
+        if ($subconReady) {
+            $h = WhRow("INSERT INTO spk (spk_no, spk_date, project_id, foreman, description, status, remark, created_by, spk_type, execution_subcontractor_id, work_start_date, work_end_date)
+                        VALUES ($1,$2,$3,$4,$5,'Draft',$6,$7,$8,$9,$10,$11) RETURNING id",
+                       array($spkNo, $date, $projectId, $foreman, $desc, $remark, $userId, $type, $subId > 0 ? $subId : null, $ws, $we));
+        } else {
+            $h = WhRow("INSERT INTO spk (spk_no, spk_date, project_id, foreman, description, status, remark, created_by)
+                        VALUES ($1,$2,$3,$4,$5,'Draft',$6,$7) RETURNING id",
+                       array($spkNo, $date, $projectId, $foreman, $desc, $remark, $userId));
+        }
         $id = (int)$h['id'];
     }
     foreach (array_keys($taskIds) as $tid) {
@@ -254,12 +331,22 @@ function SpkIssue() {
     $pid = (int)$s['project_id'];
     WhLock(0, 900000 + $pid);      // kunci kuota proyek agar dua SPK tidak menghabiskan kuota yang sama
 
+    $isSubcon = (isset($s['spk_type']) && $s['spk_type'] === 'SUBCON');
+    $spkItems = SpkItemsWithUsage($id);
+    // SPK subkon tanpa material gudang tidak melepas stok, jadi tidak ikut syarat "harus ada pembayaran klien"
+    $needPay  = !$isSubcon || count($spkItems) > 0 || SPK_SUBCON_REQUIRE_CLIENT_PAYMENT;
+    if ($isSubcon && SPK_SUBCON_REQUIRE_CONTRACT_ON_ISSUE) {
+        $kc = WhRow('SELECT status FROM subcon_contracts WHERE spk_id=$1', array($id));
+        if (!$kc || $kc['status'] !== 'Disetujui') { throw new WhException('SPK subkon baru dapat diterbitkan setelah kontrak subkon yang terhubung berstatus Disetujui.'); }
+    }
     $qt = SpkMaterialQuota($pid, $id);
     $pay = $qt['pay'];
-    if ($pay['paid_amount'] <= 0) { throw new WhException('SPK belum dapat diterbitkan: proyek ini belum menerima pembayaran termin.'); }
-    if ($pay['allowed_pct'] <= 0) { throw new WhException('SPK belum dapat diterbitkan: nilai kontrak proyek belum diisi atau pembayaran belum tercatat.'); }
+    if ($needPay) {
+        if ($pay['paid_amount'] <= 0) { throw new WhException('SPK belum dapat diterbitkan: proyek ini belum menerima pembayaran termin.'); }
+        if ($pay['allowed_pct'] <= 0) { throw new WhException('SPK belum dapat diterbitkan: nilai kontrak proyek belum diisi atau pembayaran belum tercatat.'); }
+    }
 
-    foreach (SpkItemsWithUsage($id) as $it) {
+    foreach ($spkItems as $it) {
         $mid = (int)$it['material_id'];
         if (!isset($qt['materials'][$mid])) { throw new WhException($it['material_name'] . ' tidak ada di RAB proyek.'); }
         $a = $qt['materials'][$mid]['available'];
@@ -294,6 +381,16 @@ function SpkCancel() {
     $s = SpkGet($id, true);
     if ($s['status'] !== 'Draft' && $s['status'] !== 'Diterbitkan') { throw new WhException('SPK berstatus ' . $s['status'] . ' tidak dapat dibatalkan.'); }
     if (SpkIssueCount($id) > 0) { throw new WhException('SPK ini sudah dipakai issue material. Reverse issue terkait dulu, atau gunakan Tutup SPK.'); }
+    if (SpkHasSubconSchema()) {
+        $kc = WhRow('SELECT id FROM subcon_contracts WHERE spk_id=$1', array($id));
+        if ($kc) {
+            $u = WhRow("SELECT (SELECT COUNT(*) FROM subcon_progress WHERE contract_id=$1 AND status<>'Dibatalkan') AS prg,
+                               (SELECT COUNT(*) FROM subcon_payments WHERE contract_id=$1 AND status='Posted') AS pay", array((int)$kc['id']));
+            if ((int)$u['prg'] > 0 || (int)$u['pay'] > 0) {
+                throw new WhException('Kontrak subkon yang terhubung sudah memiliki prestasi atau pembayaran. Batalkan prestasi / pembayaran itu dulu.');
+            }
+        }
+    }
     WhQ("UPDATE spk SET status='Dibatalkan', updated_at=now() WHERE id=$1", array($id));
     WhQ('COMMIT');
     WhOk('SPK ' . $s['spk_no'] . ' dibatalkan.');
@@ -306,6 +403,9 @@ function SpkDelete() {
     WhQ('BEGIN');
     $s = SpkGet($id, true);
     if ($s['status'] !== 'Draft') { throw new WhException('Hanya SPK berstatus Draft yang dapat dihapus. Gunakan Batalkan untuk SPK lain.'); }
+    if (SpkHasSubconSchema() && WhRow('SELECT 1 AS x FROM subcon_contracts WHERE spk_id=$1', array($id))) {
+        throw new WhException('SPK ini sudah terhubung ke kontrak subkon. Putuskan atau hapus kontrak subkonnya dulu.');
+    }
     WhQ('DELETE FROM spk WHERE id=$1', array($id));       // spk_items ikut terhapus (ON DELETE CASCADE)
     WhQ('COMMIT');
     WhOk('SPK ' . $s['spk_no'] . ' dihapus.');

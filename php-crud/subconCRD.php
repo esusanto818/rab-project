@@ -1,5 +1,4 @@
 <?php
-require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * subconCRD.php
  * ============================================================
@@ -89,9 +88,18 @@ function sc_assert_ref_types($db): void {
     $have = $st->fetchAll(PDO::FETCH_COLUMN);
     foreach ([SC_REF_PROGRESS, SC_REF_PAYMENT] as $need) {
         if (!in_array($need, $have, true)) {
-            throw new ScError("Tipe jurnal '{$need}' belum terdaftar di database. Jalankan ALTER TYPE pada sql/2026-10-30.subcon.sql terlebih dahulu.");
+            throw new ScError("Tipe jurnal '{$need}' belum terdaftar di database. Jalankan ALTER TYPE public.reference_type ADD VALUE untuk nilai itu (lihat spk.subcon.step1.sql) terlebih dahulu.");
         }
     }
+}
+/** Apakah kolom subcon_contracts.spk_id (tautan ke SPK subkon) sudah ada di database ini? */
+function sc_has_spk_link($db): bool {
+    static $ok = null;
+    if ($ok === null) {
+        $ok = (bool)$db->query("SELECT 1 FROM information_schema.columns
+                                 WHERE table_schema = 'public' AND table_name = 'subcon_contracts' AND column_name = 'spk_id' LIMIT 1")->fetchColumn();
+    }
+    return $ok;
 }
 function sc_has_journal($db, string $ref, int $id): bool {
     $st = $db->prepare("SELECT 1 FROM journal_entries WHERE reference_type::text = :t AND reference_id = :id LIMIT 1");
@@ -192,19 +200,9 @@ if ($task === 'save_subcontractor') {
 } elseif ($task === 'delete_contract') {
     $scRequired = 4;
 }
-// Aksi simpan juga dapat mengubah dokumen Draft yang sudah ada; perubahan wajib level 3.
-if (in_array($task, ['save_subcontractor', 'save_contract', 'save_progress'], true)
-    && (int)($_POST['id'] ?? 0) > 0) {
-    $scRequired = 3;
-}
 if ($scAccess < $scRequired) {
     http_response_code(403);
     sc_send(false, [], 'Hak akses tidak mencukupi untuk operasi subkontraktor ini.');
-}
-if (in_array($task, ['save_subcontractor', 'save_contract', 'save_progress', 'save_payment', 'change_status', 'approve_progress', 'cancel_progress', 'cancel_payment', 'delete_contract'], true)
-    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-    http_response_code(405);
-    sc_send(false, [], 'Metode harus POST untuk perubahan data subkontraktor.');
 }
 
 try {
@@ -285,6 +283,25 @@ try {
             break;
 
         /* ------------------------------------------------------------------ daftar SPK (grid utama) */
+        /* ------------------------------------------------------------------ SPK subkon yang bisa ditautkan ke kontrak */
+        case 'list_spk_options':
+            $oPrj = (int)($_REQUEST['project_id'] ?? 0);
+            $oSub = (int)($_REQUEST['subcontractor_id'] ?? 0);
+            $oCur = (int)($_REQUEST['contract_id'] ?? 0);
+            if (!sc_has_spk_link($db) || $oPrj <= 0 || $oSub <= 0) { sc_send(true, []); break; }
+            $st = $db->prepare("SELECT s.id, s.spk_no, s.spk_date, s.status, COALESCE(s.description, '') AS description
+                                  FROM spk s
+                                 WHERE s.spk_type = 'SUBCON' AND s.project_id = :p AND s.execution_subcontractor_id = :s
+                                   AND s.status IN ('Draft', 'Diterbitkan')
+                                   AND NOT EXISTS (SELECT 1 FROM subcon_contracts c WHERE c.spk_id = s.id AND c.id <> :c)
+                                 ORDER BY s.spk_date DESC, s.id DESC");
+            $st->execute([':p' => $oPrj, ':s' => $oSub, ':c' => $oCur]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) { $r['id'] = (int)$r['id']; }
+            unset($r);
+            sc_send(true, $rows);
+            break;
+
         case 'list_contracts':
             $start = (int)($_REQUEST['start'] ?? 0);
             $limit = (int)($_REQUEST['limit'] ?? 250);
@@ -294,6 +311,10 @@ try {
                 $where = "WHERE (c.spk_no ILIKE :q OR c.title ILIKE :q OR p.name ILIKE :q OR s.name ILIKE :q)";
                 $params[':q'] = '%' . $query . '%';
             }
+            $hasLink = sc_has_spk_link($db);
+            $lx = $hasLink ? "c.spk_id, ls.spk_no AS linked_spk_no, ls.status AS linked_spk_status,"
+                           : "NULL::int AS spk_id, NULL::text AS linked_spk_no, NULL::text AS linked_spk_status,";
+            $jx = $hasLink ? "LEFT JOIN spk ls ON ls.id = c.spk_id" : "";
             $st = $db->prepare("SELECT COUNT(*) FROM subcon_contracts c JOIN public.projects p ON p.id = c.project_id
                                   JOIN subcontractors s ON s.id = c.subcontractor_id {$where}");
             $st->execute($params);
@@ -302,11 +323,13 @@ try {
             $st = $db->prepare("
                 SELECT c.id, c.spk_no, c.project_id, p.name AS project_name, c.subcontractor_id, s.name AS subcontractor_name, c.title,
                        c.contract_value, c.ppn_rate, c.pph_rate, c.retention_pct, c.dp_pct, c.start_date, c.end_date, c.status,
+                       {$lx}
                        COALESCE(pr.gross,0) AS billed_gross, COALESCE(pr.net,0) AS billed_net, COALESCE(pr.ret,0) AS retention_held,
                        COALESCE(pay.dp,0) AS dp_paid, COALESCE(pay.pr,0) AS progress_paid, COALESCE(pay.rt,0) AS retention_paid
                   FROM subcon_contracts c
                   JOIN public.projects p ON p.id = c.project_id
                   JOIN subcontractors s ON s.id = c.subcontractor_id
+                  {$jx}
                   LEFT JOIN (SELECT contract_id, SUM(gross_amount) gross, SUM(net_payable) net, SUM(retention_amount) ret
                                FROM subcon_progress WHERE status = 'Disetujui' GROUP BY contract_id) pr ON pr.contract_id = c.id
                   LEFT JOIN (SELECT contract_id, SUM(CASE WHEN pay_type='DP' THEN amount END) dp, SUM(CASE WHEN pay_type='PROGRESS' THEN amount END) pr,
@@ -343,6 +366,13 @@ try {
                                  WHERE c.id = :id");
             $st->execute([':id' => $id]);
             $hdr = $st->fetch(PDO::FETCH_ASSOC);
+            $hdr['linked_spk_no'] = null; $hdr['linked_spk_status'] = null;
+            if (!empty($hdr['spk_id'])) {
+                $st = $db->prepare("SELECT spk_no, status FROM spk WHERE id = :i");
+                $st->execute([':i' => (int)$hdr['spk_id']]);
+                $ls = $st->fetch(PDO::FETCH_ASSOC);
+                if ($ls) { $hdr['linked_spk_no'] = $ls['spk_no']; $hdr['linked_spk_status'] = $ls['status']; }
+            }
 
             $prev = sc_prev_map($db, $id);
             $st = $db->prepare("SELECT t.id, t.task_id, t.task_name, t.task_value, t.notes, pt.start_date, pt.end_date
@@ -412,6 +442,7 @@ try {
             $sd   = trim((string)($_POST['start_date'] ?? '')); $ed = trim((string)($_POST['end_date'] ?? ''));
             $scope = trim((string)($_POST['scope'] ?? '')) ?: null; $notes = trim((string)($_POST['notes'] ?? '')) ?: null;
             $rowsIn = json_decode($_POST['tasks'] ?? '[]', true);
+            $spkId = (int)($_POST['spk_id'] ?? 0) ?: null;      // tautan ke SPK bertipe SUBCON (opsional)
             if ($prj <= 0) throw new ScError('Proyek wajib dipilih.');
             if ($sub <= 0) throw new ScError('Subkontraktor wajib dipilih.');
             if ($title === '') throw new ScError('Judul / lingkup pekerjaan wajib diisi.');
@@ -426,6 +457,23 @@ try {
                 if (!$st->fetchColumn()) throw new ScError('Proyek tidak ditemukan.');
                 $st = $db->prepare("SELECT 1 FROM subcontractors WHERE id = :id AND active"); $st->execute([':id' => $sub]);
                 if (!$st->fetchColumn()) throw new ScError('Subkontraktor tidak ditemukan / tidak aktif.');
+
+                // tautan ke SPK subkon: tipe SUBCON, proyek & subkontraktor sama, masih aktif, belum dipakai kontrak lain
+                if ($spkId) {
+                    if (!sc_has_spk_link($db)) throw new ScError('Tautan ke SPK belum aktif: jalankan database/subcontract_management_ddl.sql di database ini.');
+                    $st = $db->prepare("SELECT s.spk_no, s.spk_type, s.project_id, s.execution_subcontractor_id, s.status,
+                                               (SELECT c.id FROM subcon_contracts c WHERE c.spk_id = s.id AND c.id <> :x LIMIT 1) AS other_contract
+                                          FROM spk s WHERE s.id = :i");
+                    $st->execute([':i' => $spkId, ':x' => $id]);
+                    $sp = $st->fetch(PDO::FETCH_ASSOC);
+                    if (!$sp) throw new ScError('SPK yang dipilih tidak ditemukan.');
+                    if ($sp['spk_type'] !== 'SUBCON') throw new ScError('Kontrak subkon hanya dapat ditautkan ke SPK bertipe Subkon.');
+                    if ((int)$sp['project_id'] !== $prj || (int)$sp['execution_subcontractor_id'] !== $sub) {
+                        throw new ScError("SPK {$sp['spk_no']} dibuat untuk proyek / subkontraktor yang berbeda dari kontrak ini.");
+                    }
+                    if (!in_array($sp['status'], ['Draft', 'Diterbitkan'], true)) throw new ScError("SPK {$sp['spk_no']} berstatus {$sp['status']}, tidak dapat ditautkan.");
+                    if ($sp['other_contract']) throw new ScError("SPK {$sp['spk_no']} sudah terhubung ke kontrak subkon lain.");
+                }
 
                 // pembagian ke task proyek (kosong = seluruh pekerjaan satu baris)
                 $clean = []; $seen = []; $sum = 0.0;
@@ -488,6 +536,9 @@ try {
                     $st->execute($v);
                     $id = (int)$st->fetchColumn();
                 }
+                if (sc_has_spk_link($db)) {
+                    $db->prepare("UPDATE subcon_contracts SET spk_id = CAST(:spk AS integer) WHERE id = :id")->execute([':spk' => $spkId, ':id' => $id]);
+                }
                 $stI = $db->prepare("INSERT INTO subcon_contract_tasks (contract_id, task_id, task_name, task_value, notes) VALUES (:c,:t,:n,:v,:no)");
                 foreach ($clean as $r) $stI->execute([':c' => $id, ':t' => $r['tid'], ':n' => $r['name'], ':v' => $r['val'], ':no' => $r['notes']]);
                 $db->commit();
@@ -519,6 +570,13 @@ try {
                 if ($to === 'Dibatalkan') {
                     if (strlen($reason) < 5) throw new ScError('Alasan pembatalan wajib diisi (minimal 5 karakter).');
                     $set .= ", cancelled_by = :u, cancelled_at = NOW(), cancel_reason = :r"; $p[':u'] = sc_uid(); $p[':r'] = $reason;
+                    // lepas tautan SPK (indeks unik uq_subcon_contract_spk) agar SPK itu bisa dipakai kontrak lain; jejaknya masuk catatan
+                    if (!empty($c['spk_id'])) {
+                        $st = $db->prepare("SELECT spk_no FROM spk WHERE id = :i"); $st->execute([':i' => (int)$c['spk_id']]);
+                        $oldSpk = (string)$st->fetchColumn();
+                        $set .= ", spk_id = NULL, notes = TRIM(BOTH E'\\n' FROM COALESCE(notes, '') || E'\\n' || :ln)";
+                        $p[':ln'] = 'Tautan ke SPK ' . $oldSpk . ' dilepas saat kontrak dibatalkan.';
+                    }
                 } elseif ($to === 'Disetujui') {
                     if (SC_REQUIRE_OTHER_APPROVER && (int)$c['created_by'] === (int)sc_uid()) throw new ScError('Penyetuju harus user lain selain pembuat SPK.');
                     $set .= ", approved_by = :u, approved_at = NOW()"; $p[':u'] = sc_uid();
