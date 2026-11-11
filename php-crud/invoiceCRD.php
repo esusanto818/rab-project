@@ -178,8 +178,9 @@ switch ($task) {
     // Finalize -- dipanggil otomatis oleh JS saat tombol Print diklik.
     // Ubah status draft -> final, DAN generate jurnal otomatis (Tahap 6).
     case 'finalize':
+        // Finalisasi mengunci invoice Draft dan memicu posting jurnal otomatis; wajib hak ubah (level 3).
         $access = intval($_SESSION['FormAccess'] ?? 0);
-        if ($access < 2) {
+        if ($access < 3) {
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             exit;
         }
