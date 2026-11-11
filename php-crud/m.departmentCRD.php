@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 // add w/h id for direct update univ from production
 // alter table department_section add column warehouse_id bigint
 
