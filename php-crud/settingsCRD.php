@@ -109,6 +109,11 @@ if (empty($_SESSION['user_id'])) {
     sendJsonResponse(false, [], 'Sesi berakhir, silakan login ulang.');
 }
 $userId = (int)$_SESSION['user_id'];
+if (in_array($task, ['save_company', 'save_document', 'save_finance', 'upload_logo', 'delete_logo'], true)
+    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sendJsonResponse(false, [], 'Metode harus POST untuk perubahan pengaturan sistem.');
+}
 
 try {
     switch ($task) {
