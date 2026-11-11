@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Balance Sheet (Neraca) - CRUD & Report Handler
   Backend       : /rab-project/dev/php-crud/financial_balance_sheetCRD.php
