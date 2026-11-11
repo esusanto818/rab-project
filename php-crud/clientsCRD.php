@@ -23,7 +23,15 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 header('Content-Type: application/json');
 
-$task = $_REQUEST['task'] ?? '';
+$task = $_POST['task'] ?? $_GET['task'] ?? '';
+
+if (in_array($task, ['create', 'update', 'delete'], true)
+    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    header('Allow: GET, POST');
+    echo json_encode(['success' => false, 'message' => 'Operasi perubahan data wajib menggunakan POST.']);
+    exit;
+}
 
 // Endpoint harus memiliki sesi login dan hak minimal baca dari router.
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
@@ -100,12 +108,12 @@ try {
                 exit;
             }
 
-            $id             = (int)($_REQUEST['id'] ?? 0);
-            $name           = trim($_REQUEST['name'] ?? '');
-            $contact_person = trim($_REQUEST['contact_person'] ?? '');
-            $phone          = trim($_REQUEST['phone'] ?? '');
-            $email          = trim($_REQUEST['email'] ?? '');
-            $address        = $_REQUEST['address'] ?? '';
+            $id             = (int)($_POST['id'] ?? 0);
+            $name           = trim($_POST['name'] ?? '');
+            $contact_person = trim($_POST['contact_person'] ?? '');
+            $phone          = trim($_POST['phone'] ?? '');
+            $email          = trim($_POST['email'] ?? '');
+            $address        = $_POST['address'] ?? '';
 
             if ($name === '') throw new Exception('Nama Klien wajib diisi.');
             if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -132,11 +140,12 @@ try {
             break;
 
         case 'delete':
-            if ($access < 3) {
+            if ($access < 4) {
+                http_response_code(403);
                 echo json_encode(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menghapus klien.']);
                 exit;
             }
-            $id = (int)($_REQUEST['id'] ?? 0);
+            $id = (int)($_POST['id'] ?? 0);
             if (!$id) throw new Exception('ID klien tidak valid.');
 
             clExec($db, "DELETE FROM clients WHERE id = :id", ['id' => $id], 'delete clients');

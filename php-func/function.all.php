@@ -126,38 +126,45 @@ if (!function_exists('app_require_active_user')) {
 $days = array('Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday');
 
 function searchData($findThis, $findInFields, $limit = null) {
-  if (isset($findThis) && $findThis <> '' && $findThis <> null) {
-    $limit = 99999;
-    $searchDtl = explode("|", $findThis);
-    $searchField = "";
-    for ($c = 0; $c < count($searchDtl); $c++) {
-      $inFileds = NULL;
-      $searchField .= " and (";
-      for ($x = 0; $x < count($findInFields); $x++) {
-        if ($x > 0) { $inFileds .= " or "; }
-        $inFileds .= " lower(" . $findInFields[$x] . ") ~~ '%" . strtolower($searchDtl[$c]) . "%' ";
+  global $conn;
+
+  // Keep the caller's pagination limit; searching must not silently load all rows.
+  $limit = ($limit === null || (int)$limit <= 0) ? 250 : (int)$limit;
+  $searchField = null;
+
+  if (isset($findThis) && $findThis !== '' && $findThis !== null) {
+    $searchDtl = explode("|", (string)$findThis);
+    $conditions = array();
+
+    foreach ($searchDtl as $term) {
+      $fields = array();
+      // Field expressions are supplied by trusted application call sites; only values are escaped.
+      $pattern = pg_escape_literal($conn, '%' . strtolower($term) . '%');
+      foreach ($findInFields as $field) {
+        $fields[] = "lower(" . $field . ") ~~ " . $pattern;
       }
-      $searchField .= $inFileds . ")";
+      if ($fields) {
+        $conditions[] = "(" . implode(" OR ", $fields) . ")";
+      }
     }
-  } else {
-    $limit = ($limit == null) ? 250 : $limit;
-    $searchField = NULL;
+    if ($conditions) {
+      $searchField = " AND " . implode(" AND ", $conditions);
+    }
   }
+
   return array("limit" => $limit, "searchSQL" => $searchField);
 }
 
 function srcDataGrid($fields, $find) {
-  $rSreach = "( "; $r = 0;
-  $findData = explode("%", $find);
-  foreach ($findData as $s) {
-    foreach ($fields as $value) {
-      if ($r > 0) { $rSreach .= ' or '; }
-      $rSreach .= "lower(" . $value . ") like '%" . strtolower($s) . "%'";
-      $r++;
+  global $conn;
+  $conditions = array();
+  foreach (explode("%", (string)$find) as $term) {
+    $pattern = pg_escape_literal($conn, '%' . strtolower($term) . '%');
+    foreach ($fields as $field) {
+      $conditions[] = "lower(" . $field . ") LIKE " . $pattern;
     }
   }
-  $rSreach .= " )";
-  return $rSreach;
+  return $conditions ? "( " . implode(" OR ", $conditions) . " )" : "( 1=1 )";
 }
 
 function insertQ($table, $rows) {
