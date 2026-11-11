@@ -4,7 +4,7 @@ RewriteBase /rab-project/dev/
 
 # Matikan directory listing dan blokir artefak pengembangan/backup/database yang bukan konten aplikasi.
 Options -Indexes
-RewriteRule ^(?:\.git|database|sql|docs|backup[^/]*|rab-project_security_patch_review)(?:/|$) - [F,END,NC]
+RewriteRule ^(?:\.git|database|sql|docs|dev|live|backup[^/]*|rab-project_security_patch_review)(?:/|$) - [F,END,NC]
 RewriteRule \.(?:sql|md|patch|bak|old|orig|txt|zip|code-workspace|py|sh|log|env)$ - [F,END,NC]
 
 # A0. Jangan layani file backup, patch, workspace, dump, atau konfigurasi dari folder endpoint.
