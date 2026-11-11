@@ -94,7 +94,12 @@ if (!function_exists('app_require_active_user')) {
             "SELECT 1 FROM m_user_system WHERE id = $1 AND active IS TRUE LIMIT 1",
             array($userId)
         );
-        if (!$result || pg_num_rows($result) < 1) {
+        if (!$result) {
+            error_log('[SECURITY] Could not verify active user session: user_id=' . $userId . '; ' . pg_last_error($conn));
+            http_response_code(503);
+            exit('Status akun tidak dapat diverifikasi. Silakan coba kembali.');
+        }
+        if (pg_num_rows($result) < 1) {
             error_log('[SECURITY] Blocked inactive or missing user session: user_id=' . $userId);
             $_SESSION = array();
             if (session_status() === PHP_SESSION_ACTIVE) {
