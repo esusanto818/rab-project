@@ -1,5 +1,9 @@
 <?php
-if (!isset($_SESSION)) {session_start();}
+if (!isset($_SESSION)) { session_start(); }
+if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
+    http_response_code(401);
+    exit('Sesi berakhir. Silakan login kembali.');
+}
 require_once __DIR__ . '/../php-class/crudClass.php';
 
 // Instantiate the PDO crud class
