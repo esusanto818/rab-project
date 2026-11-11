@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : General Ledger - Report Handler
   Called from   : js/m.generalledger.js
