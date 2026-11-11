@@ -121,6 +121,9 @@ $requestMethod = isset($_SERVER['REQUEST_METHOD']) ? strtoupper($_SERVER['REQUES
 $userId = intval($_SESSION['user_id']);
 
 require_once __DIR__ . '/php-class/crudClass.php';
+if (function_exists('app_require_same_origin_post')) {
+    app_require_same_origin_post();
+}
 
 try {
     $db = new crud();
