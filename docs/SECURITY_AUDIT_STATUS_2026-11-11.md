@@ -154,6 +154,7 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
 - `views/stock.card.m.php` kini memerlukan hak baca menu Kartu Stok.
 - `views/supplier.payment.list.print.php` dan `views/supplier.payment.print.php` kini memerlukan hak baca menu Pembayaran Supplier.
 - `views/menudata.php` dan `views/nav_wrapper.php` kini menolak request tanpa sesi login valid.
+- Halaman dashboard lama (`dashboard.php`, `dashboard.latest.php`, dan `dashboardV1.php`) juga memvalidasi status akun aktif saat dibuka.
 - Bug PHP pada renderer tanda terima supplier yang membandingkan nilai dengan konstanta `undefined` diperbaiki menjadi pemeriksaan null.
 
 **Efek kepada pengguna:** halaman input RAB, kartu stok mobile, dan cetak pembayaran supplier tidak lagi dapat dibuka tanpa hak menu yang sesuai. Cetak pembayaran tetap dapat dilakukan oleh pengguna yang memiliki hak baca menu Pembayaran Supplier.
