@@ -204,6 +204,7 @@ function renderDiag() {
     el.textContent =
         'Halaman      : ' + location.href + '\n' +
         'Backend      : ' + CRD + '\n' +
+        'File JS      : ' + (CFG.js || '-') + '\n' +
         'Service Worker: ' + SW_URL + '\n' +
         'HTTPS/aman   : ' + (window.isSecureContext ? 'ya' : 'TIDAK (offline app tidak bisa aktif)') + '\n' +
         'navigator.onLine : ' + navigator.onLine + '\n' +

@@ -1,6 +1,6 @@
 # Dokumentasi Database: `proyekGMN`
 
-**Tanggal Digenerate:** 2026-11-07 16:19:38
+**Tanggal Digenerate:** 2026-11-11 09:57:20
 
 ---
 
@@ -560,6 +560,7 @@ erDiagram
 | `updated_at` | `timestamp without time zone` | YES | - | - | - |
 | `created_by` | `integer` | YES | FK | - | - |
 | `updated_by` | `integer` | YES | FK | - | - |
+| `default_price_min` | `numeric(15,2)` | YES | - | - | Harga terendah; default_price = harga tertinggi (MAX). Harga satuan RAB default = MAX, boleh diubah di antara MIN dan MAX |
 
 
 ---
@@ -1003,7 +1004,7 @@ erDiagram
 | `estimated_price` | `numeric(15,2)` | YES | - | `0` | - |
 | `unit_price_min` | `numeric(18,2)` | YES | - | `0` | - |
 | `unit_price_max` | `numeric(18,2)` | YES | - | `0` | - |
-| `estimated_price_min` | `numeric(15,2)` | YES | - | - | Perkiraan harga terendah; estimated_price = harga tertinggi |
+| `estimated_price_min` | `numeric(15,2)` | YES | - | - | Harga terendah; estimated_price = harga tertinggi (MAX). Harga satuan RAB default = MAX, boleh diubah di antara MIN dan MAX |
 
 
 ---
