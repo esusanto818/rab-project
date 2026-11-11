@@ -27,18 +27,45 @@ if ((int)($_SESSION['FormAccess'] ?? 0) < $requiredAccess) {
     echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi ini.']);
     exit;
 }
+$photoData = (string)($_POST['photo'] ?? '');
+$foto = '';
 $updateFoto = 0;
-$foto       = $_POST['photo'] ?? '';
+$photoName = 'default.jpg';
+$dirPhoto = '../doc/hr/photo/';       // Relative URL/path stored for legacy views.
+$photoFsDir = __DIR__ . '/../doc/hr/photo/'; // Filesystem path is anchored to this endpoint.
 
-if (!empty($foto) && strpos($foto, ';') !== false) {
-    list($type, $foto) = explode(';', $foto);
-    list(, $foto)      = explode(',', $foto);
-    $foto              = base64_decode($foto);
+if ($photoData !== '' && strpos($photoData, ';') !== false) {
+    if (!preg_match('~^data:image/(jpeg|png|gif|webp);base64,([A-Za-z0-9+/]+={0,2})$~D', $photoData, $photoMatch)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Format foto tidak valid.']);
+        exit;
+    }
+
+    $foto = base64_decode($photoMatch[2], true);
+    if ($foto === false || strlen($foto) > 5 * 1024 * 1024) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Foto tidak valid atau melebihi batas 5 MB.']);
+        exit;
+    }
+
+    $imageInfo = getimagesizefromstring($foto);
+    $mimeToExt = [
+        'image/jpeg' => 'jpg',
+        'image/png'  => 'png',
+        'image/gif'  => 'gif',
+        'image/webp' => 'webp',
+    ];
+    $declaredMime = 'image/' . strtolower($photoMatch[1]);
+    if (!$imageInfo || !isset($mimeToExt[$declaredMime]) || ($imageInfo['mime'] ?? '') !== $declaredMime) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Isi file bukan gambar yang sesuai.']);
+        exit;
+    }
+
+    // Never use a client-supplied filename as a filesystem path.
+    $photoName = 'emp_' . date('Ymd_His') . '_' . bin2hex(random_bytes(8)) . '.' . $mimeToExt[$declaredMime];
+    $updateFoto = 1;
 }
-
-$updateFoto = (empty($foto)) ? 0 : 1;
-$dirPhoto   = '../doc/hr/photo/';
-$photoName  = $_POST['photoname'] ?? 'default.jpg';
 
 switch ($task) {
   // ==========================================
@@ -48,7 +75,12 @@ switch ($task) {
     $NikNO = CreateNikNo($_POST["department_id"], $_POST["status_id"], $_POST["from_date"]);
     $queryC = '';
     if ($updateFoto == 1) {
-      file_put_contents($dirPhoto.$photoName, $foto);
+      if (!is_dir($photoFsDir) || !is_writable($photoFsDir)
+          || file_put_contents($photoFsDir . $photoName, $foto, LOCK_EX) === false) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Foto gagal disimpan. Periksa folder foto karyawan.']);
+        exit;
+      }
       $table = "m_employee";
       $data = array(
         "nik"                => $NikNO,
@@ -71,7 +103,7 @@ switch ($task) {
         "remark"            => checksinglequote($_POST["remark"]),
         "email"             => checksinglequote($_POST["email"]),
         "active"            => true,
-        "photo"             => $_POST['photo'],
+        "photo"             => $photoData,
         "photo_url"         => $dirPhoto.$photoName
       );
       $queryC .= insertQ($table, $data) . ";";
@@ -343,7 +375,7 @@ switch ($task) {
       file_put_contents($dirPhoto.$photoName, $foto);
       $table = "m_employee";
       $data = array(
-        "photo"     => $_POST['photo'],
+        "photo"     => $photoData,
         "photo_url" => $dirPhoto.$photoName
       );
       $where = "id = " . intval($_POST["id"]);
