@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 require_once dirname(__DIR__) . '/php-func/app.url.php';
 /**
  * project.progressCRD.php
