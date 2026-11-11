@@ -113,7 +113,11 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
 
 **Efek kepada pengguna:** operasi tulis yang dipanggil melalui GET akan ditolak dengan HTTP 405. UI dashboard diperbarui agar sinkronisasi kurs dan analisis AI baru/ulang mengirim POST.
 
-**Catatan:** POST-only bukan pengganti token CSRF. Perlindungan CSRF masih harus diuji dan dituntaskan secara terpisah.
+**Perlindungan CSRF tambahan:** `app_require_same_origin_post()` ditambahkan pada `function.all.php` dan dipanggil oleh router serta `user.valid.php`. Untuk POST, server memeriksa Origin/Referer (host, scheme, port) dan menolak `Sec-Fetch-Site: cross-site`. Request POST tanpa sumber yang dapat diverifikasi juga ditolak.
+
+**Catatan:** pemeriksaan same-origin ini adalah defense-in-depth, bukan synchronizer CSRF token. Tetap lakukan pengujian browser/ExtJS dan evaluasi token CSRF penuh sebelum rilis.
+
+**Efek kepada pengguna:** request POST dari browser yang berasal dari host aplikasi tetap berjalan. Request lintas-origin atau tanpa Origin/Referer yang dapat diverifikasi akan mendapat HTTP 403.
 
 ### 6. Dashboard dan akses khusus
 
