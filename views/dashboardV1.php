@@ -6,6 +6,10 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 //   Data dimuat per tab (lazy) dan hanya dimuat ulang bila filter proyek berubah. Backend dashboardCRD.php TIDAK berubah.
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+require_once __DIR__ . '/../php-func/function.all.php';
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 require_once __DIR__ . '/../dev/php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
