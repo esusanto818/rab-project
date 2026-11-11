@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * stocktransferCRD.php — Stock Transfer antar gudang
  * Posting: OUT di gudang asal (alokasi FIFO) + IN di gudang tujuan dengan biaya layer yang sama.
