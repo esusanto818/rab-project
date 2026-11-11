@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * ppn_backfillCRD.php  --  SKRIP SEKALI PAKAI (hapus dari server setelah selesai)
  * ============================================================
