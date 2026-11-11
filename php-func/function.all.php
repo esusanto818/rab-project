@@ -80,6 +80,40 @@ if (!function_exists('app_require_same_origin_post')) {
     }
 }
 
+if (!function_exists('app_require_active_user')) {
+    function app_require_active_user(): void {
+        global $conn;
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        if ($userId <= 0) {
+            http_response_code(401);
+            exit('Sesi berakhir. Silakan login kembali.');
+        }
+
+        $result = @pg_query_params(
+            $conn,
+            "SELECT 1 FROM m_user_system WHERE id = $1 AND active IS TRUE LIMIT 1",
+            array($userId)
+        );
+        if (!$result || pg_num_rows($result) < 1) {
+            error_log('[SECURITY] Blocked inactive or missing user session: user_id=' . $userId);
+            $_SESSION = array();
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
+            http_response_code(401);
+            $isJson = (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+                || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+            if ($isJson) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(array('success' => false, 'message' => 'Akun tidak aktif atau sesi tidak berlaku. Silakan login kembali.'));
+            } else {
+                echo 'Akun tidak aktif atau sesi tidak berlaku. Silakan login kembali.';
+            }
+            exit;
+        }
+    }
+}
+
 // Set application username
 //$sqlSetUsername = "SET app.username='" . pg_escape_string($conn, $_SESSION["username"] ?? '') . "'";
 //$outputSetUsername = pg_query($conn, $sqlSetUsername) or die('Connection failed: ' . pg_last_error($conn));
