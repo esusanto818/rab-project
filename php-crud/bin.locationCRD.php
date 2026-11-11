@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Bin Location (Lokasi Rak) - Backend Controller
   Description   : Master data lokasi rak per gudang & filtering dynamic bin per warehouse
