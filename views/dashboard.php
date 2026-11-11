@@ -4,6 +4,10 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // [2026-11-08] Bottom navigation only untuk mobile, hamburger dihapus
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { header('Location: login.php'); exit; }
+require_once __DIR__ . '/../php-func/function.all.php';
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 require_once __DIR__ . '/../php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
