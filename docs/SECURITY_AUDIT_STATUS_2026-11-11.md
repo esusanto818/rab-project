@@ -179,7 +179,9 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
 - Alias endpoint di router dan helper diperiksa ulang.
 - Perubahan di branch `dev` dibaca ulang dari GitHub.
 - Branch `main` tetap tidak menerima patch audit ini.
-- Potongan query dinamis pemetaan endpoint diuji sintaksnya menggunakan PHP CLI; ini bukan pengganti `php -l` untuk seluruh file.
+- Potongan query dinamis pemetaan endpoint, koneksi environment PostgreSQL, pemeriksaan same-origin, dan pemeriksaan user aktif diuji sintaksnya menggunakan PHP CLI.
+- Uji fungsi same-origin lokal: request dengan origin/host sama diterima; request dengan origin berbeda ditolak. Ini belum menggantikan pengujian browser pada server dev.
+- Pengujian tersebut bukan pengganti `php -l` untuk seluruh file.
 - Workflow `.github/workflows/php-lint.yml` ditambahkan pada branch `dev` untuk menjalankan `php -l` pada seluruh file PHP, termasuk ekstensi `.PHP` huruf besar.
 - Belum ada hasil run/status GitHub Actions yang dapat diverifikasi untuk workflow tersebut; full lint masih belum dinyatakan lulus.
 
