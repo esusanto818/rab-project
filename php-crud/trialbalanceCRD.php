@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Trial Balance - Report Handler
   Called from   : js/m.trialbalance.js
