@@ -152,7 +152,11 @@ if (empty($_SESSION['user_id'])) {
 $userId = (int)$_SESSION['user_id'];
 $task = $_REQUEST['task'] ?? '';
 if ((int)($_SESSION['FormAccess'] ?? 0) < 1) sendJsonResponse(false, [], 'Hak baca progres proyek tidak tersedia.');
-
+if (in_array($task, ['upload_evidence', 'submit_claim', 'verify', 'cancel_claim'], true)
+    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sendJsonResponse(false, [], 'Metode harus POST untuk perubahan progres proyek.');
+}
 
 try {
     switch ($task) {
