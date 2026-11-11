@@ -22,6 +22,7 @@ Ext.onReady(function () {
     var editingId = 0;        // 0 = SPK baru
     var hdrForm = null, matBar = null;
     var fDate, fProject, fForeman, fDesc, fRemark, fMat, quotaDiv;
+    var fType, fSubcon, fStart, fEnd;   // [2026-11-11] SPK Internal / Subkon
     var selectedTasks = [], taskSelect = null, taskListDiv = null;
 
     function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
@@ -97,21 +98,31 @@ Ext.onReady(function () {
         if (h.status === 'Diterbitkan') { btns += actionBtn('spkCloseBtn', 'Tutup SPK (Selesai)', '#555555'); }
         if ((h.status === 'Draft' || h.status === 'Diterbitkan') && !(parseInt(d.issue_count, 10) > 0)) { btns += actionBtn('spkCancelBtn', 'Batalkan SPK', '#8e2b22'); }
 
+        var isSub = (h.spk_type === 'SUBCON');
+        var typeLine = '';
+        if (isSub) {
+            var sb = d.subcontractor, ct = d.contract;
+            typeLine = '<div style="padding:6px 10px;margin:6px 0;background:#2b2412;border-radius:3px;">' +
+                       '<b style="color:#e6a817;">SPK SUBKON</b> &nbsp;|&nbsp; Subkontraktor: <b>' + enc(sb ? sb.name : '-') + '</b>' +
+                       (h.work_start_date || h.work_end_date ? ' &nbsp;|&nbsp; Jadwal kerja: <b>' + enc(h.work_start_date || '-') + ' s/d ' + enc(h.work_end_date || '-') + '</b>' : '') +
+                       ' &nbsp;|&nbsp; Kontrak subkon: ' + (ct ? '<b>' + enc(ct.contract_no) + '</b> (' + enc(ct.status) + ', nilai ' + fmtAmt(ct.contract_value) + ')'
+                                                              : '<span style="color:#e6a817;">belum terhubung</span>') + '</div>';
+        }
         var html = '<div style="float:right; margin:2px 4px 0 0;">' + btns + '</div>' +
                    '<h3 class="detail-title">Detail SPK: ' + enc(h.spk_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
-                   '<hr class="detail-hr" />' +
+                   '<hr class="detail-hr" />' + typeLine +
                    '<div style="padding:4px 2px 6px 2px;">Tanggal: <b>' + enc(h.spk_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Klien: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Mandor: <b>' + enc(h.foreman || '-') + '</b>' +
                    (h.description ? ' &nbsp;|&nbsp; Uraian: ' + enc(h.description) : '') + '</div>' +
                    '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;"><b>Task Proyek dalam SPK</b><ul style="margin:6px 0 2px 18px;">' +
                    (tasks.length ? tasks.map(function(t){ return '<li>' + enc(t.task_name) + ' <span style="color:#9fc3d1;">(' + enc(t.status || 'Belum Mulai') + ')</span></li>'; }).join('') : '<li>Belum ada task terhubung.</li>') +
                    '</ul></div>' +
-                   '<div style="padding:4px 10px; margin-bottom:8px; background:rgba(15,113,194,0.18); border-radius:3px;">Pembayaran proyek: <b>' + fmtAmt(pay.paid_amount) +
+                   ((isSub && !items.length) ? '' : '<div style="padding:4px 10px; margin-bottom:8px; background:rgba(15,113,194,0.18); border-radius:3px;">Pembayaran proyek: <b>' + fmtAmt(pay.paid_amount) +
                    '</b> dari kontrak <b>' + fmtAmt(pay.contract_value) + '</b> (<b>' + fmtPct(pay.paid_pct) + '</b>) &rarr; batas material saat ini <b>' + fmtPct(pay.allowed_pct) +
-                   '</b> dari qty RAB (dibayar x 2).</div>' +
+                   '</b> dari qty RAB (dibayar x 2).</div>') +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                    '<th align="left">Material</th><th align="right">Qty SPK</th><th align="right">Terpakai (issue)</th><th align="right">Sisa Jatah</th><th align="left">Catatan</th></tr></thead><tbody>';
-        if (!items.length) { html += '<tr><td colspan="5" style="padding:15px; text-align:center; color:#557982;">Belum ada item.</td></tr>'; }
+        if (!items.length) { html += '<tr><td colspan="5" style="padding:15px; text-align:center; color:#557982;">' + (isSub ? 'SPK subkon tanpa material gudang (pekerjaan murni).' : 'Belum ada item.') + '</td></tr>'; }
         Ext.each(items, function (i) {
             var color = i.remaining <= EPS ? '#2e9e4f' : (i.used > 0 ? '#e6a817' : '#668894');
             html += '<tr class="data-row"><td align="left">' + enc(i.material_name) + ' <span style="color:#668894;">(' + enc(i.material_code) + ')</span></td>' +
@@ -153,6 +164,7 @@ Ext.onReady(function () {
     mainDs = new Ext.data.JsonStore({
         url: CRD, baseParams: { action: 'list' }, root: 'data', totalProperty: 'totalCount', idProperty: 'id',
         fields: ['id', 'spk_no', 'spk_date', 'project_id', 'project_name', 'foreman', 'description', 'status', 'remark',
+                 'spk_type', 'subcontractor_name', 'contract_no', 'contract_status',
                  { name: 'item_count', type: 'int' }, { name: 'used_pct', type: 'float' }],
         listeners: { exception: storeError }
     });
@@ -160,6 +172,10 @@ Ext.onReady(function () {
 
     var projectDs = new Ext.data.JsonStore({
         url: CRD, baseParams: { action: 'lookup_projects' }, root: 'data', fields: ['id', 'name'],
+        listeners: { exception: storeError }
+    });
+    var subconDs = new Ext.data.JsonStore({
+        url: CRD, baseParams: { action: 'lookup_subcontractors' }, root: 'data', fields: ['id', 'name', 'code'],
         listeners: { exception: storeError }
     });
     var materialDs = new Ext.data.JsonStore({
@@ -184,6 +200,11 @@ Ext.onReady(function () {
             { header: 'No. SPK', dataIndex: 'spk_no', width: 130 },
             { header: 'Tanggal', dataIndex: 'spk_date', width: 90, align: 'center' },
             { header: 'Proyek', dataIndex: 'project_name', width: 230, renderer: CellWrap },
+            { header: 'Tipe', dataIndex: 'spk_type', width: 150,
+              renderer: function (v, m, r) {
+                  if (v === 'SUBCON') { return CellWrap('<b style="color:#e6a817;">Subkon</b>: ' + enc(r.get('subcontractor_name') || '-')); }
+                  return 'Internal';
+              } },
             { header: 'Mandor', dataIndex: 'foreman', width: 130, renderer: function (v) { return CellWrap(v || '-'); } },
             { header: 'Uraian', dataIndex: 'description', width: 220, renderer: function (v) { return CellWrap(v || ''); } },
             { header: 'Item', dataIndex: 'item_count', width: 50, align: 'center' },
@@ -307,11 +328,23 @@ Ext.onReady(function () {
         fForeman = new myTextField({ fieldLabel: 'Mandor / Pelaksana', anchor: '95%' });
         fDesc = new myTextField({ fieldLabel: 'Uraian Pekerjaan', anchor: '95%' });
         fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+        fType = new myComboField({
+            fieldLabel: 'Tipe SPK', store: [['INTERNAL', 'Internal (dikerjakan sendiri)'], ['SUBCON', 'Subkon (dikerjakan subkontraktor)']],
+            mode: 'local', triggerAction: 'all', editable: false, forceSelection: true, allowBlank: false, value: 'INTERNAL', anchor: '95%',
+            listeners: { select: function () { onTypeChange(); } }
+        });
+        fSubcon = new myComboField({
+            fieldLabel: 'Subkontraktor', store: subconDs, displayField: 'name', valueField: 'id', mode: 'remote',
+            queryParam: 'query', minChars: 0, triggerAction: 'all', forceSelection: true, allowBlank: true, anchor: '95%',
+            tpl: '<tpl for="."><div class="x-combo-list-item">{name} <span style="color:#9fc3d1;">{code}</span></div></tpl>'
+        });
+        fStart = new Ext.form.DateField({ fieldLabel: 'Mulai Kerja', format: 'd/m/Y', width: 120 });
+        fEnd = new Ext.form.DateField({ fieldLabel: 'Selesai Kerja', format: 'd/m/Y', width: 120 });
 
         var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 120, bodyStyle: 'background:transparent;', items: items }; };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'spkHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
-            items: [col(0.5, [fDate, fProject]), col(0.5, [fForeman, fDesc, fRemark])]
+            items: [col(0.5, [fDate, fType, fProject, fStart, fEnd]), col(0.5, [fSubcon, fForeman, fDesc, fRemark])]
         });
 
         fMat = new myComboField({
@@ -340,6 +373,24 @@ Ext.onReady(function () {
                   html: 'Qty SPK otomatis = kuota tersedia (maksimum), bisa dikurangi. Kuota = qty RAB x (% kontrak dibayar x 2).' }
             ]
         });
+        onTypeChange();
+    }
+
+    // tampilkan / sembunyikan satu field form (ExtJS 3: sembunyikan juga pembungkus x-form-item)
+    function showField(f, show) {
+        f.setVisible(show);
+        var el = f.getEl && f.getEl();
+        var item = el && el.up('.x-form-item');
+        if (item) { item.setDisplayed(show); }
+        f.allowBlank = !show;
+    }
+    // Internal: field subkon + jadwal disembunyikan. Subkon: wajib pilih subkontraktor; material boleh kosong.
+    function onTypeChange() {
+        var sub = (fType.getValue() === 'SUBCON');
+        showField(fSubcon, sub);
+        showField(fStart, sub);
+        showField(fEnd, sub);
+        if (!sub) { fSubcon.clearValue(); fStart.setValue(''); fEnd.setValue(''); }
     }
 
     function loadQuotaInfo() {
@@ -413,6 +464,7 @@ Ext.onReady(function () {
         projectDs.load({ callback: function () {
             showEditor('SPK Baru');
             fDate.setValue(new Date()); fProject.clearValue(); fForeman.setValue(''); fDesc.setValue(''); fRemark.setValue('');
+            fType.setValue('INTERNAL'); fType.enable(); onTypeChange();
             itemDs.removeAll(); fMat.clearValue(); quotaDiv.innerHTML = '';
             selectedTasks = []; renderSelectedTasks(); if (taskSelect) taskSelect.innerHTML = '<option value="">Pilih proyek terlebih dahulu...</option>';
         } });
@@ -431,6 +483,13 @@ Ext.onReady(function () {
                 fDate.setValue(Date.parseDate(h.spk_date, 'Y-m-d') || new Date());
                 fProject.setValue(parseInt(h.project_id, 10));
                 fForeman.setValue(h.foreman || ''); fDesc.setValue(h.description || ''); fRemark.setValue(h.remark || '');
+                fType.setValue(h.spk_type === 'SUBCON' ? 'SUBCON' : 'INTERNAL'); fType.disable();   // tipe tidak bisa diubah setelah disimpan
+                onTypeChange();
+                fStart.setValue(h.work_start_date ? Date.parseDate(h.work_start_date, 'Y-m-d') : '');
+                fEnd.setValue(h.work_end_date ? Date.parseDate(h.work_end_date, 'Y-m-d') : '');
+                if (h.spk_type === 'SUBCON' && h.execution_subcontractor_id) {
+                    subconDs.load({ callback: function () { fSubcon.setValue(parseInt(h.execution_subcontractor_id, 10)); } });
+                }
                 fMat.clearValue(); itemDs.removeAll();
                 loadQuotaInfo();
                 loadProjectTasks(h.project_id, res.tasks || []);
@@ -459,11 +518,18 @@ Ext.onReady(function () {
             arr.push({ material_id: r.get('material_id'), qty: q, notes: r.get('notes') || '' });
         });
         if (err) { showErr(err); return; }
-        if (!arr.length) { showErr('Tambahkan minimal satu material.'); return; }
+        var spkType = fType.getValue() === 'SUBCON' ? 'SUBCON' : 'INTERNAL';
+        if (spkType === 'INTERNAL' && !arr.length) { showErr('Tambahkan minimal satu material.'); return; }
+        if (spkType === 'SUBCON' && !fSubcon.getValue()) { showErr('Pilih subkontraktor untuk SPK subkon.'); return; }
+        if (spkType === 'SUBCON' && fStart.getValue() && fEnd.getValue() && fEnd.getValue() < fStart.getValue()) { showErr('Tanggal selesai kerja tidak boleh lebih awal dari tanggal mulai.'); return; }
         if (!selectedTasks.length) { showErr('Pilih minimal satu task proyek untuk SPK.'); return; }
         ajax({
             action: 'save', id: editingId, project_id: fProject.getValue(), spk_date: ymd(fDate.getValue()),
             foreman: fForeman.getValue(), description: fDesc.getValue(), remark: fRemark.getValue(),
+            spk_type: spkType,
+            execution_subcontractor_id: spkType === 'SUBCON' ? fSubcon.getValue() : 0,
+            work_start_date: (spkType === 'SUBCON' && fStart.getValue()) ? ymd(fStart.getValue()) : '',
+            work_end_date: (spkType === 'SUBCON' && fEnd.getValue()) ? ymd(fEnd.getValue()) : '',
             details: Ext.util.JSON.encode(arr),
             task_details: Ext.util.JSON.encode(selectedTasks.map(function(t){ return {task_id:t.id}; }))
         }, function (res) {

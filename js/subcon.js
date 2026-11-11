@@ -18,7 +18,7 @@ Ext.onReady(function () {
     var PPN_DEFAULT = 11;
     var dataRecord = null, editingId = 0, hdrForm = null, hdrForm2 = null;
     var curDetail = null;
-    var fProject, fSub, fTitle, fBud, fValue, fPpn, fPph, fRet, fDp, fStart, fEnd, fScope, fNotes;
+    var fProject, fSub, fTitle, fBud, fValue, fPpn, fPph, fRet, fDp, fStart, fEnd, fScope, fNotes, fSpk;
     
     function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
     function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
@@ -106,7 +106,8 @@ Ext.onReady(function () {
             '<div style="padding:4px 2px 10px 2px;">Proyek: <b>' + enc(h.project_name) + '</b> &nbsp;|&nbsp; Subkon: <b>' + enc(h.subcontractor_name) + '</b>' +
             (h.npwp_no ? ' (NPWP ' + enc(h.npwp_no) + ')' : '') + ' &nbsp;|&nbsp; Pekerjaan: <b>' + enc(h.title) + '</b>' +
             (h.budget_item_name ? ' &nbsp;|&nbsp; RAB: <b>' + enc(h.budget_item_name) + '</b>' : '') +
-            ' &nbsp;|&nbsp; Jadwal: ' + enc(h.start_date || '-') + ' s/d ' + enc(h.end_date || '-') + '</div>' +
+            ' &nbsp;|&nbsp; Jadwal: ' + enc(h.start_date || '-') + ' s/d ' + enc(h.end_date || '-') +
+            (h.linked_spk_no ? ' &nbsp;|&nbsp; SPK Subkon: <b>' + enc(h.linked_spk_no) + '</b> (' + enc(h.linked_spk_status || '-') + ')' : ' &nbsp;|&nbsp; <span style="color:#e6a817;">SPK Subkon: belum ditautkan</span>') + '</div>' +
             '<div style="padding:0 2px 10px 2px;color:#9fc3d1;">PPN ' + h.ppn_rate + '% &nbsp;|&nbsp; PPh final ' + h.pph_rate + '% &nbsp;|&nbsp; Retensi ' + h.retention_pct + '% &nbsp;|&nbsp; Uang muka ' + h.dp_pct + '%' +
             (h.scope ? ' &nbsp;|&nbsp; Lingkup: ' + enc(h.scope) : '') + '</div>';
         
@@ -241,7 +242,7 @@ Ext.onReady(function () {
     mainDs = new Ext.data.Store({
         url: CRD, baseParams: { task: 'list_contracts' },
         reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalCount' }, [
-            { name: 'id' }, { name: 'spk_no' }, { name: 'project_id' }, { name: 'project_name' }, { name: 'subcontractor_name' }, { name: 'title' }, { name: 'status' },
+            { name: 'id' }, { name: 'spk_no' }, { name: 'spk_id' }, { name: 'linked_spk_no' }, { name: 'linked_spk_status' }, { name: 'project_id' }, { name: 'project_name' }, { name: 'subcontractor_name' }, { name: 'title' }, { name: 'status' },
             { name: 'contract_value', type: 'float' }, { name: 'progress_pct', type: 'float' }, { name: 'billed_net', type: 'float' },
             { name: 'progress_paid', type: 'float' }, { name: 'payable_balance', type: 'float' }, { name: 'retention_held', type: 'float' }
         ]),
@@ -254,6 +255,7 @@ Ext.onReady(function () {
         store: mainDs, renderTo: 'divMainGrid', height: mainHeight,
         columns: [
             { header: 'No. SPK', dataIndex: 'spk_no', width: 120 },
+            { header: 'SPK Ref', dataIndex: 'linked_spk_no', width: 110, renderer: function (v) { return v ? enc(v) : '-'; } },
             { header: 'Proyek', dataIndex: 'project_name', width: 200, renderer: CellWrap },
             { header: 'Subkontraktor', dataIndex: 'subcontractor_name', width: 160, renderer: CellWrap },
             { header: 'Pekerjaan', dataIndex: 'title', width: 190, renderer: CellWrap },
@@ -340,12 +342,32 @@ Ext.onReady(function () {
             'Terbagi ke task <b>' + fmtAmt(sum) + '</b> &nbsp;|&nbsp; Selisih <b style="color:' + (ok ? '#7fe0a0' : '#ff6b5e') + ';">' + fmtAmt(diff) + (ok ? ' (OK)' : ' (harus 0)') + '</b>';
     }
     
+    // SPK bertipe Subkon yang proyek & subkontraktornya sama dan belum punya kontrak (untuk tautan kontrak -> SPK)
+    var spkDs = new Ext.data.Store({
+        url: CRD, baseParams: { task: 'list_spk_options' },
+        reader: rdr([{ name: 'id' }, { name: 'spk_no' }, { name: 'spk_date' }, { name: 'status' }, { name: 'description' },
+                     { name: 'label', convert: function (v, r) { return r.spk_no + ' (' + r.status + (r.description ? ') - ' + r.description : ')'); } }]),
+        listeners: { exception: storeError }
+    });
+    // muat ulang pilihan SPK setiap proyek / subkontraktor berubah; keepValue = pertahankan pilihan yang masih valid
+    function reloadSpkOptions(keepValue, cb) {
+        var pid = fProject && fProject.getValue(), sid = fSub && fSub.getValue();
+        var keep = keepValue ? fSpk.getValue() : '';
+        fSpk.clearValue();
+        if (!pid || !sid) { spkDs.removeAll(); if (cb) cb(); return; }
+        spkDs.load({ params: { project_id: pid, subcontractor_id: sid, contract_id: editingId || 0 }, callback: function () {
+            if (keep && spkDs.find('id', keep) >= 0) { fSpk.setValue(keep); }
+            if (cb) cb();
+        } });
+    }
+
     function ensureForm() {
         if (hdrForm) { hdrForm.doLayout(); hdrForm2.doLayout(); return; }
         fProject = new myComboField({ fieldLabel: 'Proyek', store: projectDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%',
             listeners: { select: function () { onProjectChange(); } } });
         fSub = new myComboField({ fieldLabel: 'Subkontraktor', store: subDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%',
             listeners: { select: function (c, rec) {
+                reloadSpkOptions(false);
                 fPph.setValue(rec.get('pph_rate'));
                 var pkp = rec.get('is_pkp'); fPpn.setValue((pkp === true || pkp === 't' || pkp === 'true') ? PPN_DEFAULT : 0);
                 updateSummary();
@@ -361,11 +383,13 @@ Ext.onReady(function () {
         fEnd = new Ext.form.DateField({ fieldLabel: 'Tgl Selesai', format: 'd/m/Y', width: 130 });
         fScope = new myTextField({ fieldLabel: 'Lingkup', anchor: '95%' });
         fNotes = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
+        fSpk = new myComboField({ fieldLabel: 'Tautan SPK Subkon', store: spkDs, displayField: 'label', valueField: 'id', mode: 'local', triggerAction: 'all',
+            forceSelection: true, allowBlank: true, anchor: '95%', emptyText: '(opsional) pilih SPK bertipe Subkon...' });
         var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 120, bodyStyle: 'background:transparent;', items: items }; };
         hdrForm = new Ext.form.FormPanel({ renderTo: 'scHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:4px 2px 0 2px;',
             items: [col(0.36, [fProject, fSub, fTitle, fBud]), col(0.30, [fValue, fPpn, fPph]), col(0.34, [fRet, fDp, fStart, fEnd])] });
         hdrForm2 = new Ext.form.FormPanel({ renderTo: 'scHdrForm2', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:0 2px 4px 2px;',
-            items: [col(0.5, [fScope]), col(0.5, [fNotes])] });
+            items: [col(0.5, [fScope, fSpk]), col(0.5, [fNotes])] });
         var bar = document.getElementById('scAddBar');
         bar.getElementsByClassName('scBtnAddRow')[0].onclick = function () { itemDs.add(newTaskRec()); updateSummary(); };
         bar.getElementsByClassName('scBtnSplit')[0].onclick = splitEvenly;
@@ -387,6 +411,7 @@ Ext.onReady(function () {
     
     function onProjectChange() {
         itemDs.removeAll(); fBud.clearValue(); fBud.setValue(0);
+        reloadSpkOptions(false);
         var pid = fProject.getValue();
         if (!pid) { taskDs.removeAll(); budDs.removeAll(); updateSummary(); return; }
         taskDs.load({ params: { project_id: pid } });
@@ -624,6 +649,7 @@ Ext.onReady(function () {
     function fillEmpty() {
         fProject.clearValue(); fSub.clearValue(); fTitle.setValue(''); fBud.setValue(0); fValue.setValue(0); fPpn.setValue(0); fPph.setValue(0);
         fRet.setValue(0); fDp.setValue(0); fStart.setValue(''); fEnd.setValue(''); fScope.setValue(''); fNotes.setValue('');
+        fSpk.clearValue(); spkDs.removeAll();
         taskDs.removeAll(); budDs.removeAll(); itemDs.removeAll(); updateSummary();
     }
     
@@ -652,6 +678,15 @@ Ext.onReady(function () {
                         fRet.setValue(parseFloat(h.retention_pct)); fDp.setValue(parseFloat(h.dp_pct));
                         fStart.setValue(h.start_date ? Date.parseDate(h.start_date, 'Y-m-d') : ''); fEnd.setValue(h.end_date ? Date.parseDate(h.end_date, 'Y-m-d') : '');
                         fScope.setValue(h.scope || ''); fNotes.setValue(h.notes || '');
+                        // pilihan SPK: muat dulu, baru pasang nilai tersimpan (SPK yang sudah tertaut ikut muncul karena contract_id dikirim)
+                        spkDs.load({ params: { project_id: h.project_id, subcontractor_id: h.subcontractor_id, contract_id: editingId }, callback: function () {
+                            if (h.spk_id) {
+                                if (spkDs.find('id', h.spk_id) < 0) {   // SPK sudah Selesai/Dibatalkan tapi masih tertaut: tampilkan tetap
+                                    spkDs.add(new spkDs.recordType({ id: h.spk_id, spk_no: h.linked_spk_no, status: h.linked_spk_status, description: '', label: h.linked_spk_no + ' (' + h.linked_spk_status + ')' }));
+                                }
+                                fSpk.setValue(parseInt(h.spk_id, 10));
+                            }
+                        } });
                         itemDs.removeAll();
                         Ext.each(res.data.tasks, function (x) {
                             itemDs.add(newTaskRec({ task_id: x.task_id, task_name: x.task_name, task_value: parseFloat(x.task_value), notes: x.notes || '',
@@ -682,7 +717,7 @@ Ext.onReady(function () {
             task: 'save_contract', id: editingId, project_id: fProject.getValue(), subcontractor_id: fSub.getValue(), title: fTitle.getValue(),
             budget_item_id: fBud.getValue() || 0, contract_value: val, ppn_rate: fPpn.getValue() || 0, pph_rate: fPph.getValue() || 0,
             retention_pct: fRet.getValue() || 0, dp_pct: fDp.getValue() || 0, start_date: ymd(fStart.getValue()), end_date: ymd(fEnd.getValue()),
-            scope: fScope.getValue(), notes: fNotes.getValue(), tasks: Ext.util.JSON.encode(arr)
+            scope: fScope.getValue(), notes: fNotes.getValue(), tasks: Ext.util.JSON.encode(arr), spk_id: fSpk.getValue() || 0
         }, function (res) {
             if (res.success) {
                 document.getElementById('editorWdw').style.display = 'none';
