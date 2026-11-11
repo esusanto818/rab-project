@@ -88,6 +88,9 @@ if (function_exists('app_require_same_origin_post')) {
 }
 
 $userId = intval($_SESSION['user_id']);
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 $formId = 0;
 
 // Direct physical view requests must authorize by the requested filename,
