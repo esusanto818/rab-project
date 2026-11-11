@@ -132,6 +132,10 @@ if ($formAccess === null) {
         'project.invoiceCRD.php' => array('project.invoice.php', 'projectinvoice.php'),
         'projectprogressCRD.php' => array('project.progress.php', 'project.progress.m.php'),
         'ppn.backfillCRD.php'    => array('ppn.report.php'),
+        'rab_input.php'             => array('rab.php'),
+        'stock.card.m.php'          => array('stock.card.php'),
+        'supplier.payment.list.print.php' => array('supplier.payment.php'),
+        'supplier.payment.print.php'      => array('supplier.payment.php'),
     );
     $endpointCandidates = array_values(array_unique(array_merge(
         array($urlFile, $cleanUrlFile),
