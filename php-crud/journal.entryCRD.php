@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Journal Entry - CRUD Handler
   Called from   : js/journal.entry.js
