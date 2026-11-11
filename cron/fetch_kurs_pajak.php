@@ -50,20 +50,10 @@ function fetchAndStoreTaxExchangeRates($pdo = null) {
         } elseif (isset($pdo) && $pdo instanceof PDO) {
             // $pdo exists locally
         } else {
-            // Create fallback PDO connection directly if function.all.php does not provide $pdo
-            $host = '127.0.0.1';
-            $port = '5432';
-            $dbname = 'proyekGMN'; // Adjust to your DB name
-            $user = 'postgres';    // Adjust to your DB username
-            $password = 'postgres'; // Adjust to your DB password
-
+            // Gunakan koneksi standar aplikasi; jangan menyimpan credential database di source.
+            require_once __DIR__ . '/../php-class/crudClass.php';
             try {
-                $dsn = "pgsql:host={$host};port={$port};dbname={$dbname}";
-                $pdo = new PDO($dsn, $user, $password, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-                    PDO::ATTR_EMULATE_PREPARES => false,
-                ]);
+                $pdo = new crud();
             } catch (PDOException $e) {
                 return ['success' => false, 'message' => "Database Connection Error: " . $e->getMessage()];
             }
@@ -80,7 +70,8 @@ function fetchAndStoreTaxExchangeRates($pdo = null) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_USERAGENT => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             CURLOPT_TIMEOUT => 30,
-            CURLOPT_SSL_VERIFYPEER => false
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2
         ]);
         $html = curl_exec($ch);
         curl_close($ch);
@@ -93,8 +84,8 @@ function fetchAndStoreTaxExchangeRates($pdo = null) {
                 'header' => "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36\r\n"
             ],
             'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false
+                'verify_peer' => true,
+                'verify_peer_name' => true
             ]
         ];
         $context = stream_context_create($opts);
