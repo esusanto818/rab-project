@@ -1,4 +1,10 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    exit('Hak baca kartu stok tidak tersedia.');
+}
+
 /**
  * views/stock.card.m.php  —  Stock Card Mobile v2.0 (bisa offline)
  *
