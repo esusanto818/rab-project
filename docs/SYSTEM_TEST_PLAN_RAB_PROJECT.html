@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>System Test Plan — RAB-PROJECT</title>
+<style>
+:root{--ink:#17212b;--muted:#526171;--line:#cbd5df;--blue:#0b5cab;--pale:#eef5fb;--warn:#fff5d6}
+*{box-sizing:border-box}body{font:15px/1.5 Arial,Helvetica,sans-serif;color:var(--ink);max-width:1000px;margin:24px auto;padding:0 24px}h1{text-align:center;font-size:26px;margin:0}h2{font-size:20px;border-bottom:2px solid var(--blue);padding-bottom:5px;margin:28px 0 12px}h3{font-size:17px;margin:22px 0 8px;color:#183d5d}.subtitle{text-align:center;font-weight:bold;margin:5px 0 20px}.meta,.test-meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px;margin:18px 0}.field{border-bottom:1px solid #8997a5;min-height:28px;padding:2px}.field span{font-weight:bold}.intro,.notice{padding:12px 15px;background:var(--pale);border-left:4px solid var(--blue);margin:14px 0}.notice{background:var(--warn);border-color:#d29500}.checklist{list-style:none;padding:0;margin:8px 0}.checklist li{padding:6px 4px;border-bottom:1px dotted #d5dce3}.checklist label{display:flex;align-items:flex-start;gap:9px;cursor:pointer}.checklist input[type=checkbox]{width:18px;height:18px;flex:none;margin:2px 0 0;accent-color:var(--blue)}.testbox{border:1px solid var(--line);border-radius:6px;padding:12px 15px;margin:12px 0;break-inside:avoid}.expected{background:#f7f9fb;padding:8px 10px;margin:8px 0}.notes{width:100%;min-height:48px;border:1px solid var(--line);border-radius:4px;padding:7px;font:14px Arial;resize:vertical}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 0}.row select,.row input[type=text],.row input[type=date]{padding:5px;border:1px solid var(--line);border-radius:4px}.controls{position:sticky;top:0;background:#fff;padding:10px 0;border-bottom:1px solid var(--line);display:flex;gap:8px;z-index:5}.controls button{padding:8px 12px;border:1px solid #7890a5;border-radius:4px;background:white;cursor:pointer}.controls button.primary{background:var(--blue);color:white;border-color:var(--blue)}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}th{background:var(--pale)}.signatures{margin-top:32px}.signatures td{height:80px;width:50%}.small{font-size:13px;color:var(--muted)}footer{margin:28px 0;color:var(--muted);font-size:12px}
+@media(max-width:650px){body{padding:0 12px}.meta,.test-meta{grid-template-columns:1fr}.controls{position:static}}
+@media print{body{max-width:none;margin:0;padding:0;font-size:11pt}.controls{display:none}.testbox{break-inside:avoid}.notes{border:0;border-bottom:1px solid #999;min-height:30px}.checklist input[type=checkbox]{print-color-adjust:exact}h2,h3{break-after:avoid}a{color:inherit;text-decoration:none}}
+</style>
+</head>
+<body>
+<div class="controls">
+  <button class="primary" onclick="window.print()">Cetak / Simpan sebagai PDF</button>
+  <button onclick="resetChecks()">Reset semua isian</button>
+  <span class="small" id="saveStatus" aria-live="polite">Isian tersimpan otomatis di browser ini.</span>
+</div>
+<h1>SYSTEM TEST PLAN</h1>
+<div class="subtitle">RAB-PROJECT — Pengujian end-to-end dari Proyek hingga Laporan Keuangan</div>
+<div class="intro"><b>Tujuan:</b> menguji keterhubungan data proyek, AI, RAB, pengadaan, progres, pembayaran, SPK, inventory, auto-posting jurnal, dan laporan. Dokumen ini merupakan checklist pelaksanaan; tandai kotak setelah langkah benar-benar diuji.</div>
+<div class="notice"><b>Penting:</b> jalankan hanya pada environment Dev/Test dengan data uji dan backup. Jangan jalankan transaksi test di production. Checklist yang diisi tersimpan otomatis pada browser/perangkat ini saja. Untuk mengarsipkan hasil, gunakan Cetak / Simpan sebagai PDF.</div>
+<div class="meta">
+  <div class="field"><span>Environment:</span> <label><input type="checkbox" data-key="env-dev"> Dev</label> <label><input type="checkbox" data-key="env-test"> Test</label></div>
+  <div class="field"><span>Tanggal:</span> <input type="date" data-key="meta-date"></div>
+  <div class="field"><span>Tester:</span> <input type="text" data-key="meta-tester"></div>
+  <div class="field"><span>Versi / commit aplikasi:</span> <input type="text" data-key="meta-version"></div>
+  <div class="field"><span>Database:</span> <input type="text" data-key="meta-db"></div>
+  <div class="field"><span>Proyek uji / ID:</span> <input type="text" data-key="meta-project"></div>
+</div>
+
+<h2>1. Data dan prasyarat pengujian</h2>
+<ul class="checklist">
+<li><label><input type="checkbox" data-key="pre-1"> Akun uji tersedia dengan hak akses sesuai modul dan tindakan.</label></li>
+<li><label><input type="checkbox" data-key="pre-2"> Data klien, supplier, material, satuan, gudang, lokasi/bin, dan karyawan uji tersedia.</label></li>
+<li><label><input type="checkbox" data-key="pre-3"> COA dan rule jurnal yang diuji tersedia dan aktif di <code>fiscal_config</code>.</label></li>
+<li><label><input type="checkbox" data-key="pre-4"> Periode akuntansi mencakup tanggal transaksi dan berstatus terbuka.</label></li>
+<li><label><input type="checkbox" data-key="pre-5"> Database Dev/Test sudah di-backup dan prosedur pemulihan data uji disiapkan.</label></li>
+<li><label><input type="checkbox" data-key="pre-6"> Dipastikan seluruh pengujian memakai data uji, bukan transaksi production.</label></li>
+</ul>
+<p><b>Data proyek uji:</b> kontrak Rp1.000.000.000; budget Rp800.000.000; material uji 100 unit. Ganti angka bila perlu dan catat angka aktual untuk dipakai konsisten di semua tahap.</p>
+
+<h2>2. Rangkaian pengujian end-to-end</h2>
+
+<h3>Tahap A — Proyek, AI, Task, dan RAB</h3>
+<div class="testbox"><b>ST-01 — Buat proyek</b><ul class="checklist">
+<li><label><input type="checkbox" data-key="st01-1"> Buat proyek dengan klien, lingkup, tanggal, status, budget, nilai kontrak, mata uang, dan PPN.</label></li>
+<li><label><input type="checkbox" data-key="st01-2"> Uji tanggal selesai sebelum tanggal mulai dan status proyek tidak valid.</label></li>
+<li><label><input type="checkbox" data-key="st01-3"> Periksa proyek tersimpan dan nilai kontrak/budget dipakai sebagai dasar validasi.</label></li></ul>
+<div class="expected"><b>Harapan:</b> data valid tersimpan; data tidak valid ditolak dengan pesan yang jelas.</div><div class="row">Status: <select data-key="st01-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> ID/Bukti: <input type="text" data-key="st01-ref"></div><textarea class="notes" data-key="st01-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-02 — AI Task/BoQ menghasilkan draft</b><ul class="checklist">
+<li><label><input type="checkbox" data-key="st02-1"> Jalankan Analisis &amp; Bagi Task (AI).</label></li>
+<li><label><input type="checkbox" data-key="st02-2"> Periksa task, jadwal, tanggal, material, biaya, kuantitas, satuan, dan asumsi.</label></li>
+<li><label><input type="checkbox" data-key="st02-3"> Uji tanggal di luar rentang proyek atau baris draft yang tidak lengkap.</label></li>
+<li><label><input type="checkbox" data-key="st02-4"> Batalkan draft tanpa menyimpan; pastikan proyek/RAB/task belum berubah.</label></li></ul>
+<div class="expected"><b>Harapan:</b> AI memberi draft yang dapat ditinjau. Draft bukan transaksi dan belum mengubah data sebelum disimpan.</div><div class="row">Status: <select data-key="st02-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> ID/Bukti: <input type="text" data-key="st02-ref"></div><textarea class="notes" data-key="st02-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-03 — Review dan simpan Task/BoQ/RAB</b><ul class="checklist">
+<li><label><input type="checkbox" data-key="st03-1"> Tinjau/edit draft lalu simpan task, material/biaya, RAB, dan alokasi.</label></li>
+<li><label><input type="checkbox" data-key="st03-2"> Periksa relasi task ↔ <code>task_materials</code> ↔ <code>budget_items</code>.</label></li>
+<li><label><input type="checkbox" data-key="st03-3"> Uji total RAB yang melewati nilai kontrak dan budget proyek.</label></li>
+<li><label><input type="checkbox" data-key="st03-4"> Uji penghapusan task/item yang sudah dipakai PO, SPK, invoice, atau issue.</label></li></ul>
+<div class="expected"><b>Harapan:</b> data dan relasi tersimpan konsisten; kontrol plafon/addendum dan penguncian data terpakai berlaku.</div><div class="row">Status: <select data-key="st03-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> ID/Bukti: <input type="text" data-key="st03-ref"></div><textarea class="notes" data-key="st03-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-04 — Preview dan penerbitan invoice otomatis</b><ul class="checklist">
+<li><label><input type="checkbox" data-key="st04-1"> Jalankan preview; periksa termin, task pemicu, persentase, tanggal, DPP, dan PPN.</label></li>
+<li><label><input type="checkbox" data-key="st04-2"> Pastikan preview tidak membuat invoice maupun jurnal.</label></li>
+<li><label><input type="checkbox" data-key="st04-3"> Dengan akses sesuai, konfirmasi penerbitan; periksa jumlah invoice yang dibuat/disinkronkan.</label></li>
+<li><label><input type="checkbox" data-key="st04-4"> Jalankan ulang; pastikan tidak ada invoice duplikat dan invoice sudah dibayar tidak berubah.</label></li></ul>
+<div class="expected"><b>Harapan:</b> preview hanya rencana; penerbitan eksplisit membuat invoice/jurnal yang sesuai. Proses ulang aman/idempoten sesuai aturan modul.</div><div class="row">Status: <select data-key="st04-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> ID/Bukti: <input type="text" data-key="st04-ref"></div><textarea class="notes" data-key="st04-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<h3>Tahap B — Pengadaan dan persediaan masuk</h3>
+<div class="testbox"><b>ST-05 — Purchase Planning</b><ul class="checklist"><li><label><input type="checkbox" data-key="st05-1"> Bandingkan qty RAB, qty PO aktif, dan sisa kebutuhan.</label></li><li><label><input type="checkbox" data-key="st05-2"> Pastikan halaman planning hanya laporan dan tidak membuat PO.</label></li></ul><div class="expected"><b>Harapan:</b> sisa kebutuhan terhitung dari RAB dan PO yang tidak dibatalkan.</div><div class="row">Status: <select data-key="st05-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> Bukti: <input type="text" data-key="st05-ref"></div><textarea class="notes" data-key="st05-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-06 — Buat dan proses PO</b><ul class="checklist"><li><label><input type="checkbox" data-key="st06-1"> Buat PO Draft dari item RAB; ajukan dan setujui sesuai hak akses.</label></li><li><label><input type="checkbox" data-key="st06-2"> Uji tanpa supplier/item dan qty melebihi kuota RAB/toleransi.</label></li><li><label><input type="checkbox" data-key="st06-3"> Uji edit/hapus PO non-Draft dan pembatalan setelah GRN.</label></li></ul><div class="expected"><b>Harapan:</b> PO tertaut ke RAB; status/transisi dan pembatasan kuantitas ditegakkan server.</div><div class="row">Status: <select data-key="st06-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. PO/Bukti: <input type="text" data-key="st06-ref"></div><textarea class="notes" data-key="st06-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-07 — Buat GRN</b><ul class="checklist"><li><label><input type="checkbox" data-key="st07-1"> Buat GRN dari PO Disetujui.</label></li><li><label><input type="checkbox" data-key="st07-2"> Uji GRN dari PO yang belum Disetujui dan qty di atas toleransi.</label></li><li><label><input type="checkbox" data-key="st07-3"> Uji edit/hapus GRN yang sudah dipakai WH Receiving.</label></li></ul><div class="expected"><b>Harapan:</b> GRN hanya dibuat dari PO yang memenuhi status; GRN sendiri belum menambah stok sebelum WH Receiving.</div><div class="row">Status: <select data-key="st07-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. GRN/Bukti: <input type="text" data-key="st07-ref"></div><textarea class="notes" data-key="st07-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-08 — WH Receiving, stok IN, dan jurnal GRN_RCV</b><ul class="checklist"><li><label><input type="checkbox" data-key="st08-1"> Terima fisik barang ke gudang/bin yang benar.</label></li><li><label><input type="checkbox" data-key="st08-2"> Uji qty di atas sisa GRN dan bin dari gudang lain.</label></li><li><label><input type="checkbox" data-key="st08-3"> Periksa pergerakan IN, saldo stok, dan jurnal <code>GRN_RCV</code>.</label></li><li><label><input type="checkbox" data-key="st08-4"> Uji periode tutup/rule tidak aktif; pastikan tidak ada data parsial.</label></li></ul><div class="expected"><b>Harapan:</b> WH Receiving valid menambah stok dan jurnal. Kegagalan tidak meninggalkan header/detail/stok/jurnal yang tidak konsisten.</div><div class="row">Status: <select data-key="st08-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. transaksi/jurnal: <input type="text" data-key="st08-ref"></div><textarea class="notes" data-key="st08-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<h3>Tahap C — Invoice, pembayaran, dan progres</h3>
+<div class="testbox"><b>ST-09 — Invoice termin dan jurnal penagihan</b><ul class="checklist"><li><label><input type="checkbox" data-key="st09-1"> Buat invoice manual atau gunakan invoice otomatis yang sudah direview.</label></li><li><label><input type="checkbox" data-key="st09-2"> Uji DPP kumulatif melebihi kontrak, PPN, tanggal invoice, dan jatuh tempo.</label></li><li><label><input type="checkbox" data-key="st09-3"> Periksa <code>PROJECT_INVOICE</code> dan, bila ada PPN, <code>PROJECT_INVOICE_PPN</code>.</label></li><li><label><input type="checkbox" data-key="st09-4"> Uji periode tutup/rule jurnal tidak aktif.</label></li></ul><div class="expected"><b>Harapan:</b> invoice mengikuti kontrol kontrak dan jurnal piutang/pendapatan/PPN sesuai konfigurasi; kegagalan tidak meninggalkan data parsial.</div><div class="row">Status: <select data-key="st09-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. invoice/jurnal: <input type="text" data-key="st09-ref"></div><textarea class="notes" data-key="st09-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-10 — Pembayaran klien dan deposit</b><ul class="checklist"><li><label><input type="checkbox" data-key="st10-1"> Catat pembayaran dan alokasikan ke invoice yang memiliki sisa.</label></li><li><label><input type="checkbox" data-key="st10-2"> Uji alokasi melebihi sisa, ke klien lain, dan multi-proyek klien yang sama.</label></li><li><label><input type="checkbox" data-key="st10-3"> Uji kelebihan bayar, deposit masuk, dan penggunaan deposit berikutnya.</label></li><li><label><input type="checkbox" data-key="st10-4"> Periksa saldo invoice, deposit, kas/bank, dan jurnal pembayaran.</label></li></ul><div class="expected"><b>Harapan:</b> alokasi dan deposit valid; saldo invoice dan jurnal pembayaran konsisten.</div><div class="row">Status: <select data-key="st10-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. pembayaran/Bukti: <input type="text" data-key="st10-ref"></div><textarea class="notes" data-key="st10-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-11 — Ajukan dan verifikasi progres</b><ul class="checklist"><li><label><input type="checkbox" data-key="st11-1"> Ajukan progres dengan tanggal, persen, catatan, dan bukti.</label></li><li><label><input type="checkbox" data-key="st11-2"> Uji tanggal masa depan, bukti kosong, persen invalid, dan klaim tidak meningkat.</label></li><li><label><input type="checkbox" data-key="st11-3"> Uji klaim kedua saat masih menunggu; larang self-verification.</label></li><li><label><input type="checkbox" data-key="st11-4"> Uji penolakan tanpa alasan; verifikasi oleh pengguna lain.</label></li><li><label><input type="checkbox" data-key="st11-5"> Periksa progres proyek hanya berubah setelah verifikasi berhasil.</label></li></ul><div class="expected"><b>Harapan:</b> progres yang dipakai kontrol issue adalah progres yang telah terverifikasi.</div><div class="row">Status: <select data-key="st11-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. klaim/Bukti: <input type="text" data-key="st11-ref"></div><textarea class="notes" data-key="st11-notes" placeholder="Progres sebelum/sesudah dan catatan"></textarea></div>
+
+<h3>Tahap D — SPK, Inventory Issue, dan AI Variance</h3>
+<div class="testbox"><b>ST-12 — Buat dan terbitkan SPK</b><ul class="checklist"><li><label><input type="checkbox" data-key="st12-1"> Buat SPK Draft dengan task dan material proyek yang ada di RAB.</label></li><li><label><input type="checkbox" data-key="st12-2"> Uji task/material bukan milik proyek atau tidak ada di RAB.</label></li><li><label><input type="checkbox" data-key="st12-3"> Coba terbitkan sebelum pembayaran klien tercatat.</label></li><li><label><input type="checkbox" data-key="st12-4"> Setelah pembayaran, periksa kuota SPK, SPK aktif lain, stok/reservasi, dan batas qty.</label></li></ul><div class="expected"><b>Harapan:</b> SPK hanya diterbitkan bila prasyarat pembayaran dan kuota material valid.</div><div class="row">Status: <select data-key="st12-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. SPK/Bukti: <input type="text" data-key="st12-ref"></div><textarea class="notes" data-key="st12-notes" placeholder="Perhitungan kuota / catatan"></textarea></div>
+
+<div class="testbox"><b>ST-13 — Warehouse Issuing dengan SPK (wajib dibuktikan backend)</b><ul class="checklist"><li><label><input type="checkbox" data-key="st13-1"> Buat issue valid dengan proyek, SPK Diterbitkan, gudang, material, dan qty.</label></li><li><label><input type="checkbox" data-key="st13-2"> Uji stok kurang, material non-RAB, kuota SPK habis, batas RAB/toleransi, dan plafon progres.</label></li><li><label><input type="checkbox" data-key="st13-3"> Kirim request backend tanpa <code>spk_id</code>.</label></li><li><label><input type="checkbox" data-key="st13-4"> Kirim <code>spk_id</code> salah proyek, Draft, Dibatalkan, atau material yang tidak ada di SPK.</label></li><li><label><input type="checkbox" data-key="st13-5"> Untuk transaksi valid, periksa hubungan issue ↔ SPK, stok FIFO OUT, dan jurnal <code>ISSUE_PROJECT</code>.</label></li></ul><div class="notice"><b>Blocker:</b> UI terlihat meminta SPK, tetapi kontrol backend harus dites langsung. Jangan nyatakan lulus bila server hanya mengandalkan validasi UI.</div><div class="expected"><b>Harapan:</b> backend menolak request invalid; issue valid berelasi ke SPK yang benar, mengurangi stok, dan membuat jurnal.</div><div class="row">Status: <select data-key="st13-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> No. issue/SPK/jurnal: <input type="text" data-key="st13-ref"></div><textarea class="notes" data-key="st13-notes" placeholder="Hasil validasi backend / catatan"></textarea></div>
+
+<div class="testbox"><b>ST-14 — AI Variance Analysis</b><ul class="checklist"><li><label><input type="checkbox" data-key="st14-1"> Jalankan analisis setelah data biaya/progres/penagihan tersedia.</label></li><li><label><input type="checkbox" data-key="st14-2"> Cocokkan angka dan temuan dengan data sumber.</label></li><li><label><input type="checkbox" data-key="st14-3"> Uji hak akses untuk lihat dan analisis ulang.</label></li><li><label><input type="checkbox" data-key="st14-4"> Uji fallback saat AI eksternal tidak tersedia.</label></li><li><label><input type="checkbox" data-key="st14-5"> Pastikan rekomendasi AI tidak otomatis menyetujui progres, menerbitkan SPK, atau melakukan issue.</label></li></ul><div class="expected"><b>Harapan:</b> analisis risiko/rekomendasi dapat ditinjau dan tersimpan; keputusan operasional tetap melalui proses kontrol yang sesuai.</div><div class="row">Status: <select data-key="st14-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> ID/log analisis: <input type="text" data-key="st14-ref"></div><textarea class="notes" data-key="st14-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<h3>Tahap E — Jurnal, laporan, dan rekonsiliasi</h3>
+<div class="testbox"><b>ST-15 — Auto-posting dan konsistensi transaksi</b><ul class="checklist"><li><label><input type="checkbox" data-key="st15-1"> Periksa jurnal terhubung ke sumber lewat reference type dan reference ID.</label></li><li><label><input type="checkbox" data-key="st15-2"> Pastikan total debit sama dengan total kredit.</label></li><li><label><input type="checkbox" data-key="st15-3"> Uji rule tidak aktif, periode tidak ditemukan/tertutup, dan kegagalan posting.</label></li><li><label><input type="checkbox" data-key="st15-4"> Pastikan kegagalan tidak menyimpan transaksi parsial.</label></li><li><label><input type="checkbox" data-key="st15-5"> Uji reversal dan pengaruhnya pada sumber, stok, jurnal, dan laporan.</label></li></ul><div class="expected"><b>Harapan:</b> transaksi, jurnal, dan stok konsisten; reversal memiliki jejak audit dan tidak menghilangkan keterlacakan.</div><div class="row">Status: <select data-key="st15-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> ID transaksi/jurnal: <input type="text" data-key="st15-ref"></div><textarea class="notes" data-key="st15-notes" placeholder="Catatan / hasil aktual"></textarea></div>
+
+<div class="testbox"><b>ST-16 — Verifikasi laporan keuangan dan dashboard</b><ul class="checklist"><li><label><input type="checkbox" data-key="st16-1"> Periksa Dashboard, Action Center, progres, biaya, RAB, dan pemakaian material.</label></li><li><label><input type="checkbox" data-key="st16-2"> Rekonsiliasi AR Aging dengan invoice dikurangi pembayaran.</label></li><li><label><input type="checkbox" data-key="st16-3"> Periksa AP Aging sesuai modul transaksi yang termasuk scope.</label></li><li><label><input type="checkbox" data-key="st16-4"> Periksa Buku Besar, Trial Balance, Neraca, dan Laba Rugi.</label></li><li><label><input type="checkbox" data-key="st16-5"> Periksa PPN dan laporan kas/bank bila tersedia.</label></li><li><label><input type="checkbox" data-key="st16-6"> Rekonsiliasi stok terhadap pergerakan IN/OUT dan biaya terhadap jurnal/dokumen sumber.</label></li><li><label><input type="checkbox" data-key="st16-7"> Pastikan filter proyek dan periode laporan benar.</label></li></ul><div class="expected"><b>Harapan:</b> laporan seimbang, dapat ditelusuri ke dokumen sumber, dan memakai periode serta filter yang sesuai.</div><div class="row">Status: <select data-key="st16-status"><option>Belum diuji</option><option>Lulus</option><option>Gagal</option><option>Terblokir</option><option>N/A</option></select> Periode/Bukti: <input type="text" data-key="st16-ref"></div><textarea class="notes" data-key="st16-notes" placeholder="Catatan rekonsiliasi / hasil aktual"></textarea></div>
+
+<h2>3. Kriteria kelulusan keseluruhan</h2>
+<ul class="checklist">
+<li><label><input type="checkbox" data-key="exit-1"> Seluruh test wajib selesai atau memiliki tiket tindak lanjut untuk status Terblokir.</label></li>
+<li><label><input type="checkbox" data-key="exit-2"> Validasi penting dijalankan server-side, bukan hanya di UI.</label></li>
+<li><label><input type="checkbox" data-key="exit-3"> Tidak ada issue tanpa SPK valid jika kebijakan mengharuskannya.</label></li>
+<li><label><input type="checkbox" data-key="exit-4"> Tidak ada perubahan stok tanpa dokumen transaksi resmi.</label></li>
+<li><label><input type="checkbox" data-key="exit-5"> Tidak ada invoice/jurnal duplikat atau tanpa referensi sumber.</label></li>
+<li><label><input type="checkbox" data-key="exit-6"> Kegagalan proses tidak meninggalkan data parsial.</label></li>
+<li><label><input type="checkbox" data-key="exit-7"> Jurnal seimbang dan laporan dapat direkonsiliasi.</label></li>
+<li><label><input type="checkbox" data-key="exit-8"> Reversal tercatat dan tercermin dengan benar pada stok serta laporan.</label></li>
+</ul>
+
+<h2>4. Ringkasan hasil dan persetujuan</h2>
+<table><thead><tr><th>Hasil</th><th>Jumlah</th></tr></thead><tbody>
+<tr><td>Lulus</td><td><input type="text" data-key="summary-pass"></td></tr>
+<tr><td>Gagal</td><td><input type="text" data-key="summary-fail"></td></tr>
+<tr><td>Terblokir</td><td><input type="text" data-key="summary-blocked"></td></tr>
+<tr><td>Belum diuji</td><td><input type="text" data-key="summary-notrun"></td></tr>
+</tbody></table>
+<p><b>Blocker utama / tiket tindak lanjut:</b></p>
+<textarea class="notes" data-key="summary-blockers" style="min-height:90px"></textarea>
+<table class="signatures"><tbody><tr><td>Tester:<br><br>Nama: ____________________<br>Tanggal: ____________________<br>Tanda tangan: ____________________</td><td>Reviewer bisnis/keuangan:<br><br>Nama: ____________________<br>Tanggal: ____________________<br>Tanda tangan: ____________________</td></tr></tbody></table>
+<p><b>Keputusan:</b> ☐ Siap dilanjutkan &nbsp;&nbsp; ☐ Perlu perbaikan dan retest &nbsp;&nbsp; ☐ Belum boleh dirilis</p>
+<footer>Dokumen ini adalah checklist pengujian. Status lulus hanya diberikan berdasarkan hasil aktual di environment Dev/Test; pemeriksaan source saja bukan bukti bahwa runtime telah lulus.</footer>
+<script>
+(function(){
+  const fields = document.querySelectorAll('[data-key]');
+  const prefix = 'rab-project-test-plan-v1:';
+  fields.forEach(function(el){
+    const key = prefix + el.dataset.key;
+    const saved = localStorage.getItem(key);
+    if (saved !== null) {
+      if (el.type === 'checkbox') el.checked = saved === 'true';
+      else el.value = saved;
+    }
+    el.addEventListener('input', save);
+    el.addEventListener('change', save);
+    function save(){
+      localStorage.setItem(key, el.type === 'checkbox' ? String(el.checked) : el.value);
+      document.getElementById('saveStatus').textContent = 'Isian tersimpan otomatis di browser ini.';
+    }
+  });
+})();
+function resetChecks(){
+  if(!confirm('Hapus semua checkbox, status, dan catatan tersimpan pada browser ini?')) return;
+  document.querySelectorAll('[data-key]').forEach(function(el){localStorage.removeItem('rab-project-test-plan-v1:'+el.dataset.key); if(el.type==='checkbox') el.checked=false; else el.value='';});
+  document.getElementById('saveStatus').textContent='Isian direset.';
+}
+</script>
+</body>
+</html>
