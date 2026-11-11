@@ -5,6 +5,7 @@ if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_S
     exit('Sesi berakhir. Silakan login kembali.');
 }
 require_once __DIR__ . '/../php-class/crudClass.php';
+if (function_exists('app_require_active_user')) { app_require_active_user(); }
 
 $db = new crud();
 $user_id = $_SESSION["user_id"] ?? 0;
