@@ -141,7 +141,19 @@ if ($formAccess === null) {
     $params = array($userId);
     foreach ($endpointCandidates as $candidate) {
         $params[] = $candidate;
-        $matchClauses[] = 'LOWER(BTRIM(b.php_url)) = LOWER(
+        $matchClauses[] = "LOWER(BTRIM(b.php_url)) = LOWER($" . count($params) . ")";
+    }
+
+    $sql = "
+        SELECT a.access_level, b.id AS real_form_id
+        FROM m_user_access_menu a
+        INNER JOIN m_form_name b ON a.form_id = b.id
+        WHERE a.user_id = $1
+          AND (" . implode(' OR ', $matchClauses) . ")
+          AND COALESCE(a.access_level, 0) > 0
+        LIMIT 1
+    ";
+    $result = pg_query_params($conn, $sql, $params);
 
     if ($result && pg_num_rows($result) > 0) {
         $row = pg_fetch_assoc($result);
