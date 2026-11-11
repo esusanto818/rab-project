@@ -1,82 +1,42 @@
 <?php
 /**
- * views/stock.card.m.php  —  Stock Card Mobile v2.0 (bisa offline)
+ * views/stock.card.m.php  —  Kartu Stok Mobile v2.1 (bisa offline)
+ * Pola sama dengan project.progress.m.php: wajib login (user.valid.php) dan alamat dari BASE_URL.
  *
  * File yang berpasangan:
- *   views/stock.card.m.js         (halaman ini memuatnya)
- *   php-crud/stock.cardCRD.php    (backend)
- *   sw.stockcard.js               (ROOT aplikasi, sejajar views/ dan php-crud/)
+ *   js/stock.card.m.js            (UI + logika offline, dimuat halaman ini)
+ *   php-crud/stock.cardCRD.php    (backend; action: lookup_warehouses | lookup_items | card | snapshot)
+ *   sw.stockcard.js               (Service Worker - HARUS di root aplikasi, sejajar index.php)
+ *   stock.card.m.menu.sql         (daftar menu + hak akses; wajib dijalankan sekali)
  *
- * Semua URL dihitung di sini dan dikirim ke JS lewat window.SC_CFG, jadi tidak bergantung pada
- * APP_BASE_URL, 'localhost', atau cara halaman dibuka (langsung / lewat router?id=NN).
+ * Catatan akses: user.valid.php mengotorisasi halaman view berdasarkan NAMA FILE di m_form_name.
+ * Jika stock.card.m.php belum terdaftar untuk user, halaman menjawab 403 "Akses ditolak".
  */
+header('ngrok-skip-browser-warning: 1');
+include __DIR__ . "/../php-func/user.valid.php";   // wajib login; set $_SESSION["FormAccess"]
+header('Cache-Control: no-cache, must-revalidate'); // update JS/CSS sampai ke HP tanpa hapus cache
 
-// Selalu tanya server dulu supaya update JS/CSS sampai ke HP tanpa user menghapus cache
-header('Cache-Control: no-cache, must-revalidate');
+$appBase = rtrim(BASE_URL, '/') . '/';
 
-// ---------------------------------------------------------------
-// KONFIGURASI (ubah bila perlu)
-// ---------------------------------------------------------------
-// Biarkan kosong. Isi (mis. '/rab-project/dev/') hanya jika alamat relatif tidak cocok dengan struktur folder Anda.
-$WEB_BASE_OVERRIDE = '';
+$jsFile = __DIR__ . '/../js/stock.card.m.js';
+$ver    = file_exists($jsFile) ? filemtime($jsFile) : time();
 
-// Menu bawah. Isi href dengan alamat halaman yang sesuai di aplikasi Anda.
-$NAV = array(
-    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => '../views/dashboard.php',  'active' => false),
-    array('icon' => '📦', 'label' => 'Stok',      'href' => '../views/stock.card.m.php',  'active' => true),
-    array('icon' => '📊', 'label' => 'Progress',  'href' => '../views/project.progress.m.php',  'active' => false),
-);
-
-// ---------------------------------------------------------------
-// Alamat dibuat RELATIF terhadap URL halaman ini (views/...), sama seperti halaman desktop
-// ('../js/...', '../php-crud/...'). Browser yang menghitungnya, jadi aman terhadap Alias,
-// RewriteRule, symlink, segmen 'dev', dan akses lewat views/router?id=NN.
-// ---------------------------------------------------------------
-$appRoot = str_replace('\\', '/', (string)realpath(__DIR__ . '/..'));   // folder induk views/ (untuk mencari file di disk)
-$BASE    = ($WEB_BASE_OVERRIDE !== '') ? ('/' . trim($WEB_BASE_OVERRIDE, '/') . '/') : '../';
-
-// ---------------------------------------------------------------
-// Cari file JS (utamakan folder views/, lalu js/, lalu folder lain sampai 2 tingkat)
-// ---------------------------------------------------------------
-$jsNames = array('stock.card.m.js', 'stock_card_m.js');
-$jsFile  = '';
-$jsTried = array();
-foreach ($jsNames as $n) {
-    $jsTried[] = __DIR__ . '/' . $n;
-    foreach (array('js', 'assets/js', 'public/js', 'scripts', 'static/js') as $d) {
-        $jsTried[] = $appRoot . '/' . $d . '/' . $n;
-    }
-}
-foreach ($jsTried as $c) {
-    if (is_file($c)) { $jsFile = $c; break; }
-}
-if ($jsFile === '') {
-    foreach ($jsNames as $n) {
-        $g1 = glob($appRoot . '/*/' . $n);
-        $g2 = glob($appRoot . '/*/*/' . $n);
-        $g  = array_merge($g1 ? $g1 : array(), $g2 ? $g2 : array());
-        if ($g) { $jsFile = $g[0]; break; }
-    }
-}
-
-$jsMissing = ($jsFile === '');
-if ($jsMissing) {
-    $jsSrc = $BASE . 'views/stock.card.m.js';
-    $ver   = time();
-} else {
-    $real  = str_replace('\\', '/', $jsFile);   // tanpa realpath: folder js/ boleh berupa symlink
-    $rel   = ltrim(substr($real, strlen($appRoot)), '/');
-    $ver   = filemtime($jsFile);
-    $jsSrc = $BASE . $rel . '?v=' . $ver;
-}
-
+// Semua alamat dikirim ke JS lewat window.SC_CFG (JS tidak menebak path sendiri)
 $cfg = array(
-    'base'  => $BASE,
-    'crd'   => $BASE . 'php-crud/stock.cardCRD.php',
-    'sw'    => $BASE . 'sw.stockcard.js',
-    'scope' => $BASE,
+    'base'  => $appBase,
+    'crd'   => $appBase . 'php-crud/stock.cardCRD.php',
+    'sw'    => $appBase . 'sw.stockcard.js',
+    'scope' => $appBase,
     'ver'   => (string)$ver,
-    'js'    => $jsSrc,
+    'js'    => $appBase . 'js/stock.card.m.js?v=' . $ver,
+);
+$jsSrc = $cfg['js'];
+
+// Menu bawah: halaman mobile yang sudah ada
+$NAV = array(
+    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => 'dashboard.m.php',        'active' => false),
+    array('icon' => '📦', 'label' => 'Stok',      'href' => 'stock.card.m.php',       'active' => true),
+    array('icon' => '📊', 'label' => 'Progress',  'href' => 'project.progress.m.php', 'active' => false),
 );
 ?><!DOCTYPE html>
 <html lang="id">
@@ -86,6 +46,7 @@ $cfg = array(
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#020812">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="<?php echo htmlspecialchars($appBase); ?>assets/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 :root{--bg:#020812;--card:#0a1624;--card2:#0d1e30;--line:#16324a;--txt:#e6eef5;--mut:#7f96aa;--acc:#22b8cf;--acc2:#0e7490;--in:#2e9e4f;--out:#e0573f;--warn:#d9822b;color-scheme:dark}
@@ -138,12 +99,8 @@ pre{background:#050d16;border:1px solid var(--line);border-radius:8px;padding:8p
         <p>Monitoring mutasi stok per gudang</p>
     </div>
 
-    <div class="bar"><span id="pillNet" class="pill">online</span><span>Stock Card Mobile v2.0</span></div>
+    <div class="bar"><span id="pillNet" class="pill">online</span><span>Stock Card Mobile v2.1</span></div>
 
-    <?php if ($jsMissing): ?>
-    <div class="msg err">File <b>stock.card.m.js</b> tidak ditemukan di server. Salin file itu ke folder
-        <b><?php echo htmlspecialchars(str_replace('\\', '/', __DIR__)); ?>/</b> lalu muat ulang halaman ini.</div>
-    <?php endif; ?>
     <div id="msg" class="msg hidden"></div>
 
     <div class="panel">
