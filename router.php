@@ -70,9 +70,15 @@ function router_authorize_endpoint($db, $userId, $endpointType, $fileName)
         if (preg_match('/CRD\.php$/i', $base)) {
             $candidates[] = preg_replace('/CRD\.php$/i', '.php', $base);
         }
-        // Explicit legacy endpoint alias: print endpoint belongs to Master Kurs Pajak.
-        if (strcasecmp($base, 'm.taxexchangerate.pdf.php') === 0) {
-            $candidates[] = 'm.taxexchangerate.php';
+        // Explicit aliases for legacy endpoints whose parent menu filename differs.
+        $legacyAliases = array(
+            'project.invoiceCRD.php' => array('project.invoice.php', 'projectinvoice.php'),
+            'projectprogressCRD.php' => array('project.progress.php', 'project.progress.m.php'),
+            'ppn.backfillCRD.php'    => array('ppn.report.php'),
+            'm.taxexchangerate.pdf.php' => array('m.taxexchangerate.php'),
+        );
+        if (isset($legacyAliases[$base])) {
+            $candidates = array_merge($candidates, $legacyAliases[$base]);
         }
     } elseif ($endpointType === 'pdf') {
         $candidates[] = $base; // wrapper file inside /pdf
