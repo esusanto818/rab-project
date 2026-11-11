@@ -73,7 +73,7 @@ case 'get_projects':
 case 'read_tax_rates':
     try {
         $taxReadAccessStmt = $db->prepare("
-            SELECT COALESCE(MAX(u.access_level), 0)
+            SELECT COALESCE(MIN(u.access_level), 0)
               FROM m_form_name f
               JOIN m_user_access_menu u ON u.form_id = f.id
              WHERE u.user_id = :uid
@@ -116,7 +116,7 @@ case 'sync_tax_rates':
     // Dashboard API tidak melalui otorisasi menu biasa; cek hak khusus Master Kurs Pajak
     // langsung dari tabel hak akses user agar FormAccess menu sebelumnya tidak bisa dipakai ulang.
     $taxAccessStmt = $db->prepare("
-        SELECT COALESCE(MAX(u.access_level), 0)
+        SELECT COALESCE(MIN(u.access_level), 0)
           FROM m_form_name f
           JOIN m_user_access_menu u ON u.form_id = f.id
          WHERE u.user_id = :uid
@@ -839,7 +839,7 @@ case 'read_project_ai':
     // pada menu Pembayaran Proyek. Hak dicek dari tabel user-menu, bukan FormAccess
     // sesi yang dapat berasal dari menu terakhir dibuka.
     $aiAccessStmt = $db->prepare("
-        SELECT COALESCE(MAX(u.access_level), 0)
+        SELECT COALESCE(MIN(u.access_level), 0)
           FROM m_form_name f
           JOIN m_user_access_menu u ON u.form_id = f.id
          WHERE u.user_id = :uid
