@@ -131,7 +131,8 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
   - `grnCRD_err00.php`
   - `whrcvCRD_err.php`
   - `inventory.status.php`
-- `.htaccess` juga menolak file backup, patch, workspace, dump, dan file dokumentasi di folder `php-crud`, termasuk file berekstensi `.bak`, `.patch`, `.txt`, `.code-workspace`, `.sql`, `.md`, dan sejenisnya.
+- `.htaccess` menolak file backup, patch, workspace, dump, dan file dokumentasi di folder `php-crud`, serta memblokir artefak berekstensi sensitif di web root.
+- Akses HTTP ke direktori `.git`, `database`, `sql`, `docs`, dan direktori backup diblokir; directory listing dimatikan.
 - `db_connection.PHP` tidak lagi menyimpan kredensial database di source; file tersebut menjadi wrapper yang memakai koneksi aplikasi dari `crudClass.php`.
 - `cron/fetch_kurs_pajak.php` tidak lagi memiliki fallback credential hardcoded dan menggunakan koneksi aplikasi bersama. Verifikasi TLS untuk koneksi Kemenkeu diaktifkan (`verify_peer`, `verify_peer_name`, dan `CURLOPT_SSL_VERIFYHOST`).
 - Endpoint PDF kurs pajak tetap dipetakan ke menu Master Kurs Pajak melalui router.
