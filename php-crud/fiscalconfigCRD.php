@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Fiscal Config - CRUD Handler
   Called from   : js/m.fiscalconfig.js
