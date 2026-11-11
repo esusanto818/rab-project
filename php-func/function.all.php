@@ -2,14 +2,26 @@
 error_reporting(E_ALL & ~E_NOTICE);
 if (!isset($_SESSION)) { session_start(); }
 
-$dbHost = "127.0.0.1";
-$dbUser = "postgres";
-$dbPass = "merdeka";
-$dbDatabase = "proyekGMN";
+// Database credentials wajib disediakan melalui environment server, bukan source repository.
+$dbHost = getenv('RAB_DB_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$dbPort = getenv('RAB_DB_PORT') ?: (getenv('DB_PORT') ?: '5432');
+$dbUser = getenv('RAB_DB_USER') ?: (getenv('DB_USER') ?: 'postgres');
+$dbDatabase = getenv('RAB_DB_NAME') ?: (getenv('DB_NAME') ?: 'proyekGMN');
+$dbPass = getenv('RAB_DB_PASSWORD');
+if ($dbPass === false) {
+    $dbPass = getenv('DB_PASSWORD');
+}
+if ($dbPass === false) {
+    $dbPass = '';
+}
 
-// Inisialisasi koneksi DB
-$dbconn = pg_connect("host=$dbHost port=5432 dbname=$dbDatabase user=$dbUser password=$dbPass")
-    or die('Could not connect: ' . pg_last_error());
+// Inisialisasi koneksi DB; jangan tampilkan detail koneksi ke browser.
+$dbconn = @pg_connect("host=$dbHost port=$dbPort dbname=$dbDatabase user=$dbUser password=$dbPass");
+if (!$dbconn) {
+    error_log('[DATABASE] PostgreSQL connection failed: ' . pg_last_error());
+    http_response_code(500);
+    die('Database connection unavailable.');
+}
 
 // Alias $conn dari $dbconn agar kompatibel di seluruh sistem
 $conn = $dbconn;
