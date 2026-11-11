@@ -180,8 +180,9 @@ $_SESSION['FormAccess'] = $formAccess;
 $_SESSION['form_id'] = $formId;
 $_SESSION['current_menu_id'] = $formId;
 
-// Build sidebar links only for the active page request.
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+// Build sidebar links only for actual view/router requests, never for CRUD AJAX endpoints.
+if (($isDirectViewFile || $isLegacyMenuRouter)
+    && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $linkMenu = '';
     $sql = "
       SELECT g.seq, g.name, f.title, f.php_url
