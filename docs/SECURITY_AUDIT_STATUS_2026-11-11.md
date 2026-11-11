@@ -46,7 +46,7 @@ Konvensi hak akses:
   - halaman cetak pembayaran supplier → `supplier.payment.php`
 - `dashboardCRD.php` tetap menjadi pengecualian karena source menetapkan kebijakan dashboard dapat dibaca oleh setiap akun yang sudah login. Seluruh operasi yang mengubah data di dashboard diperiksa secara khusus terhadap menu induk terkait.
 
-**Efek kepada pengguna:** request langsung ke endpoint tetap memerlukan akses ke menu induknya. Hak akses tinggi dari menu lain tidak boleh dipakai untuk menjalankan operasi pada modul berbeda. Pengguna yang tidak memiliki akses menu induk akan mendapat HTTP 403. Jika akun dinonaktifkan admin, sesi yang masih terbuka akan ditolak pada request terlindungi berikutnya dan pengguna diminta login kembali.
+**Efek kepada pengguna:** request langsung ke endpoint tetap memerlukan akses ke menu induknya. Hak akses tinggi dari menu lain tidak boleh dipakai untuk menjalankan operasi pada modul berbeda. Pengguna yang tidak memiliki akses menu induk akan mendapat HTTP 403. Jika akun dinonaktifkan admin, sesi yang masih terbuka akan ditolak pada request terlindungi berikutnya dan pengguna diminta login kembali. Jika database sementara gagal memverifikasi status akun, request mendapat HTTP 503 tanpa menghapus sesi.
 
 ### 2. Konsistensi level edit Draft
 
