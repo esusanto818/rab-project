@@ -2,6 +2,12 @@
 RewriteEngine On
 RewriteBase /rab-project/dev/
 
+# A0. Jangan layani file backup, patch, workspace, dump, atau konfigurasi dari folder endpoint.
+RewriteRule ^php-crud/(?:db_connection\.PHP|.*\.(?:bak|old|orig|patch|txt|code-workspace|sql|md|zip|log|env))$ - [F,END,NC]
+
+# A1. Endpoint legacy yang tidak lagi menjadi jalur resmi; tolak eksplisit.
+RewriteRule ^php-crud/(?:grnCRD_err(?:00)?|whrcvCRD_err|inventory\.status)\.php$ - [F,END,NC]
+
 # A. Endpoint CRUD dan PDF melalui router
 RewriteRule ^(php-crud|pdf)/([A-Za-z0-9_.-]+\.php)$ router.php [END,QSA,NC]
 
