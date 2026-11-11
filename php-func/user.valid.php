@@ -151,6 +151,7 @@ if ($formAccess === null) {
         WHERE a.user_id = $1
           AND (" . implode(' OR ', $matchClauses) . ")
           AND COALESCE(a.access_level, 0) > 0
+        ORDER BY a.access_level ASC, b.id ASC
         LIMIT 1
     ";
     $result = pg_query_params($conn, $sql, $params);
