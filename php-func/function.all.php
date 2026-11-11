@@ -15,8 +15,20 @@ if ($dbPass === false) {
     $dbPass = '';
 }
 
+// Quote setiap nilai conninfo agar karakter khusus pada password/username tidak mengubah parameter koneksi.
+if (!function_exists('app_pg_conninfo_value')) {
+    function app_pg_conninfo_value($value): string {
+        return "'" . str_replace(array("\\", "'"), array("\\\\", "\\'"), (string)$value) . "'";
+    }
+}
+
 // Inisialisasi koneksi DB; jangan tampilkan detail koneksi ke browser.
-$dbconn = @pg_connect("host=$dbHost port=$dbPort dbname=$dbDatabase user=$dbUser password=$dbPass");
+$dbConnInfo = 'host=' . app_pg_conninfo_value($dbHost)
+    . ' port=' . app_pg_conninfo_value($dbPort)
+    . ' dbname=' . app_pg_conninfo_value($dbDatabase)
+    . ' user=' . app_pg_conninfo_value($dbUser)
+    . ' password=' . app_pg_conninfo_value($dbPass);
+$dbconn = @pg_connect($dbConnInfo);
 if (!$dbconn) {
     error_log('[DATABASE] PostgreSQL connection failed: ' . pg_last_error());
     http_response_code(500);
