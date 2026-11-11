@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /* Document      : purchaseinvoiceCRD.php
    Description   : Backend CRUD untuk Purchase Invoice
    [FIX] - Tambah pengecekan koneksi DB eksplisit + fallback pesan error
