@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Profit & Loss (Rugi Laba) - CRUD & Report Handler
   Backend       : /rab-project/dev/php-crud/financial_profit_lossCRD.php
@@ -17,6 +18,11 @@ if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
 $task   = $_POST['task'] ?? $_REQUEST['task'] ?? 'read_profit_loss';
 $access = intval($_SESSION['FormAccess'] ?? 0);
 if ($access < 1) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak baca Laba Rugi tidak tersedia.']); exit; }
+if (in_array($task, ['create', 'update', 'delete'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Metode harus POST untuk perubahan master akun.']);
+    exit;
+}
 $db     = new crud();
 
 switch ($task) {

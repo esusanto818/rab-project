@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * grn00CRD.php
  * ============================================================
@@ -57,6 +58,11 @@ if ($task === 'delete') $grnRequired = 4;
 if ($grnAccess < $grnRequired) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi GRN ini.']);
+    exit;
+}
+if (in_array($task, ['create', 'update', 'delete'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Metode harus POST untuk perubahan GRN.']);
     exit;
 }
 

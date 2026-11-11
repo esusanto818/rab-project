@@ -1,4 +1,10 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    exit('Hak baca pembayaran supplier tidak tersedia.');
+}
+
 /*
 Document      : supplier.payment.print.php
 Description   : Cetak tanda terima / bukti pembayaran supplier (single)
@@ -59,7 +65,7 @@ $stmt2->execute(['payment_id' => $paymentId]);
 $items = $stmt2->fetchAll(PDO::FETCH_ASSOC);
 
 function esc($v) {
-    return htmlspecialchars($v === null || $v === undefined ? '' : (string)$v, ENT_QUOTES, 'UTF-8');
+    return htmlspecialchars($v === null ? '' : (string)$v, ENT_QUOTES, 'UTF-8');
 }
 function num($v) { $n = floatval($v); return is_finite($n) ? $n : 0; }
 function money($v) { return number_format(num($v), 2, ',', '.'); }

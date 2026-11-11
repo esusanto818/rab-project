@@ -4,6 +4,10 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php - FINAL VERSION
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
+require_once __DIR__ . '/../php-func/function.all.php';
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 require_once __DIR__ . '/../php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -806,7 +810,7 @@ async function syncTaxRates() {
     const btn = document.getElementById('btn_sync_tax');
     btn.disabled = true; btn.innerText = 'Syncing...';
     try {
-        const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`);
+        const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`, { method: 'POST' });
         const json = await res.json();
         alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
         await loadTaxRates();

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 set_time_limit(0);
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 

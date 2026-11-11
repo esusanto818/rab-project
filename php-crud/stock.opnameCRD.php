@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * stock.opnameCRD.php -- Stock Opname (hitung fisik per gudang -> penyesuaian stok + jurnal)
  *
@@ -45,6 +46,8 @@ if ($action === 'submit') $stockRequired = 3;
 if ($action === 'refresh') $stockRequired = 3;
 if ($action === 'approve') $stockRequired = 3;
 if ($action === 'cancel') $stockRequired = 4;
+// save melayani pembuatan dan perubahan opname Draft; perubahan wajib level 3.
+if ($action === 'save' && (int)($_POST['id'] ?? 0) > 0) $stockRequired = 3;
 if ($stockAccess < $stockRequired) {
     http_response_code(403);
     WhFail('Hak akses tidak mencukupi untuk operasi persediaan ini.');

@@ -1,4 +1,10 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    exit('Hak baca kartu stok tidak tersedia.');
+}
+
 /**
  * views/stock.card.m.php  —  Kartu Stok Mobile v2.1 (bisa offline)
  * Pola sama dengan project.progress.m.php: wajib login (user.valid.php) dan alamat dari BASE_URL.

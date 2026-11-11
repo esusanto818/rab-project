@@ -31,13 +31,15 @@ if (!class_exists('crud')) {
     public $message;
 
     public function __construct() {
+      global $dbHost, $dbPort, $dbDatabase, $dbUser, $dbPass;
       $this->engine   = 'pgsql';
-      $this->host     = "127.0.0.1";
-      $this->database = "proyekGMN";
-      $this->user     = "postgres";
-      $this->pass     = ""; // Sesuaikan password database Anda
+      $this->host     = $dbHost ?? (getenv('RAB_DB_HOST') ?: '127.0.0.1');
+      $this->database = $dbDatabase ?? (getenv('RAB_DB_NAME') ?: 'proyekGMN');
+      $this->user     = $dbUser ?? (getenv('RAB_DB_USER') ?: 'postgres');
+      $this->pass     = $dbPass ?? (getenv('RAB_DB_PASSWORD') ?: '');
+      $port           = $dbPort ?? (getenv('RAB_DB_PORT') ?: '5432');
 
-      $dns = $this->engine . ':dbname=' . $this->database . ";port=5432;host=" . $this->host;
+      $dns = $this->engine . ':dbname=' . $this->database . ";port=" . $port . ";host=" . $this->host;
 
       try {
           parent::__construct($dns, $this->user, $this->pass);
@@ -64,8 +66,9 @@ error_log(
 );
 */
       } catch (PDOException $e) {
-          echo "Koneksi Gagal: " . $e->getMessage();
-          exit;
+          error_log('[DATABASE] PDO connection failed: ' . $e->getMessage());
+          http_response_code(500);
+          exit('Database connection unavailable.');
       }
     }
 

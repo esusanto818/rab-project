@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /* Document      : purchaseinvoiceCRD.php
    Description   : Backend CRUD untuk Purchase Invoice
    [FIX] - Tambah pengecekan koneksi DB eksplisit + fallback pesan error
@@ -66,6 +67,11 @@ if ($task === 'update') $piRequiredAccess = 3;
 if (in_array($task, ['delete', 'backfill_journal'], true)) $piRequiredAccess = 4;
 if ((int)($_SESSION['FormAccess'] ?? 0) < $piRequiredAccess) {
     http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak akses tidak mencukupi untuk operasi invoice supplier.']); exit;
+}
+if (in_array($task, ['create', 'update', 'delete', 'backfill_journal'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Metode harus POST untuk transaksi invoice supplier.']);
+    exit;
 }
 
 @ini_set('display_errors', 0);
