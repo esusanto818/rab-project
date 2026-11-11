@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * stock.opnameCRD.php -- Stock Opname (hitung fisik per gudang -> penyesuaian stok + jurnal)
  *
