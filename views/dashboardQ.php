@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 // php-crud/dashboardCRD.php
 // Versi diperbaiki: menggunakan nama tabel/kolom yang sesuai skema DB Anda
 // [REVISI 2026-10-30] disesuaikan dengan alur proyek:
@@ -108,6 +109,22 @@ case 'read_tax_rates':
 // 3. SYNC KURS DARI BEA CUKAI
 // ============================================================
 case 'sync_tax_rates':
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        http_response_code(405);
+        out(['success' => false, 'message' => 'Sinkronisasi kurs pajak wajib menggunakan POST.']);
+    }
+    $taxAccessStmt = $db->prepare("
+        SELECT COALESCE(MIN(u.access_level), 0)
+          FROM m_form_name f
+          JOIN m_user_access_menu u ON u.form_id = f.id
+         WHERE u.user_id = :uid
+           AND LOWER(REGEXP_REPLACE(f.php_url, '^.*/', '')) = 'm.taxexchangerate.php'
+    ");
+    $taxAccessStmt->execute([':uid' => (int)$_SESSION['user_id']]);
+    if ((int)$taxAccessStmt->fetchColumn() < 3) {
+        http_response_code(403);
+        out(['success' => false, 'message' => 'Anda tidak memiliki hak untuk memperbarui Kurs Pajak.']);
+    }
     try {
         if (!function_exists('fetchAndStoreTaxExchangeRates')) {
             out(['success' => false, 'message' => 'Fungsi fetchAndStoreTaxExchangeRates tidak ditemukan.']);
