@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Chart of Accounts - CRUD Handler
   Called from   : js/m.coa.js
