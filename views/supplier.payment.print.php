@@ -1,4 +1,10 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
+    http_response_code(403);
+    exit('Hak baca pembayaran supplier tidak tersedia.');
+}
+
 /*
 Document      : supplier.payment.print.php
 Description   : Cetak tanda terima / bukti pembayaran supplier (single)
