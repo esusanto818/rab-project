@@ -836,7 +836,7 @@ case 'read_project_health':
 case 'read_project_ai':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
     $refresh = (int)($_REQUEST['refresh'] ?? 0) === 1;
-    if (($refresh || ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    if ($refresh && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
         http_response_code(405);
         out(['success' => false, 'message' => 'Analisis AI baru / analisis ulang wajib menggunakan POST.']);
     }
