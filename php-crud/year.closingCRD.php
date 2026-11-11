@@ -205,6 +205,10 @@ if (empty($_SESSION['user_id'])) {
 
 $task = $_REQUEST['task'] ?? '';
 if ((int)($_SESSION['FormAccess'] ?? 0) < 1) sendJsonResponse(false, [], 'Hak baca tutup buku tahunan tidak tersedia.');
+if (in_array($task, ['save_closing', 'delete_closing'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sendJsonResponse(false, [], 'Metode harus POST untuk proses tutup / buka kembali buku.');
+}
 
 try {
     switch ($task) {
