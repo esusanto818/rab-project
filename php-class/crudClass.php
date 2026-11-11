@@ -66,8 +66,9 @@ error_log(
 );
 */
       } catch (PDOException $e) {
-          echo "Koneksi Gagal: " . $e->getMessage();
-          exit;
+          error_log('[DATABASE] PDO connection failed: ' . $e->getMessage());
+          http_response_code(500);
+          exit('Database connection unavailable.');
       }
     }
 
