@@ -94,15 +94,15 @@ $isDirectViewFile = (bool)preg_match('~(?:^|/)views/([^/]+\\.php)$~i', $requestP
     && !$isLegacyMenuRouter
     && strtolower(basename($requestPath)) !== 'dashboard.php';
 
-if (!$isDirectViewFile) {
+// Hanya legacy menu router yang boleh menerima menu_id/form_id dari URL.
+// Endpoint CRUD harus selalu ditentukan oleh nama endpoint di bawah; caller tidak boleh
+// memilih form_id lain untuk meminjam FormAccess menu yang lebih tinggi.
+if ($isLegacyMenuRouter) {
     if (isset($_REQUEST['menu_id']) && is_numeric($_REQUEST['menu_id'])) {
         $formId = intval($_REQUEST['menu_id']);
     } elseif (isset($_REQUEST['form_id']) && is_numeric($_REQUEST['form_id'])) {
         $formId = intval($_REQUEST['form_id']);
-    } elseif (
-        $isLegacyMenuRouter
-        && isset($_GET['id']) && ctype_digit((string)$_GET['id'])
-    ) {
+    } elseif (isset($_GET['id']) && ctype_digit((string)$_GET['id'])) {
         // Legacy /views/router?id=<form_id>; do not confuse record ids with menu IDs.
         $formId = intval($_GET['id']);
     }
