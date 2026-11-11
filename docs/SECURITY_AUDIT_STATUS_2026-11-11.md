@@ -133,8 +133,10 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
   - `inventory.status.php`
 - `.htaccess` menolak file backup, patch, workspace, dump, dan file dokumentasi di folder `php-crud`, serta memblokir artefak berekstensi sensitif di web root.
 - Akses HTTP ke direktori `.git`, `database`, `sql`, `docs`, direktori backup, serta symlink `dev`, `live`, dan `proyekgmn` diblokir; directory listing dimatikan.
-- `db_connection.PHP` tidak lagi menyimpan kredensial database di source; file tersebut menjadi wrapper yang memakai koneksi aplikasi dari `crudClass.php`.
+- `php-func/function.all.php` dan `php-class/crudClass.php` kini memakai konfigurasi environment yang sama (`RAB_DB_HOST`, `RAB_DB_PORT`, `RAB_DB_NAME`, `RAB_DB_USER`, `RAB_DB_PASSWORD`; tersedia fallback nama umum `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`). Tidak ada password database hardcoded di kedua file tersebut.
+- `php-crud/db_connection.PHP` tidak lagi menyimpan kredensial database di source; file tersebut menjadi wrapper yang memakai koneksi aplikasi dari `crudClass.php`.
 - `cron/fetch_kurs_pajak.php` tidak lagi memiliki fallback credential hardcoded dan menggunakan koneksi aplikasi bersama. Verifikasi TLS untuk koneksi Kemenkeu diaktifkan (`verify_peer`, `verify_peer_name`, dan `CURLOPT_SSL_VERIFYHOST`).
+- Detail error koneksi database tidak lagi ditampilkan ke browser; detail teknis dicatat di server log.
 - Endpoint PDF kurs pajak tetap dipetakan ke menu Master Kurs Pajak melalui router.
 
 **Efek kepada pengguna:** endpoint legacy yang tidak resmi tidak dapat dipanggil melalui web. Fungsi cetak kurs pajak tetap memakai koneksi aplikasi standar. Sinkronisasi kurs dapat gagal bila server dev tidak memiliki CA certificate yang valid; perbaiki CA bundle, jangan menonaktifkan verifikasi TLS.
