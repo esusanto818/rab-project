@@ -185,45 +185,56 @@ switch ($task) {
             exit;
         }
         $id = intval($_POST['id'] ?? 0);
-
-        $stmtInv = $db->prepare("SELECT * FROM proyekoices WHERE id = :id");
-        $stmtInv->execute(['id' => $id]);
-        $proyekoice = $stmtInv->fetch(PDO::FETCH_ASSOC);
-        if (!$proyekoice) {
-            echo json_encode(['success' => false, 'message' => 'Invoice tidak ditemukan.']);
+        if ($id <= 0) {
+            echo json_encode(['success' => false, 'message' => 'ID invoice tidak valid.']);
             exit;
         }
 
-        // Kalau sudah final sebelumnya, tidak perlu proses ulang (hindari jurnal dobel)
-        if ($proyekoice['status'] === 'final') {
-            echo json_encode(['success' => true, 'message' => 'Invoice sudah final.', 'already_final' => true]);
-            exit;
+        // Status invoice dan jurnal harus berubah bersama-sama; bila posting gagal, transaksi di-rollback.
+        $db->beginTransaction();
+        try {
+            $stmtInv = $db->prepare("SELECT * FROM proyekoices WHERE id = :id FOR UPDATE");
+            $stmtInv->execute(['id' => $id]);
+            $proyekoice = $stmtInv->fetch(PDO::FETCH_ASSOC);
+            if (!$proyekoice) {
+                throw new Exception('Invoice tidak ditemukan.');
+            }
+
+            // Kalau sudah final sebelumnya, tidak perlu proses ulang (hindari jurnal dobel).
+            if ($proyekoice['status'] === 'final') {
+                $db->commit();
+                echo json_encode(['success' => true, 'message' => 'Invoice sudah final.', 'already_final' => true]);
+                break;
+            }
+
+            $stmtUpd = $db->prepare("UPDATE proyekoices SET status = 'final' WHERE id = :id AND status = 'draft'");
+            $stmtUpd->execute(['id' => $id]);
+            if ($stmtUpd->rowCount() === 0) {
+                throw new Exception('Gagal finalisasi -- status invoice sudah berubah, silakan reload.');
+            }
+
+            // ---- Auto-posting jurnal ----
+            $jr = AutoPostJournal($db, [
+                'rule_code'      => 'SLSCREDIT',
+                'reference_type' => 'sales_proyekoice',
+                'reference_id'   => $id,
+                'journal_date'   => $proyekoice['proyekoice_date'],
+                'amount'         => $proyekoice['total_amount'],
+                'description'    => 'Invoice ' . $proyekoice['proyekoice_no']
+            ]);
+            if (!$jr['success']) {
+                throw new Exception('Jurnal otomatis gagal dibuat: ' . $jr['message']);
+            }
+
+            $db->commit();
+            echo json_encode(['success' => true, 'message' => 'Invoice berhasil difinalisasi. ' . $jr['message']]);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) {
+                $db->rollBack();
+            }
+            error_log('[invoiceCRD][finalize] ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
         }
-
-        $stmtUpd = $db->prepare("UPDATE proyekoices SET status = 'final' WHERE id = :id AND status = 'draft'");
-        $stmtUpd->execute(['id' => $id]);
-        if ($stmtUpd->rowCount() === 0) {
-            echo json_encode(['success' => false, 'message' => 'Gagal finalisasi -- status proyekoice sudah berubah, silakan reload.']);
-            exit;
-        }
-
-        // ---- Tahap 6: Auto-posting jurnal ----
-        $jr = AutoPostJournal($db, [
-            'rule_code'      => 'SLSCREDIT',
-            'reference_type' => 'sales_proyekoice',
-            'reference_id'   => $id,
-            'journal_date'   => $proyekoice['proyekoice_date'],
-            'amount'         => $proyekoice['total_amount'],
-            'description'    => 'Invoice ' . $proyekoice['proyekoice_no']
-        ]);
-
-        if (!$jr['success']) {
-            // Invoice tetap final (sudah terlanjur), tapi kasih tahu jurnal gagal
-            echo json_encode(['success' => true, 'message' => 'Invoice berhasil difinalisasi, TAPI jurnal otomatis GAGAL dibuat: ' . $jr['message'] . ' -- perlu jurnal manual susulan.']);
-            exit;
-        }
-
-        echo json_encode(['success' => true, 'message' => 'Invoice berhasil difinalisasi. ' . $jr['message']]);
         break;
 
     // ==============================================================
