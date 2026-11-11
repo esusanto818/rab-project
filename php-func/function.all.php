@@ -26,6 +26,41 @@ if (!$dbconn) {
 // Alias $conn dari $dbconn agar kompatibel di seluruh sistem
 $conn = $dbconn;
 
+/**
+ * Defense-in-depth CSRF check for browser POST requests.
+ * Mutating endpoints must be same-origin; GET mutations are separately blocked.
+ */
+if (!function_exists('app_require_same_origin_post')) {
+    function app_require_same_origin_post(): void {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            return;
+        }
+
+        $expectedHostHeader = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+        $source = trim((string)($_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? ''));
+        if ($expectedHostHeader === '' || $source === '') {
+            http_response_code(403);
+            error_log('[SECURITY] Blocked POST without Origin/Referer header.');
+            exit('Permintaan ditolak: sumber request tidak dapat diverifikasi.');
+        }
+
+        $expectedParts = parse_url('http://' . $expectedHostHeader);
+        $sourceParts = parse_url($source);
+        $expectedHost = strtolower((string)($expectedParts['host'] ?? ''));
+        $sourceHost = strtolower((string)($sourceParts['host'] ?? ''));
+        $expectedPort = $expectedParts['port'] ?? null;
+        $sourcePort = $sourceParts['port'] ?? null;
+
+        if ($expectedHost === '' || $sourceHost === '' || $expectedHost !== $sourceHost
+            || $expectedPort !== $sourcePort
+            || strtolower((string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') {
+            http_response_code(403);
+            error_log('[SECURITY] Blocked cross-origin POST request.');
+            exit('Permintaan ditolak: request harus berasal dari origin aplikasi.');
+        }
+    }
+}
+
 // Set application username
 //$sqlSetUsername = "SET app.username='" . pg_escape_string($conn, $_SESSION["username"] ?? '') . "'";
 //$outputSetUsername = pg_query($conn, $sqlSetUsername) or die('Connection failed: ' . pg_last_error($conn));
