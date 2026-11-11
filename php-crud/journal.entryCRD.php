@@ -152,88 +152,116 @@ switch ($task) {
     
     // ==============================================================
     case 'reverse':
-        $access = intval($_SESSION['FormAccess'] ?? 0);
+        $access = (int)($_SESSION['FormAccess'] ?? 0);
         if ($access < 4) {
+            http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Hanya akses tertinggi yang boleh reverse jurnal.']);
             exit;
         }
-        $id = intval($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) throw new Exception('ID jurnal tidak valid.');
 
-        $stmtChk = $db->prepare("SELECT * FROM journal_entries WHERE id = :id");
-        $stmtChk->execute(['id' => $id]);
-        $original = $stmtChk->fetch(PDO::FETCH_ASSOC);
-        if (!$original || $original['status'] !== 'posted') {
-            echo json_encode(['success' => false, 'message' => 'Hanya jurnal berstatus Posted yang bisa di-reverse.']);
-            exit;
-        }
+        $db->beginTransaction();
+        try {
+            // Lock source journal so concurrent requests cannot create duplicate reversals.
+            $stmtChk = $db->prepare("SELECT * FROM journal_entries WHERE id = :id FOR UPDATE");
+            $stmtChk->execute([':id' => $id]);
+            $original = $stmtChk->fetch(PDO::FETCH_ASSOC);
+            if (!$original || $original['status'] !== 'posted') {
+                throw new Exception('Hanya jurnal berstatus Posted yang bisa di-reverse.');
+            }
 
-        $stmtP = $db->prepare("SELECT is_closed FROM accounting_periods WHERE id = :id");
-        $stmtP->execute(['id' => $original['period_id']]);
-        $period = $stmtP->fetch(PDO::FETCH_ASSOC);
-        if ($period && $period['is_closed']) {
-            echo json_encode(['success' => false, 'message' => 'Periode jurnal asal sudah ditutup, reverse tidak bisa dilakukan pada periode ini.']);
-            exit;
-        }
+            $stmtP = $db->prepare("SELECT is_closed FROM accounting_periods WHERE id = :id FOR UPDATE");
+            $stmtP->execute([':id' => $original['period_id']]);
+            $period = $stmtP->fetch(PDO::FETCH_ASSOC);
+            if (!$period || $period['is_closed']) {
+                throw new Exception('Periode jurnal asal tidak ditemukan atau sudah ditutup; reverse tidak diizinkan.');
+            }
 
-        $reverseNo = CreateRefNo('journal_entries', 'ref_no', 'JE');
-        $db->insert('journal_entries', [
-            'ref_no'     => $reverseNo,
-            'journal_date'   => date('Y-m-d'),
-            'period_id'      => $original['period_id'],
-            'reference_type' => 'manual_entry',
-            'reference_id'   => 0,
-            'description'    => 'Reversal dari ' . $original['ref_no'] . (empty($original['description']) ? '' : ' - ' . $original['description']),
-            'status'         => 'posted',
-            'posted_by'      => $_SESSION['user_id'],
-            'posted_at'      => date('Y-m-d H:i:s')
-        ]);
+            $reverseNo = CreateRefNo('journal_entries', 'ref_no', 'JE');
+            $stmtNew = $db->prepare("
+                INSERT INTO journal_entries
+                    (ref_no, journal_date, period_id, reference_type, reference_id,
+                     description, status, posted_by, posted_at)
+                VALUES
+                    (:no, CURRENT_DATE, :period, 'manual_entry', 0,
+                     :description, 'posted', :uid, NOW())
+                RETURNING id
+            ");
+            $stmtNew->execute([
+                ':no' => $reverseNo,
+                ':period' => (int)$original['period_id'],
+                ':description' => 'Reversal dari ' . $original['ref_no']
+                    . (empty($original['description']) ? '' : ' - ' . $original['description']),
+                ':uid' => (int)$_SESSION['user_id']
+            ]);
+            $newId = (int)$stmtNew->fetchColumn();
+            if ($newId <= 0) throw new Exception('Gagal membuat jurnal reversal.');
 
-        $stmtNewId = $db->prepare("SELECT id FROM journal_entries WHERE ref_no = :no");
-        $stmtNewId->execute(['no' => $reverseNo]);
-        $newId = $stmtNewId->fetch(PDO::FETCH_ASSOC)['id'] ?? null;
-
-        if ($newId) {
             $stmtLines = $db->prepare("SELECT account_id, debit, credit, description FROM journal_lines WHERE journal_id = :id");
-            $stmtLines->execute(['id' => $id]);
+            $stmtLines->execute([':id' => $id]);
             $origLines = $stmtLines->fetchAll(PDO::FETCH_ASSOC);
-            foreach ($origLines as $l) {
-                $db->insert('journal_lines', [
-                    'journal_id'  => $newId,
-                    'account_id'  => $l['account_id'],
-                    'debit'       => $l['credit'],
-                    'credit'      => $l['debit'],
-                    'description' => $l['description']
+            if (!$origLines) throw new Exception('Jurnal asal tidak memiliki detail; reversal dibatalkan.');
+
+            $insertLine = $db->prepare("
+                INSERT INTO journal_lines (journal_id, account_id, debit, credit, description)
+                VALUES (:journal_id, :account_id, :debit, :credit, :description)
+            ");
+            foreach ($origLines as $line) {
+                $insertLine->execute([
+                    ':journal_id' => $newId,
+                    ':account_id' => $line['account_id'],
+                    ':debit' => $line['credit'],
+                    ':credit' => $line['debit'],
+                    ':description' => $line['description']
                 ]);
             }
-        }
 
-        $db->update('journal_entries', ['status' => 'reversed'], "id = {$id}");
-        echo json_encode(['success' => true, 'message' => "Jurnal berhasil di-reverse. Jurnal koreksi: {$reverseNo}"]);
+            $markOriginal = $db->prepare("UPDATE journal_entries SET status = 'reversed' WHERE id = :id AND status = 'posted'");
+            $markOriginal->execute([':id' => $id]);
+            if ($markOriginal->rowCount() !== 1) throw new Exception('Status jurnal asal berubah; reversal dibatalkan.');
+
+            $db->commit();
+            echo json_encode(['success' => true, 'message' => "Jurnal berhasil di-reverse. Jurnal koreksi: {$reverseNo}"]);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
+        }
         break;
 
-    // ==============================================================
     case 'delete':
-        $access = intval($_SESSION['FormAccess'] ?? 0);
+        $access = (int)($_SESSION['FormAccess'] ?? 0);
         if ($access < 4) {
+            http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Akses ditolak.']);
             exit;
         }
-        $id = intval($_POST['id'] ?? 0);
+        $id = (int)($_POST['id'] ?? 0);
+        if ($id <= 0) throw new Exception('ID jurnal tidak valid.');
 
-        $stmtChk = $db->prepare("SELECT status FROM journal_entries WHERE id = :id");
-        $stmtChk->execute(['id' => $id]);
-        $row = $stmtChk->fetch(PDO::FETCH_ASSOC);
-        if ($row && $row['status'] !== 'draft') {
-            echo json_encode(['success' => false, 'message' => 'Hanya jurnal berstatus Draft yang boleh dihapus.']);
-            exit;
+        $db->beginTransaction();
+        try {
+            $stmtChk = $db->prepare("SELECT status FROM journal_entries WHERE id = :id FOR UPDATE");
+            $stmtChk->execute([':id' => $id]);
+            $row = $stmtChk->fetch(PDO::FETCH_ASSOC);
+            if (!$row) throw new Exception('Jurnal tidak ditemukan.');
+            if ($row['status'] !== 'draft') {
+                throw new Exception('Hanya jurnal berstatus Draft yang boleh dihapus.');
+            }
+
+            $db->prepare("DELETE FROM journal_lines WHERE journal_id = :id")->execute([':id' => $id]);
+            $deleteHeader = $db->prepare("DELETE FROM journal_entries WHERE id = :id AND status = 'draft'");
+            $deleteHeader->execute([':id' => $id]);
+            if ($deleteHeader->rowCount() !== 1) throw new Exception('Jurnal gagal dihapus; status mungkin telah berubah.');
+
+            $db->commit();
+            echo json_encode(['success' => true, 'message' => 'Jurnal berhasil dihapus.']);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            throw $e;
         }
-
-        $db->query("DELETE FROM journal_lines WHERE journal_id = {$id}");
-        $db->query("DELETE FROM journal_entries WHERE id = {$id}");
-        echo json_encode(['success' => true, 'message' => 'Jurnal berhasil dihapus.']);
         break;
 
-    // ==============================================================
     default:
         echo json_encode(['success' => false, 'message' => 'Task tidak dikenali: ' . htmlspecialchars($task)]);
 }

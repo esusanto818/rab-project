@@ -20,6 +20,7 @@
  */
 ob_start();
 ini_set('display_errors', '0');
+require_once __DIR__ . '/../php-func/user.valid.php';
 require_once '../php-func/function.all.php';
 require_once '../php-class/crudClass.php';
 require_once '../php-func/function.stock.php';
