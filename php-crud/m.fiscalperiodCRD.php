@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Fiscal Period - CRUD Handler
   Called from   : js/m.fiscalperiod.js
@@ -49,6 +50,9 @@ if (!isset($_SESSION["user_id"]) || empty($_SESSION["user_id"])) {
 
 $task = $_POST['task'] ?? $_REQUEST['task'] ?? 'read';
 if ((int)($_SESSION['FormAccess'] ?? 0) < 1) fp_json(['success'=>false,'message'=>'Hak baca periode akuntansi tidak tersedia.'], 403);
+if (in_array($task, ['create', 'close', 'reopen', 'delete'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    fp_json(['success' => false, 'message' => 'Metode harus POST untuk perubahan periode akuntansi.'], 405);
+}
 $db   = new crud();
 
 try {

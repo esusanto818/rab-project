@@ -1,4 +1,10 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
+if ((int)($_SESSION['FormAccess'] ?? 0) < 2) {
+    http_response_code(403);
+    exit('Hak buat RAB (level 2) diperlukan.');
+}
+
 require_once __DIR__ . '/../php-class/crudClass.php';
 if (!isset($_SESSION)) { session_start(); }
 $db = new crud();

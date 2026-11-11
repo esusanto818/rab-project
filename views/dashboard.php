@@ -4,6 +4,10 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // [2026-11-08] Bottom navigation only untuk mobile, hamburger dihapus
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) { header('Location: login.php'); exit; }
+require_once __DIR__ . '/../php-func/function.all.php';
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 require_once __DIR__ . '/../php-class/crudClass.php';
 $db = new crud();
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -698,7 +702,7 @@ const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
 const pname = card ? card.getAttribute('data-name') : '';
 box.innerHTML = `<div class="bg-purple-950/30 border border-purple-700/40 rounded-lg p-4 text-sm text-purple-200 animate-pulse">🧠 AI sedang menganalisis <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
+const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`, { method: refresh ? 'POST' : 'GET' });
 const json = await res.json();
 if (token !== aiRequestToken) return;
 if (!json.success) { box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
@@ -829,7 +833,7 @@ async function syncTaxRates() {
 const btn = document.getElementById('btn_sync_tax');
 btn.disabled = true; btn.innerText = 'Syncing...';
 try {
-const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`);
+const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`, { method: 'POST' });
 const json = await res.json();
 alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
 await loadTaxRates();

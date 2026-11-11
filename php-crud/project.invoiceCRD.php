@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * projectinvoiceCRD.php
  * ============================================================
@@ -110,6 +111,11 @@ if ($task === 'delete_invoice') $invoiceRequired = 4;
 if ($invoiceAccess < $invoiceRequired) {
     http_response_code(403);
     ti_send(false, [], 'Hak akses tidak mencukupi untuk operasi invoice proyek ini.');
+}
+if (in_array($task, ['save_invoice', 'update_faktur_pajak', 'delete_invoice'], true)
+    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    ti_send(false, [], 'Metode harus POST untuk perubahan invoice proyek.');
 }
 
 try {

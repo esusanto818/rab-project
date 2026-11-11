@@ -83,7 +83,14 @@ if (!$conn) {
     exit('Terjadi kesalahan koneksi server. Silakan hubungi administrator.');
 }
 
+if (function_exists('app_require_same_origin_post')) {
+    app_require_same_origin_post();
+}
+
 $userId = intval($_SESSION['user_id']);
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 $formId = 0;
 
 // Direct physical view requests must authorize by the requested filename,
@@ -94,15 +101,15 @@ $isDirectViewFile = (bool)preg_match('~(?:^|/)views/([^/]+\\.php)$~i', $requestP
     && !$isLegacyMenuRouter
     && strtolower(basename($requestPath)) !== 'dashboard.php';
 
-if (!$isDirectViewFile) {
+// Hanya legacy menu router yang boleh menerima menu_id/form_id dari URL.
+// Endpoint CRUD harus selalu ditentukan oleh nama endpoint di bawah; caller tidak boleh
+// memilih form_id lain untuk meminjam FormAccess menu yang lebih tinggi.
+if ($isLegacyMenuRouter) {
     if (isset($_REQUEST['menu_id']) && is_numeric($_REQUEST['menu_id'])) {
         $formId = intval($_REQUEST['menu_id']);
     } elseif (isset($_REQUEST['form_id']) && is_numeric($_REQUEST['form_id'])) {
         $formId = intval($_REQUEST['form_id']);
-    } elseif (
-        $isLegacyMenuRouter
-        && isset($_GET['id']) && ctype_digit((string)$_GET['id'])
-    ) {
+    } elseif (isset($_GET['id']) && ctype_digit((string)$_GET['id'])) {
         // Legacy /views/router?id=<form_id>; do not confuse record ids with menu IDs.
         $formId = intval($_GET['id']);
     }
@@ -126,17 +133,40 @@ if ($formAccess === null) {
     $cleanUrlFile = preg_replace('/CRD\.php$/i', '.php', $urlFile);
     $cleanUrlFile = preg_replace('/\.pdf\.php$/i', '.php', $cleanUrlFile);
 
+    // Endpoint AJAX/CRUD harus memetakan dirinya ke menu induk, bukan memakai FormAccess
+    // dari halaman lain yang kebetulan terakhir dibuka pada sesi yang sama.
+    $endpointAliases = array(
+        'project.invoiceCRD.php' => array('project.invoice.php', 'projectinvoice.php'),
+        'projectprogressCRD.php' => array('project.progress.php', 'project.progress.m.php'),
+        'ppn.backfillCRD.php'    => array('ppn.report.php'),
+        'rab_input.php'             => array('rab.php'),
+        'stock.card.m.php'          => array('stock.card.php'),
+        'supplier.payment.list.print.php' => array('supplier.payment.php'),
+        'supplier.payment.print.php'      => array('supplier.payment.php'),
+        'dashboardQ.php'                    => array('dashboard.php'),
+    );
+    $endpointCandidates = array_values(array_unique(array_merge(
+        array($urlFile, $cleanUrlFile),
+        isset($endpointAliases[$urlFile]) ? $endpointAliases[$urlFile] : array()
+    )));
+    $matchClauses = array();
+    $params = array($userId);
+    foreach ($endpointCandidates as $candidate) {
+        $params[] = $candidate;
+        $matchClauses[] = "LOWER(BTRIM(b.php_url)) = LOWER($" . count($params) . ")";
+    }
+
     $sql = "
         SELECT a.access_level, b.id AS real_form_id
         FROM m_user_access_menu a
         INNER JOIN m_form_name b ON a.form_id = b.id
         WHERE a.user_id = $1
-          AND (LOWER(BTRIM(b.php_url)) = LOWER($2)
-               OR LOWER(BTRIM(b.php_url)) = LOWER($3))
+          AND (" . implode(' OR ', $matchClauses) . ")
           AND COALESCE(a.access_level, 0) > 0
+        ORDER BY a.access_level ASC, b.id ASC
         LIMIT 1
     ";
-    $result = pg_query_params($conn, $sql, array($userId, $urlFile, $cleanUrlFile));
+    $result = pg_query_params($conn, $sql, $params);
 
     if ($result && pg_num_rows($result) > 0) {
         $row = pg_fetch_assoc($result);
@@ -162,8 +192,9 @@ $_SESSION['FormAccess'] = $formAccess;
 $_SESSION['form_id'] = $formId;
 $_SESSION['current_menu_id'] = $formId;
 
-// Build sidebar links only for the active page request.
-if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+// Build sidebar links only for actual view/router requests, never for CRUD AJAX endpoints.
+if (($isDirectViewFile || $isLegacyMenuRouter)
+    && isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $linkMenu = '';
     $sql = "
       SELECT g.seq, g.name, f.title, f.php_url

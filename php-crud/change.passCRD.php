@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
 Document : php-crud/change.passCRD.php
 Description : Change Password Handler - Fixed

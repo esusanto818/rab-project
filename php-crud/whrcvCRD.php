@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * whrcvCRD.php
  * ============================================================
@@ -46,6 +47,11 @@ $whrcvRequiredAccess = 1;
 if ($task === 'create') $whrcvRequiredAccess = 2;
 if ($task === 'reverse') $whrcvRequiredAccess = 4;
 if ((int)($_SESSION['FormAccess'] ?? 0) < $whrcvRequiredAccess) { http_response_code(403); echo json_encode(['success'=>false,'message'=>'Hak akses tidak mencukupi untuk penerimaan gudang.']); exit; }
+if (in_array($task, ['create', 'reverse'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'message' => 'Metode harus POST untuk transaksi penerimaan gudang.']);
+    exit;
+}
 $db   = new crud(); // PDO Connection (satu-satunya koneksi yang dipakai file ini)
 
 function PrepOrFail($stmt, $context = '') {

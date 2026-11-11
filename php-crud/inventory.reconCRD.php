@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * inventory.reconCRD.php
  * ============================================================
@@ -39,6 +40,10 @@ if (empty($_SESSION['user_id'])) {
 
 $task = $_REQUEST['task'] ?? '';
 if ((int)($_SESSION['FormAccess'] ?? 0) < 1) { http_response_code(403); sendJsonResponse(false, [], 'Hak baca rekonsiliasi persediaan tidak tersedia.'); }
+if ($task === 'fix_missing_journals' && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sendJsonResponse(false, [], 'Perbaikan jurnal wajib menggunakan POST.');
+}
 
 try {
     switch ($task) {

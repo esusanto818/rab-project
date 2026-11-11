@@ -2,17 +2,122 @@
 error_reporting(E_ALL & ~E_NOTICE);
 if (!isset($_SESSION)) { session_start(); }
 
-$dbHost = "127.0.0.1";
-$dbUser = "postgres";
-$dbPass = "merdeka";
-$dbDatabase = "proyekGMN";
+// Database credentials wajib disediakan melalui environment server, bukan source repository.
+$dbHost = getenv('RAB_DB_HOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
+$dbPort = getenv('RAB_DB_PORT') ?: (getenv('DB_PORT') ?: '5432');
+$dbUser = getenv('RAB_DB_USER') ?: (getenv('DB_USER') ?: 'postgres');
+$dbDatabase = getenv('RAB_DB_NAME') ?: (getenv('DB_NAME') ?: 'proyekGMN');
+$dbPass = getenv('RAB_DB_PASSWORD');
+if ($dbPass === false) {
+    $dbPass = getenv('DB_PASSWORD');
+}
+if ($dbPass === false) {
+    $dbPass = '';
+}
 
-// Inisialisasi koneksi DB
-$dbconn = pg_connect("host=$dbHost port=5432 dbname=$dbDatabase user=$dbUser password=$dbPass")
-    or die('Could not connect: ' . pg_last_error());
+// Quote setiap nilai conninfo agar karakter khusus pada password/username tidak mengubah parameter koneksi.
+if (!function_exists('app_pg_conninfo_value')) {
+    function app_pg_conninfo_value($value): string {
+        return "'" . str_replace(array("\\", "'"), array("\\\\", "\\'"), (string)$value) . "'";
+    }
+}
+
+// Inisialisasi koneksi DB; jangan tampilkan detail koneksi ke browser.
+$dbConnInfo = 'host=' . app_pg_conninfo_value($dbHost)
+    . ' port=' . app_pg_conninfo_value($dbPort)
+    . ' dbname=' . app_pg_conninfo_value($dbDatabase)
+    . ' user=' . app_pg_conninfo_value($dbUser)
+    . ' password=' . app_pg_conninfo_value($dbPass);
+$dbconn = @pg_connect($dbConnInfo);
+if (!$dbconn) {
+    error_log('[DATABASE] PostgreSQL connection failed: ' . pg_last_error());
+    http_response_code(500);
+    die('Database connection unavailable.');
+}
 
 // Alias $conn dari $dbconn agar kompatibel di seluruh sistem
 $conn = $dbconn;
+
+/**
+ * Defense-in-depth CSRF check for browser POST requests.
+ * Mutating endpoints must be same-origin; GET mutations are separately blocked.
+ */
+if (!function_exists('app_require_same_origin_post')) {
+    function app_require_same_origin_post(): void {
+        if (strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+            return;
+        }
+
+        $expectedHostHeader = trim((string)($_SERVER['HTTP_HOST'] ?? ''));
+        $source = trim((string)($_SERVER['HTTP_ORIGIN'] ?? $_SERVER['HTTP_REFERER'] ?? ''));
+        if ($expectedHostHeader === '' || $source === '') {
+            http_response_code(403);
+            error_log('[SECURITY] Blocked POST without Origin/Referer header.');
+            exit('Permintaan ditolak: sumber request tidak dapat diverifikasi.');
+        }
+
+        $expectedScheme = strtolower(trim((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+        if (!in_array($expectedScheme, array('http', 'https'), true)) {
+            $expectedScheme = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
+        }
+        $expectedParts = parse_url($expectedScheme . '://' . $expectedHostHeader);
+        $sourceParts = parse_url($source);
+        $expectedHost = strtolower((string)($expectedParts['host'] ?? ''));
+        $sourceHost = strtolower((string)($sourceParts['host'] ?? ''));
+        $sourceScheme = strtolower((string)($sourceParts['scheme'] ?? ''));
+        $expectedPort = $expectedParts['port'] ?? ($expectedScheme === 'https' ? 443 : 80);
+        $sourcePort = $sourceParts['port'] ?? ($sourceScheme === 'https' ? 443 : 80);
+
+        if ($expectedHost === '' || $sourceHost === '' || $expectedHost !== $sourceHost
+            || !in_array($sourceScheme, array('http', 'https'), true)
+            || $sourceScheme !== $expectedScheme
+            || $expectedPort !== $sourcePort
+            || strtolower((string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') {
+            http_response_code(403);
+            error_log('[SECURITY] Blocked cross-origin POST request.');
+            exit('Permintaan ditolak: request harus berasal dari origin aplikasi.');
+        }
+    }
+}
+
+if (!function_exists('app_require_active_user')) {
+    function app_require_active_user(): void {
+        global $conn;
+        $userId = (int)($_SESSION['user_id'] ?? 0);
+        if ($userId <= 0) {
+            http_response_code(401);
+            exit('Sesi berakhir. Silakan login kembali.');
+        }
+
+        $result = @pg_query_params(
+            $conn,
+            "SELECT 1 FROM m_user_system WHERE id = $1 AND active IS TRUE LIMIT 1",
+            array($userId)
+        );
+        if (!$result) {
+            error_log('[SECURITY] Could not verify active user session: user_id=' . $userId . '; ' . pg_last_error($conn));
+            http_response_code(503);
+            exit('Status akun tidak dapat diverifikasi. Silakan coba kembali.');
+        }
+        if (pg_num_rows($result) < 1) {
+            error_log('[SECURITY] Blocked inactive or missing user session: user_id=' . $userId);
+            $_SESSION = array();
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_regenerate_id(true);
+            }
+            http_response_code(401);
+            $isJson = (!empty($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false)
+                || (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
+            if ($isJson) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(array('success' => false, 'message' => 'Akun tidak aktif atau sesi tidak berlaku. Silakan login kembali.'));
+            } else {
+                echo 'Akun tidak aktif atau sesi tidak berlaku. Silakan login kembali.';
+            }
+            exit;
+        }
+    }
+}
 
 // Set application username
 //$sqlSetUsername = "SET app.username='" . pg_escape_string($conn, $_SESSION["username"] ?? '') . "'";

@@ -73,7 +73,7 @@ case 'get_projects':
 case 'read_tax_rates':
     try {
         $taxReadAccessStmt = $db->prepare("
-            SELECT COALESCE(MAX(u.access_level), 0)
+            SELECT COALESCE(MIN(u.access_level), 0)
               FROM m_form_name f
               JOIN m_user_access_menu u ON u.form_id = f.id
              WHERE u.user_id = :uid
@@ -113,10 +113,14 @@ case 'read_tax_rates':
 // 3. SYNC KURS DARI BEA CUKAI
 // ============================================================
 case 'sync_tax_rates':
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        http_response_code(405);
+        out(['success' => false, 'message' => 'Sinkronisasi kurs pajak wajib menggunakan POST.']);
+    }
     // Dashboard API tidak melalui otorisasi menu biasa; cek hak khusus Master Kurs Pajak
     // langsung dari tabel hak akses user agar FormAccess menu sebelumnya tidak bisa dipakai ulang.
     $taxAccessStmt = $db->prepare("
-        SELECT COALESCE(MAX(u.access_level), 0)
+        SELECT COALESCE(MIN(u.access_level), 0)
           FROM m_form_name f
           JOIN m_user_access_menu u ON u.form_id = f.id
          WHERE u.user_id = :uid
@@ -832,6 +836,10 @@ case 'read_project_health':
 case 'read_project_ai':
     $pid = (int)($_REQUEST['project_id'] ?? 0);
     $refresh = (int)($_REQUEST['refresh'] ?? 0) === 1;
+    if ($refresh && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        http_response_code(405);
+        out(['success' => false, 'message' => 'Analisis AI baru / analisis ulang wajib menggunakan POST.']);
+    }
     if ($pid <= 0) out(['success' => false, 'message' => 'project_id wajib diisi.']);
 
     // Melihat hasil analisis tersimpan adalah hak baca dashboard. Membuat analisis
@@ -839,7 +847,7 @@ case 'read_project_ai':
     // pada menu Pembayaran Proyek. Hak dicek dari tabel user-menu, bukan FormAccess
     // sesi yang dapat berasal dari menu terakhir dibuka.
     $aiAccessStmt = $db->prepare("
-        SELECT COALESCE(MAX(u.access_level), 0)
+        SELECT COALESCE(MIN(u.access_level), 0)
           FROM m_form_name f
           JOIN m_user_access_menu u ON u.form_id = f.id
          WHERE u.user_id = :uid
@@ -865,11 +873,14 @@ case 'read_project_ai':
             $st->execute([':pid' => $pid]);
             $row = $st->fetch(PDO::FETCH_ASSOC);
             if (!$row) {
-                if ($aiAccessLevel >= 3) {
-                    // Pengguna berhak boleh membuat analisis pertama saat membuka panel.
+                if ($aiAccessLevel >= 3 && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+                    // Analisis pertama hanya dibuat melalui POST eksplisit.
                     $result = dash_run_analysis($db, $pid, false, 'dashboard', (int)($_SESSION['user_id'] ?? 0) ?: null);
                     $result['can_refresh'] = true;
                     out(['success' => true, 'data' => $result]);
+                }
+                if ($aiAccessLevel >= 3) {
+                    out(['success' => false, 'message' => 'Belum ada hasil analisis tersimpan. Tekan Analisis Ulang untuk membuat analisis pertama.', 'can_refresh' => true]);
                 }
                 out(['success' => false, 'message' => 'Belum ada hasil analisis tersimpan. Minta pengguna dengan level 3 pada menu Pembayaran Proyek untuk membuat analisis pertama.']);
             }

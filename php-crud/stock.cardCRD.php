@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
 * stock.cardCRD.php — Stock Card (kartu stok per item, per gudang / semua gudang)
 * Output: baris "Saldo Awal" + mutasi periode + running balance, plus ringkasan.
