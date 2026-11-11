@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Financial Report - Neraca & Laba Rugi
   Called from   : js/m.financialreport.js
