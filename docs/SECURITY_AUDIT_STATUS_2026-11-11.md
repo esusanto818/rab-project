@@ -179,7 +179,8 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
 - Perubahan di branch `dev` dibaca ulang dari GitHub.
 - Branch `main` tetap tidak menerima patch audit ini.
 - Potongan query dinamis pemetaan endpoint diuji sintaksnya menggunakan PHP CLI; ini bukan pengganti `php -l` untuk seluruh file.
-- Tidak ada status GitHub Actions/CI yang tersedia untuk commit branch `dev`.
+- Workflow `.github/workflows/php-lint.yml` ditambahkan pada branch `dev` untuk menjalankan `php -l` pada seluruh file PHP, termasuk ekstensi `.PHP` huruf besar.
+- Belum ada hasil run/status GitHub Actions yang dapat diverifikasi untuk workflow tersebut; full lint masih belum dinyatakan lulus.
 
 ## Pengujian yang masih wajib sebelum audit dapat dinyatakan selesai
 
