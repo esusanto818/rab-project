@@ -698,7 +698,7 @@ const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
 const pname = card ? card.getAttribute('data-name') : '';
 box.innerHTML = `<div class="bg-purple-950/30 border border-purple-700/40 rounded-lg p-4 text-sm text-purple-200 animate-pulse">🧠 AI sedang menganalisis <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
+const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`, { method: refresh ? 'POST' : 'GET' });
 const json = await res.json();
 if (token !== aiRequestToken) return;
 if (!json.success) { box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
