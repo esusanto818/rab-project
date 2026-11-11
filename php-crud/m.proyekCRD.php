@@ -33,6 +33,13 @@ if ($access < 1) {
     mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk membaca data proyek.']);
 }
 
+// Operasi yang mengubah data proyek/RAB/tagihan hanya boleh dipanggil melalui POST.
+if (in_array($task, ['auto_invoice', 'save_ai_task_plan', 'create', 'update', 'delete'], true)
+    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    mpJson(['success' => false, 'message' => 'Metode harus POST untuk operasi perubahan data proyek.']);
+}
+
 $db   = new crud();
 
 function mpJson(array $payload) {
