@@ -44,14 +44,21 @@ if (!function_exists('app_require_same_origin_post')) {
             exit('Permintaan ditolak: sumber request tidak dapat diverifikasi.');
         }
 
-        $expectedParts = parse_url('http://' . $expectedHostHeader);
+        $expectedScheme = strtolower(trim((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+        if (!in_array($expectedScheme, array('http', 'https'), true)) {
+            $expectedScheme = (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') ? 'https' : 'http';
+        }
+        $expectedParts = parse_url($expectedScheme . '://' . $expectedHostHeader);
         $sourceParts = parse_url($source);
         $expectedHost = strtolower((string)($expectedParts['host'] ?? ''));
         $sourceHost = strtolower((string)($sourceParts['host'] ?? ''));
-        $expectedPort = $expectedParts['port'] ?? null;
-        $sourcePort = $sourceParts['port'] ?? null;
+        $sourceScheme = strtolower((string)($sourceParts['scheme'] ?? ''));
+        $expectedPort = $expectedParts['port'] ?? ($expectedScheme === 'https' ? 443 : 80);
+        $sourcePort = $sourceParts['port'] ?? ($sourceScheme === 'https' ? 443 : 80);
 
         if ($expectedHost === '' || $sourceHost === '' || $expectedHost !== $sourceHost
+            || !in_array($sourceScheme, array('http', 'https'), true)
+            || $sourceScheme !== $expectedScheme
             || $expectedPort !== $sourcePort
             || strtolower((string)($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')) === 'cross-site') {
             http_response_code(403);
