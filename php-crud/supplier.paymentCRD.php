@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Supplier Payment - Backend Controller (Full CRUD + AutoPostJournal Engine)
   Called from   : js/purchase_payment.js
