@@ -144,6 +144,10 @@ if (empty($_SESSION['user_id'])) {
 
 $task = $_REQUEST['task'] ?? '';
 if ((int)($_SESSION['FormAccess'] ?? 0) < 1) sendJsonResponse(false, [], 'Hak baca pelepasan WIP proyek tidak tersedia.');
+if (in_array($task, ['save_release', 'delete_release'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sendJsonResponse(false, [], 'Metode harus POST untuk transaksi pelepasan WIP.');
+}
 
 try {
     switch ($task) {
