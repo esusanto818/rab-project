@@ -153,7 +153,7 @@ switch ($task) {
         left join view_employee_depart_status d on coalesce(d.id, 0) = coalesce(dt.id, 0)
     ";
 
-    $where = "lower(dt.employee_name) LIKE '%" . strtolower((string)$searchField) . "%'";
+    $where = "lower(dt.employee_name) LIKE " . pg_escape_literal($conn, '%' . strtolower((string)$searchField) . '%');
     $order = "dt.employee_name ASC";
 
     $db->select($table, $field, $where, $order, $limit, $offset);

@@ -19,6 +19,11 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
+
+// A valid login is not sufficient if the account has since been deactivated.
+if (function_exists('app_require_active_user')) {
+    app_require_active_user();
+}
 require_once __DIR__ . '/../php-func/project.analysis.php';     // [AI] mesin analisis bersama (dipakai juga oleh project_paymentCRD.php)
 require_once __DIR__ . '/../cron/fetch_kurs_pajak.php';
 

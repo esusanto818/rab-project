@@ -29,6 +29,7 @@
 ini_set('display_errors', '0');
 ob_start();
 
+require_once __DIR__ . '/../php-func/user.valid.php';
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
 
@@ -40,7 +41,7 @@ header('Content-Type: application/json');
 $db = new crud();
 
 const SC_EPS = 0.01;
-const SC_REQUIRE_OTHER_APPROVER = false;
+const SC_REQUIRE_OTHER_APPROVER = true;
 const SC_REF_PROGRESS = 'subcon_progress';
 const SC_REF_PAYMENT  = 'subcon_payment';
 const SC_TRANSITIONS = [
@@ -173,7 +174,18 @@ if (empty($_SESSION['user_id'])) {
 }
 
 
-$task = $_REQUEST['task'] ?? '';
+$task = $_POST['task'] ?? $_GET['task'] ?? '';
+
+$scMutationTasks = [
+    'save_subcontractor', 'save_contract', 'change_status', 'delete_contract',
+    'save_progress', 'approve_progress', 'cancel_progress', 'save_payment', 'cancel_payment'
+];
+if (in_array($task, $scMutationTasks, true)
+    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    header('Allow: GET, POST');
+    sc_send(false, [], 'Operasi perubahan data subkon wajib menggunakan POST.');
+}
 
 // Otorisasi operasi berdasarkan FormAccess dari router.
 // Level: 1 baca, 2 tambah, 3 ubah/approval, 4 pembatalan finansial/penghapusan.

@@ -15,6 +15,11 @@ if (isset($_SESSION["user_id"]) && !is_null($_SESSION["user_id"])) {
     exit;
 }
 
+// Protect the login form from cross-origin POST requests.
+if (function_exists('app_require_same_origin_post')) {
+    app_require_same_origin_post();
+}
+
 $error_msg = '';
 $username = '';
 
@@ -53,6 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     
                     if ($isPasswordValid) {
+                        // Upgrade legacy plaintext / Base64 / MD5 credentials after successful authentication.
+                        $passwordInfo = password_get_info((string)$user['password']);
+                        $passwordAlgo = $passwordInfo['algo'] ?? 0;
+                        if (empty($passwordAlgo) || !password_verify($password, (string)$user['password'])
+                            || password_needs_rehash((string)$user['password'], PASSWORD_DEFAULT, ['cost' => 12])) {
+                            $upgradeHash = password_hash($password, PASSWORD_DEFAULT, ['cost' => 12]);
+                            $upgradeStmt = $db->prepare("UPDATE m_user_system SET password = :password WHERE id = :id");
+                            $upgradeStmt->execute([':password' => $upgradeHash, ':id' => (int)$user['id']]);
+                        }
+
                         // Rotasi session saat login; hak modul tidak ditentukan dari kolom user.
                         session_regenerate_id(true);
                         $_SESSION["user_id"] = $user['id'];

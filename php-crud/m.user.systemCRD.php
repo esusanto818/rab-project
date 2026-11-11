@@ -178,8 +178,10 @@ switch ($task) {
         ";
 
         $where = "f.id <> all (array" . $cleanItemNum . ")";
-        if (!empty($searchField) && trim($searchField) != "") {
-            $where .= " " . $searchField;
+        // Search text is a value, never a client-supplied SQL fragment.
+        $formSearch = searchData($searchField, ["f.title", "f.remark", "g.name"], 250);
+        if (!empty($formSearch["searchSQL"])) {
+            $where .= $formSearch["searchSQL"];
         }
 
         $orderBy = "g.name ASC, f.seq ASC";
