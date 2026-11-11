@@ -17,7 +17,7 @@ Pemeriksaan statis mencakup:
 1. 57 file endpoint standar `php-crud/*CRD.php`.
 2. File nonstandar di folder `php-crud`, termasuk endpoint lama, file koneksi, file backup, dan file patch.
 3. `router.php`, `.htaccess`, dan `php-func/user.valid.php`.
-4. 72 file PHP di folder `views`, termasuk halaman mobile dan halaman cetak.
+4. 74 file PHP di folder `views`, termasuk halaman mobile dan halaman cetak.
 5. 12 file PHP di folder `pdf`.
 6. Endpoint dashboard, sinkronisasi kurs pajak, analisis AI, dan cron pengambil kurs pajak.
 
