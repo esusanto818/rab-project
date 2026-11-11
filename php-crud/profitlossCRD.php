@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../php-func/user.valid.php';
 /*
   Document      : Profit & Loss (Rugi Laba) - CRUD & Report Handler
   Backend       : /rab-project/dev/php-crud/financial_profit_lossCRD.php
