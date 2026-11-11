@@ -144,7 +144,7 @@ Endpoint lain yang sudah memiliki helper `WhRequirePost()` tetap dipertahankan.
 - Detail error koneksi database tidak lagi ditampilkan ke browser; detail teknis dicatat di server log.
 - Endpoint PDF kurs pajak tetap dipetakan ke menu Master Kurs Pajak melalui router.
 
-**Efek kepada pengguna:** endpoint legacy yang tidak resmi tidak dapat dipanggil melalui web. Fungsi cetak kurs pajak tetap memakai koneksi aplikasi standar. Sinkronisasi kurs dapat gagal bila server dev tidak memiliki CA certificate yang valid; perbaiki CA bundle, jangan menonaktifkan verifikasi TLS.
+**Efek kepada pengguna:** endpoint legacy yang tidak resmi tidak dapat dipanggil melalui web. Fungsi cetak kurs pajak tetap memakai koneksi aplikasi standar. Server dev wajib menyediakan environment database di Apache/PHP-FPM; jika variabel tidak tersedia dan PostgreSQL tidak mengizinkan password kosong, aplikasi akan menolak koneksi database sampai konfigurasi disiapkan. Sinkronisasi kurs dapat gagal bila server dev tidak memiliki CA certificate yang valid; perbaiki CA bundle, jangan menonaktifkan verifikasi TLS.
 
 **Tindakan wajib:** kredensial database pernah tersimpan di riwayat Git. Menghapusnya dari file terbaru tidak menghapus riwayat commit. Rotasi kredensial database terkait tetap diperlukan.
 
