@@ -806,7 +806,7 @@ async function syncTaxRates() {
     const btn = document.getElementById('btn_sync_tax');
     btn.disabled = true; btn.innerText = 'Syncing...';
     try {
-        const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`);
+        const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`, { method: 'POST' });
         const json = await res.json();
         alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
         await loadTaxRates();
