@@ -18,7 +18,7 @@ if ((int)($_SESSION['FormAccess'] ?? 0) < 1) {
     exit('Anda tidak memiliki hak baca Master Kurs Pajak.');
 }
 
-require_once 'db_connection.PHP';
+require_once __DIR__ . '/db_connection.PHP';
 
 $hdrId = intval($_GET['id'] ?? $_REQUEST['id'] ?? 0);
 
