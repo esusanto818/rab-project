@@ -142,6 +142,10 @@ if ($poAccess < $poRequired) {
     http_response_code(403);
     sendJsonResponse(false, [], 'Hak akses tidak mencukupi untuk operasi purchase order ini.');
 }
+if (in_array($task, ['save_po', 'change_status', 'delete_po'], true) && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sendJsonResponse(false, [], 'Metode harus POST untuk perubahan purchase order.');
+}
 
 try {
     switch ($task) {
