@@ -13,7 +13,15 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 header('Content-Type: application/json');
 
-$task = $_REQUEST['task'] ?? '';
+$task = $_POST['task'] ?? $_GET['task'] ?? '';
+
+if (in_array($task, ['create', 'update', 'delete'], true)
+    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    header('Allow: GET, POST');
+    echo json_encode(['success' => false, 'message' => 'Operasi perubahan data wajib menggunakan POST.']);
+    exit;
+}
 
 // Otorisasi backend mandiri: login wajib dan hak operasi mengikuti FormAccess menu.
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
@@ -93,13 +101,13 @@ try {
         // 3. CREATE -- Insert Material Baru
         // ==========================================================
         case 'create':
-            $code  = trim($_REQUEST['material_code'] ?? '');
-            $name  = trim($_REQUEST['material_name'] ?? '');
-            $unit  = trim($_REQUEST['unit'] ?? '');
-            $price = (float)($_REQUEST['estimated_price'] ?? 0);
+            $code  = trim($_POST['material_code'] ?? '');
+            $name  = trim($_POST['material_name'] ?? '');
+            $unit  = trim($_POST['unit'] ?? '');
+            $price = (float)($_POST['estimated_price'] ?? 0);
 
             // Parsing status active
-            $rawActive = $_REQUEST['is_active'] ?? 'false';
+            $rawActive = $_POST['is_active'] ?? 'false';
             $active = ($rawActive === 'true' || $rawActive === 't' || $rawActive === '1' || $rawActive === true || $rawActive === 'on') ? 't' : 'f';
 
             if ($code === '') throw new Exception('Kode Material wajib diisi');
@@ -131,14 +139,14 @@ try {
         // 4. UPDATE -- Perbarui Data Material
         // ==========================================================
         case 'update':
-            $id    = (int)($_REQUEST['id'] ?? 0);
-            $code  = trim($_REQUEST['material_code'] ?? '');
-            $name  = trim($_REQUEST['material_name'] ?? '');
-            $unit  = trim($_REQUEST['unit'] ?? '');
-            $price = (float)($_REQUEST['estimated_price'] ?? 0);
+            $id    = (int)($_POST['id'] ?? 0);
+            $code  = trim($_POST['material_code'] ?? '');
+            $name  = trim($_POST['material_name'] ?? '');
+            $unit  = trim($_POST['unit'] ?? '');
+            $price = (float)($_POST['estimated_price'] ?? 0);
 
             // Parsing status active
-            $rawActive = $_REQUEST['is_active'] ?? 'false';
+            $rawActive = $_POST['is_active'] ?? 'false';
             $active = ($rawActive === 'true' || $rawActive === 't' || $rawActive === '1' || $rawActive === true || $rawActive === 'on') ? 't' : 'f';
 
             if ($id <= 0) throw new Exception('ID Material tidak valid');
@@ -171,7 +179,7 @@ try {
         // 5. DELETE -- Soft Delete
         // ==========================================================
         case 'delete':
-            $id = (int)($_REQUEST['id'] ?? 0);
+            $id = (int)($_POST['id'] ?? 0);
             if ($id <= 0) throw new Exception('ID Material tidak valid');
 
             PgOrFail(pg_query_params(

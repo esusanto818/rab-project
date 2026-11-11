@@ -33,10 +33,17 @@ function taxExchangeRequireAccess($minimum, $message)
     }
 }
 
-$task   = $_POST['task'] ?? $_REQUEST['task'] ?? 'read';
+$task   = $_POST['task'] ?? $_GET['task'] ?? 'read';
+if (in_array($task, ['fetch_now', 'sync', 'delete'], true)
+    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    header('Allow: GET, POST');
+    echo json_encode(['success' => false, 'message' => 'Sinkronisasi dan penghapusan wajib menggunakan POST.']);
+    exit;
+}
 $start  = intval($_POST['start'] ?? $_REQUEST['start'] ?? 0);
 $limit  = intval($_POST['limit'] ?? $_REQUEST['limit'] ?? 250);
-$id     = intval($_POST['id'] ?? $_REQUEST['id'] ?? 0);
+$id     = intval($_POST['id'] ?? 0);
 
 switch ($task) {
 

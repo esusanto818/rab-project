@@ -10,7 +10,15 @@ include_once "../php-class/crudClass.php";
 include_once "../php-func/function.all.php";
 
 // Tangkap task sebelum pemeriksaan izin operasi.
-$task = $_POST['task'] ?? $_REQUEST['task'] ?? '';
+$task = $_POST['task'] ?? $_GET['task'] ?? '';
+
+if (in_array($task, ['create', 'add', 'update', 'edit', 'delete'], true)
+    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
+    http_response_code(405);
+    header('Allow: GET, POST');
+    echo json_encode(["success" => false, "status" => "Error", "message" => "Operasi perubahan akun wajib menggunakan POST."]);
+    exit;
+}
 
 // Defense-in-depth: endpoint must have a valid login and a menu permission.
 // Levels follow the application convention: 1=read, 2=create, 3=update, 4=delete/admin.
@@ -365,7 +373,7 @@ switch ($task) {
     // 7. DELETE (Hapus User System)
     // ==========================================
     case ('delete'):
-        $deleteId = intval($_POST['id'] ?? $_REQUEST['id'] ?? 0);
+        $deleteId = intval($_POST['id'] ?? 0);
 
         if ($deleteId > 0) {
             $table  = "m_user_system";
