@@ -34,6 +34,7 @@ Konvensi hak akses:
 - Sebanyak 56 dari 57 endpoint standar `*CRD.php` kini memanggil `php-func/user.valid.php` sebelum memproses operasi.
 - Endpoint tidak lagi hanya menggunakan nilai `FormAccess` yang tersisa dari halaman lain. Helper mencari hak user berdasarkan nama file endpoint yang dipetakan ke `m_form_name.php_url`, lalu mengisi `FormAccess` dari menu induk yang cocok.
 - Parameter `menu_id` atau `form_id` dari pemanggil tidak lagi boleh memilih menu lain untuk request endpoint CRUD. Parameter menu tersebut hanya diterima pada jalur legacy `/views/router`.
+- Sesi juga divalidasi terhadap `m_user_system.active` pada request terlindungi. Akun yang dinonaktifkan atau sudah tidak ada akan kehilangan sesi dan mendapat HTTP 401.
 - Bila terdapat beberapa alias menu yang cocok, helper memilih level akses paling rendah (least privilege).
 - Alias khusus ditambahkan untuk:
   - `project.invoiceCRD.php` → `project.invoice.php` / `projectinvoice.php`
