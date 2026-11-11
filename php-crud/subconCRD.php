@@ -200,6 +200,11 @@ if ($scAccess < $scRequired) {
     http_response_code(403);
     sc_send(false, [], 'Hak akses tidak mencukupi untuk operasi subkontraktor ini.');
 }
+if (in_array($task, ['save_subcontractor', 'save_contract', 'save_progress', 'save_payment', 'change_status', 'approve_progress', 'cancel_progress', 'cancel_payment', 'delete_contract'], true)
+    && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+    http_response_code(405);
+    sc_send(false, [], 'Metode harus POST untuk perubahan data subkontraktor.');
+}
 
 try {
     switch ($task) {
