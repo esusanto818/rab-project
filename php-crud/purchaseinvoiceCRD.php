@@ -267,7 +267,7 @@ try {
                          WHERE sh.status IN ('Dikirim', 'Kredit')
                          GROUP BY r.grn_hdr_id
                     ) rt ON rt.grn_hdr_id = h.id
-                    WHERE h.status IN ('open', 'partial')
+                    WHERE COALESCE(LOWER(h.status), '') NOT IN ('cancelled','canceled','dibatalkan','void','reversed')
                       AND ($1 = 0 OR h.supplier_id = $1)
                     GROUP BY h.id, h.ref_no, h.grn_date, h.supplier_id, h.exch_rate, im.already_matched, rt.returned_base,
                              po.ppn_mode, po.ppn_rate, cur.init

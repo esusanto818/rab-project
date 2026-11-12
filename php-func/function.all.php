@@ -747,8 +747,8 @@ Tujuan   : Hitung ulang status GRN (open/partial/closed) berdasarkan
            tidak dipakai di sini karena itu untuk wrapper PDO ($db),
            bukan resource hasil pg_query_params().
 */
-function RecalcGrnStatus($grn_hdr_id) {
-    global $conn;
+function RecalcGrnStatus($grn_hdr_id, $db = null) {
+    $grn_hdr_id = (int)$grn_hdr_id;
     $sql = "SELECT
 COUNT(*) AS total_items,
 SUM(CASE WHEN (gd.qty_received - COALESCE(wd.qty_wh_sum,0)) <= 0 THEN 1 ELSE 0 END) AS fully_received,
@@ -761,24 +761,27 @@ FROM wh_receiving_dtl d
 JOIN wh_receiving_hdr h ON h.id = d.wh_receiving_hdr_id AND h.status = 'posted'
 GROUP BY d.grn_dtl_id
 ) wd ON wd.grn_dtl_id = gd.id
-WHERE gd.grn_hdr_id = $1";
-    $result = pg_query_params($conn, $sql, [$grn_hdr_id]);
-    if ($result === false) {
-        throw new Exception('[RecalcGrnStatus] ' . pg_last_error($conn));
-    }
-    $row = pg_fetch_assoc($result);
-    if ((int)$row['total_items'] === 0) {
-        $status = 'open';
-    } elseif ((int)$row['fully_received'] === (int)$row['total_items']) {
-        $status = 'closed';
-    } elseif ((int)$row['fully_received'] > 0 || (int)$row['partially_received'] > 0) {
-        $status = 'partial';
+WHERE gd.grn_hdr_id = " . ($db !== null ? ':id' : '$1');
+    if ($db !== null) {
+        $st = $db->prepare($sql); $st->execute([':id' => $grn_hdr_id]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
     } else {
-        $status = 'open';
+        global $conn;
+        $res = pg_query_params($conn, $sql, [$grn_hdr_id]);
+        if ($res === false) throw new Exception('[RecalcGrnStatus] ' . pg_last_error($conn));
+        $row = pg_fetch_assoc($res);
     }
-    $upd = pg_query_params($conn, "UPDATE grn_hdr SET status = $1 WHERE id = $2", [$status, $grn_hdr_id]);
-    if ($upd === false) {
-        throw new Exception('[RecalcGrnStatus update] ' . pg_last_error($conn));
+    if ((int)$row['total_items'] === 0)                               $status = 'open';
+    elseif ((int)$row['fully_received'] === (int)$row['total_items']) $status = 'closed';
+    elseif ((int)$row['fully_received'] > 0 || (int)$row['partially_received'] > 0) $status = 'partial';
+    else                                                              $status = 'open';
+    if ($db !== null) {
+        $st = $db->prepare("UPDATE grn_hdr SET status = :s WHERE id = :id");
+        $st->execute([':s' => $status, ':id' => $grn_hdr_id]);
+    } else {
+        global $conn;
+        $res = pg_query_params($conn, "UPDATE grn_hdr SET status = $1 WHERE id = $2", [$status, $grn_hdr_id]);
+        if ($res === false) throw new Exception('[RecalcGrnStatus update] ' . pg_last_error($conn));
     }
     return $status;
 }
@@ -837,4 +840,17 @@ function mpCallChatGPT($prompt, $timeout = 30) {
     // Fallback jika struktur respons berubah atau ada error dari sisi OpenAI
     $errMsg = $apiResult['error']['message'] ?? 'Format respons tidak dikenali';
     throw new Exception("Error dari OpenAI API: {$errMsg}");
+}
+
+function CreateRefNoDb($db, $table, $column, $prefix) {
+    $allowed = ['wh_receiving_hdr'=>'ref_no', 'supplier_payments'=>'payment_no',
+                'purchase_orders'=>'po_number', 'grn_hdr'=>'ref_no', 'purchase_invoice_hdr'=>'inv_no'];
+    if (!isset($allowed[$table]) || $allowed[$table] !== $column) throw new Exception('CreateRefNoDb: tabel/kolom tidak diizinkan.');
+    $prefix = preg_replace('/[^A-Z0-9]/', '', strtoupper((string)$prefix));
+    if ($prefix === '') throw new Exception('CreateRefNoDb: prefix tidak valid.');
+    $db->query("SELECT pg_advisory_xact_lock(" . (int)crc32($table . '.' . $column) . ")");
+    $p = $prefix . '-' . date('ym') . '-';
+    $st = $db->prepare("SELECT COALESCE(MAX(CAST(RIGHT($column, 5) AS int)), 0) + 1 FROM $table WHERE $column ~ :pat");
+    $st->execute([':pat' => '^' . $p . '[0-9]{5}$']);
+    return $p . str_pad((string)intval($st->fetchColumn()), 5, '0', STR_PAD_LEFT);
 }

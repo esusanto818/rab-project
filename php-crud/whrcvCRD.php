@@ -346,7 +346,7 @@ try {
                     throw new Exception('Gagal posting jurnal: ' . ($journalResult['message'] ?? 'tanpa pesan'));
                 }
 
-                RecalcGrnStatus($grn_hdr_id);
+                RecalcGrnStatus($grn_hdr_id, $db);
 
                 $db->commit();
                 echo json_encode(['success' => true, 'id' => $wh_receiving_hdr_id, 'ref_no' => $ref_no, 'message' => "Penerimaan gudang {$ref_no} berhasil disimpan."]);
@@ -375,7 +375,7 @@ try {
                     ['uid' => $_SESSION['user_id'] ?? null, 'id' => $id],
                     'update status reversed');
 
-                RecalcGrnStatus($hdr['grn_hdr_id']);
+                RecalcGrnStatus($hdr['grn_hdr_id'], $db);
 
                 $db->commit();
                 echo json_encode(['success' => true, 'message' => 'Transaksi WH Receiving berhasil di-reverse.']);
