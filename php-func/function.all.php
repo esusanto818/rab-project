@@ -279,7 +279,7 @@ function CreateWHRefNo($tableName, $FieldCount, $RefInit) {
 function CreateNikNo($unit, $status, $fromdate) {
   global $conn;
   $year = date('y', strtotime((string)$fromdate));
-  $sql = "
+  $sql = <<<'SQL'
     SELECT (
       nikunitinit(
         (SELECT init FROM m_location WHERE id IN
@@ -287,8 +287,26 @@ function CreateNikNo($unit, $status, $fromdate) {
         (SELECT name FROM m_employee_status WHERE id = $2)
       )
       || $3
-      || (substring('0000' || cast(
-          (coalesce(cast(max(substring(nik::varchar(8) from '....
+      || (substring(
+          '0000' || cast(
+            (coalesce(cast(max(substring(nik::varchar(8) from '[0-9]{4}$')) AS int), 0) + 1)
+            AS varchar
+          )
+          from '[0-9]{4}$'
+      ))
+    )::varchar(8) AS ref_no
+    FROM m_employee
+    WHERE substring(nik::varchar(8), 3, 2) = $3
+SQL;
+  $output = pg_query_params($conn, $sql, array((int)$unit, (int)$status, $year));
+  if ($output === false) {
+    error_log('[CreateNikNo] ' . pg_last_error($conn));
+    throw new Exception('Gagal membuat nomor induk karyawan.');
+  }
+  $row = pg_fetch_assoc($output);
+  return $row ? (string)$row['ref_no'] : '';
+}
+
 /**
  * Menetapkan variabel sesi PostgreSQL (app.username) untuk audit log / trigger
  * Gunakan ini tepat setelah pg_query('BEGIN') pada koneksi pg_query
