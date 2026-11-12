@@ -31,7 +31,9 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Dashboard - RAB Project Monitor</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- <link rel="stylesheet" href="../assets/css/dashboard.tailwind.css?v=<?= @filemtime(__DIR__ . '/../assets/css/dashboard.tailwind.css') ?: date('YmdHis') ?>"> -->
+<link rel="stylesheet" href="../assets/css/dashboard.tailwind.css?v=<?= @filemtime(__DIR__ . '/../assets/css/dashboard.tailwind.css') ?: date('YmdHis') ?>">
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
