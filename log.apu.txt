@@ -1,0 +1,72 @@
+[    0.000000] Command line: BOOT_IMAGE=/boot/vmlinuz-7.0.0-43-generic root=UUID=785f79ea-4edf-4ece-a685-adea3ea333ea ro quiet splash radeon.si_support=0 amdgpu.si_support=1 radeon.cik_support=0 amdgpu.cik_support=1 crashkernel=2G-4G:320M,4G-32G:512M,32G-64G:1024M,64G-128G:2048M,128G-:4096M
+[    0.084277] Kernel command line: BOOT_IMAGE=/boot/vmlinuz-7.0.0-43-generic root=UUID=785f79ea-4edf-4ece-a685-adea3ea333ea ro quiet splash radeon.si_support=0 amdgpu.si_support=1 radeon.cik_support=0 amdgpu.cik_support=1 crashkernel=2G-4G:320M,4G-32G:512M,32G-64G:1024M,64G-128G:2048M,128G-:4096M
+[    0.489473] smpboot: CPU0: AMD A8-6410 APU with AMD Radeon R5 Graphics (family: 0x16, model: 0x30, stepping: 0x1)
+[    0.567847] ACPI: [Firmware Bug]: BIOS _OSI(Linux) query ignored
+[    0.600178] acpi PNP0A08:00: [Firmware Info]: ECAM [mem 0xf8000000-0xfbffffff] for domain 0000 [bus 00-3f] only partially covers this bridge
+[    6.818901] systemd[1]: systemd-hibernate-clear.service - Clear Stale Hibernate Storage Info skipped, unmet condition check ConditionPathExists=/sys/firmware/efi/efivars/HibernateLocation-8cf2644b-4b0b-428f-9387-6d876050dc67
+[   11.467566] [drm] radeon kernel modesetting enabled.
+[   11.467683] radeon 0000:00:01.0: CIK support disabled by module param
+[   28.944033] amdgpu: Virtual CRAT table created for CPU
+[   28.944095] amdgpu: Topology: Add CPU node
+[   28.944267] amdgpu 0000:00:01.0: CIK support provided by amdgpu.
+               Use radeon.cik_support=1 amdgpu.cik_support=0 to override.
+[   28.944874] amdgpu 0000:00:01.0: initializing kernel modesetting (MULLINS 0x1002:0x9851 0x17AA:0x3801 0x05).
+[   28.947055] amdgpu 0000:00:01.0: register mmio base: 0xF0C00000
+[   28.947075] amdgpu 0000:00:01.0: register mmio size: 262144
+[   28.947643] amdgpu 0000:00:01.0: detected ip block number 0 <common_v1_0_0> (cik_common)
+[   28.947663] amdgpu 0000:00:01.0: detected ip block number 1 <gmc_v7_0_0> (gmc_v7_0)
+[   28.947670] amdgpu 0000:00:01.0: detected ip block number 2 <ih_v2_0_0> (cik_ih)
+[   28.947676] amdgpu 0000:00:01.0: detected ip block number 3 <gfx_v7_2_0> (gfx_v7_0)
+[   28.947683] amdgpu 0000:00:01.0: detected ip block number 4 <sdma_v2_0_0> (cik_sdma)
+[   28.947689] amdgpu 0000:00:01.0: detected ip block number 5 <smu_v1_0_0> (kv_dpm)
+[   28.947695] amdgpu 0000:00:01.0: detected ip block number 6 <dce_v8_3_0> (dce_v8_0)
+[   28.947701] amdgpu 0000:00:01.0: detected ip block number 7 <uvd_v4_2_0> (uvd_v4_2)
+[   28.947707] amdgpu 0000:00:01.0: detected ip block number 8 <vce_v2_0_0> (vce_v2_0)
+[   28.947776] amdgpu 0000:00:01.0: Fetched VBIOS from VFCT
+[   28.947788] amdgpu 0000:00:01.0: [drm] ATOM BIOS: BR45787.ts5
+[   28.968206] amdgpu 0000:00:01.0: Found VCE firmware Version: 50.10 Binary ID: 2
+[   28.991271] amdgpu 0000:00:01.0: vgaarb: deactivate vga console
+[   28.991295] amdgpu 0000:00:01.0: Trusted Memory Zone (TMZ) feature not supported
+[   28.991305] amdgpu 0000:00:01.0: PCIE atomic ops is not supported
+[   29.003284] amdgpu 0000:00:01.0: vm size is 64 GB, 2 levels, block size is 10-bit, fragment size is 9-bit
+[   29.003313] amdgpu 0000:00:01.0: VRAM: 1024M 0x000000F400000000 - 0x000000F43FFFFFFF (1024M used)
+[   29.003321] amdgpu 0000:00:01.0: GART: 1024M 0x000000FF00000000 - 0x000000FF3FFFFFFF
+[   29.003346] amdgpu 0000:00:01.0: [drm] Detected VRAM RAM=1024M, BAR=1024M
+[   29.003352] amdgpu 0000:00:01.0: [drm] RAM width 64bits UNKNOWN
+[   29.004231] amdgpu 0000:00:01.0:  1024M of VRAM memory ready
+[   29.004248] amdgpu 0000:00:01.0:  3188M of GTT memory ready.
+[   29.004319] amdgpu 0000:00:01.0: [drm] GART: num cpu pages 262144, num gpu pages 262144
+[   29.004860] amdgpu 0000:00:01.0: [drm] PCIE GART of 1024M enabled (table at 0x000000F400600000).
+[   29.043155] amdgpu 0000:00:01.0: [drm] Internal thermal controller without fan control
+[   29.043178] amdgpu 0000:00:01.0: [drm] dpm initialized
+[   29.048444] amdgpu 0000:00:01.0: [drm] ATOM DIG backlight initialized
+[   29.048463] amdgpu 0000:00:01.0: [drm] AMDGPU Display Connectors
+[   29.048468] amdgpu 0000:00:01.0: [drm] Connector 0:
+[   29.048473] amdgpu 0000:00:01.0: [drm]   eDP-1
+[   29.048477] amdgpu 0000:00:01.0: [drm]   HPD1
+[   29.048482] amdgpu 0000:00:01.0: [drm]   DDC: 0x194c 0x194c 0x194d 0x194d 0x194e 0x194e 0x194f 0x194f
+[   29.048488] amdgpu 0000:00:01.0: [drm]   Encoders:
+[   29.048492] amdgpu 0000:00:01.0: [drm]     LCD1: INTERNAL_UNIPHY
+[   29.048497] amdgpu 0000:00:01.0: [drm] Connector 1:
+[   29.048501] amdgpu 0000:00:01.0: [drm]   HDMI-A-1
+[   29.048505] amdgpu 0000:00:01.0: [drm]   HPD2
+[   29.048509] amdgpu 0000:00:01.0: [drm]   DDC: 0x1950 0x1950 0x1951 0x1951 0x1952 0x1952 0x1953 0x1953
+[   29.048515] amdgpu 0000:00:01.0: [drm]   Encoders:
+[   29.048518] amdgpu 0000:00:01.0: [drm]     DFP1: INTERNAL_UNIPHY
+[   29.048522] amdgpu 0000:00:01.0: [drm] Connector 2:
+[   29.048526] amdgpu 0000:00:01.0: [drm]   VGA-1
+[   29.048530] amdgpu 0000:00:01.0: [drm]   DDC: 0x1970 0x1970 0x1971 0x1971 0x1972 0x1972 0x1973 0x1973
+[   29.048536] amdgpu 0000:00:01.0: [drm]   Encoders:
+[   29.048540] amdgpu 0000:00:01.0: [drm]     CRT1: INTERNAL_KLDSCP_DAC1
+[   29.076482] amdgpu 0000:00:01.0: [drm] Found UVD firmware Version: 1.64 Family ID: 9
+[   29.172029] amdgpu 0000:00:01.0: [drm] UVD initialized successfully.
+[   29.332466] amdgpu 0000:00:01.0: [drm] VCE initialized successfully.
+[   29.346451] amdgpu 0000:00:01.0: SE 1, SH per SE 1, CU per SH 2, active_cu_number 2
+[   29.347757] amdgpu 0000:00:01.0: Runtime PM not available
+[   29.354380] amdgpu 0000:00:01.0: [drm] Registered 2 planes with drm panic
+[   29.379069] [drm] Initialized amdgpu 3.64.0 for 0000:00:01.0 on minor 1
+[   30.239767] fbcon: amdgpudrmfb (fb0) is primary device
+[   30.240071] amdgpu 0000:00:01.0: [drm] fb0: amdgpudrmfb frame buffer device
+[   44.066810] amdgpu: no gpu node! Cannot create KFD process
+[   44.467236] amdgpu: no gpu node! Cannot create KFD process
+[   45.046026] amdgpu: no gpu node! Cannot create KFD process
