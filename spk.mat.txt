@@ -1,0 +1,42 @@
+                                           Table "public.spk_material_supply"
+      Column      |            Type             | Collation | Nullable |                     Default                     
+------------------+-----------------------------+-----------+----------+-------------------------------------------------
+ id               | bigint                      |           | not null | nextval('spk_material_supply_id_seq'::regclass)
+ spk_id           | integer                     |           | not null | 
+ work_item_id     | bigint                      |           |          | 
+ material_id      | integer                     |           | not null | 
+ supply_source    | character varying(10)       |           | not null | 
+ owner_type       | character varying(10)       |           | not null | 
+ subcontractor_id | integer                     |           |          | 
+ qty_planned      | numeric(18,4)               |           | not null | 0
+ qty_received     | numeric(18,4)               |           | not null | 0
+ qty_accepted     | numeric(18,4)               |           | not null | 0
+ unit             | character varying(30)       |           |          | 
+ source_reference | character varying(100)      |           |          | 
+ notes            | text                        |           |          | 
+ created_by       | integer                     |           |          | 
+ created_at       | timestamp without time zone |           | not null | now()
+ spk_task_id      | bigint                      |           |          | 
+Indexes:
+    "spk_material_supply_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_material_supply_material" btree (material_id)
+    "ix_spk_material_supply_spk" btree (spk_id)
+    "ix_spk_material_supply_subcon" btree (subcontractor_id)
+    "ix_spk_material_supply_task" btree (spk_task_id)
+Check constraints:
+    "ck_spk_supply_accepted" CHECK (qty_accepted <= qty_received)
+    "ck_spk_supply_owner" CHECK (supply_source::text = 'COMPANY'::text AND owner_type::text = 'COMPANY'::text AND subcontractor_id IS NULL OR supply_source::text = 'SUBCON'::text AND owner_type::text = 'SUBCON'::text AND subcontractor_id IS NOT NULL)
+    "spk_material_supply_owner_type_check" CHECK (owner_type::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying]::text[]))
+    "spk_material_supply_qty_accepted_check" CHECK (qty_accepted >= 0::numeric)
+    "spk_material_supply_qty_planned_check" CHECK (qty_planned >= 0::numeric)
+    "spk_material_supply_qty_received_check" CHECK (qty_received >= 0::numeric)
+    "spk_material_supply_supply_source_check" CHECK (supply_source::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying]::text[]))
+Foreign-key constraints:
+    "spk_material_supply_material_id_fkey" FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT
+    "spk_material_supply_spk_id_fkey" FOREIGN KEY (spk_id) REFERENCES spk(id) ON DELETE RESTRICT
+    "spk_material_supply_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE SET NULL
+    "spk_material_supply_subcontractor_id_fkey" FOREIGN KEY (subcontractor_id) REFERENCES subcontractors(id) ON DELETE RESTRICT
+    "spk_material_supply_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "spk_material_leftover_lots" CONSTRAINT "spk_material_leftover_lots_supply_id_fkey" FOREIGN KEY (supply_id) REFERENCES spk_material_supply(id) ON DELETE RESTRICT
+

@@ -85,12 +85,47 @@ function dash_project_context($db, int $pid): ?array {
     $hasSub = tbl_exists($db, 'subcon_progress') && tbl_exists($db, 'subcon_contracts');
     $sub = ['kontrak_aktif' => 0, 'nilai_kontrak' => 0.0, 'tertagih_dpp' => 0.0, 'sisa_hutang' => 0.0];
     if ($hasSub) {
-        $r = $q("SELECT (SELECT COUNT(*) FROM subcon_contracts WHERE project_id = :p AND status IN ('Disetujui','Selesai')) AS n,
-                        (SELECT COALESCE(SUM(contract_value),0) FROM subcon_contracts WHERE project_id = :p AND status IN ('Disetujui','Selesai')) AS v,
-                        (SELECT COALESCE(SUM(sp.gross_amount),0) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id WHERE sc.project_id = :p AND sp.status = 'Disetujui') AS g,
-                        (SELECT COALESCE(SUM(sp.net_payable),0) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id WHERE sc.project_id = :p AND sp.status = 'Disetujui')
-                        - (SELECT COALESCE(SUM(y.amount),0) FROM subcon_payments y JOIN subcon_contracts sc ON sc.id = y.contract_id WHERE sc.project_id = :p AND y.status = 'Posted' AND y.pay_type = 'PROGRESS') AS h",
-                  [':p' => $pid])->fetch(PDO::FETCH_ASSOC);
+        // [REVISI 2026-11-13] Biaya Subcon dari subcon_payment_certificates (status APPROVED)
+        // Menggunakan gross_amount (bukan amount_certified) sesuai struktur database aktual
+        $hasCert = tbl_exists($db, 'subcon_payment_certificates');
+        $r = null;
+        
+        if ($hasCert) {
+            try {
+                $r = $q("SELECT 
+                            (SELECT COUNT(*) FROM subcon_contracts WHERE project_id = :p AND status IN ('Disetujui','Selesai')) AS n,
+                            (SELECT COALESCE(SUM(contract_value),0) FROM subcon_contracts WHERE project_id = :p AND status IN ('Disetujui','Selesai')) AS v,
+                            (SELECT COALESCE(SUM(spc.gross_amount),0) 
+                             FROM subcon_payment_certificates spc
+                             JOIN subcon_inspections si ON si.id = spc.inspection_id
+                             JOIN subcon_progress sp ON sp.id = si.progress_id
+                             JOIN subcon_contracts sc ON sc.id = sp.contract_id
+                             WHERE sc.project_id = :p AND spc.status = 'APPROVED') AS g,
+                            (SELECT COALESCE(SUM(spc.net_payable),0) 
+                             FROM subcon_payment_certificates spc
+                             JOIN subcon_inspections si ON si.id = spc.inspection_id
+                             JOIN subcon_progress sp ON sp.id = si.progress_id
+                             JOIN subcon_contracts sc ON sc.id = sp.contract_id
+                             WHERE sc.project_id = :p AND spc.status = 'APPROVED')
+                            - (SELECT COALESCE(SUM(y.amount),0) FROM subcon_payments y 
+                               JOIN subcon_contracts sc ON sc.id = y.contract_id 
+                               WHERE sc.project_id = :p AND y.status = 'Posted' AND y.pay_type = 'PROGRESS') AS h",
+                          [':p' => $pid])->fetch(PDO::FETCH_ASSOC);
+            } catch (Exception $e) {
+                error_log('[project.analysis] subcon cert query error: ' . $e->getMessage());
+                $r = null;
+            }
+        }
+        
+        if ($r === null) {
+            // Fallback ke logika lama jika query baru gagal
+            $r = $q("SELECT (SELECT COUNT(*) FROM subcon_contracts WHERE project_id = :p AND status IN ('Disetujui','Selesai')) AS n,
+                            (SELECT COALESCE(SUM(contract_value),0) FROM subcon_contracts WHERE project_id = :p AND status IN ('Disetujui','Selesai')) AS v,
+                            (SELECT COALESCE(SUM(sp.gross_amount),0) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id WHERE sc.project_id = :p AND sp.status = 'Disetujui') AS g,
+                            (SELECT COALESCE(SUM(sp.net_payable),0) FROM subcon_progress sp JOIN subcon_contracts sc ON sc.id = sp.contract_id WHERE sc.project_id = :p AND sp.status = 'Disetujui')
+                            - (SELECT COALESCE(SUM(y.amount),0) FROM subcon_payments y JOIN subcon_contracts sc ON sc.id = y.contract_id WHERE sc.project_id = :p AND y.status = 'Posted' AND y.pay_type = 'PROGRESS') AS h",
+                      [':p' => $pid])->fetch(PDO::FETCH_ASSOC);
+        }
         $sub = ['kontrak_aktif' => (int)$r['n'], 'nilai_kontrak' => round((float)$r['v'], 2), 'tertagih_dpp' => round((float)$r['g'], 2), 'sisa_hutang' => round((float)$r['h'], 2)];
     }
     $cs = $sub['tertagih_dpp'];

@@ -1,0 +1,55 @@
+                                               Table "public.spk_material_leftover_transactions"
+         Column          |            Type             | Collation | Nullable |                            Default                             
+-------------------------+-----------------------------+-----------+----------+----------------------------------------------------------------
+ id                      | bigint                      |           | not null | nextval('spk_material_leftover_transactions_id_seq'::regclass)
+ transaction_no          | character varying(50)       |           | not null | 
+ leftover_lot_id         | bigint                      |           | not null | 
+ transaction_type        | character varying(20)       |           | not null | 
+ transaction_date        | date                        |           | not null | 
+ seller_type             | character varying(10)       |           | not null | 
+ seller_subcontractor_id | integer                     |           |          | 
+ buyer_type              | character varying(10)       |           | not null | 
+ buyer_subcontractor_id  | integer                     |           |          | 
+ qty                     | numeric(18,4)               |           | not null | 
+ unit_price              | numeric(18,2)               |           | not null | 0
+ total_amount            | numeric(18,2)               |           | not null | 0
+ market_price            | numeric(18,2)               |           |          | 
+ market_price_source     | text                        |           |          | 
+ market_price_date       | date                        |           |          | 
+ reason                  | text                        |           | not null | 
+ status                  | character varying(15)       |           | not null | 'DRAFT'::character varying
+ approved_by             | integer                     |           |          | 
+ approved_at             | timestamp without time zone |           |          | 
+ posted_by               | integer                     |           |          | 
+ posted_at               | timestamp without time zone |           |          | 
+ inventory_doc_id        | integer                     |           |          | 
+ evidence_ref            | text                        |           |          | 
+ created_by              | integer                     |           |          | 
+ created_at              | timestamp without time zone |           | not null | now()
+ inventory_out_doc_id    | integer                     |           |          | 
+Indexes:
+    "spk_material_leftover_transactions_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_leftover_tx_lot" btree (leftover_lot_id)
+    "ix_spk_leftover_tx_status_date" btree (status, transaction_date)
+    "spk_material_leftover_transactions_transaction_no_key" UNIQUE CONSTRAINT, btree (transaction_no)
+Check constraints:
+    "ck_leftover_buyer_party" CHECK (buyer_type::text = 'SUBCON'::text AND buyer_subcontractor_id IS NOT NULL OR buyer_type::text <> 'SUBCON'::text AND buyer_subcontractor_id IS NULL)
+    "ck_leftover_seller_party" CHECK (seller_type::text = 'SUBCON'::text AND seller_subcontractor_id IS NOT NULL OR seller_type::text <> 'SUBCON'::text AND seller_subcontractor_id IS NULL)
+    "spk_material_leftover_transactions_buyer_type_check" CHECK (buyer_type::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'CLIENT'::character varying]::text[]))
+    "spk_material_leftover_transactions_qty_check" CHECK (qty > 0::numeric)
+    "spk_material_leftover_transactions_seller_type_check" CHECK (seller_type::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'CLIENT'::character varying]::text[]))
+    "spk_material_leftover_transactions_status_check" CHECK (status::text = ANY (ARRAY['DRAFT'::character varying, 'APPROVED'::character varying, 'POSTED'::character varying, 'CANCELLED'::character varying]::text[]))
+    "spk_material_leftover_transactions_total_amount_check" CHECK (total_amount >= 0::numeric)
+    "spk_material_leftover_transactions_transaction_type_check" CHECK (transaction_type::text = ANY (ARRAY['RETURN_COMPANY'::character varying, 'BUY_FROM_SUBCON'::character varying, 'SELL_TO_CLIENT'::character varying]::text[]))
+    "spk_material_leftover_transactions_unit_price_check" CHECK (unit_price >= 0::numeric)
+Foreign-key constraints:
+    "spk_material_leftover_transactions_buyer_subcontractor_id_fkey" FOREIGN KEY (buyer_subcontractor_id) REFERENCES subcontractors(id) ON DELETE RESTRICT
+    "spk_material_leftover_transactions_inventory_doc_id_fkey" FOREIGN KEY (inventory_doc_id) REFERENCES material_leftover_header(id) ON DELETE RESTRICT
+    "spk_material_leftover_transactions_inventory_out_doc_id_fkey" FOREIGN KEY (inventory_out_doc_id) REFERENCES material_out_header(id) ON DELETE RESTRICT
+    "spk_material_leftover_transactions_leftover_lot_id_fkey" FOREIGN KEY (leftover_lot_id) REFERENCES spk_material_leftover_lots(id) ON DELETE RESTRICT
+    "spk_material_leftover_transactions_seller_subcontractor_id_fkey" FOREIGN KEY (seller_subcontractor_id) REFERENCES subcontractors(id) ON DELETE RESTRICT
+Triggers:
+    trg_block_posted_leftover_transaction_change BEFORE DELETE OR UPDATE ON spk_material_leftover_transactions FOR EACH ROW EXECUTE PROCEDURE fn_block_posted_leftover_transaction_change()
+    trg_post_spk_leftover_transaction AFTER INSERT OR UPDATE OF status ON spk_material_leftover_transactions FOR EACH ROW EXECUTE PROCEDURE fn_post_spk_leftover_transaction()
+    trg_validate_spk_leftover_transaction BEFORE INSERT OR UPDATE OF leftover_lot_id, transaction_type, seller_type, seller_subcontractor_id, buyer_type, buyer_subcontractor_id, qty, status, inventory_doc_id, inventory_out_doc_id ON spk_material_leftover_transactions FOR EACH ROW EXECUTE PROCEDURE fn_validate_spk_leftover_transaction()
+

@@ -301,11 +301,9 @@ SQL;
 function SetPgAppUser($connOverride = null) {
     global $conn;
     $c = $connOverride ?: $conn;
-    $username = $_SESSION['username'] ?? $_SESSION['login_name'] ?? $_SESSION['user_name'] ?? 'system';
-    $res = pg_query_params($c, "SELECT set_config('app.username', $1, true)", [$username]);
-    if ($res === false) {
-        throw new Exception('[SetPgAppUser] Gagal menetapkan app.username: ' . pg_last_error($c));
-    }
+    $u = $_SESSION['username'] ?? $_SESSION['login_name'] ?? $_SESSION['user_name'] ?? 'system';
+    $res = pg_query_params($c, "SELECT set_config('app.username', $1, true)", [$u]);
+    if ($res === false) throw new Exception('[SetPgAppUser] ' . pg_last_error($c));
 }
 
 function json2Array($jsonData) {
@@ -323,20 +321,11 @@ function json2Array($jsonData) {
 }
 
 function String_to_float($string_obj) {
-    $string = $string_obj;
-    $a = explode(".", $string);
-    $a2 = explode(",", $a[0]);
-    $int = implode("", $a2);
-    $dec = isset($a[1]) ? $a[1] : 0;
-    $lengthofnum = strlen($dec);
-    $divider = "1";
-    $i = 0;
-    while ($i < $lengthofnum) {
-        $divider .= "0";
-        $i++;
-    }
-    $divider = (int)$divider;
-    return $int + ($dec / $divider);
+    $s = trim((string)$string_obj);
+    $neg = (strpos($s, '-') === 0);
+    $s = str_replace(['-', ','], '', $s);
+    $v = (float)$s;
+    return $neg ? -$v : $v;
 }
 
 function EncodeData($MyData) { return base64_encode($MyData); }
@@ -344,13 +333,9 @@ function DecodeData($MyData) { return base64_decode($MyData); }
 function rNum($number, $round) { return floor($number / $round) * $round; }
 
 function rAmountReport($number, $round) {
-    if ($number > 0) {
-        return number_format(floor($number / $round) * $round, 0, '.', ',');
-    } elseif ($number < 0) {
-        return number_format(floor((($number * -1) / $round) * $round) * -1, 0, '.', ',');
-    } else {
-        return '-';
-    }
+    if ($number > 0) return number_format(floor($number / $round) * $round, 0, '.', ',');
+    if ($number < 0) return number_format(floor(($number * -1) / $round) * $round * -1, 0, '.', ',');
+    return '-';
 }
 
 function GetFormId($formURl) {
@@ -370,27 +355,18 @@ function GetFormId($formURl) {
 
 function CheckCRUD($task, $userId, $formId) {
     global $conn;
-    $newTask = 'xxx';
-    $sql = "select * from m_user_access_menu where user_id='" . pg_escape_string($conn, $userId) . "' and form_id=" . intval($formId);
-    $output = pg_query($conn, $sql) or die('Connection failed: ' . pg_last_error($conn));
-    $formAccess = 0;
-    if (pg_num_rows($output) > 0) {
-        while ($objid = pg_fetch_array($output, null, PGSQL_ASSOC)) {
-            $formAccess = $objid["form_access"];
-        }
+    $st = pg_query_params(
+        $conn,
+        "SELECT access_level FROM m_user_access_menu WHERE user_id = $1 AND form_id = $2",
+        [$userId, $formId]
+    );
+    if ($st === false) {
+        throw new Exception('[CheckCRUD] ' . pg_last_error($conn));
     }
-    switch ($formAccess) {
-        case (1):
-            if ($task == 'create' || $task == 'update' || $task == 'delete') { $newTask = 'xxx'; } else { $newTask = $task; }
-            break;
-        case (2):
-            if ($task == 'delete') { $newTask = 'xxx'; } else { $newTask = $task; }
-            break;
-        case (3):
-            $newTask = $task;
-            break;
-    }
-    return $newTask;
+    $lv = pg_num_rows($st) ? (int)pg_fetch_result($st, 0, 0) : 0;
+    // Skala lama: 1 = baca saja, 2 = boleh create/update, 3 = boleh delete
+    $need = ['read' => 1, 'create' => 2, 'update' => 2, 'delete' => 3][$task] ?? 1;
+    return $lv >= $need ? $task : 'xxx';
 }
 
 function Str2N($StrData) {
@@ -771,10 +747,10 @@ WHERE gd.grn_hdr_id = " . ($db !== null ? ':id' : '$1');
         if ($res === false) throw new Exception('[RecalcGrnStatus] ' . pg_last_error($conn));
         $row = pg_fetch_assoc($res);
     }
-    if ((int)$row['total_items'] === 0)                               $status = 'open';
+    if ((int)$row['total_items'] === 0) $status = 'open';
     elseif ((int)$row['fully_received'] === (int)$row['total_items']) $status = 'closed';
     elseif ((int)$row['fully_received'] > 0 || (int)$row['partially_received'] > 0) $status = 'partial';
-    else                                                              $status = 'open';
+    else $status = 'open';
     if ($db !== null) {
         $st = $db->prepare("UPDATE grn_hdr SET status = :s WHERE id = :id");
         $st->execute([':s' => $status, ':id' => $grn_hdr_id]);

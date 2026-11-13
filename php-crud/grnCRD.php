@@ -109,13 +109,17 @@ function GetPoDtlTolerance($po_dtl_id, $po_qty, $exclude_grn_hdr_id = 0) {
     // Total Qty yang sudah diterima GRN lain untuk item PO ini
     $sql = "SELECT COALESCE(SUM(qty_received),0) AS received_other
             FROM grn_dtl 
-            WHERE po_item_id = $1 AND grn_hdr_id <> $2";
+            WHERE po_item_id = $1 AND grn_hdr_id <> $2
+              AND grn_hdr_id IN (SELECT id FROM grn_hdr WHERE COALESCE(LOWER(status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed'))";
     $res = pg_query_params($sql, [$po_dtl_id, (int)$exclude_grn_hdr_id]);
     PgOrFail($res, 'Gagal cek akumulasi qty GRN');
     $row = pg_fetch_assoc($res);
     $receivedOther = (float)($row['received_other'] ?? 0);
 
-    $qtyMaxAllowed = round($po_qty * 1.10, 4);
+    $stTol = pg_query_params("SELECT COALESCE(b.tolerance_pct,0) AS tol FROM po_items pi LEFT JOIN budget_items b ON b.id = pi.budget_item_id WHERE pi.id = $1", [$po_dtl_id]);
+    PgOrFail($stTol, 'Gagal cek toleransi RAB');
+    $tolPct = (float)(pg_fetch_assoc($stTol)['tol'] ?? 0);
+    $qtyMaxAllowed = round($po_qty * (1 + $tolPct / 100), 4);
     $qtyReceivableMax = max(0, $qtyMaxAllowed - $receivedOther);
 
     return [

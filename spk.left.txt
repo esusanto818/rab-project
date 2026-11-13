@@ -1,0 +1,123 @@
+                                               Table "public.spk_material_leftover_lots"
+          Column          |            Type             | Collation | Nullable |                        Default                         
+--------------------------+-----------------------------+-----------+----------+--------------------------------------------------------
+ id                       | bigint                      |           | not null | nextval('spk_material_leftover_lots_id_seq'::regclass)
+ lot_no                   | character varying(50)       |           | not null | 
+ project_id               | integer                     |           | not null | 
+ spk_id                   | integer                     |           | not null | 
+ work_item_id             | bigint                      |           |          | 
+ supply_id                | bigint                      |           |          | 
+ material_id              | integer                     |           | not null | 
+ source_owner_type        | character varying(10)       |           | not null | 
+ source_subcontractor_id  | integer                     |           |          | 
+ current_owner_type       | character varying(10)       |           | not null | 
+ current_subcontractor_id | integer                     |           |          | 
+ qty_origin               | numeric(18,4)               |           | not null | 
+ qty_available            | numeric(18,4)               |           | not null | 
+ unit                     | character varying(30)       |           |          | 
+ condition_note           | text                        |           |          | 
+ storage_location         | character varying(150)      |           |          | 
+ status                   | character varying(15)       |           | not null | 'AVAILABLE'::character varying
+ detected_date            | date                        |           | not null | 'now'::text::date
+ created_by               | integer                     |           |          | 
+ created_at               | timestamp without time zone |           | not null | now()
+ parent_lot_id            | bigint                      |           |          | 
+Indexes:
+    "spk_material_leftover_lots_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_leftover_material" btree (material_id)
+    "ix_spk_leftover_owner" btree (current_owner_type, current_subcontractor_id)
+    "ix_spk_leftover_parent_lot" btree (parent_lot_id)
+    "ix_spk_leftover_project" btree (project_id)
+    "ix_spk_leftover_spk" btree (spk_id)
+    "spk_material_leftover_lots_lot_no_key" UNIQUE CONSTRAINT, btree (lot_no)
+Check constraints:
+    "ck_leftover_current_owner" CHECK (current_owner_type::text = 'SUBCON'::text AND current_subcontractor_id IS NOT NULL OR (current_owner_type::text = ANY (ARRAY['COMPANY'::character varying, 'CLIENT'::character varying]::text[])) AND current_subcontractor_id IS NULL)
+    "ck_leftover_qty" CHECK (qty_available <= qty_origin)
+    "ck_leftover_source_owner" CHECK (source_owner_type::text = 'COMPANY'::text AND source_subcontractor_id IS NULL OR source_owner_type::text = 'SUBCON'::text AND source_subcontractor_id IS NOT NULL)
+    "spk_material_leftover_lots_current_owner_type_check" CHECK (current_owner_type::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'CLIENT'::character varying]::text[]))
+    "spk_material_leftover_lots_qty_available_check" CHECK (qty_available >= 0::numeric)
+    "spk_material_leftover_lots_qty_origin_check" CHECK (qty_origin > 0::numeric)
+    "spk_material_leftover_lots_source_owner_type_check" CHECK (source_owner_type::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying]::text[]))
+    "spk_material_leftover_lots_status_check" CHECK (status::text = ANY (ARRAY['AVAILABLE'::character varying, 'PARTIAL'::character varying, 'EXHAUSTED'::character varying, 'CLOSED'::character varying]::text[]))
+Foreign-key constraints:
+    "fk_spk_leftover_parent_lot" FOREIGN KEY (parent_lot_id) REFERENCES spk_material_leftover_lots(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_current_subcontractor_id_fkey" FOREIGN KEY (current_subcontractor_id) REFERENCES subcontractors(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_material_id_fkey" FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_project_id_fkey" FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_source_subcontractor_id_fkey" FOREIGN KEY (source_subcontractor_id) REFERENCES subcontractors(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_spk_id_fkey" FOREIGN KEY (spk_id) REFERENCES spk(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_supply_id_fkey" FOREIGN KEY (supply_id) REFERENCES spk_material_supply(id) ON DELETE RESTRICT
+    "spk_material_leftover_lots_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "spk_material_leftover_lots" CONSTRAINT "fk_spk_leftover_parent_lot" FOREIGN KEY (parent_lot_id) REFERENCES spk_material_leftover_lots(id) ON DELETE RESTRICT
+    TABLE "spk_material_leftover_transactions" CONSTRAINT "spk_material_leftover_transactions_leftover_lot_id_fkey" FOREIGN KEY (leftover_lot_id) REFERENCES spk_material_leftover_lots(id) ON DELETE RESTRICT
+#############################################################################################################################################################
+#############################################################################################################################################################
+#############################################################################################################################################################
+
+                                           Table "public.spk_material_supply"
+      Column      |            Type             | Collation | Nullable |                     Default                     
+------------------+-----------------------------+-----------+----------+-------------------------------------------------
+ id               | bigint                      |           | not null | nextval('spk_material_supply_id_seq'::regclass)
+ spk_id           | integer                     |           | not null | 
+ work_item_id     | bigint                      |           |          | 
+ material_id      | integer                     |           | not null | 
+ supply_source    | character varying(10)       |           | not null | 
+ owner_type       | character varying(10)       |           | not null | 
+ subcontractor_id | integer                     |           |          | 
+ qty_planned      | numeric(18,4)               |           | not null | 0
+ qty_received     | numeric(18,4)               |           | not null | 0
+ qty_accepted     | numeric(18,4)               |           | not null | 0
+ unit             | character varying(30)       |           |          | 
+ source_reference | character varying(100)      |           |          | 
+ notes            | text                        |           |          | 
+ created_by       | integer                     |           |          | 
+ created_at       | timestamp without time zone |           | not null | now()
+ spk_task_id      | bigint                      |           |          | 
+Indexes:
+    "spk_material_supply_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_material_supply_material" btree (material_id)
+    "ix_spk_material_supply_spk" btree (spk_id)
+    "ix_spk_material_supply_subcon" btree (subcontractor_id)
+    "ix_spk_material_supply_task" btree (spk_task_id)
+Check constraints:
+    "ck_spk_supply_accepted" CHECK (qty_accepted <= qty_received)
+    "ck_spk_supply_owner" CHECK (supply_source::text = 'COMPANY'::text AND owner_type::text = 'COMPANY'::text AND subcontractor_id IS NULL OR supply_source::text = 'SUBCON'::text AND owner_type::text = 'SUBCON'::text AND subcontractor_id IS NOT NULL)
+    "spk_material_supply_owner_type_check" CHECK (owner_type::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying]::text[]))
+    "spk_material_supply_qty_accepted_check" CHECK (qty_accepted >= 0::numeric)
+    "spk_material_supply_qty_planned_check" CHECK (qty_planned >= 0::numeric)
+    "spk_material_supply_qty_received_check" CHECK (qty_received >= 0::numeric)
+    "spk_material_supply_supply_source_check" CHECK (supply_source::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying]::text[]))
+Foreign-key constraints:
+    "spk_material_supply_material_id_fkey" FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE RESTRICT
+    "spk_material_supply_spk_id_fkey" FOREIGN KEY (spk_id) REFERENCES spk(id) ON DELETE RESTRICT
+    "spk_material_supply_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE SET NULL
+    "spk_material_supply_subcontractor_id_fkey" FOREIGN KEY (subcontractor_id) REFERENCES subcontractors(id) ON DELETE RESTRICT
+    "spk_material_supply_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "spk_material_leftover_lots" CONSTRAINT "spk_material_leftover_lots_supply_id_fkey" FOREIGN KEY (supply_id) REFERENCES spk_material_supply(id) ON DELETE RESTRICT
+#############################################################################################################################################################
+#############################################################################################################################################################
+#############################################################################################################################################################
+                                        Table "public.spk_tasks"
+   Column   |            Type             | Collation | Nullable |                Default                
+------------+-----------------------------+-----------+----------+---------------------------------------
+ id         | bigint                      |           | not null | nextval('spk_tasks_id_seq'::regclass)
+ spk_id     | integer                     |           | not null | 
+ task_id    | integer                     |           | not null | 
+ created_at | timestamp without time zone |           | not null | now()
+Indexes:
+    "spk_tasks_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_tasks_spk_id" btree (spk_id)
+    "ix_spk_tasks_task_id" btree (task_id)
+    "uq_spk_tasks" UNIQUE CONSTRAINT, btree (spk_id, task_id)
+Foreign-key constraints:
+    "spk_tasks_spk_id_fkey" FOREIGN KEY (spk_id) REFERENCES spk(id) ON DELETE CASCADE
+    "spk_tasks_task_id_fkey" FOREIGN KEY (task_id) REFERENCES project_tasks(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "financial_expense_allocations" CONSTRAINT "financial_expense_allocations_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE RESTRICT
+    TABLE "spk_work_items" CONSTRAINT "fk_spk_work_item_spk_task" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE RESTRICT
+    TABLE "spk_items" CONSTRAINT "spk_items_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE SET NULL
+    TABLE "spk_material_supply" CONSTRAINT "spk_material_supply_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE SET NULL
+    TABLE "spk_task_expenses" CONSTRAINT "spk_task_expenses_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE CASCADE
+    TABLE "spk_task_materials" CONSTRAINT "spk_task_materials_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE CASCADE

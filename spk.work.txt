@@ -1,0 +1,100 @@
+                                           Table "public.spk_work_items"
+     Column      |            Type             | Collation | Nullable |                  Default                   
+-----------------+-----------------------------+-----------+----------+--------------------------------------------
+ id              | bigint                      |           | not null | nextval('spk_work_items_id_seq'::regclass)
+ spk_id          | integer                     |           | not null | 
+ project_task_id | integer                     |           |          | 
+ budget_item_id  | integer                     |           |          | 
+ work_code       | character varying(50)       |           |          | 
+ description     | text                        |           | not null | 
+ unit            | character varying(30)       |           | not null | 
+ contract_qty    | numeric(18,4)               |           | not null | 
+ unit_price      | numeric(18,2)               |           | not null | 0
+ line_amount     | numeric(18,2)               |           | not null | 0
+ material_supply | character varying(12)       |           | not null | 'COMPANY'::character varying
+ sort_order      | integer                     |           | not null | 0
+ status          | character varying(15)       |           | not null | 'ACTIVE'::character varying
+ notes           | text                        |           |          | 
+ created_by      | integer                     |           |          | 
+ created_at      | timestamp without time zone |           | not null | now()
+ updated_at      | timestamp without time zone |           | not null | now()
+ spk_task_id     | bigint                      |           |          | 
+Indexes:
+    "spk_work_items_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_work_items_budget" btree (budget_item_id)
+    "ix_spk_work_items_spk" btree (spk_id)
+    "ix_spk_work_items_spk_task" btree (spk_task_id)
+    "ix_spk_work_items_task" btree (project_task_id)
+Check constraints:
+    "spk_work_items_contract_qty_check" CHECK (contract_qty > 0::numeric)
+    "spk_work_items_line_amount_check" CHECK (line_amount >= 0::numeric)
+    "spk_work_items_material_supply_check" CHECK (material_supply::text = ANY (ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'MIXED'::character varying]::text[]))
+    "spk_work_items_status_check" CHECK (status::text = ANY (ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying]::text[]))
+    "spk_work_items_unit_price_check" CHECK (unit_price >= 0::numeric)
+Foreign-key constraints:
+    "fk_spk_work_item_spk_task" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE RESTRICT
+    "spk_work_items_budget_item_id_fkey" FOREIGN KEY (budget_item_id) REFERENCES budget_items(id) ON DELETE RESTRICT
+    "spk_work_items_project_task_id_fkey" FOREIGN KEY (project_task_id) REFERENCES project_tasks(id) ON DELETE RESTRICT
+    "spk_work_items_spk_id_fkey" FOREIGN KEY (spk_id) REFERENCES spk(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "subcon_contract_tasks" CONSTRAINT "fk_subcon_contract_task_work_item" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+    TABLE "spk_material_leftover_lots" CONSTRAINT "spk_material_leftover_lots_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+    TABLE "spk_material_supply" CONSTRAINT "spk_material_supply_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+    TABLE "subcon_payment_certificate_items" CONSTRAINT "subcon_payment_certificate_items_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+    TABLE "subcon_progress_qty_items" CONSTRAINT "subcon_progress_qty_items_work_item_id_fkey" FOREIGN KEY (work_item_id) REFERENCES spk_work_items(id) ON DELETE RESTRICT
+Triggers:
+    trg_validate_spk_work_item_project BEFORE INSERT OR UPDATE OF spk_id, project_task_id, budget_item_id, spk_task_id ON spk_work_items FOR EACH ROW EXECUTE PROCEDURE fn_validate_spk_work_item_project()
+#############################################################################################################################################################
+#############################################################################################################################################################
+#############################################################################################################################################################
+
+                                           Table "public.subcon_payment_certificates"
+      Column      |            Type             | Collation | Nullable |                         Default                         
+------------------+-----------------------------+-----------+----------+---------------------------------------------------------
+ id               | bigint                      |           | not null | nextval('subcon_payment_certificates_id_seq'::regclass)
+ certificate_no   | character varying(50)       |           | not null | 
+ contract_id      | integer                     |           | not null | 
+ progress_id      | integer                     |           | not null | 
+ inspection_id    | bigint                      |           | not null | 
+ certificate_date | date                        |           | not null | 
+ gross_amount     | numeric(18,2)               |           | not null | 0
+ ppn_amount       | numeric(18,2)               |           | not null | 0
+ pph_amount       | numeric(18,2)               |           | not null | 0
+ retention_amount | numeric(18,2)               |           | not null | 0
+ dp_recovery      | numeric(18,2)               |           | not null | 0
+ other_deduction  | numeric(18,2)               |           | not null | 0
+ net_payable      | numeric(18,2)               |           | not null | 0
+ status           | character varying(15)       |           | not null | 'DRAFT'::character varying
+ notes            | text                        |           |          | 
+ created_by       | integer                     |           |          | 
+ created_at       | timestamp without time zone |           | not null | now()
+ approved_by      | integer                     |           |          | 
+ approved_at      | timestamp without time zone |           |          | 
+ cancelled_by     | integer                     |           |          | 
+ cancelled_at     | timestamp without time zone |           |          | 
+ cancel_reason    | text                        |           |          | 
+Indexes:
+    "subcon_payment_certificates_pkey" PRIMARY KEY, btree (id)
+    "ix_subcon_cert_contract" btree (contract_id)
+    "ix_subcon_cert_inspection" btree (inspection_id)
+    "ix_subcon_cert_progress" btree (progress_id)
+    "subcon_payment_certificates_certificate_no_key" UNIQUE CONSTRAINT, btree (certificate_no)
+Check constraints:
+    "subcon_payment_certificates_dp_recovery_check" CHECK (dp_recovery >= 0::numeric)
+    "subcon_payment_certificates_gross_amount_check" CHECK (gross_amount >= 0::numeric)
+    "subcon_payment_certificates_net_payable_check" CHECK (net_payable >= 0::numeric)
+    "subcon_payment_certificates_other_deduction_check" CHECK (other_deduction >= 0::numeric)
+    "subcon_payment_certificates_pph_amount_check" CHECK (pph_amount >= 0::numeric)
+    "subcon_payment_certificates_ppn_amount_check" CHECK (ppn_amount >= 0::numeric)
+    "subcon_payment_certificates_retention_amount_check" CHECK (retention_amount >= 0::numeric)
+    "subcon_payment_certificates_status_check" CHECK (status::text = ANY (ARRAY['DRAFT'::character varying, 'APPROVED'::character varying, 'CANCELLED'::character varying]::text[]))
+Foreign-key constraints:
+    "subcon_payment_certificates_contract_id_fkey" FOREIGN KEY (contract_id) REFERENCES subcon_contracts(id) ON DELETE RESTRICT
+    "subcon_payment_certificates_inspection_id_fkey" FOREIGN KEY (inspection_id) REFERENCES subcon_inspections(id) ON DELETE RESTRICT
+    "subcon_payment_certificates_progress_id_fkey" FOREIGN KEY (progress_id) REFERENCES subcon_progress(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "subcon_invoices" CONSTRAINT "fk_subcon_invoice_certificate" FOREIGN KEY (certificate_id) REFERENCES subcon_payment_certificates(id) ON DELETE RESTRICT
+    TABLE "subcon_payment_certificate_items" CONSTRAINT "subcon_payment_certificate_items_certificate_id_fkey" FOREIGN KEY (certificate_id) REFERENCES subcon_payment_certificates(id) ON DELETE RESTRICT
+Triggers:
+    trg_validate_certificate_approval BEFORE UPDATE OF status ON subcon_payment_certificates FOR EACH ROW EXECUTE PROCEDURE fn_validate_certificate_approval()
+

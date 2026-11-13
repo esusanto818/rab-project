@@ -1,0 +1,23 @@
+                                        Table "public.spk_tasks"
+   Column   |            Type             | Collation | Nullable |                Default                
+------------+-----------------------------+-----------+----------+---------------------------------------
+ id         | bigint                      |           | not null | nextval('spk_tasks_id_seq'::regclass)
+ spk_id     | integer                     |           | not null | 
+ task_id    | integer                     |           | not null | 
+ created_at | timestamp without time zone |           | not null | now()
+Indexes:
+    "spk_tasks_pkey" PRIMARY KEY, btree (id)
+    "ix_spk_tasks_spk_id" btree (spk_id)
+    "ix_spk_tasks_task_id" btree (task_id)
+    "uq_spk_tasks" UNIQUE CONSTRAINT, btree (spk_id, task_id)
+Foreign-key constraints:
+    "spk_tasks_spk_id_fkey" FOREIGN KEY (spk_id) REFERENCES spk(id) ON DELETE CASCADE
+    "spk_tasks_task_id_fkey" FOREIGN KEY (task_id) REFERENCES project_tasks(id) ON DELETE RESTRICT
+Referenced by:
+    TABLE "financial_expense_allocations" CONSTRAINT "financial_expense_allocations_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE RESTRICT
+    TABLE "spk_work_items" CONSTRAINT "fk_spk_work_item_spk_task" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE RESTRICT
+    TABLE "spk_items" CONSTRAINT "spk_items_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE SET NULL
+    TABLE "spk_material_supply" CONSTRAINT "spk_material_supply_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE SET NULL
+    TABLE "spk_task_expenses" CONSTRAINT "spk_task_expenses_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE CASCADE
+    TABLE "spk_task_materials" CONSTRAINT "spk_task_materials_spk_task_id_fkey" FOREIGN KEY (spk_task_id) REFERENCES spk_tasks(id) ON DELETE CASCADE
+

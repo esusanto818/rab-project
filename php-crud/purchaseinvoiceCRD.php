@@ -47,13 +47,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (file_exists('../php-func/function.all.php')) {
-    require_once('../php-func/function.all.php');
-}
+require_once __DIR__ . '/../php-func/function.all.php';
 // [JURNAL] class crud (PDO) untuk transaksi tulis + AutoPostJournal / ReverseJournalByReference
-if (file_exists('../php-class/crudClass.php')) {
-    require_once('../php-class/crudClass.php');
-}
+require_once __DIR__ . '/../php-class/crudClass.php';
 
 $task = isset($_POST['task']) ? $_POST['task'] : (isset($_GET['task']) ? $_GET['task'] : '');
 
@@ -417,7 +413,8 @@ try {
             if ($task == 'create') {
                 // No. Ref Dokumen PINV-YYMM-NNNNN: nomor terakhir bulan ini + 1 (aman setelah ada invoice yang dihapus)
                 $prefix = 'PINV-' . date('ym') . '-';
-                $stSeq = $db->prepare("SELECT COALESCE(MAX(CAST(RIGHT(inv_no, 5) AS integer)), 0) + 1
+                $db->query("SELECT pg_advisory_xact_lock(7201)");
+$stSeq = $db->prepare("SELECT COALESCE(MAX(CAST(RIGHT(inv_no, 5) AS integer)), 0) + 1
                                          FROM purchase_invoice_hdr WHERE inv_no LIKE :p AND inv_no ~ '-[0-9]{5}$'");
                 $stSeq->execute([':p' => $prefix . '%']);
                 $inv_no = $prefix . str_pad((string)$stSeq->fetchColumn(), 5, '0', STR_PAD_LEFT);
@@ -580,8 +577,11 @@ try {
                 $db->beginTransaction();
                 PiAssertJournalRefType($db);
                 foreach ($todo as $r) {
-                    PiPostJournal($db, (int)$r['id'], $r['inv_no'], (string)$r['supplier_invoice_no'], $r['invoice_date'],
-                                  round(floatval($r['dpp_amount']), 2), round(floatval($r['ppn_amount']), 2));
+                    $dppTxn = round(floatval($r['dpp_amount']), 2);
+$ppnTxn = round(floatval($r['ppn_amount']), 2);
+$dppBase = round(floatval($r['dpp_base']), 2);
+$ppnBase = ($dppTxn > 0) ? round($ppnTxn * ($dppBase / $dppTxn), 2) : 0.0;
+PiPostJournal($db, (int)$r['id'], $r['inv_no'], (string)$r['supplier_invoice_no'], $r['invoice_date'], $dppBase, $ppnBase);
                 }
                 $db->commit();
             }
