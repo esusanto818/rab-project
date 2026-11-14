@@ -123,14 +123,18 @@ function ti_check_faktur_unique($db, $fpNo, int $exclId): void {
 function ti_next_release_no($db): string {
     $db->query("SELECT pg_advisory_xact_lock(987654321)");          // kunci supaya tidak ada nomor ganda saat release bersamaan
     $ym = date('ym');
+    $prefix = 'TAG-' . $ym . '-';
+    // [FIX-REFNO] substring(x from '.....$') adalah potongan regex POSIX 5 karakter TERAKHIR, bukan 5 digit seri:
+    // seri < 5 digit (mis. TAG-2611-1) menghasilkan potongan '611-1' -> CAST integer error / MAX salah ->
+    // nomor berikutnya bisa 0 atau ganda. Pakai RIGHT() + filter regex ^TAG-yymm-[0-9]{5}$ (pola JournalNextRefNo)
+    // supaya hanya nomor seri format valid yang dihitung.
     $st = $db->prepare("
-        SELECT COALESCE(MAX(CAST(substring(release_no from '.....$') AS integer)), 0) + 1
+        SELECT COALESCE(MAX(CAST(RIGHT(release_no, 5) AS integer)), 0) + 1
           FROM public.project_invoices
          WHERE release_no IS NOT NULL
-           AND substring(release_no, length(release_no) - 9, 2) = :y
-           AND substring(release_no, length(release_no) - 7, 2) = :m");
-    $st->execute([':y' => substr($ym, 0, 2), ':m' => substr($ym, 2, 2)]);
-    return 'TAG-' . $ym . '-' . str_pad((int)$st->fetchColumn(), 5, '0', STR_PAD_LEFT);
+           AND release_no ~ :pat");
+    $st->execute([':pat' => '^' . $prefix . '[0-9]{5}$']);
+    return $prefix . str_pad((string)(int)$st->fetchColumn(), 5, '0', STR_PAD_LEFT);
 }
 
 /**
