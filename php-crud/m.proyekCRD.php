@@ -354,12 +354,14 @@ function mpApplyInvoicePlan($db, array $plan) {
                      'pct' => $r['pct'], 'amt' => $r['amount'], 'dpp' => $r['dpp'], 'pr' => $plan['ppn_rate'], 'ppn' => $r['ppn'],
                      'rm' => $remark, 'tid' => $r['task_id'], 'ai' => $plan['analysis']],
                     'insert invoice otomatis')['id'];
-                mpPostInvoiceJournal($db, $newId, $invNo, $r['invoice_date'], (float)$r['dpp'], (float)$r['ppn'], $pName);   // [JURNAL]
+                // [RELEASE-LAYER] jurnal penagihan TIDAK diposting di sini (tagihan otomatis = DRAFT);
+                // diposting saat release dari menu Tagihan ke Klien (project.invoiceCRD.php).
+                // mpPostInvoiceJournal($db, $newId, $invNo, $r['invoice_date'], (float)$r['dpp'], (float)$r['ppn'], $pName);
                 $made++;
             } elseif ($r['action'] === 'sync') {
                 $cur = mpFetchOne($db,
-                    "SELECT inv_no, paid_amount, dpp_amount, ppn_amount, amount FROM project_invoices
-                      WHERE id = :id AND auto_generated = true FOR UPDATE", ['id' => $r['invoice_id']], 'lock invoice sync');
+                    "SELECT inv_no, paid_amount, dpp_amount, ppn_amount, amount, release_status FROM project_invoices
+                      WHERE id = :id AND auto_generated = true FOR UPDATE", ['id' => $r['invoice_id']], 'lock invoice sync');   // [RELEASE-LAYER]
                 if (!$cur || (float)$cur['paid_amount'] > 0) continue;
                 $pay = mpFetchOne($db, "SELECT COUNT(*) AS n FROM public.project_payment_items WHERE invoice_id = :id", ['id' => $r['invoice_id']], 'cek bayar');
                 if ((int)$pay['n'] > 0) continue;                                   // sudah ada alokasi pembayaran -> jangan diubah
@@ -368,10 +370,13 @@ function mpApplyInvoicePlan($db, array $plan) {
                       WHERE id = :id",
                     ['idt' => $r['invoice_date'], 'ddt' => $r['due_date'], 'tid' => $r['task_id'], 'ai' => $plan['analysis'], 'id' => $r['invoice_id']],
                     'sync invoice otomatis');
-                // [JURNAL] tanggal berubah -> reverse jurnal lama, posting ulang di tanggal baru (sama dengan edit invoice manual)
-                if (mpHasJournal($db, (int)$r['invoice_id'])) ReverseJournalByReference($db, MP_JOURNAL_REF, (int)$r['invoice_id']);
-                $dpp = (float)$cur['dpp_amount'] > 0 ? (float)$cur['dpp_amount'] : (float)$cur['amount'];
-                mpPostInvoiceJournal($db, (int)$r['invoice_id'], $cur['inv_no'], $r['invoice_date'], $dpp, (float)$cur['ppn_amount'], $pName);
+                // [JURNAL] tanggal berubah -> reverse jurnal lama, posting ulang di tanggal baru (sama dengan edit invoice manual).
+                // [RELEASE-LAYER] hanya untuk yang sudah diterbitkan; DRAFT belum punya jurnal.
+                if ((string)$cur['release_status'] === 'released') {
+                    if (mpHasJournal($db, (int)$r['invoice_id'])) ReverseJournalByReference($db, MP_JOURNAL_REF, (int)$r['invoice_id']);
+                    $dpp = (float)$cur['dpp_amount'] > 0 ? (float)$cur['dpp_amount'] : (float)$cur['amount'];
+                    mpPostInvoiceJournal($db, (int)$r['invoice_id'], $cur['inv_no'], $r['invoice_date'], $dpp, (float)$cur['ppn_amount'], $pName);
+                }
                 $synced++;
             }
         }

@@ -1,14 +1,22 @@
 /*
   Document      : projectinvoice.js
-  Description   : Tagihan ke Klien (invoice termin proyek).  Alur: TERBITKAN invoice -> client membayar (modul Project Payment)
-                   -> kelebihan bayar jadi deposit client. Grid utama = daftar invoice (status Belum Bayar / Sebagian / Lunas, jatuh tempo);
-                   klik baris -> panel detail (pembayaran yang masuk, faktur pajak, cetak). Add/Edit membuka editor standar template (editorWdw, seperti PO).
+  Description   : Tagihan ke Klien (invoice termin proyek).  Alur: SIMPAN invoice (DRAFT, internal) -> RELEASE tagihan
+                   (terbit dokumen TAG-... yang diserahkan ke client; jurnal penagihan posting; invoice baru muncul di
+                   modul Project Payment) -> client membayar -> kelebihan bayar jadi deposit client.
+                   Grid utama = daftar invoice (status dokumen DRAFT/TERBIT + status Belum Bayar / Sebagian / Lunas,
+                   jatuh tempo); klik baris -> panel detail (pembayaran yang masuk, faktur pajak, cetak).
+                   Add/Edit membuka editor standar template (editorWdw, seperti PO).
                    Nilai yang diinput = DPP; PPN Keluaran default 11% (0 = tanpa PPN); total tagihan = DPP + PPN.
-                   Ubah / hapus hanya untuk invoice yang belum ada pembayaran. Ringkasan di atas grid = dasar proyeksi arus kas penerimaan.
+                   Ubah / hapus hanya untuk invoice DRAFT yang belum ada pembayaran. Ringkasan di atas grid = dasar
+                   proyeksi arus kas penerimaan (hanya tagihan yang sudah diterbitkan).
   Backend       : php-crud/project.invoiceCRD.php
   [CHANGED]     : form Terbitkan/Ubah Invoice dipindah dari Ext.Window (tombol Ext tak terbaca di tema gelap) ke editorWdw template
                    dengan tombol SAVE/DISCARD standar, tata letak seperti header PO. Checkbox 'Kenakan PPN' (tak terlihat di tema gelap)
                    diganti pilihan Ya/Tidak. Tombol jendela Faktur Pajak memakai tombol HTML gaya standar (teal / burgundy).
+  [RELEASE-LAYER 2026-11-14] : tambah satu layer monitor & release tagihan ke client. Invoice baru = DRAFT (tidak muncul di
+                   Pembayaran Termin). Tombol Release Tagihan / Batalkan Release / Release Semua (filter) di filter bar;
+                   kolom grid "Dokumen Tagihan" menampilkan nomor TAG + tanggal terbit atau DRAFT; kartu "Belum Diterbitkan"
+                   memantau nilai draft. Hanya invoice TERBIT yang dapat dibayar klien.
 */
 Ext.onReady(function () {
     Ext.QuickTips.init();
@@ -17,7 +25,7 @@ Ext.onReady(function () {
     var CRD = main_url + '/php-crud/project.invoiceCRD.php';
 
     var ACCESS_ADD = 2;                  // level akses minimal: terbitkan invoice
-    var ACCESS_EDIT = 3;                 // ubah / hapus / faktur pajak
+    var ACCESS_EDIT = 3;                 // ubah / hapus / faktur pajak / release & batal release
     var PPN_DEFAULT_RATE = 11;           // tarif PPN default (%); samakan dengan kebijakan pajak berlaku
     var TOP_DEFAULT_DAYS = 30;           // termin pembayaran default (hari) untuk jatuh tempo; bisa diubah per invoice
     var VEPS = 0.01;
@@ -58,6 +66,8 @@ Ext.onReady(function () {
     function statusColor(v) {
         return { 'Lunas': '#00ff4c', 'Sebagian': '#e6a817', 'Belum Bayar': '#2bc1e2' }[v] || '#ffffff';
     }
+    // [RELEASE-LAYER] warna status dokumen: DRAFT = kuning (internal), TERBIT = hijau (resmi ke client)
+    function relColor(s) { return s === 'released' ? '#2e9e4f' : '#e6a817'; }
 
     // ------------------------------------------------------------
     // 0. Gaya & kerangka halaman (ringkasan, filter, panel detail) - tema gelap
@@ -71,7 +81,8 @@ Ext.onReady(function () {
             '.ti-card.warn .vl{color:#ff6b5e;} .ti-card.soon .vl{color:#e6a817;} .ti-card.ok .vl{color:#7fe0a0;}',
             '.ti-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 10px 8px 10px;color:#9fc3d1;font:13px arial;}',
             '.ti-filter select{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;min-width:170px;}',
-            '.ti-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}'
+            '.ti-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}',
+            '.ti-filter .btn.warn{background:#8a6d1f;} .ti-filter .btn.danger{background:#800020;}'
         ].join('\n');
         var st = document.createElement('style');
         st.type = 'text/css';
@@ -88,7 +99,14 @@ Ext.onReady(function () {
         '<label>Status</label><select id="tiStatus">' +
         '<option value="">(Semua)</option><option value="open">Belum lunas</option><option value="unpaid">Belum bayar</option>' +
         '<option value="partial">Sebagian</option><option value="paid">Lunas</option><option value="overdue">Jatuh tempo</option></select>' +
-        '<button type="button" class="btn" id="tiGo">Tampilkan</button></div>';
+        // [RELEASE-LAYER] filter status dokumen + tombol release/batal release/bulk release
+        '<label>Status Dokumen</label><select id="tiDoc">' +
+        '<option value="">(Semua)</option><option value="draft">Belum Diterbitkan (DRAFT)</option><option value="released">Sudah Diterbitkan</option></select>' +
+        '<button type="button" class="btn" id="tiGo">Tampilkan</button>' +
+        '<button type="button" class="btn" id="tiRelease" title="Terbitkan dokumen tagihan (TAG-...) untuk invoice terpilih">Release Tagihan</button>' +
+        '<button type="button" class="btn warn" id="tiUnrelease" title="Kembalikan invoice terpilih ke DRAFT">Batalkan Release</button>' +
+        '<button type="button" class="btn danger" id="tiReleaseAll" title="Release semua invoice DRAFT pada filter aktif">Release Semua (filter)</button>' +
+        '</div>';
     gridContainer.parentNode.insertBefore(topDiv, gridContainer);
 
     var GridMainHeight = maxGridHeight(gridContainer);
@@ -107,6 +125,8 @@ Ext.onReady(function () {
         s = s || {};
         var card = function (cls, lb, v) { return '<div class="ti-card ' + cls + '"><div class="lb">' + lb + '</div><div class="vl">' + fmtAmt(v) + '</div></div>'; };
         document.getElementById('tiCards').innerHTML =
+            // [RELEASE-LAYER] kartu DRAFT memantau tagihan yang belum diterbitkan ke client
+            card('warn', 'Belum Diterbitkan (' + (s.draft_count || 0) + ' dok)', s.draft_value) +
             card('', 'Total Ditagihkan', s.invoiced) + card('ok', 'Sudah Dibayar', s.paid) + card('', 'Sisa Tagihan', s.outstanding) +
             card('warn', 'Lewat Jatuh Tempo', s.overdue) + card('soon', 'Jatuh Tempo 30 Hari', s.due_30) + card('', 'Tanpa Jatuh Tempo', s.no_due);
     }
@@ -117,6 +137,7 @@ Ext.onReady(function () {
     var invField = [
         'id', 'inv_no', 'invoice_date', 'due_date', 'termin_name', 'project_id', 'project_name', 'client_id', 'client_name',
         'faktur_pajak_no', 'faktur_pajak_date', 'remark', 'status',
+        'release_status', 'release_no', 'release_date', 'released_by_name', 'release_note',  // [RELEASE-LAYER]
         { name: 'termin_no', type: 'int' }, { name: 'percentage', type: 'float' }, { name: 'amount', type: 'float' },
         { name: 'paid_amount', type: 'float' }, { name: 'remaining', type: 'float' }, { name: 'dpp_amount', type: 'float' },
         { name: 'ppn_rate', type: 'float' }, { name: 'ppn_amount', type: 'float' }, 'is_overdue', { name: 'days_overdue', type: 'int' }
@@ -145,6 +166,7 @@ Ext.onReady(function () {
     function loadMain() {
         mainDs.baseParams.client_id = parseInt(document.getElementById('tiClient').value, 10) || 0;
         mainDs.baseParams.status = document.getElementById('tiStatus').value;
+        mainDs.baseParams.doc_status = document.getElementById('tiDoc').value;          // [RELEASE-LAYER]
         mainDs.load();
     }
     document.getElementById('tiGo').onclick = loadMain;
@@ -154,9 +176,19 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     var gridMain = new Ext.grid.GridPanel({
         store: mainDs, renderTo: 'divMainGrid', height: mainHeight, loadMask: true, stripeRows: true,
-        viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada invoice. Klik Add untuk menerbitkan invoice ke client.</div>' },
+        viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada invoice. Klik Add untuk membuat invoice, lalu Release untuk menerbitkan dokumen tagihan ke client.</div>' },
         columns: [
             { header: 'No. Invoice', dataIndex: 'inv_no', width: 110 },
+            {                                                                                       // [RELEASE-LAYER] kolom dokumen tagihan
+                header: 'Dokumen Tagihan', dataIndex: 'release_no', width: 150,
+                renderer: function (v, meta, r) {
+                    if (r.get('release_status') === 'released') {
+                        return '<span style="color:#2e9e4f;font-weight:bold;">' + enc(v || '-') + '</span>' +
+                               (r.get('release_date') ? '<br><span style="color:#6b869a;font-size:11px;">' + enc(r.get('release_date')) + '</span>' : '');
+                    }
+                    return '<span style="color:#e6a817;font-weight:bold;">DRAFT</span>';
+                }
+            },
             { header: 'Tanggal', dataIndex: 'invoice_date', width: 82, align: 'center' },
             {
                 header: 'Jatuh Tempo', dataIndex: 'due_date', width: 105, align: 'center',
@@ -191,13 +223,19 @@ Ext.onReady(function () {
 
     function updateMainButtons() {
         mainBtnEnable('#addData');
-        if (dataRecord && !(dataRecord.paid_amount > VEPS)) {       // hanya invoice yang belum dibayar boleh diubah / dihapus
+        var rel = dataRecord ? String(dataRecord.release_status || 'draft') : '';                 // [RELEASE-LAYER]
+        if (dataRecord && rel === 'draft' && !(dataRecord.paid_amount > VEPS)) {       // hanya DRAFT tanpa pembayaran yang boleh diubah / dihapus
             mainBtnEnable('#editData');
             mainBtnEnable('#deleteData');
         } else {
             mainBtnDisable('#editData');
             mainBtnDisable('#deleteData');
         }
+        // [RELEASE-LAYER] tombol release aktif sesuai status dokumen baris terpilih
+        var canRel = getFormAccess() >= ACCESS_EDIT;
+        if (canRel && dataRecord && rel === 'draft') mainBtnEnable('#tiRelease'); else mainBtnDisable('#tiRelease');
+        if (canRel && dataRecord && rel === 'released' && !(dataRecord.paid_amount > VEPS)) mainBtnEnable('#tiUnrelease'); else mainBtnDisable('#tiUnrelease');
+        if (canRel) mainBtnEnable('#tiReleaseAll'); else mainBtnDisable('#tiReleaseAll');
     }
     editDataDisable();
     updateMainButtons();
@@ -222,12 +260,18 @@ Ext.onReady(function () {
     function renderDetailPanel(d) {
         var h = d.header, pays = d.payments || [];
         var st = h.remaining <= VEPS ? 'Lunas' : (h.paid_amount > VEPS ? 'Sebagian' : 'Belum Bayar');
+        // [RELEASE-LAYER] informasi dokumen tagihan di panel detail
+        var relLine = (h.release_status === 'released')
+            ? 'Dokumen tagihan: <b>' + enc(h.release_no || '-') + '</b> (' + enc(h.release_date || '-') + ')' + (h.released_by_name ? ' oleh ' + enc(h.released_by_name) : '')
+            : '<span style="color:#e6a817;font-weight:bold;">DRAFT</span> <span style="color:#6b869a;">- belum diterbitkan ke client (tidak muncul di Pembayaran Termin)</span>';
         var html = '<h3 class="detail-title">Invoice: ' + enc(h.inv_no) + ' <span style="color:' + statusColor(st) + ';">(' + st + ')</span></h3>' +
                    '<hr class="detail-hr" />' +
                    '<div style="padding:4px 2px 10px 2px;">Client: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Termin: <b>' + enc(h.termin_name) + '</b>' + (h.percentage > 0 ? ' (' + h.percentage + '% kontrak)' : '') +
                    ' &nbsp;|&nbsp; Tanggal: <b>' + enc(h.invoice_date) + '</b> &nbsp;|&nbsp; Jatuh tempo: <b>' + enc(h.due_date || '-') + '</b>' +
                    ' &nbsp;|&nbsp; Faktur pajak: <b>' + (h.ppn_amount > 0 ? (h.faktur_pajak_no ? enc(h.faktur_pajak_no) : '<span style="color:#e6a817;">belum diisi</span>') : 'tanpa PPN') + '</b>' +
+                   ' &nbsp;|&nbsp; ' + relLine +
+                   (h.release_note ? ' &nbsp;|&nbsp; Catatan terbit: <b>' + enc(h.release_note) + '</b>' : '') +
                    (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div>' +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                    '<th align="left">Keterangan</th><th align="right">Jumlah (IDR)</th></tr></thead><tbody>' +
@@ -240,6 +284,12 @@ Ext.onReady(function () {
         html += '<tr class="data-row"><td><b>Sisa Tagihan</b></td><td align="right" class="subtotal-val"><b>' + fmtAmt(h.remaining) + '</b></td></tr></tbody></table>';
 
         html += '<div style="margin-top:15px; text-align:right;">';
+        // [RELEASE-LAYER] aksi release / batal release juga tersedia di panel detail
+        if (h.release_status === 'released' && !(h.paid_amount > VEPS)) {
+            html += '<button type="button" class="tiActBtn" data-act="unrelease" style="margin-left:8px; padding:8px 16px; background:#800020; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Batalkan Release</button>';
+        } else if (h.release_status !== 'released') {
+            html += '<button type="button" class="tiActBtn" data-act="release" style="margin-left:8px; padding:8px 16px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Release Tagihan</button>';
+        }
         if (h.ppn_amount > 0) html += '<button type="button" class="tiActBtn" data-act="faktur" style="margin-left:8px; padding:8px 16px; background:#8e6b22; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Faktur Pajak</button>';
         html += '<button type="button" class="tiActBtn" data-act="print" style="margin-left:8px; padding:8px 16px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Cetak Invoice</button></div>';
         dtlDiv.innerHTML = html;
@@ -248,13 +298,46 @@ Ext.onReady(function () {
         var btns = dtlDiv.querySelectorAll('.tiActBtn');
         for (var i = 0; i < btns.length; i++) {
             btns[i].onclick = function () {
-                if (this.getAttribute('data-act') === 'print') printInvoice(h.id); else editFaktur(h);
+                var act = this.getAttribute('data-act');
+                if (act === 'print') printInvoice(h.id);
+                else if (act === 'release') doRelease(h.id);
+                else if (act === 'unrelease') doUnrelease(h.id);
+                else editFaktur(h);
             };
         }
     }
 
     function printInvoice(id) {
         window.open('../dev/pdf/project.invoice.php?id=' + id, '_blank', 'width=900,height=800,scrollbars=yes,resizable=yes');
+    }
+
+    // [RELEASE-LAYER] terbitkan / batalkan dokumen tagihan satu invoice
+    function doRelease(id) {
+        if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses.'); return; }
+        // [RELEASE-LAYER] catatan penerbitan opsional (maks 200 karakter)
+        Ext.Msg.prompt('Release Tagihan', 'Catatan penerbitan (opsional, maks 200 karakter):', function (btn, note) {
+            if (btn !== 'ok') return;
+            note = String(note || '').trim();
+            if (note.length > 200) { showErr('Catatan penerbitan terlalu panjang (maksimal 200 karakter).'); return; }
+            ajax({ task: 'release_invoice', id: id, release_note: note }, function (res) {
+                Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                if (res.success) {
+                    mainDs.load();
+                    if (dataRecord && dataRecord.id === id) loadDetailPanel(id);
+                }
+            });
+        });
+    }
+    function doUnrelease(id) {
+        if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses.'); return; }
+        Ext.Msg.confirm('Batalkan Release', 'Kembalikan invoice ini ke DRAFT? Dokumen tagihan ' + enc(dataRecord && dataRecord.release_no || '') +
+            ' tidak lagi berlaku dan tagihan hilang dari Pembayaran Termin.', function (btn) {
+            if (btn !== 'yes') return;
+            ajax({ task: 'unrelease_invoice', id: id }, function (res) {
+                Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                if (res.success) { mainDs.load(); loadDetailPanel(id); }
+            });
+        });
     }
 
     // Isi / ubah faktur pajak keluaran
@@ -265,7 +348,7 @@ Ext.onReady(function () {
             fieldLabel: 'Tgl Faktur Pajak', format: 'd/m/Y', width: 130, allowBlank: true,
             value: h.faktur_pajak_date ? Date.parseDate(h.faktur_pajak_date, 'Y-m-d') : ''
         });
-        // [CHANGED] tombol HTML gaya standar (Ext.Button bawaan tak terbaca di tema gelap)
+        // [CHANGED] tombol HTML gaya standar (Ext.Button bawaan tak terlihat di tema gelap)
         var win = new Ext.Window({
             title: 'Faktur Pajak - ' + h.inv_no, width: 420, height: 250, modal: true, layout: 'fit',
             items: new Ext.form.FormPanel({
@@ -485,7 +568,7 @@ Ext.onReady(function () {
                 Ext.Msg.alert('Sukses', res.message || 'Invoice tersimpan.');
                 projectDs.load();            // total DPP yang sudah ditagih berubah
                 mainDs.load();
-                if (res.data && res.data.id) { dataRecord = { id: res.data.id, paid_amount: 0 }; updateMainButtons(); loadDetailPanel(res.data.id); }
+                if (res.data && res.data.id) { dataRecord = { id: res.data.id, paid_amount: 0, release_status: 'draft' }; updateMainButtons(); loadDetailPanel(res.data.id); }
             } else {
                 showErr(res.message || 'Terjadi kesalahan sistem.');
             }
@@ -502,12 +585,14 @@ Ext.onReady(function () {
     document.getElementById('editData').onclick = function () {
         if (!dataRecord) { Ext.Msg.alert('Peringatan', 'Pilih invoice terlebih dahulu dari tabel.'); return; }
         if (dataRecord.paid_amount > VEPS) { Ext.Msg.alert('Peringatan', 'Invoice yang sudah ada pembayaran tidak dapat diubah.'); return; }
+        if (String(dataRecord.release_status || 'draft') !== 'draft') { Ext.Msg.alert('Peringatan', 'Invoice sudah diterbitkan; batalkan release terlebih dahulu untuk mengubah.'); return; }
         if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses untuk mengubah invoice.'); return; }
         openEditor(dataRecord);
     };
     document.getElementById('deleteData').onclick = function () {
         if (!dataRecord) { Ext.Msg.alert('Peringatan', 'Pilih invoice terlebih dahulu dari tabel.'); return; }
         if (dataRecord.paid_amount > VEPS) { Ext.Msg.alert('Peringatan', 'Invoice yang sudah ada pembayaran tidak dapat dihapus.'); return; }
+        if (String(dataRecord.release_status || 'draft') !== 'draft') { Ext.Msg.alert('Peringatan', 'Invoice sudah diterbitkan; batalkan release terlebih dahulu sebelum menghapus.'); return; }
         if (getFormAccess() < ACCESS_EDIT) { Ext.Msg.alert('Akses Ditolak', 'Anda tidak memiliki hak akses untuk menghapus invoice.'); return; }
         Ext.Msg.confirm('Hapus Invoice', 'Hapus invoice <b>' + enc(dataRecord.inv_no) + '</b>? Jurnal penagihannya ikut dibatalkan.', function (btn) {
             if (btn !== 'yes') return;
@@ -530,6 +615,44 @@ Ext.onReady(function () {
     if (document.getElementById('popOK')) {
         document.getElementById('popOK').onclick = function () { document.getElementById('popWdw').style.display = 'none'; };
     }
+
+    // ------------------------------------------------------------
+    // 5b. [RELEASE-LAYER] Tombol release / batal release / release bulk di filter bar
+    // ------------------------------------------------------------
+    document.getElementById('tiRelease').onclick = function () {
+        if (!dataRecord) { Ext.Msg.alert('Peringatan', 'Pilih invoice terlebih dahulu dari tabel.'); return; }
+        if (String(dataRecord.release_status || 'draft') === 'released') { showErr('Invoice sudah diterbitkan (' + enc(dataRecord.release_no || '') + ').'); return; }
+        if (dataRecord.paid_amount > VEPS) { showErr('Invoice sudah ada pembayaran.'); return; }
+        Ext.Msg.confirm('Release Tagihan', 'Terbitkan dokumen tagihan untuk invoice <b>' + enc(dataRecord.inv_no) + '</b>? ' +
+            'Jurnal penagihan diposting dan invoice masuk daftar tagihan di Pembayaran Termin.', function (btn) {
+            if (btn === 'yes') doRelease(dataRecord.id);
+        });
+    };
+    document.getElementById('tiUnrelease').onclick = function () {
+        if (!dataRecord) { Ext.Msg.alert('Peringatan', 'Pilih invoice terlebih dahulu dari tabel.'); return; }
+        if (String(dataRecord.release_status || 'draft') !== 'released') { showErr('Invoice belum diterbitkan.'); return; }
+        if (dataRecord.paid_amount > VEPS) { showErr('Invoice sudah ada pembayaran; penerbitannya tidak dapat dibatalkan.'); return; }
+        doUnrelease(dataRecord.id);
+    };
+    document.getElementById('tiReleaseAll').onclick = function () {
+        var ids = [];
+        mainDs.each(function (r) { if (String(r.get('release_status') || 'draft') === 'draft') ids.push(r.get('id')); });
+        if (!ids.length) { showErr('Tidak ada invoice DRAFT pada filter aktif.'); return; }
+        // [RELEASE-LAYER] catatan penerbitan opsional (maks 200 karakter), diterapkan ke semua invoice yang di-release
+        Ext.Msg.prompt('Release Semua (filter aktif)', 'Catatan penerbitan (opsional, maks 200 karakter):', function (btn, note) {
+            if (btn !== 'ok') return;
+            note = String(note || '').trim();
+            if (note.length > 200) { showErr('Catatan penerbitan terlalu panjang (maksimal 200 karakter).'); return; }
+            Ext.Msg.confirm('Release Semua (filter aktif)', 'Terbitkan <b>' + ids.length + ' invoice DRAFT</b> yang sesuai filter Client/Status di layar ini? ' +
+                'Dokumen tagihan (TAG-...) diterbitkan untuk semuanya dan jurnal penagihan diposting.', function (btn2) {
+                if (btn2 !== 'yes') return;
+                ajax({ task: 'release_invoices', ids: Ext.util.JSON.encode(ids), release_note: note }, function (res) {
+                    Ext.Msg.alert(res.success ? 'Sukses' : 'Gagal', res.message || '');
+                    if (res.success) mainDs.load();
+                });
+            });
+        });
+    };
 
     // ------------------------------------------------------------
     // 6. Data awal

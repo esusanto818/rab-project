@@ -173,7 +173,7 @@ function dash_project_context($db, int $pid): ?array {
                        COALESCE(SUM(CASE WHEN v.due_date < CURRENT_DATE AND " . str_replace('pinv.', 'v.', AR_OS) . " > 0.005 THEN " . str_replace('pinv.', 'v.', AR_OS) . " END),0) AS ar_overdue,
                        COUNT(CASE WHEN v.due_date < CURRENT_DATE AND " . str_replace('pinv.', 'v.', AR_OS) . " > 0.005 THEN 1 END) AS overdue_cnt,
                        COUNT(*) AS inv_cnt
-                  FROM project_invoices v WHERE v.project_id = :p", [':p' => $pid])->fetch(PDO::FETCH_ASSOC);
+                  FROM project_invoices v WHERE v.project_id = :p AND v.release_status = 'released'", [':p' => $pid])->fetch(PDO::FETCH_ASSOC);   // [RELEASE-LAYER] hanya tagihan resmi
     $billed = (float)$bill['billed_dpp'];
     $collected = (float)$q("SELECT COALESCE(SUM(ppi.amount_paid),0) FROM project_payment_items ppi JOIN project_invoices v ON v.id = ppi.invoice_id WHERE v.project_id = :p", [':p' => $pid])->fetchColumn();
     $billedPct = $contractDpp > 0 ? $billed / $contractDpp * 100 : null;

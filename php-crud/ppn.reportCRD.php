@@ -69,7 +69,8 @@ function rpt_keluaran($db, string $from, string $to): array {
           FROM public.project_invoices v
           JOIN public.projects p ON p.id = v.project_id
           LEFT JOIN public.clients c ON c.id = p.client_id
-         WHERE v.ppn_amount > 0
+         WHERE v.release_status = 'released'                                    -- [RELEASE-LAYER] hanya tagihan resmi
+           AND v.ppn_amount > 0
            AND COALESCE(v.faktur_pajak_date, v.invoice_date) >= CAST(:f AS date)
            AND COALESCE(v.faktur_pajak_date, v.invoice_date) <  CAST(:t AS date)
          ORDER BY tax_date, v.id");

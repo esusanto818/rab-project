@@ -55,6 +55,10 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  *     Jurnal: PRJ_PAY_AR (kas) = teralokasi - deposit; PRJ_PAY_DEP = excess; PRJ_DEP_APPLY = deposit (Dr Uang Muka Penjualan / Cr Piutang Usaha, tanpa kas).
  *     delete_payment ditolak bila deposit hasil pembayaran itu sudah dipakai pembayaran lain. Task get_client_deposit = saldo + riwayat.
  *     Butuh migrasi: sql/2026-10-27.client_deposit.sql
+ * 14. [RELEASE-LAYER 2026-11-14] Termin punya siklus dokumen: draft (internal) -> released (dokumen tagihan TAG-... diterbitkan
+ *     dari menu Tagihan ke Klien). list_outstanding & save_payment HANYA memakai termin RELEASED; termin draft tidak dapat
+ *     dibayar. save_termin membuat termin sebagai DRAFT tanpa posting jurnal (jurnal penagihan diposting saat release).
+ *     Butuh migrasi: sql/2026-11-14.project_invoice_release.sql
  * ============================================================
  */
 
@@ -349,6 +353,7 @@ try {
 
         /* ------------------------------------------------------------------
          * Termin proyek yang masih punya sisa tagihan + ringkasan kontrak[cite: 5]
+         * [RELEASE-LAYER] hanya termin yang sudah diterbitkan (release_status = 'released') yang ditampilkan.
          * ------------------------------------------------------------------ */
         case 'list_outstanding':
             $cli = (int)($_REQUEST['client_id'] ?? 0);
@@ -358,14 +363,17 @@ try {
                 SELECT x.invoice_id, x.project_id, x.project_name, x.inv_no, x.termin_name, x.invoice_date,
                        x.termin_no, x.percentage, x.amount, x.paid_amount, (x.amount - x.paid_amount) AS remaining,
                        x.dpp_amount, x.ppn_amount, x.ppn_rate,
-                       x.faktur_pajak_no, x.faktur_pajak_date      -- [PPN]
+                       x.faktur_pajak_no, x.faktur_pajak_date,      -- [PPN]
+                       x.release_no, x.release_date                 -- [RELEASE-LAYER] nomor & tgl dokumen tagihan
                   FROM (
                         SELECT v.id AS invoice_id, v.project_id, p.name AS project_name,
                                v.inv_no, v.termin_name, v.invoice_date, v.percentage,
                                v.amount, v.paid_amount, v.dpp_amount, v.ppn_amount, v.ppn_rate, v.faktur_pajak_no, v.faktur_pajak_date, p.client_id,   -- [PPN]
+                               v.release_no, v.release_date,                                                          -- [RELEASE-LAYER]
                                ROW_NUMBER() OVER (PARTITION BY v.project_id ORDER BY v.invoice_date ASC, v.id ASC) AS termin_no
                           FROM public.project_invoices v
                           JOIN public.projects p ON p.id = v.project_id
+                         WHERE v.release_status = 'released'                                -- [RELEASE-LAYER] hanya tagihan resmi
                        ) x
                  WHERE x.client_id = :c AND (x.amount - x.paid_amount) > 0
                  ORDER BY x.invoice_date ASC, x.invoice_id ASC");
@@ -385,12 +393,17 @@ try {
             }
             unset($r);
 
+            // Ringkasan kontrak: total termin/dibayar hanya menghitung termin RELEASED; draft dilaporkan terpisah. [RELEASE-LAYER]
             $st = $db->prepare("
                 SELECT p.id AS project_id, p.name AS project_name,
                        COALESCE(p.contract_value, 0)  AS contract_value,
-                       COALESCE(SUM(v.amount), 0)      AS total_termin,
-                       COALESCE(SUM(CASE WHEN v.dpp_amount > 0 THEN v.dpp_amount ELSE v.amount END), 0) AS total_dpp,   -- [PPN] dasar banding kontrak
-                       COALESCE(SUM(v.paid_amount), 0) AS total_paid
+                       COALESCE(SUM(CASE WHEN v.release_status = 'released' THEN v.amount ELSE 0 END), 0) AS total_termin,
+                       COALESCE(SUM(CASE WHEN v.release_status = 'released'
+                                            THEN (CASE WHEN v.dpp_amount > 0 THEN v.dpp_amount ELSE v.amount END) ELSE 0 END), 0) AS total_dpp,   -- [PPN] dasar banding kontrak
+                       COALESCE(SUM(CASE WHEN v.release_status = 'released' THEN v.paid_amount ELSE 0 END), 0) AS total_paid,
+                       COALESCE(SUM(CASE WHEN v.release_status = 'draft'
+                                            THEN (CASE WHEN v.dpp_amount > 0 THEN v.dpp_amount ELSE v.amount END) ELSE 0 END), 0) AS total_draft,   -- [RELEASE-LAYER]
+                       COUNT(CASE WHEN v.release_status = 'draft' THEN 1 END) AS draft_count                                       -- [RELEASE-LAYER]
                   FROM public.projects p
                   LEFT JOIN public.project_invoices v ON v.project_id = p.id
                  WHERE p.client_id = :c
@@ -404,6 +417,8 @@ try {
                 $pr['total_termin']   = (float)$pr['total_termin'];
                 $pr['total_dpp']      = (float)$pr['total_dpp'];          // [PPN]
                 $pr['total_paid']     = (float)$pr['total_paid'];
+                $pr['total_draft']    = (float)$pr['total_draft'];        // [RELEASE-LAYER]
+                $pr['draft_count']    = (int)$pr['draft_count'];          // [RELEASE-LAYER]
             }
             unset($pr);
             sendJsonResponse(true, ['data' => $rows, 'totalCount' => count($rows)], '', ['summary' => ['projects' => $projects]]);
@@ -466,10 +481,12 @@ try {
                     $st->execute([':no' => $invNo, ':p' => $prj, ':n' => $name, ':d' => $date, ':pct' => $pct, ':a' => $total,
                                   ':dpp' => $amt, ':pr' => $ppnRate, ':ppn' => $ppnAmt, ':fn' => $fpNo, ':fd' => $fpDate]);
                     $newId = (int)$st->fetchColumn();
-                    pp_post_invoice_journal($db, $newId, $invNo, $date, $amt, (string)$prjRow['name'], $ppnAmt);   // [PPN] DPP + PPN
+                    // [RELEASE-LAYER] jurnal penagihan TIDAK diposting di sini (termin masih DRAFT);
+                    // diposting saat release dari menu Tagihan ke Klien (project.invoiceCRD.php).
                     $db->commit();
                     sendJsonResponse(true, ['id' => $newId, 'inv_no' => $invNo],
-                        "Termin {$invNo} berhasil dibuat." . ($ppnAmt > 0 ? ' DPP ' . number_format($amt, 2) . ' + PPN ' . number_format($ppnAmt, 2) . ' = ' . number_format($total, 2) . '.' : ''));
+                        "Termin {$invNo} disimpan sebagai DRAFT." . ($ppnAmt > 0 ? ' DPP ' . number_format($amt, 2) . ' + PPN ' . number_format($ppnAmt, 2) . ' = ' . number_format($total, 2) . '.' : '') .
+                        " Terbitkan dari menu Tagihan ke Klien agar dapat dibayar.");
                 } catch (Throwable $e) {
                     if ($db->inTransaction()) { $db->rollBack(); }
                     throw $e;
@@ -651,7 +668,7 @@ try {
                     }
 
                     $stInv = $db->prepare("
-                        SELECT v.id, v.inv_no, v.project_id, v.amount, v.paid_amount,
+                        SELECT v.id, v.inv_no, v.project_id, v.amount, v.paid_amount, v.release_status,
                                p.client_id, p.name AS project_name
                           FROM public.project_invoices v
                           JOIN public.projects p ON p.id = v.project_id
@@ -669,6 +686,10 @@ try {
                         $inv = $stInv->fetch(PDO::FETCH_ASSOC);
                         if (!$inv) throw new PpBusinessError("{$no}: termin tidak ditemukan.");
                         if ((int)$inv['client_id'] !== $clientId) throw new PpBusinessError("{$no}: termin {$inv['inv_no']} ({$inv['project_name']}) bukan milik client ini.");
+                        if ((string)$inv['release_status'] !== 'released') {                                  // [RELEASE-LAYER] hanya tagihan resmi yang boleh dibayar
+                            throw new PpBusinessError("{$no}: termin {$inv['inv_no']} ({$inv['project_name']}) belum diterbitkan (status draft)." .
+                                " Release tagihan dulu di menu Tagihan ke Klien.");
+                        }
                         $sisa = round((float)$inv['amount'] - (float)$inv['paid_amount'], 2);
                         $payIdr = round($pay * $rate, 2);
                         if (abs($payIdr - $sisa) <= 0.005 * $rate + PP_EPS) $payIdr = $sisa;

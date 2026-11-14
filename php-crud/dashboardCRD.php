@@ -169,7 +169,8 @@ case 'read_financial_aging':
                (CURRENT_DATE - pinv.invoice_date) AS age
         FROM project_invoices pinv
         WHERE (pinv.amount - GREATEST(pinv.paid_amount,
-                COALESCE((SELECT SUM(x.amount_paid) FROM project_payment_items x WHERE x.invoice_id = pinv.id), 0))) > 0.005"
+                COALESCE((SELECT SUM(x.amount_paid) FROM project_payment_items x WHERE x.invoice_id = pinv.id), 0))) > 0.005
+          AND pinv.release_status = 'released'"                                  // [RELEASE-LAYER] hanya tagihan resmi
         . ($projectId ? " AND pinv.project_id = :pid" : "");
 
     $apStatus = "COALESCE(LOWER(h.status),'') NOT IN ('void','cancelled','canceled','dibatalkan','reversed')";
@@ -515,7 +516,8 @@ case 'read_invoice_pipeline':
                        ELSE 'Belum Bayar'
                    END AS st
             FROM project_invoices pinv
-            WHERE (:pid = 0 OR pinv.project_id = :pid)
+            WHERE pinv.release_status = 'released'                              // [RELEASE-LAYER] hanya tagihan resmi
+              AND (:pid = 0 OR pinv.project_id = :pid)
         ) t
         GROUP BY st
     ";
@@ -558,17 +560,17 @@ case 'read_action_center':
 
     // --- Penjualan / termin klien
     $add('inv_overdue', 'Invoice Klien Jatuh Tempo', 'danger',
-        "SELECT COUNT(*) FROM project_invoices pinv WHERE pinv.due_date < CURRENT_DATE AND " . AR_OS . " > 0.005 AND (:pid = 0 OR pinv.project_id = :pid)", $P,
+        "SELECT COUNT(*) FROM project_invoices pinv WHERE pinv.due_date < CURRENT_DATE AND pinv.release_status = 'released' AND " . AR_OS . " > 0.005 AND (:pid = 0 OR pinv.project_id = :pid)", $P,   // [RELEASE-LAYER]
         'Sisa tagihan termin sudah lewat jatuh tempo');
     $add('inv_due_soon', 'Invoice Klien Jatuh Tempo 7 Hari', 'warn',
-        "SELECT COUNT(*) FROM project_invoices pinv WHERE pinv.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 AND " . AR_OS . " > 0.005 AND (:pid = 0 OR pinv.project_id = :pid)", $P,
+        "SELECT COUNT(*) FROM project_invoices pinv WHERE pinv.due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 AND pinv.release_status = 'released' AND " . AR_OS . " > 0.005 AND (:pid = 0 OR pinv.project_id = :pid)", $P,   // [RELEASE-LAYER]
         'Siapkan penagihan');
     $add('unbilled', 'Proyek Berjalan Belum Ditagih', 'info',
         "SELECT COUNT(*) FROM projects p WHERE p.status = 'Berjalan' AND p.contract_value > 0
             AND NOT EXISTS (SELECT 1 FROM project_invoices WHERE project_id = p.id) AND (:pid = 0 OR p.id = :pid)", $P,
         'Belum ada termin yang diterbitkan');
     $add('faktur_missing', 'Faktur Pajak Belum Diisi', 'info',
-        "SELECT (SELECT COUNT(*) FROM project_invoices WHERE COALESCE(ppn_amount,0) > 0 AND COALESCE(faktur_pajak_no,'') = '' AND (:pid = 0 OR project_id = :pid))
+        "SELECT (SELECT COUNT(*) FROM project_invoices WHERE release_status = 'released' AND COALESCE(ppn_amount,0) > 0 AND COALESCE(faktur_pajak_no,'') = '' AND (:pid = 0 OR project_id = :pid))
               + (SELECT COUNT(*) FROM purchase_invoice_hdr h WHERE COALESCE(h.ppn_amount,0) > 0 AND COALESCE(h.faktur_pajak_no,'') = ''
                     AND COALESCE(LOWER(h.status),'') NOT IN ('void','cancelled','canceled','dibatalkan','reversed')
                     AND (:pid = 0 OR EXISTS (SELECT 1 FROM purchase_invoice_dtl d JOIN grn_hdr g ON g.id = d.grn_hdr_id JOIN purchase_orders po ON po.id = g.po_id

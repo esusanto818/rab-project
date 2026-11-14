@@ -13,6 +13,7 @@ $id = intval($_GET['id'] ?? 0);
 $st = $db->prepare("
     SELECT v.id, v.inv_no, v.invoice_date, v.due_date, v.termin_name, v.percentage, v.amount, v.paid_amount,
            v.dpp_amount, v.ppn_rate, v.ppn_amount, v.faktur_pajak_no, v.faktur_pajak_date, v.remark,
+           v.release_status, v.release_no, v.release_date, v.release_note,       -- [RELEASE-LAYER] dokumen tagihan
            p.name AS project_name, p.location AS project_location, COALESCE(p.contract_value, 0) AS contract_value,
            cl.name AS client_name, cl.address AS client_address, cl.phone AS client_phone, cl.contact_person AS client_pic
       FROM project_invoices v
@@ -40,7 +41,16 @@ $info = [
         ($inv['due_date'] ? ' &nbsp;|&nbsp; Jatuh Tempo: ' . pr_e(pr_date($inv['due_date'])) : ''),
     'Kepada: ' . pr_e($inv['client_name'] ?: '-') . ($inv['client_address'] ? ' - ' . pr_e($inv['client_address']) : ''),
     'Proyek: ' . pr_e($inv['project_name']) . ($inv['project_location'] ? ' (' . pr_e($inv['project_location']) . ')' : ''),
+    // [RELEASE-LAYER] nomor dokumen tagihan yang diserahkan ke client; DRAFT = belum diterbitkan
+    (strtoupper((string)$inv['release_status']) === 'RELEASED' && $inv['release_no'])
+        ? 'No. Dokumen Tagihan: ' . pr_e($inv['release_no']) . ($inv['release_date'] ? ' &nbsp;|&nbsp; Tgl Terbit: ' . pr_e(pr_date($inv['release_date'])) : '')
+        : '<span style="color:#b3541e;">STATUS: DRAFT - dokumen tagihan belum diterbitkan ke client</span>',
+    // [RELEASE-LAYER] catatan penerbitan (opsional) tampil bila ada
+    (strtoupper((string)$inv['release_status']) === 'RELEASED' && !empty($inv['release_note']))
+        ? 'Catatan Terbit: ' . pr_e($inv['release_note'])
+        : '',
 ];
+$info = array_values(array_filter($info, function ($x) { return $x !== ''; }));   // buang baris kosong
 pr_open('Invoice ' . $inv['inv_no'], 'INVOICE / TAGIHAN', $info);
 ?>
 <table class="rpt fx">

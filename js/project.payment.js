@@ -522,6 +522,7 @@ Ext.onReady(function () {
         { name: 'percentage', type: 'float' }, { name: 'amount', type: 'float' },
         { name: 'dpp_amount', type: 'float' }, { name: 'ppn_amount', type: 'float' }, { name: 'ppn_rate', type: 'float' },   // [PPN]
         { name: 'faktur_pajak_no' }, { name: 'faktur_pajak_date' },                                                          // [PPN] faktur keluaran
+        { name: 'release_no' }, { name: 'release_date' },                                                                    // [RELEASE-LAYER] dokumen tagihan
         { name: 'paid_amount', type: 'float' }, { name: 'remaining', type: 'float' },
         { name: 'pay', type: 'float', defaultValue: 0 },
         { name: 'pay_idr', type: 'float', defaultValue: 0 }
@@ -602,12 +603,16 @@ Ext.onReady(function () {
     var itemGrid = new stdGridEditor({
         store: outDs,
         renderTo: 'editorFormGrid',
-        viewConfig: { forceFit: true, scrollOffset: 0 },
+        // [RELEASE-LAYER] kosong = belum ada tagihan resmi yang diterbitkan ke client ini
+        viewConfig: { forceFit: true, scrollOffset: 0, deferEmptyText: false,
+                      emptyText: '<div style="padding:12px;color:#9fc3d1;">Belum ada tagihan yang diterbitkan (release) untuk client ini. ' +
+                                 'Release dulu dari menu Tagihan ke Klien.</div>' },
         height: 280,
         columns: [
             { header: 'Proyek', dataIndex: 'project_name', width: 170, renderer: CellWrap },
             { header: 'Termin', dataIndex: 'termin_name', width: 150, renderer: CellWrap },
             { header: 'No. Invoice', dataIndex: 'inv_no', width: 110 },
+            { header: 'No. Dokumen', dataIndex: 'release_no', width: 100, renderer: function (v) { return v ? '<span style="color:#2e9e4f;">' + enc(v) + '</span>' : '-'; } },   // [RELEASE-LAYER]
             { header: 'Tgl Termin', dataIndex: 'invoice_date', width: 85, align: 'center' },
             {
                 header: '%', dataIndex: 'percentage', width: 50, align: 'right',
@@ -862,21 +867,23 @@ Ext.onReady(function () {
 
     function describeContract() {
         if (!fClient || !fClient.getValue()) { fInfo.setValue(''); return; }
-        var cv = 0, tt = 0, tp = 0, bt = 0, lines = '';
+        var cv = 0, tt = 0, tp = 0, bt = 0, td = 0, lines = '';
         Ext.each(projSummary, function (p) {
             var bel = Math.max(p.contract_value - p.total_dpp, 0);      // [PPN] kontrak dibanding DPP termin, bukan tagihan incl. PPN
-            cv += p.contract_value; tt += p.total_termin; tp += p.total_paid; bt += bel;
+            cv += p.contract_value; tt += p.total_termin; tp += p.total_paid; bt += bel; td += p.total_draft || 0;
             lines += '<div style="font-size:14px; font-family: arial;line-height:22px; color:#c8dde6;">&bull; <b>' + enc(p.project_name) + '</b>' +
                      ' &nbsp;&ndash;&nbsp; kontrak <b>' + fmtAmt(p.contract_value) + '</b>' +
                      ' &nbsp;|&nbsp; termin (incl. PPN) <b>' + fmtAmt(p.total_termin) + '</b>' +
                      ' &nbsp;|&nbsp; dibayar <b>' + fmtAmt(p.total_paid) + '</b>' +
-                     ' &nbsp;|&nbsp; belum ditagihkan <b>' + fmtAmt(bel) + '</b></div>';
+                     ' &nbsp;|&nbsp; belum ditagihkan <b>' + fmtAmt(bel) + '</b>' +
+                     (p.draft_count ? ' &nbsp;|&nbsp; <span style="color:#e6a817;">draft ' + p.draft_count + ' x (' + fmtAmt(p.total_draft || 0) + ')</span>' : '') + '</div>';   // [RELEASE-LAYER]
         });
         var multi = projSummary.length > 1;
         fInfo.setValue('<div style="padding:6px 2px 2px 2px;">' +
                        '<div style="font-size:14px; line-height:24px; color:#ffffff;">' + (multi ? ('Total ' + projSummary.length + ' proyek &nbsp;&ndash;&nbsp; ') : '') +
                        'Nilai kontrak: <b>' + fmtAmt(cv) + '</b> &nbsp;|&nbsp; Total termin: <b>' + fmtAmt(tt) +
-                       '</b> &nbsp;|&nbsp; Sudah dibayar: <b>' + fmtAmt(tp) + '</b> &nbsp;|&nbsp; Belum ditagihkan: <b>' + fmtAmt(bt) + '</b></div>' +
+                       '</b> &nbsp;|&nbsp; Sudah dibayar: <b>' + fmtAmt(tp) + '</b> &nbsp;|&nbsp; Belum ditagihkan: <b>' + fmtAmt(bt) + '</b>' +
+                       (td > 0 ? ' &nbsp;|&nbsp; <span style="color:#e6a817;">Belum diterbitkan (draft): <b>' + fmtAmt(td) + '</b></span>' : '') + '</div>' +   // [RELEASE-LAYER]
                        (multi ? ('<div style="margin-top:4px;">' + lines + '</div>') : '') + '</div>');
         setTimeout(fitGrid, 0);
     }
@@ -904,7 +911,9 @@ Ext.onReady(function () {
                             contract_value: parseFloat(p.contract_value) || 0,
                             total_termin: parseFloat(p.total_termin) || 0,
                             total_dpp: parseFloat(p.total_dpp) || 0,           // [PPN] dasar banding kontrak
-                            total_paid: parseFloat(p.total_paid) || 0
+                            total_paid: parseFloat(p.total_paid) || 0,
+                            total_draft: parseFloat(p.total_draft) || 0,       // [RELEASE-LAYER] nilai termin yang belum diterbitkan
+                            draft_count: parseInt(p.draft_count, 10) || 0      // [RELEASE-LAYER]
                         });
                     });
                 }
