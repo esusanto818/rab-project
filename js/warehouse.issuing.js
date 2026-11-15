@@ -240,7 +240,7 @@ Ext.onReady(function () {
                    '<tr><td class="box"></td><td class="box"></td><td class="box"></td></tr>' +
                    '<tr><td>(................................)</td><td>(................................)</td><td>(................................)</td></tr></table>' +
                    '<div style="margin-top:14px;font-size:10px;color:#444;">Dicetak: ' + fmtDmy(ymd(new Date())) + '</div></body></html>';
-        w.document.open();
+        w.document.open('text/html','replace');
         w.document.write(html);
         w.document.close();
         w.focus();

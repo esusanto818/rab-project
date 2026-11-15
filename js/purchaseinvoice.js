@@ -185,7 +185,9 @@ Ext.onReady(function () {
             Ext.Msg.alert('Popup Diblokir', 'Izinkan popup untuk situs ini, lalu klik Cetak Tanda Terima lagi.');
             return;
         }
+        w.document.open('text/html','replace');
         w.document.write('<html><body style="font-family:Arial,sans-serif;padding:20px;">Memuat Tanda Terima Invoice...</body></html>');
+        w.document.close();
 
         Ext.Ajax.request({
             url: '../dev/php-crud/purchaseinvoiceCRD.php',
@@ -197,7 +199,7 @@ Ext.onReady(function () {
                 catch (e) { w.close(); Ext.Msg.alert('Gagal', 'Respons server tidak valid.'); return; }
                 if (!res.success) { w.close(); Ext.Msg.alert('Gagal', res.message || 'Gagal memuat data cetak.'); return; }
 
-                w.document.open();
+                w.document.open('text/html','replace');
                 w.document.write(buildInvoicePrintHtml(res.data.header, res.data.items || []));
                 w.document.close();
                 w.focus();

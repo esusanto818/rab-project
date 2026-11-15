@@ -285,7 +285,9 @@ Ext.onReady(function () {
     function printGrn(grnId) {
         var w = window.open('', '_blank', 'width=900,height=700');
         if (!w) { Ext.Msg.alert('Popup Diblokir', 'Izinkan popup untuk situs ini, lalu klik Cetak Tanda Terima lagi.'); return; }
+        w.document.open('text/html','replace');
         w.document.write('<html><body style="font-family:Arial,sans-serif;padding:20px;">Memuat Tanda Terima GRN...</body></html>');
+        w.document.close();
         Ext.Ajax.request({
             url: '../dev/php-crud/grnCRD.php',
             method: 'POST',
@@ -295,7 +297,7 @@ Ext.onReady(function () {
                 try { res = Ext.util.JSON.decode(response.responseText); }
                 catch (e) { w.close(); Ext.Msg.alert('Gagal', 'Respons server tidak valid.'); return; }
                 if (!res.success) { w.close(); Ext.Msg.alert('Gagal', res.message || 'Gagal memuat data cetak.'); return; }
-                w.document.open();
+                w.document.open('text/html','replace');
                 w.document.write(buildGrnPrintHtml(res.data.header || {}, res.data.items || []));
                 w.document.close();
                 w.focus();

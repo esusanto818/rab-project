@@ -68,7 +68,11 @@ if (in_array($task, ['create', 'update', 'delete'], true) && ($_SERVER['REQUEST_
 
 function PgOrFail($result, $context = '') {
     if ($result === false) {
-        throw new Exception(($context ? "[{$context}] " : '') . pg_last_error());
+        $err = pg_last_error();
+        // [SECURITY PATCH] jangan sampai pesan database bocor ke frontend;
+        // log detail ke server saja, lempar pesan umum yang aman.
+        error_log('grnCRD PgOrFail [' . $context . ']: ' . $err);
+        throw new Exception(($context ? "[{$context}] " : '') . 'Terjadi kesalahan pada database. Silakan hubungi administrator.');
     }
     return $result;
 }

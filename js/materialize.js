@@ -4374,8 +4374,26 @@ $(document).ready(function(){
                   if (typeof(callback) === 'function') {
                     callback.call(this, currentElement);
                   } else if (typeof(callback) === 'string') {
-                    var callbackFunc = new Function(callback);
-                    callbackFunc(currentElement);
+                    // [SECURITY PATCH] new Function() adalah eval-ekuivalen: DEKLARASI
+                    // string dari kode dipanggil. Hanya fungsi yang sudah terdaftar yang
+                    // boleh dieksekusi. Tambahkan nama fungsi baru ke allowlist jika
+                    // aplikasi menggunakan callback string baru di sini.
+                    var ALLOWED_CALLBACKS = {
+                        'checkboxes': true, 'radioboxes': true, 'selects': true,
+                        'scrollspy': true, 'tooltip': true, 'materialbox': true,
+                        'tabs': true, 'scrollFire': true, 'parallax': true,
+                        'input': true, 'autocomplete': true, 'carousel': true,
+                        'pushpin': true, 'responsiveAccordion': true, 'dropDown': true,
+                        'sideNav': true, 'sidenav': true, 'scrollFireLast': true
+                    };
+                    if (!(callback in ALLOWED_CALLBACKS)) {
+                        throw new Error('[SECURITY] Callback string tidak diizinkan: ' + callback);
+                    }
+                    var callbackFunc = window[callback];
+                    if (typeof callbackFunc !== 'function') {
+                        throw new Error('[SECURITY] Fungsi callback terdaftar tapi bukan fungsi: ' + callback);
+                    }
+                    callbackFunc.call(this, currentElement);
                   }
                   value.done = true;
                 }
