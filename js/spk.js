@@ -108,9 +108,60 @@ Ext.onReady(function () {
                        ' &nbsp;|&nbsp; Kontrak subkon: ' + (ct ? '<b>' + enc(ct.contract_no) + '</b> (' + enc(ct.status) + ', nilai ' + fmtAmt(ct.contract_value) + ')'
                                                               : '<span style="color:#e6a817;">belum terhubung</span>') + '</div>';
         }
+        var wiHtml = '';
+        if (isSub) {
+            var wis = d.work_items || [], wiTotal = 0;
+            wiHtml = '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;">' +
+                     '<div style="float:right;">' + (h.status === 'Draft' ? actionBtn('spkWorkBtn', 'Atur Lingkup Pekerjaan', '#066b78') : '') + '</div>' +
+                     '<b>Lingkup Pekerjaan (dasar klaim, inspeksi &amp; pembayaran subkon)</b><div style="clear:both;"></div>';
+            if (!wis.length) {
+                wiHtml += '<div style="padding:10px 2px;color:#e6a817;">Belum ada lingkup pekerjaan' + (h.status === 'Draft' ? '. Klik "Atur Lingkup Pekerjaan" untuk mengisi uraian, qty, dan harga satuan.' : '.') + '</div>';
+            } else {
+                wiHtml += '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
+                          '<th align="left">Kode</th><th align="left">Uraian</th><th align="left">Task</th><th align="right">Qty</th><th align="left">Sat.</th>' +
+                          '<th align="right">Harga Satuan</th><th align="right">Jumlah</th><th align="left">Material</th></tr></thead><tbody>';
+                Ext.each(wis, function (w) {
+                    wiTotal += parseFloat(w.line_amount) || 0;
+                    wiHtml += '<tr class="data-row"><td align="left">' + enc(w.work_code || '-') + '</td><td align="left">' + enc(w.description) + '</td>' +
+                              '<td align="left">' + enc(w.task_name || '-') + '</td><td align="right">' + fmtQty(w.contract_qty) + '</td><td align="left">' + enc(w.unit) + '</td>' +
+                              '<td align="right">' + fmtAmt(w.unit_price) + '</td><td align="right"><b>' + fmtAmt(w.line_amount) + '</b></td>' +
+                              '<td align="left">' + enc(({ COMPANY: 'Perusahaan', SUBCON: 'Subkon', MIXED: 'Campuran' })[w.material_supply] || w.material_supply) + '</td></tr>';
+                });
+                wiHtml += '<tr class="data-row"><td colspan="6" align="right"><b>Total lingkup</b></td><td align="right"><b>' + fmtAmt(wiTotal) + '</b></td><td></td></tr></tbody></table>';
+                if (d.contract && Math.abs(parseFloat(d.contract.contract_value) - wiTotal) > 0.005) {
+                    wiHtml += '<div style="padding:6px 2px;color:#e6a817;">Total lingkup berbeda dari nilai kontrak subkon (' + fmtAmt(d.contract.contract_value) + ').</div>';
+                }
+            }
+            wiHtml += '</div>';
+        }
+        // Material per task: jawab "material ini untuk task yang mana" + sumbernya (perusahaan / dibawa subkon)
+        var planHtml = '', plan = d.material_plan || [];
+        if (plan.length) {
+            var groups = {}, order = [];
+            Ext.each(d.tasks || [], function (t) { groups['t' + t.id] = { name: t.task_name, rows: [] }; order.push('t' + t.id); });
+            Ext.each(plan, function (m) {
+                var k = m.task_id ? 't' + m.task_id : 't0';
+                if (!groups[k]) { groups[k] = { name: m.task_id ? (m.task_name || 'Task') : 'Umum (tidak terkait task tertentu)', rows: [] }; order.push(k); }
+                groups[k].rows.push(m);
+            });
+            planHtml = '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;"><b>Material per Task</b>';
+            Ext.each(order, function (k) {
+                var g = groups[k];
+                if (!g.rows.length && k === 't0') { return; }
+                planHtml += '<div style="margin:10px 0 3px 0;color:#9fd0e6;font-weight:bold;">' + enc(g.name) + '</div>';
+                if (!g.rows.length) { planHtml += '<div style="color:#668894;padding:2px 0 4px 0;">Belum ada material untuk task ini.</div>'; return; }
+                planHtml += '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row"><th align="left">Material</th><th align="right">Qty</th><th align="left">Sat.</th><th align="left">Sumber</th><th align="left">Catatan</th></tr></thead><tbody>';
+                Ext.each(g.rows, function (m) {
+                    planHtml += '<tr class="data-row"><td align="left">' + enc(m.material_code) + ' - ' + enc(m.material_name) + '</td><td align="right"><b>' + fmtQty(m.qty) + '</b></td><td align="left">' + enc(m.unit) + '</td>' +
+                                '<td align="left">' + (m.supply_source === 'SUBCON' ? '<span style="color:#e6a817;font-weight:bold;">Subkon (dibawa subkon)</span>' : 'Perusahaan (stok gudang)') + '</td><td align="left">' + enc(m.notes || '') + '</td></tr>';
+                });
+                planHtml += '</tbody></table>';
+            });
+            planHtml += '</div>';
+        }
         var html = '<div style="float:right; margin:2px 4px 0 0;">' + btns + '</div>' +
                    '<h3 class="detail-title">Detail SPK: ' + enc(h.spk_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
-                   '<hr class="detail-hr" />' + typeLine +
+                   '<hr class="detail-hr" />' + typeLine + wiHtml + planHtml +
                    '<div style="padding:4px 2px 6px 2px;">Tanggal: <b>' + enc(h.spk_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Klien: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Mandor: <b>' + enc(h.foreman || '-') + '</b>' +
                    (h.description ? ' &nbsp;|&nbsp; Uraian: ' + enc(h.description) : '') + '</div>' +
@@ -139,6 +190,119 @@ Ext.onReady(function () {
         if ((b = document.getElementById('spkIssueBtn'))) b.onclick = function () { doAction('issue', h, 'Terbitkan SPK <b>' + enc(h.spk_no) + '</b>? Sistem memeriksa pembayaran termin dan kuota material.'); };
         if ((b = document.getElementById('spkCloseBtn'))) b.onclick = function () { doAction('close', h, 'Tutup SPK <b>' + enc(h.spk_no) + '</b>? Sisa jatah yang belum terpakai kembali menjadi kuota proyek.'); };
         if ((b = document.getElementById('spkCancelBtn'))) b.onclick = function () { doAction('cancel', h, 'Batalkan SPK <b>' + enc(h.spk_no) + '</b>?'); };
+        if ((b = document.getElementById('spkWorkBtn'))) b.onclick = function () { openWorkItemsEditor(d); };
+    }
+
+    // ------------------------------------------------------------
+    // Editor lingkup pekerjaan (SPK Subkon, status Draft)
+    // ------------------------------------------------------------
+    function openWorkItemsEditor(d) {
+        var h = d.header, tasks = d.tasks || [];
+        if (!needAccess(ACCESS_EDIT, 'Anda tidak memiliki hak akses untuk mengubah lingkup pekerjaan.')) { return; }
+        if (h.status !== 'Draft') { showErr('Lingkup pekerjaan hanya dapat diubah saat SPK berstatus Draft.'); return; }
+        var TEAL = '#066b78', BURG = '#800020';
+        var INP = 'width:100%;box-sizing:border-box;padding:7px;font-size:14px;background:#0f2230;color:#fff;border:1px solid #2e6da4;border-radius:3px;';
+        var rows = [];
+        Ext.each(d.work_items || [], function (w) {
+            rows.push({ id: w.id, work_code: w.work_code || '', description: w.description, unit: w.unit, contract_qty: w.contract_qty, unit_price: w.unit_price,
+                        project_task_id: w.project_task_id || 0, material_supply: w.material_supply || 'SUBCON', notes: w.notes || '',
+                        locked: !!(w.in_contract || w.claim_lines > 0) });
+        });
+        function blank() { return { id: 0, work_code: '', description: '', unit: '', contract_qty: 0, unit_price: 0, project_task_id: 0, material_supply: 'SUBCON', notes: '', locked: false }; }
+        if (!rows.length) { rows.push(blank()); }
+
+        function btn(id, label, bg) {
+            return '<button type="button" id="' + id + '" style="margin-left:8px;padding:8px 20px;background:' + bg + ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;font-size:14px;">' + label + '</button>';
+        }
+        function taskOpts(sel) {
+            var o = '<option value="0">- (tanpa task) -</option>';
+            Ext.each(tasks, function (t) { o += '<option value="' + t.id + '"' + (parseInt(sel, 10) === parseInt(t.id, 10) ? ' selected' : '') + '>' + enc(t.task_name) + '</option>'; });
+            return o;
+        }
+        function supplyOpts(sel) {
+            var o = '';
+            Ext.each([['SUBCON', 'Subkon'], ['COMPANY', 'Perusahaan'], ['MIXED', 'Campuran']], function (p) { o += '<option value="' + p[0] + '"' + (sel === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; });
+            return o;
+        }
+        function amountOf(r) { return Math.round((parseFloat(r.contract_qty) || 0) * (parseFloat(r.unit_price) || 0) * 100) / 100; }
+        function totalOf() { var t = 0; Ext.each(rows, function (r) { t += amountOf(r); }); return t; }
+
+        function draw() {
+            var box = document.getElementById('wiBox');
+            var h2 = '<div style="margin-bottom:10px;color:#9fc3d1;font-size:14px;">Isi pekerjaan yang diukur (qty), harga satuan, dan task proyek terkait. Jumlah dihitung otomatis. ' +
+                     'Item yang sudah dipakai kontrak / klaim subkon dikunci dan tidak bisa dihapus.</div>' +
+                     '<table width="100%" cellSpacing="0" cellPadding="4" style="font-size:14px;color:#fff;border-collapse:collapse;"><thead><tr style="background:#172936;">' +
+                     '<th align="left" width="28">#</th><th align="left" width="90">Kode</th><th align="left">Uraian pekerjaan</th><th align="left" width="190">Task proyek</th>' +
+                     '<th align="left" width="90">Qty</th><th align="left" width="70">Satuan</th><th align="left" width="120">Harga satuan</th>' +
+                     '<th align="right" width="130">Jumlah</th><th align="left" width="105">Material</th><th width="60"></th></tr></thead><tbody>';
+            Ext.each(rows, function (r, i) {
+                var dis = r.locked ? ' disabled title="Sudah dipakai kontrak / klaim"' : '';
+                h2 += '<tr style="border-bottom:1px solid #1d3a52;">' +
+                      '<td>' + (i + 1) + '</td>' +
+                      '<td><input style="' + INP + '" data-i="' + i + '" data-f="work_code" value="' + enc(r.work_code) + '"/></td>' +
+                      '<td><input style="' + INP + '" data-i="' + i + '" data-f="description" value="' + enc(r.description) + '"/></td>' +
+                      '<td><select style="' + INP + '" data-i="' + i + '" data-f="project_task_id">' + taskOpts(r.project_task_id) + '</select></td>' +
+                      '<td><input type="number" min="0" step="any" style="' + INP + '" data-i="' + i + '" data-f="contract_qty" value="' + (r.contract_qty || '') + '"' + dis + '/></td>' +
+                      '<td><input style="' + INP + '" data-i="' + i + '" data-f="unit" value="' + enc(r.unit) + '"/></td>' +
+                      '<td><input type="number" min="0" step="any" style="' + INP + '" data-i="' + i + '" data-f="unit_price" value="' + (r.unit_price || '') + '"' + dis + '/></td>' +
+                      '<td align="right" id="wiAmt' + i + '"><b>' + fmtAmt(amountOf(r)) + '</b></td>' +
+                      '<td><select style="' + INP + '" data-i="' + i + '" data-f="material_supply">' + supplyOpts(r.material_supply) + '</select></td>' +
+                      '<td align="center"><button type="button" data-del="' + i + '" style="padding:6px 10px;background:' + BURG + ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;"' + dis + '>Hapus</button></td></tr>';
+            });
+            h2 += '</tbody><tfoot><tr><td colspan="7" align="right" style="padding-top:10px;font-size:15px;"><b>Total lingkup</b></td>' +
+                  '<td align="right" style="padding-top:10px;font-size:15px;" id="wiTotal"><b>' + fmtAmt(totalOf()) + '</b></td><td colspan="2"></td></tr></tfoot></table>' +
+                  '<div style="margin-top:12px;">' + btn('wiAdd', '+ Tambah Baris', '#2e6da4') + '</div>';
+            box.innerHTML = h2;
+        }
+
+        var win = new Ext.Window({
+            title: 'Lingkup Pekerjaan - ' + h.spk_no, modal: true, layout: 'fit', maximizable: true,
+            width: Math.min(1240, Ext.getBody().getViewSize().width - 30), height: Math.min(640, Ext.getBody().getViewSize().height - 30),
+            items: new Ext.Panel({ border: false, autoScroll: true, html: '<div id="wiBox" style="padding:12px;"></div>' }),
+            bbar: ['->', { xtype: 'tbtext', text: btn('wiSave', 'Simpan Lingkup', TEAL) + btn('wiCancel', 'Batal', BURG) }]
+        });
+        win.show();
+        draw();
+        var box = document.getElementById('wiBox');
+        box.oninput = function (e) {
+            var t = e.target, i = t.getAttribute('data-i'), f = t.getAttribute('data-f');
+            if (i === null || !f) { return; }
+            var r = rows[parseInt(i, 10)];
+            if (f === 'contract_qty' || f === 'unit_price') { r[f] = parseFloat(t.value) || 0; }
+            else if (f === 'project_task_id') { r[f] = parseInt(t.value, 10) || 0; }
+            else { r[f] = t.value; }
+            if (f === 'contract_qty' || f === 'unit_price') {
+                var a = document.getElementById('wiAmt' + i); if (a) { a.innerHTML = '<b>' + fmtAmt(amountOf(r)) + '</b>'; }
+                var tt = document.getElementById('wiTotal'); if (tt) { tt.innerHTML = '<b>' + fmtAmt(totalOf()) + '</b>'; }
+            }
+        };
+        box.onclick = function (e) {
+            var t = e.target;
+            if (t.id === 'wiAdd') { rows.push(blank()); draw(); return; }
+            var del = t.getAttribute && t.getAttribute('data-del');
+            if (del !== null && del !== undefined && del !== '' && !t.disabled) { rows.splice(parseInt(del, 10), 1); if (!rows.length) { rows.push(blank()); } draw(); }
+        };
+        document.getElementById('wiCancel').onclick = function () { win.close(); };
+        document.getElementById('wiSave').onclick = function () {
+            var out = [], n = 0, bad = '';
+            Ext.each(rows, function (r) {
+                var blankRow = !r.id && !String(r.description).replace(/\s/g, '') && !(parseFloat(r.contract_qty) > 0) && !(parseFloat(r.unit_price) > 0);
+                if (blankRow) { return; }
+                n++;
+                if (!bad) {
+                    if (!String(r.description).replace(/\s/g, '')) { bad = 'Baris ' + n + ': uraian pekerjaan wajib diisi.'; }
+                    else if (!String(r.unit).replace(/\s/g, '')) { bad = 'Baris ' + n + ': satuan wajib diisi.'; }
+                    else if (!(parseFloat(r.contract_qty) > 0)) { bad = 'Baris ' + n + ': qty harus lebih besar dari 0.'; }
+                }
+                out.push({ id: r.id, work_code: r.work_code, description: r.description, unit: r.unit, contract_qty: r.contract_qty, unit_price: r.unit_price,
+                           project_task_id: r.project_task_id, material_supply: r.material_supply, notes: r.notes });
+            });
+            if (bad) { showErr(bad); return; }
+            ajax({ action: 'save_work_items', id: h.id, items: Ext.util.JSON.encode(out) }, function (res) {
+                if (!res.success) { showErr(res.message || 'Gagal menyimpan lingkup pekerjaan.'); return; }
+                win.close(); Ext.Msg.alert('Sukses', res.message || ''); loadDetailPanel(h.id);
+            });
+        };
     }
 
     function doAction(action, h, text) {
@@ -186,7 +350,7 @@ Ext.onReady(function () {
     });
     var itemField = ['material_id', 'material_code', 'material_name', 'unit',
                      { name: 'rab_qty', type: 'float' }, { name: 'cap_qty', type: 'float' }, { name: 'available', type: 'float' },
-                     { name: 'qty', type: 'float' }, 'notes'];
+                     { name: 'qty', type: 'float' }, 'notes', 'task_id', 'task_name', 'supply_source'];
     var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, itemField) });
 
     // ------------------------------------------------------------
@@ -236,16 +400,39 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     // 3. Editor: header + grid material
     // ------------------------------------------------------------
+    // pilihan "Untuk Task" pada baris material = task yang sudah dipilih pada SPK ini (diisi ulang tiap mulai edit sel)
+    var taskChoiceDs = new Ext.data.ArrayStore({ fields: ['id', 'name'], data: [[0, '(umum / semua task)']] });
+    function matKey(r, taskId, src) {
+        return String(r.get('material_id')) + '|' + (parseInt(r.get('task_id'), 10) || 0) + '|' + (r.get('supply_source') || 'COMPANY');
+    }
+    // total qty COMPANY satu material pada baris lain (kuota berlaku untuk jumlah semua task)
+    function otherCompanyQty(rec) {
+        var t = 0;
+        itemDs.each(function (r) {
+            if (r !== rec && String(r.get('material_id')) === String(rec.get('material_id')) && (r.get('supply_source') || 'COMPANY') !== 'SUBCON') { t += parseFloat(r.get('qty')) || 0; }
+        });
+        return t;
+    }
     var itemGrid = new stdGridEditor({
         store: itemDs, renderTo: 'editorFormGrid', viewConfig: { forceFit: true, scrollOffset: 0 }, height: 280,
         enableHdMenu: false, enableColumnMove: false,
         columns: [
             { sortable: false, menuDisabled: true, header: 'Kode', dataIndex: 'material_code', width: 90 },
-            { sortable: false, menuDisabled: true, header: 'Material', dataIndex: 'material_name', width: 220 },
+            { sortable: false, menuDisabled: true, header: 'Material', dataIndex: 'material_name', width: 200 },
+            { sortable: false, menuDisabled: true, header: 'Untuk Task', dataIndex: 'task_id', width: 210,
+              editor: new Ext.form.ComboBox({ store: taskChoiceDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', editable: false, forceSelection: true,
+                  listeners: { select: function (c, rec) {
+                      var row = itemGrid.getSelectionModel().getSelected();
+                      if (row) { row.set('task_name', parseInt(rec.get('id'), 10) ? rec.get('name') : ''); }
+                  } } }),
+              renderer: function (v, m, r) { return r.get('task_name') ? enc(r.get('task_name')) : '<i style="color:#8aa8b4;">(umum / semua task)</i>'; } },
+            { sortable: false, menuDisabled: true, header: 'Sumber', dataIndex: 'supply_source', width: 95,
+              editor: new Ext.form.ComboBox({ store: [['COMPANY', 'Perusahaan'], ['SUBCON', 'Subkon']], mode: 'local', triggerAction: 'all', editable: false, forceSelection: true }),
+              renderer: function (v) { return v === 'SUBCON' ? '<b style="color:#e6a817;">Subkon</b>' : 'Perusahaan'; } },
             { sortable: false, menuDisabled: true, header: 'Sat', dataIndex: 'unit', width: 50, align: 'center' },
             { sortable: false, menuDisabled: true, header: 'Qty RAB', dataIndex: 'rab_qty', width: 90, align: 'right', renderer: function (v) { return fmtQty(v); } },
-            { sortable: false, menuDisabled: true, header: 'Kuota Saat Ini', dataIndex: 'cap_qty', width: 100, align: 'right', renderer: function (v) { return fmtQty(v); } },
-            { sortable: false, menuDisabled: true, header: 'Tersedia', dataIndex: 'available', width: 90, align: 'right', renderer: function (v) { return fmtQty(v); } },
+            { sortable: false, menuDisabled: true, header: 'Kuota Saat Ini', dataIndex: 'cap_qty', width: 100, align: 'right', renderer: function (v, m, r) { return r.get('supply_source') === 'SUBCON' ? '-' : fmtQty(v); } },
+            { sortable: false, menuDisabled: true, header: 'Tersedia', dataIndex: 'available', width: 90, align: 'right', renderer: function (v, m, r) { return r.get('supply_source') === 'SUBCON' ? '-' : fmtQty(v); } },
             { sortable: false, menuDisabled: true, header: 'Qty SPK', dataIndex: 'qty', width: 90, align: 'right',
               editor: new myNumberField({ decimalPrecision: 4 }), renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
             { sortable: false, menuDisabled: true, header: 'Catatan', dataIndex: 'notes', width: 140, editor: new myTextField({}) },
@@ -253,10 +440,31 @@ Ext.onReady(function () {
               renderer: function () { return '<span style="color:#e53935;cursor:pointer;font-size:15px;" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>'; } }
         ],
         listeners: {
+            beforeedit: function (e) {
+                if (e.field === 'task_id') {
+                    var d = [[0, '(umum / semua task)']];
+                    Ext.each(selectedTasks, function (t) { d.push([t.id, t.task_name]); });
+                    taskChoiceDs.loadData(d);
+                }
+                // SPK internal selalu bersumber stok perusahaan; sumber Subkon hanya untuk SPK bertipe Subkon
+                if (e.field === 'supply_source' && !(fType && fType.getValue() === 'SUBCON')) { return false; }
+            },
             validateedit: function (e) {
-                if (e.field === 'qty' && parseFloat(e.value) > parseFloat(e.record.get('available')) + EPS) {
-                    showErr('Qty melebihi kuota tersedia (' + fmtQty(e.record.get('available')) + ').');
-                    e.cancel = true;
+                // kuota COMPANY berlaku untuk jumlah semua task; material dibawa subkon tidak kena kuota
+                if (e.field === 'qty' && (e.record.get('supply_source') || 'COMPANY') !== 'SUBCON') {
+                    var other = otherCompanyQty(e.record), avail = parseFloat(e.record.get('available')) || 0;
+                    if (parseFloat(e.value) + other > avail + EPS) {
+                        showErr('Qty melebihi kuota tersedia (' + fmtQty(avail) + ')' + (other > 0 ? ' - termasuk ' + fmtQty(other) + ' pada baris lain untuk material yang sama.' : '.'));
+                        e.cancel = true;
+                    }
+                }
+            },
+            afteredit: function (e) {
+                // beralih Subkon -> Perusahaan: qty dibatasi kuota yang masih tersedia
+                if (e.field === 'supply_source' && e.value === 'COMPANY') {
+                    var room = (parseFloat(e.record.get('available')) || 0) - otherCompanyQty(e.record);
+                    if (room <= EPS) { e.record.set('supply_source', 'SUBCON'); showErr('Tidak ada kuota perusahaan tersisa untuk material ini, tetap sebagai material Subkon.'); }
+                    else if ((parseFloat(e.record.get('qty')) || 0) > room + EPS) { e.record.set('qty', room); showErr('Qty disesuaikan ke kuota tersedia (' + fmtQty(room) + ').'); }
                 }
             },
             cellclick: function (grid, rowIndex, columnIndex) {
@@ -303,7 +511,12 @@ Ext.onReady(function () {
         selectedTasks.forEach(function(t, idx) { html += '<tr style="border-bottom:1px solid #29495b;"><td style="padding:6px;">' + enc(t.task_name) + '</td><td style="padding:6px;white-space:nowrap;">' + enc(t.start_date || '-') + ' - ' + enc(t.end_date || '-') + '</td><td style="padding:6px;">' + enc(t.status || 'Belum Mulai') + '</td><td><button type="button" data-spk-task-index="' + idx + '" style="color:#c0392b;">Hapus</button></td></tr>'; });
         taskListDiv.innerHTML = html + '</tbody></table>';
         var buttons = taskListDiv.querySelectorAll('button[data-spk-task-index]');
-        for (var i=0;i<buttons.length;i++) buttons[i].onclick = function(){ selectedTasks.splice(parseInt(this.getAttribute('data-spk-task-index'),10),1); renderSelectedTasks(); };
+        for (var i=0;i<buttons.length;i++) buttons[i].onclick = function(){
+            var gone = selectedTasks.splice(parseInt(this.getAttribute('data-spk-task-index'),10),1)[0];
+            // baris material yang tertaut ke task yang dilepas kembali menjadi "umum"
+            if (gone) { itemDs.each(function (r) { if ((parseInt(r.get('task_id'), 10) || 0) === parseInt(gone.id, 10)) { r.set('task_id', 0); r.set('task_name', ''); } }); }
+            renderSelectedTasks();
+        };
     }
     function loadProjectTasks(projectId, existing) {
         selectedTasks = (existing || []).map(function(t){ return {id:parseInt(t.id || t.task_id,10),task_name:t.task_name || '',description:t.description || '',start_date:t.start_date || '',end_date:t.end_date || '',status:t.status || ''}; });
@@ -416,11 +629,19 @@ Ext.onReady(function () {
     function addMaterial() {
         var rec = fMat.findRecord('material_id', fMat.getValue());
         if (!rec) { showErr('Pilih material terlebih dahulu.'); return; }
-        if (itemDs.findBy(function (r) { return String(r.get('material_id')) === String(rec.get('material_id')); }) >= 0) { showErr('Material sudah ada di daftar.'); return; }
-        if (rec.get('available') <= 0) { showErr('Tidak ada kuota tersedia untuk material ini (kuota habis / belum ada pembayaran / sudah dipakai SPK lain).'); return; }
+        var isSub = fType.getValue() === 'SUBCON', avail = parseFloat(rec.get('available')) || 0, src = 'COMPANY';
+        if (avail <= 0) {
+            if (!isSub) { showErr('Tidak ada kuota tersedia untuk material ini (kuota habis / belum ada pembayaran / sudah dipakai SPK lain).'); return; }
+            src = 'SUBCON';   // tanpa kuota perusahaan: pada SPK subkon dicatat sebagai material yang dibawa subkon
+        }
+        var key = String(rec.get('material_id')) + '|0|' + src;
+        if (itemDs.findBy(function (r) { return matKey(r) === key; }) >= 0) {
+            showErr('Material ini sudah ada dengan task dan sumber yang sama. Ubah "Untuk Task" / "Sumber" pada baris yang ada, lalu tambahkan lagi bila perlu.'); return;
+        }
         itemDs.add(new itemDs.recordType({
             material_id: rec.get('material_id'), material_code: rec.get('material_code'), material_name: rec.get('material_name'), unit: rec.get('unit'),
-            rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), stock_available: rec.get('stock_available'), quota_available: rec.get('quota_available'), available: rec.get('available'), qty: rec.get('available'), notes: ''
+            rab_qty: rec.get('rab_qty'), cap_qty: rec.get('cap_qty'), stock_available: rec.get('stock_available'), quota_available: rec.get('quota_available'), available: rec.get('available'),
+            qty: src === 'SUBCON' ? (parseFloat(rec.get('rab_qty')) || 1) : avail, notes: '', task_id: 0, task_name: '', supply_source: src
         }));
         fMat.clearValue();
     }
@@ -432,11 +653,12 @@ Ext.onReady(function () {
             var added = 0, skippedNoQuota = 0;
             Ext.each(res.data || [], function (m) {
                 var avail = parseFloat(m.available) || 0;
-                if (itemDs.findBy(function (r) { return String(r.get('material_id')) === String(m.material_id); }) >= 0) { return; }
+                if (itemDs.findBy(function (r) { return matKey(r) === String(m.material_id) + '|0|COMPANY'; }) >= 0) { return; }
                 if (avail <= 0) { skippedNoQuota++; return; }
                 itemDs.add(new itemDs.recordType({
                     material_id: m.material_id, material_code: m.material_code, material_name: m.material_name, unit: m.unit,
-                    rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, stock_available: parseFloat(m.stock_available) || 0, quota_available: parseFloat(m.quota_available) || 0, available: avail, qty: avail, notes: ''
+                    rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, stock_available: parseFloat(m.stock_available) || 0, quota_available: parseFloat(m.quota_available) || 0, available: avail, qty: avail, notes: '',
+                    task_id: 0, task_name: '', supply_source: 'COMPANY'
                 }));
                 added++;
             });
@@ -496,12 +718,13 @@ Ext.onReady(function () {
                 ajax({ action: 'lookup_materials', project_id: h.project_id, exclude_id: h.id }, function (q) {
                     var map = {};
                     Ext.each((q.data || []), function (m) { map[String(m.material_id)] = m; });
-                    Ext.each(res.items, function (i) {
+                    Ext.each(res.material_plan && res.material_plan.length ? res.material_plan : res.items, function (i) {
                         var m = map[String(i.material_id)] || {};
                         itemDs.add(new itemDs.recordType({
                             material_id: i.material_id, material_code: i.material_code, material_name: i.material_name, unit: i.unit,
                             rab_qty: parseFloat(m.rab_qty) || 0, cap_qty: parseFloat(m.cap_qty) || 0, stock_available: parseFloat(m.stock_available) || 0, quota_available: parseFloat(m.quota_available) || 0, available: parseFloat(m.available) || 0,
-                            qty: parseFloat(i.qty), notes: i.notes || ''
+                            qty: parseFloat(i.qty), notes: i.notes || '',
+                            task_id: i.task_id || 0, task_name: i.task_name || '', supply_source: i.supply_source || 'COMPANY'
                         }));
                     });
                 });
@@ -515,7 +738,7 @@ Ext.onReady(function () {
         itemDs.each(function (r) {
             var q = parseFloat(r.get('qty')) || 0;
             if (q <= 0) { err = 'Qty SPK ' + r.get('material_name') + ' harus lebih besar dari 0.'; return false; }
-            arr.push({ material_id: r.get('material_id'), qty: q, notes: r.get('notes') || '' });
+            arr.push({ material_id: r.get('material_id'), qty: q, notes: r.get('notes') || '', task_id: parseInt(r.get('task_id'), 10) || 0, supply_source: r.get('supply_source') || 'COMPANY' });
         });
         if (err) { showErr(err); return; }
         var spkType = fType.getValue() === 'SUBCON' ? 'SUBCON' : 'INTERNAL';

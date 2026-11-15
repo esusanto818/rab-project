@@ -102,8 +102,8 @@ Aturan:
 - Nomor dokumen dibuat dalam transaksi PDO yang sama + `pg_advisory_xact_lock`
   (format `TAG-YYMM-NNNNN`).
 - `release_note` opsional pada `release_invoice` (maks 200 karakter, trim); nilai kosong
-  disimpan sebagai `''`. Pada `release_invoices` (bulk) catatan dibuat per-invoice
-  (bukan satu note untuk semua).
+  disimpan sebagai `''`. Pada `release_invoices` (bulk) catatan yang sama dipakai untuk
+  semua invoice dalam satu batch.
 - Jurnal posting saat release hanya bila invoice **belum punya** jurnal
   (`ti_has_journal`) — mencegah jurnal ganda untuk invoice lama pra-migrasi.
 - Untuk invoice lama yang sudah punya jurnal saat masih draft: saat diedit jurnal lama
@@ -129,20 +129,23 @@ Aturan:
    release tunggal maupun bulk. `unrelease_invoice` mengosongkan kembali ke `''`.
 3. **Verifikasi statis**: `php -l` semua file PHP yang berubah + `node --check` kedua file JS: lolos.
    Uji unit helper `ti_read_release_note` + `ti_valid_date` (tanpa DB): lolos.
+4. **Commit** ke branch `dev`: `7cb757c` (11 file release-layer; file warisan spk/subcon/index.php
+   sengaja tidak disertakan).
+5. **Skrip bulk release SQL**: `sql/2026-11-14.project_invoice_bulk_release.sql` (meniru `ti_release_one`:
+   advisory lock, penomoran TAG-YYMM-NNNNN, skip yang sudah ada pembayaran / belum punya jurnal,
+   satu transaksi). **Belum dijalankan** di DB dan **belum di-commit**.
+6. **Tabel test case end-to-end**: `docs/TESTCASE_RELEASE_TAGIHAN_E2E_2026-11-14.md` (TC-001 s.d. TC-065,
+   termasuk skenario kegagalan pembayaran & rollback). **Belum dieksekusi**.
 
 ### ⏳ Belum selesai / terkendala
 
 1. **Uji end-to-end di UI & DB** (belum bisa dijalankan dari sesi ini):
    - Kredensial/koneksi DB tidak dapat diakses dari tool yang tersedia (pembacaan config
      ditolak classifier), dan server web lokal tidak dikonfirmasi menjangkau DB yang sama.
-   - Checklist yang masih perlu dijalankan manual oleh user (atau oleh sesi dengan akses DB):
-     - Buat invoice → muncul DRAFT, tidak ada di Pembayaran Termin.
-     - Release → nomor TAG muncul, jurnal posting, muncul di Pembayaran Termin.
-     - Pembayaran → alokasi berhasil; termin draft ditolak saat `save_payment`.
-     - Unrelease → kembali draft, jurnal reverse.
-     - `release_note` tersimpan & tampil di detail UI dan PDF.
-2. **Bulk release** data lama (12 invoice draft): filter Status Dokumen = DRAFT → "Release Semua (filter)".
-3. **Commit** perubahan ke branch `dev` / PR.
+   - Jalankan checklist di `docs/TESTCASE_RELEASE_TAGIHAN_E2E_2026-11-14.md` (atau beri akses DB/sesi).
+2. **Bulk release** data lama (12 invoice draft): via UI (filter DRAFT → "Release Semua (filter)")
+   atau skrip SQL pada poin 5 di atas — **setelah** e2e lolos.
+3. **Commit** skrip `sql/2026-11-14.project_invoice_bulk_release.sql` (menyusul persetujuan user).
 4. **Backup DB** sebelum diterapkan di produksi.
 
 ### 🔲 Langkah berikutnya (produksi)

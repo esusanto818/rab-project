@@ -22,6 +22,22 @@ $task = $_REQUEST['task'] ?? '';
 $db = new crud();
 $userId = (int)$_SESSION['user_id'];
 
+// [SECURITY PATCH] Otorisasi operasi per task. FormAccess (menu access) saja
+// TIDAK cukup -- setiap aksi dicek levelnya: list/read=1, simpan draft=2,
+// ubah item/approve=3. (Pola sama dengan modul subkon lainnya.)
+$scRequiredAccess = array(
+    'list_inspections'     => 1,
+    'load_inspection'      => 1,
+    'save_progress_draft'  => 2,
+    'update_inspection_items' => 3,
+    'approve_inspection'   => 3,
+);
+if (isset($scRequiredAccess[$task]) && (int)($_SESSION['FormAccess'] ?? 0) < $scRequiredAccess[$task]) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'message' => 'Hak akses tidak mencukupi untuk operasi inspeksi ini.']);
+    exit;
+}
+
 try {
     switch ($task) {
         case 'list_inspections':

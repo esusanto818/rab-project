@@ -3,9 +3,9 @@
 Document : index.php
 Description : Landing Page RAB-PROJECT - Construction ERP & AI Monitoring System
 Theme : Dark Theme Modern - RESPONSIVE (Desktop + Mobile)
-[REVISI 2026-11-10]
-- PERBAIKAN: Memastikan bagian "12+ Modul" menampilkan tepat 12 card dengan layout grid 3x4 yang jelas.
-- Menambahkan nomor urut pada setiap card modul agar jumlah 12 terlihat eksplisit.
+[REVISI 2026-11-14]
+- Penataan ulang isi dan urutan bagian "Fitur Unggulan" mengikuti alur end-to-end proyek konstruksi.
+- Mempertahankan urutan modul: Purchase Planning (#04) sebelum Purchase Order (#05).
 */
 if (!isset($_SESSION)) { session_start(); }
 date_default_timezone_set('Asia/Jakarta');
@@ -408,55 +408,96 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   </div>
 </section>
 
-<!-- FEATURES SECTION -->
+<!-- FEATURES SECTION (DITATA ULANG: ALUR HULU KE HILIR PROYEK KONSTRUKSI) -->
 <section id="features" class="py-20 bg-brand-dark">
   <div class="max-w-7xl mx-auto px-6">
     <div class="text-center mb-16">
       <div class="text-brand-cyan text-sm font-bold tracking-widest mb-3">FITUR UNGGULAN</div>
       <h2 class="font-display text-3xl md:text-5xl font-bold mb-4">8 Senjata <span class="gradient-text">Pertahanan</span> Proyek Anda</h2>
-      <p class="text-slate-400 max-w-2xl mx-auto">Bukan sekadar pencatat data — RAB-PROJECT adalah sistem pertahanan finansial & operasional.</p>
+      <p class="text-slate-400 max-w-2xl mx-auto">Bukan sekadar pencatat data — RAB-PROJECT mengawal margin proyek Anda dari perencanaan anggaran hingga laporan keuangan.</p>
     </div>
     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">🛡️</div>
+      
+      <!-- 1. Anggaran & Plafon -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">🔒</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20">01 • ANGGARAN</span>
+        </div>
+        <h3 class="font-heading text-lg font-bold text-white mb-2">Plafon Kontrak Ketat</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Sistem mengunci total RAB agar tidak melampaui Nilai Kontrak. Setiap penambahan wajib melalui prosedur dan alasan addendum.</p>
+      </div>
+
+      <!-- 2. Perencanaan Belanja -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">📉</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20">02 • PENGADAAN</span>
+        </div>
+        <h3 class="font-heading text-lg font-bold text-white mb-2">Smart Purchase Planning</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Kalkulasi otomatis sisa kebutuhan belanja (RAB − PO). Cukup centang item kekurangan material dan terbitkan PO dalam satu klik.</p>
+      </div>
+
+      <!-- 3. Multi-Currency -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">💱</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-cyan/10 text-brand-cyan border border-brand-cyan/20">03 • KURS TERKUNCI</span>
+        </div>
+        <h3 class="font-heading text-lg font-bold text-white mb-2">Multi-Currency Control</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">RAB dalam USD namun PO dalam IDR? Konversi berjalan otomatis dengan kurs anggaran terkunci untuk mencegah selisih kurs tak terduga.</p>
+      </div>
+
+      <!-- 4. Kontrol Gudang -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">🛡️</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-orange/10 text-brand-orange border border-brand-orange/20">04 • GUDANG</span>
+        </div>
         <h3 class="font-heading text-lg font-bold text-white mb-2">Progress-Gated Issue</h3>
-        <p class="text-slate-400 text-sm">Gudang diblokir otomatis mengeluarkan material jika melebihi batas progres fisik & pembayaran klien.</p>
+        <p class="text-slate-400 text-sm leading-relaxed">Pengeluaran material gudang diblokir otomatis bila melebihi bobot progres fisik di lapangan maupun status pembayaran klien.</p>
       </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">🔒</div>
-        <h3 class="font-heading text-lg font-bold text-white mb-2">Plafon Ketat</h3>
-        <p class="text-slate-400 text-sm">Total RAB dilarang keras melebihi Nilai Kontrak. Penambahan wajib isi alasan addendum.</p>
-      </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">🧠</div>
-        <h3 class="font-heading text-lg font-bold text-white mb-2">AI Variance Analysis</h3>
-        <p class="text-slate-400 text-sm">Deteksi otomatis deviasi % Pemakaian vs % Progres dengan flag NORMAL / WASPADA / KRITIS.</p>
-      </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">💱</div>
-        <h3 class="font-heading text-lg font-bold text-white mb-2">Multi-Currency</h3>
-        <p class="text-slate-400 text-sm">RAB dalam USD, PO dalam IDR? Sistem konversi otomatis dengan kurs anggaran terkunci.</p>
-      </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">📉</div>
-        <h3 class="font-heading text-lg font-bold text-white mb-2">Purchase Planning</h3>
-        <p class="text-slate-400 text-sm">Hitung otomatis sisa perlu beli = RAB − PO. Centang item, klik "Buat PO".</p>
-      </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">📒</div>
-        <h3 class="font-heading text-lg font-bold text-white mb-2">Auto-Posting Jurnal</h3>
-        <p class="text-slate-400 text-sm">Setiap transaksi otomatis menjurnal dengan atomic transaction. Stok & keuangan 100% sinkron.</p>
-      </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">🔄</div>
+
+      <!-- 5. Retur Sisa Material -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">🔄</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-orange/10 text-brand-orange border border-brand-orange/20">05 • EFISIENSI</span>
+        </div>
         <h3 class="font-heading text-lg font-bold text-white mb-2">Material Left Over</h3>
-        <p class="text-slate-400 text-sm">Retur sisa material otomatis mengurangi WIP & menambah stok gudang (FIFO).</p>
+        <p class="text-slate-400 text-sm leading-relaxed">Sisa material lapangan yang diretur otomatis memotong biaya WIP proyek dan mengembalikannya ke stok gudang dengan metode FIFO.</p>
       </div>
-      <div class="feature-card glass rounded-xl p-6 border border-slate-700">
-        <div class="text-3xl mb-3">🧾</div>
+
+      <!-- 6. Deteksi AI -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">🧠</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-purple/10 text-brand-purple border border-brand-purple/20">06 • PENGAWASAN AI</span>
+        </div>
+        <h3 class="font-heading text-lg font-bold text-white mb-2">AI Variance Analysis</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Mendeteksi dini anomali rasio pemakaian material terhadap progres fisik dengan indikator risiko NORMAL, WASPADA, hingga KRITIS.</p>
+      </div>
+
+      <!-- 7. Penagihan Klien -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">🧾</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-green/10 text-brand-green border border-brand-green/20">07 • CASHFLOW</span>
+        </div>
         <h3 class="font-heading text-lg font-bold text-white mb-2">Auto-Invoice Termin</h3>
-        <p class="text-slate-400 text-sm">Tagihan DP/Termin di-generate otomatis berdasarkan task yang diverifikasi Auditor.</p>
+        <p class="text-slate-400 text-sm leading-relaxed">Penagihan DP dan termin ke klien diterbitkan otomatis begitu bobot pekerjaan selesai diverifikasi oleh Auditor HO.</p>
       </div>
+
+      <!-- 8. Akuntansi Otomatis -->
+      <div class="feature-card glass rounded-xl p-6 border border-slate-700 relative">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-3xl">📒</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-brand-green/10 text-brand-green border border-brand-green/20">08 • AKUNTANSI</span>
+        </div>
+        <h3 class="font-heading text-lg font-bold text-white mb-2">Auto-Posting Jurnal</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Setiap transaksi operasional langsung membentuk jurnal akuntansi secara atomic. Nilai stok gudang dan neraca keuangan 100% sinkron.</p>
+      </div>
+
     </div>
   </div>
 </section>
@@ -521,7 +562,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
   </div>
 </section>
 
-<!-- MODULES SECTION (DIPERBAIKI: 12 CARD JELAS) -->
+<!-- MODULES SECTION (12 CARD JELAS, PURCHASE PLANNING SEBELUM PURCHASE ORDER) -->
 <section id="modules" class="py-20 bg-brand-darker">
   <div class="max-w-7xl mx-auto px-6">
     <div class="text-center mb-16">
@@ -560,17 +601,17 @@ html, body { overflow-x: hidden; max-width: 100vw; }
       <!-- 4 -->
       <div class="module-card glass rounded-xl p-5 border border-slate-700 hover:border-brand-cyan/50 transition relative">
         <div class="absolute top-3 right-3 text-xs font-mono text-brand-cyan/50 font-bold">#04</div>
-        <div class="text-2xl mb-3">📦</div>
-        <h3 class="font-heading text-base font-bold text-white mb-2">Purchase Order (PO)</h3>
-        <p class="text-slate-400 text-xs leading-relaxed">PO dengan validasi kuota RAB + toleransi, multi-currency, dan perhitungan PPN otomatis.</p>
+        <div class="text-2xl mb-3">📉</div>
+        <h3 class="font-heading text-base font-bold text-white mb-2">Purchase Planning</h3>
+        <p class="text-slate-400 text-xs leading-relaxed">Hitung otomatis sisa perlu beli = RAB − PO. Centang item dan buat PO dalam 1 klik.</p>
       </div>
 
       <!-- 5 -->
       <div class="module-card glass rounded-xl p-5 border border-slate-700 hover:border-brand-cyan/50 transition relative">
         <div class="absolute top-3 right-3 text-xs font-mono text-brand-cyan/50 font-bold">#05</div>
-        <div class="text-2xl mb-3">📉</div>
-        <h3 class="font-heading text-base font-bold text-white mb-2">Purchase Planning</h3>
-        <p class="text-slate-400 text-xs leading-relaxed">Hitung otomatis sisa perlu beli = RAB − PO. Centang item dan buat PO dalam 1 klik.</p>
+        <div class="text-2xl mb-3">📦</div>
+        <h3 class="font-heading text-base font-bold text-white mb-2">Purchase Order (PO)</h3>
+        <p class="text-slate-400 text-xs leading-relaxed">PO dengan validasi kuota RAB + toleransi, multi-currency, dan perhitungan PPN otomatis.</p>
       </div>
 
       <!-- 6 -->

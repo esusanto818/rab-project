@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS leftover_transactions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_spk_work_items_spk ON spk_work_items(spk_id);
-CREATE INDEX IF NOT EXISTS idx_subcon_inspections_spk ON subcon_inspections(spk_id);
+-- (idx_subcon_inspections_spk removed: clone table subcon_inspections has no spk_id column)
 CREATE INDEX IF NOT EXISTS idx_subcon_payment_cert_status ON subcon_payment_certificates(status);
 CREATE INDEX IF NOT EXISTS idx_material_leftovers_project ON material_leftovers(project_id);
 

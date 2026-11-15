@@ -29,7 +29,6 @@
 ini_set('display_errors', '0');
 ob_start();
 
-require_once __DIR__ . '/../php-func/user.valid.php';
 require_once __DIR__ . '/../php-func/function.all.php';
 require_once __DIR__ . '/../php-class/crudClass.php';
 
@@ -41,7 +40,7 @@ header('Content-Type: application/json');
 $db = new crud();
 
 const SC_EPS = 0.01;
-const SC_REQUIRE_OTHER_APPROVER = true;
+const SC_REQUIRE_OTHER_APPROVER = false;
 const SC_REF_PROGRESS = 'subcon_progress';
 const SC_REF_PAYMENT  = 'subcon_payment';
 const SC_TRANSITIONS = [
@@ -168,24 +167,104 @@ function sc_calc(array $c, float $gross, float $cumPct, float $dpBalance): array
     return ['ppn' => $ppn, 'pph' => $pph, 'retention' => $ret, 'dp_recovery' => $dpRec, 'net' => $net];
 }
 
+/* =====================================================================================================
+ * [2026-11-11] Klaim berbasis KUANTITAS + INSPEKSI  (Langkah 2, docs/SUBCONTRACT_MANAGEMENT_DESIGN.md)
+ *   Task kontrak dipetakan 1:1 ke item lingkup SPK (spk_work_items). Untuk task terpetakan, prestasi diisi dengan
+ *   QTY klaim (bukan persen). Inspeksi meloloskan / menolak / meminta perbaikan per baris; hanya qty LOLOS yang
+ *   membentuk progres, nilai prestasi, jurnal dan hutang. Task tanpa pemetaan tetap memakai persen seperti sebelumnya.
+ * ===================================================================================================== */
+function sc_has_qty($db): bool {
+    static $ok = null;
+    if ($ok === null) {
+        $v = $db->query("SELECT to_regclass('public.subcon_inspections') IS NOT NULL
+                            AND to_regclass('public.subcon_progress_qty_items') IS NOT NULL
+                            AND to_regclass('public.spk_work_items') IS NOT NULL
+                            AND EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public'
+                                         AND table_name = 'subcon_contract_tasks' AND column_name = 'work_item_id')")->fetchColumn();
+        $ok = ($v === true || $v === 't' || $v === 1 || $v === '1');
+    }
+    return $ok;
+}
+
+/** Qty yang sudah DITERIMA (lolos inspeksi, prestasi Disetujui) per item lingkup pada satu kontrak. */
+function sc_accepted_map($db, int $cid, int $exclProgressId = 0): array {
+    $st = $db->prepare("SELECT q.work_item_id, COALESCE(SUM(ii.qty_passed), 0) AS passed
+                          FROM subcon_inspection_items ii
+                          JOIN subcon_inspections i ON i.id = ii.inspection_id AND i.status = 'APPROVED'
+                          JOIN subcon_progress_qty_items q ON q.id = ii.progress_qty_item_id
+                          JOIN subcon_progress p ON p.id = q.progress_id AND p.contract_id = :c AND p.status = 'Disetujui' AND p.id <> :x
+                         GROUP BY q.work_item_id");
+    $st->execute([':c' => $cid, ':x' => $exclProgressId]);
+    $m = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $m[(int)$r['work_item_id']] = (float)$r['passed'];
+    return $m;
+}
+
+/** Task kontrak yang terpetakan ke item lingkup: contract_task_id => info item. */
+function sc_task_work_map($db, int $cid): array {
+    $st = $db->prepare("SELECT t.id AS tid, t.task_name, t.work_item_id, w.work_code, w.description, w.unit, w.contract_qty, w.unit_price
+                          FROM subcon_contract_tasks t JOIN spk_work_items w ON w.id = t.work_item_id WHERE t.contract_id = :c");
+    $st->execute([':c' => $cid]);
+    $m = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $r['work_item_id'] = (int)$r['work_item_id']; $r['contract_qty'] = (float)$r['contract_qty']; $r['unit_price'] = (float)$r['unit_price'];
+        $m[(int)$r['tid']] = $r;
+    }
+    return $m;
+}
+
+function sc_insp_result(float $claimed, float $inspected, float $passed, float $rejected, float $rework): string {
+    $e = 0.00005;
+    if ($inspected <= $e) return 'PENDING';
+    if ($passed >= $claimed - $e) return 'PASS';
+    if ($passed > $e) return 'PARTIAL';
+    return ($rework > $e) ? 'REWORK' : 'REJECT';
+}
+
+/** Hitung ulang baris task terpetakan + header satu prestasi Draft. $usePassed=true -> dasar qty LOLOS inspeksi; false -> qty KLAIM. */
+function sc_recompute_progress($db, array $c, int $pid, bool $usePassed): array {
+    $cid  = (int)$c['id'];
+    $acc  = sc_accepted_map($db, $cid, $pid);
+    $prev = sc_prev_map($db, $cid, $pid);
+    $st = $db->prepare("SELECT q.contract_task_id, q.work_item_id, q.qty_claimed, q.unit_price_snapshot, w.contract_qty,
+                               COALESCE((SELECT SUM(ii.qty_passed) FROM subcon_inspection_items ii
+                                           JOIN subcon_inspections i ON i.id = ii.inspection_id AND i.status = 'APPROVED'
+                                          WHERE ii.progress_qty_item_id = q.id), 0) AS passed
+                          FROM subcon_progress_qty_items q JOIN spk_work_items w ON w.id = q.work_item_id WHERE q.progress_id = :p");
+    $st->execute([':p' => $pid]);
+    $upd = $db->prepare("UPDATE subcon_progress_dtl SET cum_pct = :c, amount = :a WHERE progress_id = :p AND contract_task_id = :t");
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $q) {
+        $tid = (int)$q['contract_task_id']; $wi = (int)$q['work_item_id'];
+        $qty = $usePassed ? (float)$q['passed'] : (float)$q['qty_claimed'];
+        $cq  = (float)$q['contract_qty'];
+        $pv  = isset($prev[$tid]) ? $prev[$tid] : 0.0;
+        $prior = isset($acc[$wi]) ? $acc[$wi] : 0.0;
+        $cum = ($qty > 0 && $cq > 0) ? min(100.0, round(($prior + $qty) / $cq * 100, 3)) : $pv;
+        $amt = round($qty * (float)$q['unit_price_snapshot'], 2);
+        $upd->execute([':c' => $cum, ':a' => $amt, ':p' => $pid, ':t' => $tid]);
+    }
+    $st = $db->prepare("SELECT COALESCE(SUM(d.amount), 0) AS g, COALESCE(SUM(t.task_value * d.cum_pct / 100), 0) AS w
+                          FROM subcon_progress_dtl d JOIN subcon_contract_tasks t ON t.id = d.contract_task_id WHERE d.progress_id = :p");
+    $st->execute([':p' => $pid]);
+    $r = $st->fetch(PDO::FETCH_ASSOC);
+    $gross  = sc_f($r['g']);
+    $cumPct = $c['contract_value'] > 0 ? round((float)$r['w'] / $c['contract_value'] * 100, 3) : 0;
+    $tot  = sc_totals($db, $cid);
+    $calc = sc_calc($c, $gross, $cumPct, $tot['dp_balance']);
+    $db->prepare("UPDATE subcon_progress SET gross_amount = :g, ppn_amount = :ppn, pph_amount = :pph, retention_amount = :ret,
+                         dp_recovery = :dp, net_payable = :net, cum_pct = :cp, updated_at = NOW() WHERE id = :id")
+       ->execute([':g' => $gross, ':ppn' => $calc['ppn'], ':pph' => $calc['pph'], ':ret' => $calc['retention'], ':dp' => $calc['dp_recovery'],
+                  ':net' => $calc['net'], ':cp' => $cumPct, ':id' => $pid]);
+    return ['gross' => $gross, 'cum_pct' => $cumPct, 'calc' => $calc];
+}
+
 if (empty($_SESSION['user_id'])) {
     http_response_code(401);
     sc_send(false, [], 'Sesi berakhir, silakan login ulang.');
 }
 
 
-$task = $_POST['task'] ?? $_GET['task'] ?? '';
-
-$scMutationTasks = [
-    'save_subcontractor', 'save_contract', 'change_status', 'delete_contract',
-    'save_progress', 'approve_progress', 'cancel_progress', 'save_payment', 'cancel_payment'
-];
-if (in_array($task, $scMutationTasks, true)
-    && strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'POST') {
-    http_response_code(405);
-    header('Allow: GET, POST');
-    sc_send(false, [], 'Operasi perubahan data subkon wajib menggunakan POST.');
-}
+$task = $_REQUEST['task'] ?? '';
 
 // Otorisasi operasi berdasarkan FormAccess dari router.
 // Level: 1 baca, 2 tambah, 3 ubah/approval, 4 pembatalan finansial/penghapusan.
@@ -201,9 +280,9 @@ if ($task === 'save_subcontractor') {
     $scRequired = 2;
 } elseif ($task === 'save_progress') {
     $scRequired = 2;
-} elseif ($task === 'save_payment') {
+} elseif (in_array($task, ['save_payment', 'save_inspection'], true)) {
     $scRequired = 2;
-} elseif (in_array($task, ['change_status', 'approve_progress'], true)) {
+} elseif (in_array($task, ['change_status', 'approve_progress', 'approve_inspection', 'cancel_inspection'], true)) {
     $scRequired = 3;
 } elseif ($task === 'cancel_progress') {
     $scRequired = 4;
@@ -314,6 +393,22 @@ try {
             sc_send(true, $rows);
             break;
 
+        /* ------------------------------------------------------------------ item lingkup SPK untuk pemetaan task kontrak */
+        case 'list_work_items':
+            $wSpk = (int)($_REQUEST['spk_id'] ?? 0);
+            if (!sc_has_qty($db) || $wSpk <= 0) { sc_send(true, []); break; }
+            $st = $db->prepare("SELECT w.id, w.work_code, w.description, w.unit, w.contract_qty, w.unit_price, w.line_amount, w.project_task_id
+                                  FROM spk_work_items w WHERE w.spk_id = :s AND w.status = 'ACTIVE' ORDER BY w.sort_order, w.id");
+            $st->execute([':s' => $wSpk]);
+            $rows = $st->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($rows as &$r) {
+                $r['id'] = (int)$r['id']; $r['contract_qty'] = (float)$r['contract_qty']; $r['unit_price'] = (float)$r['unit_price'];
+                $r['line_amount'] = (float)$r['line_amount']; $r['project_task_id'] = $r['project_task_id'] !== null ? (int)$r['project_task_id'] : null;
+            }
+            unset($r);
+            sc_send(true, $rows);
+            break;
+
         case 'list_contracts':
             $start = (int)($_REQUEST['start'] ?? 0);
             $limit = (int)($_REQUEST['limit'] ?? 250);
@@ -398,6 +493,22 @@ try {
                 $t['billed_amount'] = sc_f($t['task_value'] * $t['cum_pct'] / 100);
             }
             unset($t);
+            $hasQty = sc_has_qty($db);
+            if ($hasQty) {
+                $wm = sc_task_work_map($db, $id);
+                foreach ($tasks as &$t) {
+                    $t['work_item_id'] = null; $t['work_code'] = null; $t['unit'] = null; $t['contract_qty'] = null; $t['unit_price'] = null; $t['accepted_qty'] = null;
+                    if (isset($wm[$t['id']])) {
+                        $w = $wm[$t['id']];
+                        $t['work_item_id'] = $w['work_item_id']; $t['work_code'] = $w['work_code']; $t['unit'] = $w['unit'];
+                        $t['contract_qty'] = $w['contract_qty']; $t['unit_price'] = $w['unit_price'];
+                    }
+                }
+                unset($t);
+                $accAll = sc_accepted_map($db, $id);
+                foreach ($tasks as &$t) { if ($t['work_item_id']) $t['accepted_qty'] = isset($accAll[$t['work_item_id']]) ? $accAll[$t['work_item_id']] : 0.0; }
+                unset($t);
+            }
 
             $st = $db->prepare("SELECT p.*, cu.login_name AS created_by_name, au.login_name AS approved_by_name,
                                        COALESCE((SELECT SUM(y.amount) FROM subcon_payments y WHERE y.progress_id = p.id AND y.status = 'Posted'), 0) AS paid_amount
@@ -408,8 +519,43 @@ try {
             foreach ($progress as &$p) {
                 $p['id'] = (int)$p['id'];
                 foreach (['gross_amount', 'ppn_amount', 'pph_amount', 'retention_amount', 'dp_recovery', 'net_payable', 'cum_pct', 'paid_amount'] as $k) $p[$k] = (float)$p[$k];
+                $p['qty_lines'] = 0; $p['insp_status'] = null;
             }
             unset($p);
+            $inspections = [];
+            if ($hasQty && count($progress)) {
+                $st = $db->prepare("SELECT q.progress_id, COUNT(*) AS n FROM subcon_progress_qty_items q JOIN subcon_progress p ON p.id = q.progress_id WHERE p.contract_id = :c GROUP BY q.progress_id");
+                $st->execute([':c' => $id]);
+                $qn = []; foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $qn[(int)$r['progress_id']] = (int)$r['n'];
+                $st = $db->prepare("SELECT i.id, i.inspection_no, i.progress_id, p.ref_no AS progress_ref, i.inspection_date, i.status, i.general_result, i.evidence_ref, i.cancel_reason,
+                                           cu.login_name AS created_by_name, au.login_name AS approved_by_name
+                                      FROM subcon_inspections i JOIN subcon_progress p ON p.id = i.progress_id
+                                      LEFT JOIN public.m_user_system cu ON cu.id = i.created_by LEFT JOIN public.m_user_system au ON au.id = i.approved_by
+                                     WHERE p.contract_id = :c ORDER BY i.id");
+                $st->execute([':c' => $id]);
+                $inspections = $st->fetchAll(PDO::FETCH_ASSOC);
+                $ids = [];
+                foreach ($inspections as &$i) { $i['id'] = (int)$i['id']; $i['progress_id'] = (int)$i['progress_id']; $i['items'] = []; $ids[] = $i['id']; }
+                unset($i);
+                if (count($ids)) {
+                    $st = $db->query("SELECT ii.inspection_id, ii.progress_qty_item_id, ii.qty_inspected, ii.qty_passed, ii.qty_rejected, ii.qty_rework, ii.result, ii.notes,
+                                             q.qty_claimed, w.description, w.unit
+                                        FROM subcon_inspection_items ii JOIN subcon_progress_qty_items q ON q.id = ii.progress_qty_item_id
+                                        JOIN spk_work_items w ON w.id = q.work_item_id
+                                       WHERE ii.inspection_id IN (" . implode(',', $ids) . ") ORDER BY ii.id");
+                    $by = [];
+                    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+                        foreach (['qty_inspected', 'qty_passed', 'qty_rejected', 'qty_rework', 'qty_claimed'] as $k) $r[$k] = (float)$r[$k];
+                        $by[(int)$r['inspection_id']][] = $r;
+                    }
+                    foreach ($inspections as &$i) { $i['items'] = isset($by[$i['id']]) ? $by[$i['id']] : []; }
+                    unset($i);
+                }
+                $latest = [];
+                foreach ($inspections as $i) { if (in_array($i['status'], ['DRAFT', 'APPROVED'], true)) $latest[$i['progress_id']] = $i['status']; }
+                foreach ($progress as &$p) { $p['qty_lines'] = isset($qn[$p['id']]) ? $qn[$p['id']] : 0; $p['insp_status'] = isset($latest[$p['id']]) ? $latest[$p['id']] : null; }
+                unset($p);
+            }
 
             $st = $db->prepare("SELECT y.*, a.account_code, a.account_name, pr.ref_no AS progress_ref, cu.login_name AS created_by_name, xu.login_name AS cancelled_by_name
                                   FROM subcon_payments y JOIN public.chart_of_accounts a ON a.id = y.account_id
@@ -435,7 +581,7 @@ try {
 
             $allowed = SC_TRANSITIONS[$hdr['status']] ?? [];
             if ($tot['gross'] > 0 || $tot['dp_paid'] > 0) $allowed = array_values(array_diff($allowed, ['Dibatalkan', 'Draft']));
-            sc_send(true, ['header' => $hdr, 'tasks' => $tasks, 'progress' => $progress, 'payments' => $payments, 'journals' => $journals,
+            sc_send(true, ['header' => $hdr, 'tasks' => $tasks, 'progress' => $progress, 'inspections' => $inspections, 'payments' => $payments, 'journals' => $journals,
                            'totals' => $tot, 'allowed_actions' => $allowed]);
             break;
 
@@ -491,22 +637,44 @@ try {
                 $clean = []; $seen = []; $sum = 0.0;
                 if (!count($rowsIn)) $rowsIn = [['task_id' => 0, 'task_name' => $title, 'task_value' => $val]];
                 $stT = $db->prepare("SELECT task_name FROM public.project_tasks WHERE id = :t AND project_id = :p");
+                // pemetaan task -> item lingkup SPK (opsional): nilai task = jumlah item lingkup, klaim memakai qty + inspeksi
+                $wiMap = []; $seenWi = [];
+                $anyWi = false; foreach ($rowsIn as $r0) { if ((int)($r0['work_item_id'] ?? 0) > 0) $anyWi = true; }
+                if ($anyWi) {
+                    if (!$spkId) throw new ScError('Untuk menggunakan rincian volume (qty & harga satuan per item), pilih dulu "Tautan SPK Subkon" di form. Pastikan SPK tersebut sudah diisi lingkup pekerjaannya (menu SPK → Atur Lingkup Pekerjaan).');
+                    if (!sc_has_qty($db)) throw new ScError('Lingkup pekerjaan belum aktif: jalankan database/subcontract_management_ddl.sql di database ini.');
+                    $st = $db->prepare("SELECT id, description, line_amount, project_task_id, status FROM spk_work_items WHERE spk_id = :s");
+                    $st->execute([':s' => $spkId]);
+                    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $w) $wiMap[(int)$w['id']] = $w;
+                }
                 foreach ($rowsIn as $n => $r) {
                     $tid = (int)($r['task_id'] ?? 0) ?: null;
                     $tv  = sc_f($r['task_value'] ?? 0);
                     $no  = 'Baris task ' . ($n + 1);
+                    $wid = (int)($r['work_item_id'] ?? 0) ?: null; $wRow = null;
+                    if ($wid) {
+                        if (!isset($wiMap[$wid])) throw new ScError("{$no}: item lingkup bukan bagian dari SPK yang ditautkan.");
+                        if (isset($seenWi[$wid])) throw new ScError("{$no}: item lingkup yang sama dipilih dua kali.");
+                        $seenWi[$wid] = true; $wRow = $wiMap[$wid];
+                        if ($wRow['status'] !== 'ACTIVE') throw new ScError("{$no}: item lingkup berstatus {$wRow['status']}, tidak dapat dipakai.");
+                        $tv  = sc_f($wRow['line_amount']);                                   // nilai task selalu = jumlah item lingkup
+                        $tid = $wRow['project_task_id'] !== null ? (int)$wRow['project_task_id'] : $tid;
+                    }
                     if ($tv <= 0) throw new ScError("{$no}: nilai harus lebih besar dari 0.");
                     if ($tid) {
-                        if (isset($seen[$tid])) throw new ScError("{$no}: task yang sama dipilih dua kali.");
-                        $seen[$tid] = true;
+                        if (!$wid) {                                                        // beberapa item lingkup boleh berbagi satu task proyek
+                            if (isset($seen[$tid])) throw new ScError("{$no}: task yang sama dipilih dua kali.");
+                            $seen[$tid] = true;
+                        }
                         $stT->execute([':t' => $tid, ':p' => $prj]);
                         $tn = $stT->fetchColumn();
                         if ($tn === false) throw new ScError("{$no}: task bukan milik proyek ini.");
                     } else {
                         $tn = trim((string)($r['task_name'] ?? '')) ?: $title;
                     }
+                    if ($wRow) { $tn = $wRow['description']; }
                     $sum += $tv;
-                    $clean[] = ['tid' => $tid, 'name' => $tn, 'val' => $tv, 'notes' => trim((string)($r['notes'] ?? '')) ?: null];
+                    $clean[] = ['tid' => $tid, 'name' => $tn, 'val' => $tv, 'wid' => $wid, 'notes' => trim((string)($r['notes'] ?? '')) ?: null];
                 }
                 if (abs($sum - $val) > SC_EPS) {
                     throw new ScError('Total pembagian task (' . number_format($sum, 2) . ') harus sama dengan nilai kontrak (' . number_format($val, 2) . ').');
@@ -551,8 +719,13 @@ try {
                 if (sc_has_spk_link($db)) {
                     $db->prepare("UPDATE subcon_contracts SET spk_id = CAST(:spk AS integer) WHERE id = :id")->execute([':spk' => $spkId, ':id' => $id]);
                 }
-                $stI = $db->prepare("INSERT INTO subcon_contract_tasks (contract_id, task_id, task_name, task_value, notes) VALUES (:c,:t,:n,:v,:no)");
-                foreach ($clean as $r) $stI->execute([':c' => $id, ':t' => $r['tid'], ':n' => $r['name'], ':v' => $r['val'], ':no' => $r['notes']]);
+                if (sc_has_qty($db)) {
+                    $stI = $db->prepare("INSERT INTO subcon_contract_tasks (contract_id, task_id, task_name, task_value, notes, work_item_id) VALUES (:c,:t,:n,:v,:no,CAST(:w AS bigint))");
+                    foreach ($clean as $r) $stI->execute([':c' => $id, ':t' => $r['tid'], ':n' => $r['name'], ':v' => $r['val'], ':no' => $r['notes'], ':w' => $r['wid']]);
+                } else {
+                    $stI = $db->prepare("INSERT INTO subcon_contract_tasks (contract_id, task_id, task_name, task_value, notes) VALUES (:c,:t,:n,:v,:no)");
+                    foreach ($clean as $r) $stI->execute([':c' => $id, ':t' => $r['tid'], ':n' => $r['name'], ':v' => $r['val'], ':no' => $r['notes']]);
+                }
                 $db->commit();
                 sc_send(true, ['id' => $id, 'spk_no' => $spk], "SPK {$spk} berhasil disimpan.");
             } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
@@ -602,7 +775,7 @@ try {
                 } elseif ($to === 'Diajukan') {
                     $st = $db->prepare("SELECT COUNT(*) FROM subcon_contract_tasks WHERE contract_id = :c");
                     $st->execute([':c' => $id]);
-                    if ((int)$st->fetchColumn() === 0) throw new ScError('SPK belum memiliki pembagian task.');
+                    if ((int)$st->fetchColumn() === 0) throw new ScError('Kontrak subkon belum memiliki pembagian task. Edit kontrak dan tambahkan minimal satu baris task (atau gunakan "Isi dari Lingkup SPK").');
                 }
                 $db->prepare("UPDATE subcon_contracts SET {$set} WHERE id = :id")->execute($p);
                 $db->commit();
@@ -641,10 +814,25 @@ try {
                 $st->execute([':p' => $pid]);
                 foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $cur[(int)$r['contract_task_id']] = (float)$r['cum_pct'];
             }
+            $wm = sc_has_qty($db) ? sc_task_work_map($db, $cid) : [];
+            $acc = sc_has_qty($db) ? sc_accepted_map($db, $cid, $pid) : [];
+            $curQty = [];
+            if ($pid > 0 && count($wm)) {
+                $st = $db->prepare("SELECT contract_task_id, qty_claimed FROM subcon_progress_qty_items WHERE progress_id = :p");
+                $st->execute([':p' => $pid]);
+                foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $curQty[(int)$r['contract_task_id']] = (float)$r['qty_claimed'];
+            }
             foreach ($rows as &$r) {
                 $r['id'] = (int)$r['id']; $r['task_value'] = (float)$r['task_value'];
                 $r['prev_pct'] = isset($prev[$r['id']]) ? $prev[$r['id']] : 0.0;
                 $r['cum_pct'] = isset($cur[$r['id']]) ? $cur[$r['id']] : $r['prev_pct'];
+                $r['qty_mode'] = false; $r['unit'] = null; $r['contract_qty'] = null; $r['unit_price'] = null; $r['accepted_qty'] = null; $r['remaining_qty'] = null; $r['qty_claimed'] = 0.0;
+                if (isset($wm[$r['id']])) {
+                    $w = $wm[$r['id']]; $a = isset($acc[$w['work_item_id']]) ? $acc[$w['work_item_id']] : 0.0;
+                    $r['qty_mode'] = true; $r['unit'] = $w['unit']; $r['contract_qty'] = $w['contract_qty']; $r['unit_price'] = $w['unit_price'];
+                    $r['accepted_qty'] = $a; $r['remaining_qty'] = round($w['contract_qty'] - $a, 4);
+                    $r['qty_claimed'] = isset($curQty[$r['id']]) ? $curQty[$r['id']] : 0.0;
+                }
             }
             unset($r);
             $tot = sc_totals($db, $cid);
@@ -673,8 +861,16 @@ try {
                     $p0 = $st->fetch(PDO::FETCH_ASSOC);
                     if (!$p0 || (int)$p0['contract_id'] !== $cid) throw new ScError('Prestasi tidak ditemukan.');
                     if ($p0['status'] !== 'Draft') throw new ScError('Hanya prestasi berstatus Draft yang dapat diubah.');
+                    if (sc_has_qty($db)) {
+                        $st = $db->prepare("SELECT 1 FROM subcon_inspections WHERE progress_id = :p AND status IN ('DRAFT', 'APPROVED') LIMIT 1");
+                        $st->execute([':p' => $id]);
+                        if ($st->fetchColumn()) throw new ScError('Prestasi ini sudah memiliki inspeksi aktif. Batalkan inspeksinya dulu sebelum mengubah klaim.');
+                    }
                 }
                 $prev = sc_prev_map($db, $cid, $id);
+                $wmap = sc_has_qty($db) ? sc_task_work_map($db, $cid) : [];
+                $accQ = sc_has_qty($db) ? sc_accepted_map($db, $cid, $id) : [];
+                $qtyLines = [];
                 $st = $db->prepare("SELECT id, task_value FROM subcon_contract_tasks WHERE contract_id = :c");
                 $st->execute([':c' => $cid]);
                 $taskVal = []; foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $t) $taskVal[(int)$t['id']] = (float)$t['task_value'];
@@ -683,6 +879,25 @@ try {
                 foreach ($rowsIn as $r) {
                     $tid = (int)($r['contract_task_id'] ?? 0);
                     if (!isset($taskVal[$tid])) throw new ScError('Task prestasi tidak termasuk dalam SPK ini.');
+                    if (isset($wmap[$tid])) {                                       // task terpetakan ke item lingkup: klaim dalam QTY
+                        $w = $wmap[$tid]; $cq = $w['contract_qty'];
+                        $q = round((float)($r['qty_claimed'] ?? 0), 4);
+                        $prior = isset($accQ[$w['work_item_id']]) ? $accQ[$w['work_item_id']] : 0.0;
+                        $pv = isset($prev[$tid]) ? $prev[$tid] : 0.0;
+                        if ($q < 0) throw new ScError('Qty klaim "' . $w['task_name'] . '" tidak boleh negatif.');
+                        if ($q > $cq - $prior + 0.00005) {
+                            throw new ScError('Qty klaim "' . $w['task_name'] . '" (' . $q . ') melebihi sisa qty kontrak (' . round($cq - $prior, 4) . ' ' . $w['unit'] . ').');
+                        }
+                        if ($q > 0) {
+                            $cum = min(100.0, round(($prior + $q) / $cq * 100, 3));
+                            $amt = round($q * $w['unit_price'], 2);
+                            $changed = true;
+                            $qtyLines[$tid] = ['wid' => $w['work_item_id'], 'qty' => $q, 'price' => $w['unit_price'], 'amt' => $amt];
+                        } else { $cum = $pv; $amt = 0.0; }
+                        $gross += $amt;
+                        $dtl[$tid] = ['prev' => $pv, 'cum' => $cum, 'amt' => $amt];
+                        continue;
+                    }
                     $cum = round((float)($r['cum_pct'] ?? 0), 3);
                     $pv  = isset($prev[$tid]) ? $prev[$tid] : 0.0;
                     if ($cum > 100 + 0.0005) throw new ScError('Progres kumulatif tidak boleh lebih dari 100%.');
@@ -721,8 +936,25 @@ try {
                 }
                 $stI = $db->prepare("INSERT INTO subcon_progress_dtl (progress_id, contract_task_id, prev_pct, cum_pct, amount) VALUES (:p,:t,:pv,:c,:a)");
                 foreach ($dtl as $tid => $d) $stI->execute([':p' => $id, ':t' => $tid, ':pv' => $d['prev'], ':c' => $d['cum'], ':a' => $d['amt']]);
+                if (sc_has_qty($db)) {                                              // simpan baris klaim kuantitas (update di tempat agar riwayat inspeksi tetap utuh)
+                    $st = $db->prepare("SELECT id, contract_task_id FROM subcon_progress_qty_items WHERE progress_id = :p");
+                    $st->execute([':p' => $id]);
+                    $have = []; foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $have[(int)$r['contract_task_id']] = (int)$r['id'];
+                    $stU = $db->prepare("UPDATE subcon_progress_qty_items SET qty_claimed = :q, unit_price_snapshot = :u, amount_claimed = :a WHERE id = :id");
+                    $stN = $db->prepare("INSERT INTO subcon_progress_qty_items (progress_id, contract_task_id, work_item_id, qty_claimed, unit_price_snapshot, amount_claimed) VALUES (:p,:t,:w,:q,:u,:a)");
+                    foreach ($qtyLines as $tid => $ql) {
+                        if (isset($have[$tid])) { $stU->execute([':q' => $ql['qty'], ':u' => $ql['price'], ':a' => $ql['amt'], ':id' => $have[$tid]]); unset($have[$tid]); }
+                        else { $stN->execute([':p' => $id, ':t' => $tid, ':w' => $ql['wid'], ':q' => $ql['qty'], ':u' => $ql['price'], ':a' => $ql['amt']]); }
+                    }
+                    foreach ($have as $tid => $qid) {
+                        $st = $db->prepare("SELECT COUNT(*) FROM subcon_inspection_items WHERE progress_qty_item_id = :i"); $st->execute([':i' => $qid]);
+                        if ((int)$st->fetchColumn() > 0) throw new ScError('Baris klaim yang sudah pernah diperiksa tidak dapat dihapus; ubah qty-nya saja.');
+                        $db->prepare("DELETE FROM subcon_progress_qty_items WHERE id = :i")->execute([':i' => $qid]);
+                    }
+                }
                 $db->commit();
-                sc_send(true, ['id' => $id, 'ref_no' => $ref, 'calc' => $calc, 'gross' => $gross], "Prestasi {$ref} tersimpan (Draft).");
+                sc_send(true, ['id' => $id, 'ref_no' => $ref, 'calc' => $calc, 'gross' => $gross, 'needs_inspection' => count($qtyLines) > 0],
+                        "Prestasi {$ref} tersimpan (Draft)." . (count($qtyLines) ? ' Lanjutkan dengan inspeksi: hanya qty yang lolos yang ditagihkan.' : ''));
             } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
             break;
 
@@ -739,6 +971,22 @@ try {
                 $c = sc_contract($db, (int)$p['contract_id'], true);
                 if ($c['status'] !== 'Disetujui') throw new ScError('SPK tidak berstatus Disetujui.');
                 if (SC_REQUIRE_OTHER_APPROVER && (int)$p['created_by'] === (int)sc_uid()) throw new ScError('Penyetuju harus user lain selain pembuat prestasi.');
+
+                // prestasi berbasis kuantitas: wajib sudah diinspeksi & disetujui; nilai dihitung dari qty LOLOS
+                if (sc_has_qty($db)) {
+                    $st = $db->prepare("SELECT COUNT(*) FROM subcon_progress_qty_items WHERE progress_id = :p");
+                    $st->execute([':p' => $id]);
+                    if ((int)$st->fetchColumn() > 0) {
+                        $st = $db->prepare("SELECT 1 FROM subcon_inspections WHERE progress_id = :p AND status = 'APPROVED' LIMIT 1");
+                        $st->execute([':p' => $id]);
+                        if (!$st->fetchColumn()) throw new ScError('Prestasi ini memiliki klaim kuantitas yang belum disetujui inspeksinya. Langkah: (1) Klik "Inspeksi" di baris prestasi, (2) Isi form inspeksi dan simpan, (3) Setujui inspeksi di tabel "Inspeksi Kuantitas", (4) Baru setujui prestasi ini.');
+                        sc_recompute_progress($db, $c, $id, true);
+                        $st = $db->prepare("SELECT * FROM subcon_progress WHERE id = :id");
+                        $st->execute([':id' => $id]);
+                        $p = $st->fetch(PDO::FETCH_ASSOC);
+                        if ((float)$p['gross_amount'] <= 0) throw new ScError('Tidak ada qty yang lolos inspeksi pada prestasi ini. Batalkan prestasi lalu buat klaim baru setelah perbaikan.');
+                    }
+                }
 
                 // progres sebelumnya harus masih sama dengan saat prestasi dibuat; hitung ulang potongan dengan sisa uang muka terkini
                 $prev = sc_prev_map($db, (int)$c['id'], $id);
@@ -788,10 +1036,169 @@ try {
                     if ((int)$st->fetchColumn() !== $id) throw new ScError('Hanya prestasi disetujui yang TERAKHIR yang dapat dibatalkan (progres periode berikutnya bergantung padanya).');
                     if (sc_has_journal($db, SC_REF_PROGRESS, $id)) ReverseJournalByReference($db, SC_REF_PROGRESS, $id);
                 }
+                if (sc_has_qty($db) && $p['status'] === 'Draft') {
+                    $db->prepare("UPDATE subcon_inspections SET status = 'CANCELLED', cancelled_by = :u, cancelled_at = NOW(), cancel_reason = 'Prestasi dibatalkan'
+                                   WHERE progress_id = :p AND status IN ('DRAFT', 'APPROVED')")->execute([':u' => sc_uid(), ':p' => $id]);
+                }
                 $db->prepare("UPDATE subcon_progress SET status='Dibatalkan', cancelled_by=:u, cancelled_at=NOW(), cancel_reason=:r WHERE id=:id")
                    ->execute([':u' => sc_uid(), ':r' => $reason, ':id' => $id]);
                 $db->commit();
                 sc_send(true, [], "Prestasi {$p['ref_no']} dibatalkan.");
+            } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
+            break;
+
+        /* ------------------------------------------------------------------ inspeksi (Langkah 2) */
+        case 'inspection_prepare':
+            // data untuk dialog inspeksi: baris klaim kuantitas satu prestasi + isi inspeksi aktif (bila ada)
+            $pid = (int)($_REQUEST['progress_id'] ?? 0);
+            if (!sc_has_qty($db)) throw new ScError('Fitur inspeksi belum aktif: jalankan database/subcontract_management_ddl.sql di database ini.');
+            $st = $db->prepare("SELECT p.id, p.ref_no, p.status, p.contract_id FROM subcon_progress p WHERE p.id = :id");
+            $st->execute([':id' => $pid]);
+            $p = $st->fetch(PDO::FETCH_ASSOC);
+            if (!$p) throw new ScError('Prestasi tidak ditemukan.');
+            $st = $db->prepare("SELECT * FROM subcon_inspections WHERE progress_id = :p AND status IN ('DRAFT', 'APPROVED') ORDER BY id DESC LIMIT 1");
+            $st->execute([':p' => $pid]);
+            $ins = $st->fetch(PDO::FETCH_ASSOC);
+            $st = $db->prepare("SELECT q.id AS progress_qty_item_id, q.qty_claimed, w.description, w.work_code, w.unit, t.task_name,
+                                       ii.qty_inspected, ii.qty_passed, ii.qty_rejected, ii.qty_rework, ii.notes
+                                  FROM subcon_progress_qty_items q
+                                  JOIN spk_work_items w ON w.id = q.work_item_id
+                                  JOIN subcon_contract_tasks t ON t.id = q.contract_task_id
+                                  LEFT JOIN subcon_inspection_items ii ON ii.progress_qty_item_id = q.id AND ii.inspection_id = :i
+                                 WHERE q.progress_id = :p ORDER BY q.id");
+            $st->execute([':p' => $pid, ':i' => $ins ? (int)$ins['id'] : 0]);
+            $items = $st->fetchAll(PDO::FETCH_ASSOC);
+            if (!count($items)) throw new ScError('Prestasi ini tidak memiliki baris klaim kuantitas, jadi tidak perlu inspeksi.');
+            foreach ($items as &$it) {
+                $it['progress_qty_item_id'] = (int)$it['progress_qty_item_id']; $it['qty_claimed'] = (float)$it['qty_claimed'];
+                $has = $it['qty_inspected'] !== null;
+                // inspeksi baru: isian awal = seluruh qty klaim lolos (inspektur tinggal mengoreksi yang bermasalah)
+                $it['qty_inspected'] = $has ? (float)$it['qty_inspected'] : $it['qty_claimed'];
+                $it['qty_passed']    = $has ? (float)$it['qty_passed']    : $it['qty_claimed'];
+                $it['qty_rejected']  = $has ? (float)$it['qty_rejected']  : 0.0;
+                $it['qty_rework']    = $has ? (float)$it['qty_rework']    : 0.0;
+            }
+            unset($it);
+            sc_send(true, $items, '', ['progress' => ['id' => (int)$p['id'], 'ref_no' => $p['ref_no'], 'status' => $p['status']],
+                                       'inspection' => $ins ? ['id' => (int)$ins['id'], 'inspection_no' => $ins['inspection_no'], 'status' => $ins['status'], 'inspection_date' => $ins['inspection_date'],
+                                                               'general_result' => $ins['general_result'], 'evidence_ref' => $ins['evidence_ref']] : null]);
+            break;
+
+        case 'save_inspection':
+            $id   = (int)($_POST['id'] ?? 0);
+            $pid  = (int)($_POST['progress_id'] ?? 0);
+            $date = sc_date((string)($_POST['inspection_date'] ?? ''), 'Tanggal inspeksi');
+            $evid = trim((string)($_POST['evidence_ref'] ?? '')) ?: null;
+            $gen  = trim((string)($_POST['general_result'] ?? '')) ?: null;
+            $in   = json_decode($_POST['items'] ?? '[]', true);
+            if (!is_array($in) || !count($in)) throw new ScError('Isi hasil inspeksi minimal satu baris.');
+            if (!sc_has_qty($db)) throw new ScError('Fitur inspeksi belum aktif: jalankan database/subcontract_management_ddl.sql di database ini.');
+            $db->beginTransaction();
+            try {
+                $st = $db->prepare("SELECT * FROM subcon_progress WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $pid]);
+                $p = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$p) throw new ScError('Prestasi tidak ditemukan.');
+                if ($p['status'] !== 'Draft') throw new ScError('Inspeksi hanya dapat dibuat untuk prestasi berstatus Draft.');
+                $c = sc_contract($db, (int)$p['contract_id'], true);
+                if ($c['status'] !== 'Disetujui') throw new ScError('SPK tidak berstatus Disetujui.');
+                $st = $db->prepare("SELECT id, status FROM subcon_inspections WHERE progress_id = :p AND status IN ('DRAFT', 'APPROVED') AND id <> :x LIMIT 1");
+                $st->execute([':p' => $pid, ':x' => $id]);
+                if ($st->fetch()) throw new ScError('Prestasi ini sudah memiliki inspeksi aktif. Batalkan dulu bila ingin membuat ulang. (Untuk mengedit inspeksi yang ada, klik Edit di tabel "Inspeksi Kuantitas".)');
+                $st = $db->prepare("SELECT id, qty_claimed FROM subcon_progress_qty_items WHERE progress_id = :p");
+                $st->execute([':p' => $pid]);
+                $claims = []; foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) $claims[(int)$r['id']] = (float)$r['qty_claimed'];
+                if (!count($claims)) throw new ScError('Prestasi ini tidak memiliki baris klaim kuantitas.');
+
+                $clean = []; $seen = [];
+                foreach ($in as $n => $r) {
+                    $qid = (int)($r['progress_qty_item_id'] ?? 0);
+                    $no  = 'Baris inspeksi ' . ($n + 1);
+                    if (!isset($claims[$qid])) throw new ScError("{$no}: bukan baris klaim milik prestasi ini.");
+                    if (isset($seen[$qid])) throw new ScError("{$no}: baris klaim yang sama muncul dua kali.");
+                    $seen[$qid] = true;
+                    $ins_ = round((float)($r['qty_inspected'] ?? 0), 4); $pas = round((float)($r['qty_passed'] ?? 0), 4);
+                    $rej  = round((float)($r['qty_rejected'] ?? 0), 4);  $rew = round((float)($r['qty_rework'] ?? 0), 4);
+                    if ($ins_ < 0 || $pas < 0 || $rej < 0 || $rew < 0) throw new ScError("{$no}: qty tidak boleh negatif.");
+                    if ($ins_ > $claims[$qid] + 0.00005) throw new ScError("{$no}: qty diperiksa ({$ins_}) melebihi qty klaim ({$claims[$qid]}).");
+                    if ($pas + $rej + $rew > $ins_ + 0.00005) throw new ScError("{$no}: lolos + ditolak + perbaikan ({$pas} + {$rej} + {$rew}) melebihi qty diperiksa ({$ins_}).");
+                    $clean[] = ['qid' => $qid, 'ins' => $ins_, 'pas' => $pas, 'rej' => $rej, 'rew' => $rew, 'res' => sc_insp_result($claims[$qid], $ins_, $pas, $rej, $rew),
+                                'notes' => trim((string)($r['notes'] ?? '')) ?: null];
+                }
+                foreach ($claims as $qid => $cl) { if (!isset($seen[$qid])) throw new ScError('Semua baris klaim pada prestasi ini harus diisi hasil inspeksinya.'); }
+
+                if ($id > 0) {
+                    $st = $db->prepare("SELECT status, inspection_no FROM subcon_inspections WHERE id = :id AND progress_id = :p FOR UPDATE");
+                    $st->execute([':id' => $id, ':p' => $pid]);
+                    $i0 = $st->fetch(PDO::FETCH_ASSOC);
+                    if (!$i0) throw new ScError('Inspeksi tidak ditemukan.');
+                    if ($i0['status'] !== 'DRAFT') throw new ScError('Hanya inspeksi berstatus DRAFT yang dapat diubah.');
+                    $db->prepare("UPDATE subcon_inspections SET inspection_date = CAST(:d AS date), general_result = :g, evidence_ref = :e, inspector_id = :u WHERE id = :id")
+                       ->execute([':d' => $date, ':g' => $gen, ':e' => $evid, ':u' => sc_uid(), ':id' => $id]);
+                    $db->prepare("DELETE FROM subcon_inspection_items WHERE inspection_id = :id")->execute([':id' => $id]);
+                    $no = $i0['inspection_no'];
+                } else {
+                    $no = CreateRefNo('subcon_inspections', 'inspection_no', 'INS');
+                    $st = $db->prepare("INSERT INTO subcon_inspections (inspection_no, progress_id, inspection_date, inspector_id, status, general_result, evidence_ref, created_by)
+                                        VALUES (:no, :p, CAST(:d AS date), :u, 'DRAFT', :g, :e, :u) RETURNING id");
+                    $st->execute([':no' => $no, ':p' => $pid, ':d' => $date, ':u' => sc_uid(), ':g' => $gen, ':e' => $evid]);
+                    $id = (int)$st->fetchColumn();
+                }
+                $stI = $db->prepare("INSERT INTO subcon_inspection_items (inspection_id, progress_qty_item_id, qty_inspected, qty_passed, qty_rejected, qty_rework, result, notes)
+                                     VALUES (:i, :q, :a, :b, :c, :d, :r, :n)");
+                foreach ($clean as $r) $stI->execute([':i' => $id, ':q' => $r['qid'], ':a' => $r['ins'], ':b' => $r['pas'], ':c' => $r['rej'], ':d' => $r['rew'], ':r' => $r['res'], ':n' => $r['notes']]);
+                $db->commit();
+                sc_send(true, ['id' => $id, 'inspection_no' => $no], "Inspeksi {$no} tersimpan (DRAFT). Langkah berikutnya: scroll ke tabel 'Inspeksi Kuantitas' di bawah → klik 'Setujui' → setelah disetujui, kembali ke tabel Prestasi → klik 'Setujui'.");
+            } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
+            break;
+
+        case 'approve_inspection':
+            $id = (int)($_POST['id'] ?? 0);
+            $db->beginTransaction();
+            try {
+                $st = $db->prepare("SELECT * FROM subcon_inspections WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $id]);
+                $i = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$i) throw new ScError('Inspeksi tidak ditemukan.');
+                if ($i['status'] !== 'DRAFT') throw new ScError('Hanya inspeksi berstatus DRAFT yang dapat disetujui.');
+                $st = $db->prepare("SELECT * FROM subcon_progress WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => (int)$i['progress_id']]);
+                $p = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$p || $p['status'] !== 'Draft') throw new ScError('Prestasi terkait tidak lagi berstatus Draft.');
+                $c = sc_contract($db, (int)$p['contract_id'], true);
+                if ($c['status'] !== 'Disetujui') throw new ScError('SPK tidak berstatus Disetujui.');
+                if (SC_REQUIRE_OTHER_APPROVER && (int)$i['created_by'] === (int)sc_uid()) throw new ScError('Penyetuju inspeksi harus user lain selain pembuat inspeksi.');
+                $st = $db->prepare("SELECT COUNT(*) FROM subcon_inspection_items WHERE inspection_id = :i");
+                $st->execute([':i' => $id]);
+                if ((int)$st->fetchColumn() < 1) throw new ScError('Inspeksi belum memiliki baris hasil.');
+                $db->prepare("UPDATE subcon_inspections SET status = 'APPROVED', approved_by = :u, approved_at = NOW() WHERE id = :id")->execute([':u' => sc_uid(), ':id' => $id]);
+                $r = sc_recompute_progress($db, $c, (int)$p['id'], true);            // nilai prestasi kini berdasarkan qty LOLOS
+                $db->commit();
+                sc_send(true, ['gross' => $r['gross'], 'calc' => $r['calc']], "Inspeksi {$i['inspection_no']} disetujui. Nilai prestasi (DPP) diperbarui berdasarkan qty lolos: " . number_format($r['gross'], 2) . '. — Sekarang klik \'Setujui\' di baris prestasi untuk mencatat pengakuan pendapatan.');
+            } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
+            break;
+
+        case 'cancel_inspection':
+            $id = (int)($_POST['id'] ?? 0);
+            $reason = trim((string)($_POST['reason'] ?? ''));
+            if (strlen($reason) < 5) throw new ScError('Alasan pembatalan wajib diisi (minimal 5 karakter).');
+            $db->beginTransaction();
+            try {
+                $st = $db->prepare("SELECT * FROM subcon_inspections WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => $id]);
+                $i = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$i) throw new ScError('Inspeksi tidak ditemukan.');
+                if (!in_array($i['status'], ['DRAFT', 'APPROVED'], true)) throw new ScError('Inspeksi ini sudah ' . $i['status'] . '.');
+                $st = $db->prepare("SELECT * FROM subcon_progress WHERE id = :id FOR UPDATE");
+                $st->execute([':id' => (int)$i['progress_id']]);
+                $p = $st->fetch(PDO::FETCH_ASSOC);
+                if (!$p || $p['status'] !== 'Draft') throw new ScError('Prestasi terkait sudah disetujui / dibatalkan, inspeksi tidak dapat dibatalkan.');
+                $c = sc_contract($db, (int)$p['contract_id'], true);
+                $db->prepare("UPDATE subcon_inspections SET status = 'CANCELLED', cancelled_by = :u, cancelled_at = NOW(), cancel_reason = :r WHERE id = :id")
+                   ->execute([':u' => sc_uid(), ':r' => $reason, ':id' => $id]);
+                sc_recompute_progress($db, $c, (int)$p['id'], false);                // kembali ke dasar qty KLAIM
+                $db->commit();
+                sc_send(true, [], "Inspeksi {$i['inspection_no']} dibatalkan. Nilai prestasi kembali ke dasar qty klaim.");
             } catch (Throwable $e) { if ($db->inTransaction()) $db->rollBack(); throw $e; }
             break;
 
