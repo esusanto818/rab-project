@@ -23,6 +23,17 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  * Terpilih" di frontend hanya membawa data terpilih ke halaman PO lewat
  * sessionStorage; PO-nya sendiri baru dibuat di sana.
  *
+ * [PENGECEKAN INVENTORY 2026-11-15]
+ * - load_planning kini juga mengembalikan qty_on_hand (saldo stok yang
+ *   DAPAT DIPAKAI proyek ini: gudang milik proyek + gudang bersama
+ *   project_id IS NULL) dan qty_to_buy = GREATEST(qty_remaining -
+ *   qty_on_hand, 0). Material yang stoknya sudah mencukupi kebutuhan
+ *   sisa tidak perlu dibeli lagi; stok milik PROYEK LAIN tidak dihitung.
+ * - Task baru 'check_inventory' memvalidasi rencana beli sebelum PO
+ *   dibuat: sisa kuota RAB, stok tersedia, dan ketersediaan setelah
+ *   dipakai bersama (dua baris RAB material sama tidak boleh saling
+ *   menindih stok yang sama). Dipakai tombol "Cek Inventory" di UI.
+ *
  * File related : - purchase.planning.php
  *                - purchase.planning.js
  * ============================================================
@@ -76,6 +87,9 @@ const PLAN_PO_SUM = "
 ";
 
 try {
+    // [INVENTORY] helper stok butuh koneksi PDO crudClass (GetProjectStockMap).
+    $db = new crud();
+
     switch ($task) {
 
         // ==========================================================
@@ -126,14 +140,124 @@ try {
                            COALESCE(bi.unit_price_plan, 0) AS unit_price,
                            COALESCE(po_sum.qty_ordered, 0) AS qty_ordered,
                            GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) AS qty_remaining,
-                           (GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) * COALESCE(bi.unit_price_plan, 0)) AS remaining_value
+                           (GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) * COALESCE(bi.unit_price_plan, 0)) AS remaining_value,
+                           0 AS qty_on_hand,
+                           GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) AS qty_to_buy
                       FROM public.budget_items bi
                       JOIN public.materials m ON m.id = bi.material_id
                       LEFT JOIN (" . PLAN_PO_SUM . ") po_sum ON po_sum.budget_item_id = bi.id
                      WHERE bi.project_id = $1 AND bi.category = 'Material' AND COALESCE(bi.qty_plan, 0) > 0
                      ORDER BY m.material_name";
             $result = PgOrFail(pg_query_params($sql, [$projectId]), 'load_planning');
-            echo json_encode(['success' => true, 'data' => pg_fetch_all($result) ?: []]);
+            $rows = pg_fetch_all($result) ?: [];
+
+            // [INVENTORY] kaya tiap baris dg saldo stok yang dapat dipakai proyek ini.
+            // Baris RAB ganda utk material sama dijumlahkan stoknya sekali saja per material.
+            $stockMap = GetProjectStockMap($db, $projectId);
+            $seenMat  = [];
+            foreach ($rows as &$row) {
+                $mid = (int)$row['material_id'];
+                $onHand = $stockMap[$mid] ?? 0.0;
+                $row['qty_on_hand'] = $onHand;
+                // material sama muncul di >1 baris RAB: stok hanya boleh dipakai sekali
+                if (isset($seenMat[$mid])) {
+                    $row['qty_on_hand'] = 0.0;
+                    $row['qty_to_buy']  = (float)$row['qty_remaining'];
+                } else {
+                    $seenMat[$mid] = true;
+                    $row['qty_to_buy'] = max((float)$row['qty_remaining'] - $onHand, 0.0);
+                }
+            }
+            unset($row);
+            echo json_encode(['success' => true, 'data' => $rows]);
+            break;
+
+        // ==========================================================
+        // CHECK INVENTORY -- validasi rencana beli sebelum PO dibuat.
+        // Input: project_id + items[] (rab_material_id, material_id, qty).
+        // Output per baris: sisa kuota RAB, stok tersedia, kekurangan
+        // (qty_to_buy). Stok dipakai bersama antarbaris RAB material sama.
+        // ==========================================================
+        case 'check_inventory':
+            $projectId = (int)($_REQUEST['project_id'] ?? 0);
+            if ($projectId <= 0) throw new Exception('Proyek belum dipilih.');
+
+            $rawItems = $_REQUEST['items'] ?? $_POST['items'] ?? '[]';
+            $items = is_string($rawItems) ? json_decode($rawItems, true) : $rawItems;
+            if (!is_array($items) || !$items) throw new Exception('Tidak ada material yang diperiksa.');
+
+            $stockMap = GetProjectStockMap($db, $projectId);
+
+            // Sisa kuota RAB per budget_item_id (PO Dibatalkan tidak dihitung)
+            $poSum = [];
+            $rs = PgOrFail(pg_query_params("
+                SELECT poi.budget_item_id, SUM(poi.qty) AS qty_ordered
+                  FROM po_items poi
+                  JOIN purchase_orders po ON po.id = poi.po_id
+                 WHERE po.status <> 'Dibatalkan' AND poi.budget_item_id IS NOT NULL
+                 GROUP BY poi.budget_item_id", []), 'check_inventory:po_sum');
+            foreach (pg_fetch_all($rs) ?: [] as $r) {
+                $poSum[(int)$r['budget_item_id']] = (float)$r['qty_ordered'];
+            }
+
+            $rabById = [];
+            $rs2 = PgOrFail(pg_query_params("
+                SELECT bi.id, bi.material_id, bi.qty_plan, COALESCE(bi.tolerance_pct, 0) AS tol,
+                       COALESCE(NULLIF(bi.unit, ''), m.unit, '') AS unit, m.material_name
+                  FROM public.budget_items bi
+                  JOIN public.materials m ON m.id = bi.material_id
+                 WHERE bi.project_id = $1 AND bi.category = 'Material' AND COALESCE(bi.qty_plan, 0) > 0", [$projectId]), 'check_inventory:rab');
+            foreach (pg_fetch_all($rs2) ?: [] as $r) {
+                $rabById[(int)$r['id']] = $r;
+            }
+
+            $usedStock = [];   // material_id => stok yang sudah diklaim baris sebelumnya
+            $data = [];
+            foreach ($items as $n => $it) {
+                $no   = 'Baris ' . ($n + 1);
+                $bid  = (int)($it['rab_material_id'] ?? $it['budget_item_id'] ?? 0);
+                $mid  = (int)($it['material_id'] ?? 0);
+                $qty  = round((float)($it['qty'] ?? 0), 4);
+                if ($bid <= 0 || $mid <= 0 || $qty <= 0) {
+                    $data[] = ['line' => $no, 'rab_material_id' => $bid, 'material_id' => $mid, 'qty' => $qty,
+                               'ok' => false, 'message' => $no . ': material dan qty (> 0) wajib diisi.'];
+                    continue;
+                }
+                $bi = $rabById[$bid] ?? null;
+                if (!$bi || (int)$bi['material_id'] !== $mid) {
+                    $data[] = ['line' => $no, 'rab_material_id' => $bid, 'material_id' => $mid, 'qty' => $qty,
+                               'ok' => false, 'message' => $no . ': material tidak ada di RAB proyek ini.'];
+                    continue;
+                }
+                $remaining = max((float)$bi['qty_plan'] - ($poSum[$bid] ?? 0.0), 0.0);
+                $quota     = (float)$bi['qty_plan'] * (1 + (float)$bi['tol'] / 100) - ($poSum[$bid] ?? 0.0);
+                $onHand    = $stockMap[$mid] ?? 0.0;
+                $claimed   = $usedStock[$mid] ?? 0.0;
+                $free      = max($onHand - $claimed, 0.0);        // stok belum diklaim baris lain
+                $covered   = min($qty, $free);
+                $toBuy     = max($qty - $free, 0.0);
+                $usedStock[$mid] = $claimed + $covered;
+
+                $msgs = [];
+                $err = false;
+                if ($qty > $quota + 0.0001) {
+                    $msgs[] = 'qty rencana ' . $qty . ' ' . $bi['unit'] . ' melebihi sisa kuota RAB ' . max($quota, 0.0) . ' ' . $bi['unit'];
+                    $err = true;
+                }
+                if ($toBuy > 0.0001) {
+                    // bukan error: stok tidak mencukupi -> sisa kebutuhan harus dibeli
+                    $msgs[] = 'stok tersedia ' . $free . ' ' . $bi['unit'] . ', perlu beli ' . $toBuy . ' ' . $bi['unit'];
+                }
+                $data[] = [
+                    'line' => $no, 'rab_material_id' => $bid, 'material_id' => $mid,
+                    'material_name' => $bi['material_name'] ?? '', 'unit' => $bi['unit'],
+                    'qty' => $qty, 'qty_remaining' => $remaining, 'quota_remaining' => max($quota, 0.0),
+                    'qty_on_hand' => $onHand, 'qty_covered' => $covered, 'qty_to_buy' => $toBuy,
+                    'ok' => !$err,
+                    'message' => $msgs ? $no . ': ' . implode('; ', $msgs) . '.' : 'OK'
+                ];
+            }
+            echo json_encode(['success' => true, 'project_id' => $projectId, 'data' => $data]);
             break;
 
         default:

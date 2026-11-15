@@ -98,6 +98,31 @@ function po_received_total($db, int $poId): float {
     $st = $db->prepare("SELECT COALESCE(SUM(d.qty_received),0) FROM grn_dtl d JOIN grn_hdr h ON h.id=d.grn_hdr_id WHERE h.po_id=:id AND COALESCE(LOWER(h.status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed')");
     $st->execute([':id'=>$poId]); return (float)$st->fetchColumn();
 }
+/* [INVENTORY 2026-11-15] Saldo stok per material yang dapat dipakai proyek:
+   gudang milik proyek (warehouses.project_id) + gudang bersama (project_id IS NULL).
+   Stok di gudang proyek LAIN tidak dihitung. Butuh GetProjectStockMap() di function.all.php. */
+function po_project_stock_map($db, int $projectId): array {
+    if ($projectId <= 0) return [];
+    $st = $db->prepare("
+        SELECT sm.item_id AS material_id,
+               SUM(CASE WHEN sm.movement_type = 'IN' THEN sm.qty ELSE -sm.qty END) AS balance_qty
+          FROM public.stock_movements sm
+          JOIN public.warehouses w ON w.id = sm.warehouse_id
+         WHERE w.project_id = :pid OR w.project_id IS NULL
+         GROUP BY sm.item_id");
+    $st->execute([':pid' => $projectId]);
+    $map = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $qty = round((float)$r['balance_qty'], 4);
+        $map[(int)$r['material_id']] = $qty > 0 ? $qty : 0.0;
+    }
+    return $map;
+}
+/* Kebutuhan bersih (qty yang benar-benar harus dibeli) = sisa kuota RAB - stok tersedia. */
+function po_net_need(float $qtyPlan, float $tolPct, float $ordered, float $onHand): float {
+    $quota = $qtyPlan * (1 + $tolPct / 100) - $ordered;
+    return max($quota - $onHand, 0.0);
+}
 if (empty($_SESSION['user_id'])) { http_response_code(401); sendJsonResponse(false, [], 'Sesi berakhir, silakan login ulang.'); }
 $task = $_REQUEST['task'] ?? '';
 $poAccess = (int)($_SESSION['FormAccess'] ?? 0);
@@ -144,11 +169,13 @@ try {
             $st = $db->prepare("SELECT bi.id AS budget_item_id, bi.material_id, m.material_code, m.material_name, COALESCE(NULLIF(bi.unit,''),m.unit,'') AS unit, bi.qty_plan, COALESCE(bi.tolerance_pct,0) AS tolerance_pct, COALESCE(bi.unit_price_plan,0) AS unit_price_plan FROM public.budget_items bi JOIN public.materials m ON m.id=bi.material_id WHERE bi.project_id=:p AND bi.category='Material' AND COALESCE(bi.qty_plan,0)>0 ORDER BY m.material_name ASC");
             $st->execute([':p'=>$prj]);
             $ordered = po_ordered_map($db, $prj, $excl); $committed = po_committed_map($db, $prj, $excl, $base['id']);
+            $stockMap = po_project_stock_map($db, $prj);   // [INVENTORY] stok yg dapat dipakai proyek ini
             $data = [];
             foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
                 $bid=(int)$r['budget_item_id']; $plan=(float)$r['qty_plan']; $tol=(float)$r['tolerance_pct']; $ord=$ordered[$bid]??0.0;
                 $vPlan=round($plan*(float)$r['unit_price_plan'],2); $vLimit=round($vPlan*(1+$tol/100),2); $vComm=$committed['map'][$bid]??0.0;
-                $data[] = ['budget_item_id'=>$bid,'material_id'=>(int)$r['material_id'],'material_code'=>$r['material_code'],'material_name'=>$r['material_name'],'unit'=>$r['unit'],'qty_plan'=>$plan,'tolerance_pct'=>$tol,'unit_price_plan'=>(float)$r['unit_price_plan'],'qty_ordered'=>$ord,'qty_remaining'=>max($plan-$ord,0),'qty_quota'=>max($plan*(1+$tol/100)-$ord,0),'value_plan'=>$vPlan,'value_limit'=>$vLimit,'value_committed'=>$vComm,'value_remaining'=>max(round($vLimit-$vComm,2),0)];
+                $onHand = $stockMap[(int)$r['material_id']] ?? 0.0;   // [INVENTORY]
+                $data[] = ['budget_item_id'=>$bid,'material_id'=>(int)$r['material_id'],'material_code'=>$r['material_code'],'material_name'=>$r['material_name'],'unit'=>$r['unit'],'qty_plan'=>$plan,'tolerance_pct'=>$tol,'unit_price_plan'=>(float)$r['unit_price_plan'],'qty_ordered'=>$ord,'qty_remaining'=>max($plan-$ord,0),'qty_quota'=>max($plan*(1+$tol/100)-$ord,0),'value_plan'=>$vPlan,'value_limit'=>$vLimit,'value_committed'=>$vComm,'value_remaining'=>max(round($vLimit-$vComm,2),0),'qty_on_hand'=>$onHand,'qty_to_buy'=>po_net_need($plan,$tol,$ord,$onHand)];
             }
             $summary = ['budget_currency_id'=>$pb['currency_id'],'budget_code'=>$pb['code'],'budget_is_base'=>$pb['is_base'],'base_code'=>$base['code'],'total_limit'=>$pb['total_limit'],'total_committed'=>$committed['total'],'ceiling'=>$pb['ceiling']];
             sendJsonResponse(true, $data, '', ['summary'=>$summary]); break;
@@ -226,6 +253,7 @@ try {
                     if ($id>0) { $st=$db->prepare("SELECT status FROM purchase_orders WHERE id=:id FOR UPDATE"); $st->execute([':id'=>$id]); $cur0=$st->fetch(PDO::FETCH_ASSOC); if (!$cur0) throw new PoBusinessError('PO tidak ditemukan.'); if ($cur0['status']!=='Draft') throw new PoBusinessError('Hanya PO berstatus Draft yang dapat diubah.'); }
                     if ($sup) { $st=$db->prepare("SELECT 1 FROM public.m_suppliers WHERE id=:id"); $st->execute([':id'=>$sup]); if (!$st->fetchColumn()) throw new PoBusinessError('Supplier tidak ditemukan.'); }
                     $ordered=po_ordered_map($db,$prj,$id); $committed=po_committed_map($db,$prj,$id,$base['id']);
+                    $stockMap=po_project_stock_map($db,$prj);   // [INVENTORY] stok yg dapat dipakai proyek ini
                     $stBi=$db->prepare("SELECT bi.id, bi.material_id, bi.qty_plan, COALESCE(bi.tolerance_pct,0) AS tol, COALESCE(bi.unit_price_plan,0) AS price_plan, m.material_name, COALESCE(NULLIF(bi.unit,''),m.unit,'') AS unit FROM public.budget_items bi JOIN public.materials m ON m.id=bi.material_id WHERE bi.id=:id AND bi.project_id=:p AND bi.category='Material'");
                     $tallyQty=[]; $tallyVal=[]; $clean=[]; $totBud=0.0; $totBase=0.0;
                     foreach ($items as $n=>$it) {
@@ -239,6 +267,13 @@ try {
                         $ordQty=$ordered[$bid]??0.0; $ordVal=$committed['map'][$bid]??0.0;
                         $tallyQty[$bid]=($tallyQty[$bid]??0)+$qty;
                         if ($ordQty+$tallyQty[$bid]>$qtyLimit+PO_EPS) throw new PoBusinessError("{$bi['material_name']}: qty PO ".po_fmt($tallyQty[$bid])." melebihi sisa kuota RAB (".po_fmt(max($qtyLimit-$ordQty,0))." {$bi['unit']}).");
+                        // [INVENTORY] kebutuhan bersih = sisa kuota RAB - stok tersedia (gudang milik proyek + gudang bersama;
+                        // stok milik proyek LAIN tidak boleh dipakai). Asumsi stok dipakai lebih dulu, sehingga total pasokan
+                        // (PO lain + PO ini + stok) tidak boleh melebihi kuota RAB material itu.
+                        $mid=(int)$bi['material_id']; $onHand=$stockMap[$mid]??0.0;
+                        $tallyBefore=$tallyQty[$bid]-$qty;
+                        $netNeed=max($qtyLimit-$ordQty-$tallyBefore-$onHand,0.0);
+                        if ($qty>$netNeed+PO_EPS) throw new PoBusinessError("{$bi['material_name']}: qty PO ".po_fmt($qty)." melebihi kebutuhan bersih ".po_fmt($netNeed)." {$bi['unit']} (sisa kuota RAB ".po_fmt(max($qtyLimit-$ordQty-$tallyBefore,0))." - stok tersedia ".po_fmt($onHand).").");
                         $lineDpp=po_line_dpp($qty,$price,$ppnMode,$ppnRate); $amtBud=round($lineDpp*$factor,2); $amtBase=round($lineDpp*$rate,2);
                         $tallyVal[$bid]=round(($tallyVal[$bid]??0)+$amtBud,2);
                         if ($ordVal+$tallyVal[$bid]>$valLimit+PO_VEPS) throw new PoBusinessError("{$bi['material_name']}: nilai PO ".po_fmt($tallyVal[$bid])." {$pb['code']} melebihi sisa anggaran RAB baris ini (".po_fmt(max(round($valLimit-$ordVal,2),0))." {$pb['code']}).");

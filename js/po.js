@@ -288,6 +288,7 @@ dtlDiv.style.overflowY = 'auto';
             { name: 'qty_remaining', type: 'float' }, { name: 'qty_quota', type: 'float' },
             { name: 'value_plan', type: 'float' }, { name: 'value_limit', type: 'float' },
             { name: 'value_committed', type: 'float' }, { name: 'value_remaining', type: 'float' },
+            { name: 'qty_on_hand', type: 'float' }, { name: 'qty_to_buy', type: 'float' },  // [INVENTORY] stok tersedia & kebutuhan bersih
             { name: 'label', convert: function (v, r) {
                 return r.material_name + ' (' + r.material_code + ') - sisa RAB ' + round3(r.qty_remaining) + ' ' + r.unit;
             } }
@@ -401,7 +402,9 @@ dtlDiv.style.overflowY = 'auto';
                                 row.set('unit', record.get('unit'));
                                 row.set('rab_price', record.get('unit_price_plan'));    // harga RAB (mata uang anggaran)
                                 row.set('price_manual', false);                         // harga default = RAB dikonversi
-                                if (!(parseFloat(row.get('qty')) > 0)) row.set('qty', record.get('qty_remaining'));
+                                row.set('quota', record.get('qty_quota'));
+                                // [INVENTORY] default qty = kebutuhan bersih (sisa kuota - stok tersedia proyek sendiri)
+                                if (!(parseFloat(row.get('qty')) > 0)) row.set('qty', record.get('qty_to_buy') || record.get('qty_remaining'));
                                 onRatesChanged();
                             }
                         }
@@ -417,6 +420,15 @@ dtlDiv.style.overflowY = 'auto';
             { header: 'Satuan', dataIndex: 'unit', width: 50, align: 'center' },
             {
                 header: 'Sisa Kuota Qty', dataIndex: 'quota', width: 90, align: 'right',
+                renderer: function (v, meta, record) { return record.get('budget_item_id') ? fmtQty(v) : ''; }
+            },
+            {
+                // [INVENTORY] stok yang tersedia untuk proyek ini (gudang sendiri + gudang bersama)
+                header: 'Stok<br/>Tersedia', dataIndex: 'qty_on_hand', width: 70, align: 'right',
+                renderer: function (v, meta, record) { return record.get('budget_item_id') ? fmtQty(v) : ''; }
+            },
+            {
+                header: 'Perlu<br/>Beli', dataIndex: 'qty_to_buy', width: 70, align: 'right',
                 renderer: function (v, meta, record) { return record.get('budget_item_id') ? fmtQty(v) : ''; }
             },
             {

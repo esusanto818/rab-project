@@ -714,6 +714,40 @@ function GetStockBalance($db, $itemId, $gradeId, $warehouseId) {
 }
 
 /*
+Fungsi   : GetProjectStockMap()
+Tujuan   : Ambil saldo stok per material yang DAPAT DIPAKAI oleh suatu
+           proyek, untuk pengecekan inventory di Purchase Planning / PO.
+           "Dapat dipakai" = stok tersimpan di gudang milik proyek itu
+           sendiri (warehouses.project_id) ATAU gudang bersama yang tidak
+           dibind ke proyek mana pun (warehouses.project_id IS NULL, mis.
+           Gudang Pusat). Stok di gudang milik PROYEK LAIN tidak dihitung
+           (catatan: material tsb bukan milik proyek ini).
+           Item diidentifikasi lewat stock_movements.item_id = materials.id.
+$params  : $db (PDO crud), $projectId (int)
+Return   : array [material_id => qty_tersedia(float)]
+*/
+function GetProjectStockMap($db, $projectId) {
+    $projectId = (int)$projectId;
+    if ($projectId <= 0) return [];
+    $st = $db->prepare("
+        SELECT sm.item_id AS material_id,
+               SUM(CASE WHEN sm.movement_type = 'IN' THEN sm.qty ELSE -sm.qty END) AS balance_qty
+          FROM public.stock_movements sm
+          JOIN public.warehouses w ON w.id = sm.warehouse_id
+         WHERE w.project_id = :pid OR w.project_id IS NULL
+         GROUP BY sm.item_id
+    ");
+    $st->execute([':pid' => $projectId]);
+    $map = [];
+    foreach ($st->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        $mid = (int)$r['material_id'];
+        $qty = round(floatval($r['balance_qty']), 4);
+        $map[$mid] = $qty > 0 ? $qty : 0.0;
+    }
+    return $map;
+}
+
+/*
 Fungsi   : RecalcGrnStatus()
 Tujuan   : Hitung ulang status GRN (open/partial/closed) berdasarkan
            qty_received di grn_dtl vs total qty yang sudah di-posting
