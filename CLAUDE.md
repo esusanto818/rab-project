@@ -55,3 +55,13 @@ Setiap sesi audit otomatis atau pengujian regresi **WAJIB** mematuhi aturan beri
    - Verifikasi fungsi penomoran otomatis (`CreateRefNo`, `ti_next_release_no`, urutan `TAG-`/`INV-`/`PPAY-`) agar bebas dari bug regex karakter titik (`.`) atau transisi bulan.
    - Pastikan urutan validasi bisnis (cek status `released`, sisa tagihan, kepemilikan client) dieksekusi selaras dengan validasi input dasar.
 3. **Verifikasi via Eksekusi Nyata & Data Aktual:** Setiap temuan logika bisnis atau celah akses wajib diverifikasi menggunakan database uji `proyekGMN_test` dan ditambahkan ke suite pengujian otomatis di `tests/`.
+
+## Standar Audit Mendalam (Setara Audit Manual & Data Readiness)
+Setiap sesi audit otomatis atau pengujian regresi **WAJIB** menggabungkan audit kode statis dan audit kesiapan data aktual:
+1. **Cakupan Kode Lintas Lapisan:** Jangan membatasi pemindaian pada `php-crud/*.php` dan `js/*.js`. Wajib ikut memeriksa `php-func/*.php`, `views/*.php`, `pdf/*.php`, `js-func/*.js`, dan file berekstensi huruf besar seperti `*.PHP` (`db_connection.PHP`).
+2. **Audit Logika Bisnis, Regex PostgreSQL & SQL Dinamis:**
+   - Periksa komentar `//` di dalam string query SQL multi-baris yang dapat memicu error PostgreSQL.
+   - Verifikasi fungsi penomoran otomatis (`CreateRefNo`, `ti_next_release_no`, urutan `TAG-`/`INV-`/`PPAY-`) agar bebas dari bug regex karakter titik (`.`) atau transisi bulan.
+3. **Audit Kesiapan Data & Master Rule (`Data Readiness`):**
+   - Periksa ketersediaan master `fiscal_config` (termasuk `PRJ_DEP_APPLY`), status `accounting_periods`, distribusi `m_user_access_menu`, dan data pra-migrasi yang sudah berjurnal agar tidak terjadi *double-posting*.
+   - Setiap temuan baru wajib dibuatkan kasus uji otomatis di `tests/` dan dijalankan terhadap `proyekGMN_test`.
