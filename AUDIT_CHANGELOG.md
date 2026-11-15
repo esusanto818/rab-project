@@ -83,3 +83,20 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
 - `php tests/run_e2e_release.php` → **PASS=55 FAIL=0**.
 - `php tests/run_e2e_audit_sync.php` → **PASS=9 FAIL=0**.
 - `php -l` bersih untuk semua file PHP yang diubah.
+
+---
+
+## Sesi 2026-11-15 17:26 — Audit Hulu-Hilir: verifikasi ulang kritis & laporan final
+
+**Permintaan:** tulis dokumen laporan final `docs/AUDIT_HULU_HILIR_PROYEK_2026-11-15.md` mencakup temuan kritis terverifikasi (SQL injection leftoverCRD, E1 delete RAB, E4 CHECK kategori, SPK subcon material supply, desain solusi Subcon Buy-Back / Leftover Return / Client-Supplied Rp 0).
+
+**Catatan penting:** konteks sesi audit sebelumnya hilang saat `/clear`, sehingga setiap klaim dalam brief diverifikasi ulang langsung ke kode + DB (`pg_constraint`, `information_schema`, `pg_enum`, grep) sebelum ditulis. 3 dari 5 klaim brief **ditolak** karena tidak akurat seperti dinyatakan; temuan pengganti yang sah dicatat di §7b dokumen.
+
+| Tanggal & Waktu | Path file lengkap | Ringkasan perubahan & alasan | Status Git |
+|-----------------|-------------------|------------------------------|------------|
+| 2026-11-15 17:26 | `docs/AUDIT_HULU_HILIR_PROYEK_2026-11-15.md` | **DITULIS ULANG** (full file, 290+ baris): (1) §0/§10 dikoreksi terhadap data verified — `journal_entries.reference_type` **varchar bukan enum** (koreksi atas asumsi sesi sebelumnya; akibatnya C2 bukan error 22P02 tapi silent-insert nilai tak dikenal), `fiscal_config` 42 rule (bukan 45), `projects.spent` ≠0 pada 4 proyek tapi tanpa write runtime; (2) §2.4 baru — `spk_material_supply`: CHECK kepemilikan **ada** di DB (`ck_spk_supply_owner` dst.), celah nyata = tanpa jalur serah-terima + `SpkMaterialQuota` tak melihat supply; (3) §7b baru — tabel penolakan 3 klaim brief (SQLi leftoverCRD: semua input (int)-cast, pola `cmdQ({$id})` hanya untuk variabel integer → F-2.3 hardening; E1 delete RAB: sudah ada trigger `fn_guard_budget_item_task_allocations` + `mpItemBlock`, celah sebenarnya di `save_rab` yang skip guard → F-5.2; E4: CHECK DB ada tapi mismatch `'Alat'` vs `'Peralatan'` + demote silent → F-5.3); (4) §9.1/9.2/9.3 desain solusi paling sederhana untuk Subcon Buy-Back (PO khusus `source='SUBCON_LEFTOVER'` + 2 rule fiscal_config), Leftover Return (daftarkan `material_leftover` ke referensi tipe yang dikenal), Client-Supplied Rp 0 (1 kolom `budget_items.material_source` + 3 perilaku: qty_to_buy=0, GRN paksa cost 0 skip jurnal, FIFO guard); (5) §9.4 urutan eksekusi patch. | Uncommitted |
+| 2026-11-15 17:26 | `AUDIT_CHANGELOG.md` | Tambah entri sesi ini (wajib CLAUDE.md §5). | Uncommitted |
+
+**Verifikasi:**
+- Semua query read-only via `mcp__postgres__query`; tidak ada mutasi DB.
+- `git status -s` → hanya `?? docs/AUDIT_HULU_HILIR_PROYEK_2026-11-15.md` (belum ada perubahan file lain).
