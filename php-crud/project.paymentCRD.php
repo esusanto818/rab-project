@@ -638,7 +638,6 @@ try {
 
             try {
                 if (!pp_valid_date($date)) throw new PpBusinessError('Tanggal pembayaran tidak valid.');
-                if (!$acc && !($depIn > PP_EPS && $total <= 0)) throw new PpBusinessError('Akun Kas/Bank wajib dipilih.');   // [DEPOSIT] lunas penuh dari deposit tanpa kas
                 if ($cli <= 0) throw new PpBusinessError('Client wajib dipilih.');
                 if (!in_array($method, PP_METHODS, true)) throw new PpBusinessError('Metode pembayaran tidak valid.');
                 if (!is_array($items) || !count($items)) throw new PpBusinessError('Alokasikan pembayaran ke minimal satu termin.');
@@ -727,6 +726,9 @@ try {
                         $totalIdr  = round($allocatedIdr + $excess, 2);
                     }
 
+                    // [VALIDATION-ORDER FIX] Kas/bank dicek AFTER semua aturan bisnis (termin, sisa tagihan, total, deposit, client, metode). Pencegahan 'Akun Kas/Bank wajib dipilih.' yang tergesa-gesa dimunculkan lebih akhir,
+                    // sehingga negative-path case (TC-040..TC-052) mendapat pesan bisnis yang spesifik.
+                    if (!$acc && !($depIn > PP_EPS && $total <= 0)) throw new PpBusinessError('Akun Kas/Bank wajib dipilih.');   // [DEPOSIT] lunas penuh dari deposit tanpa kas
                     if (!function_exists('CreateRefNo')) throw new Exception('CreateRefNo() tidak tersedia.');
                     $payNo = CreateRefNo('project_payments', 'payment_no', 'PPAY');
 

@@ -516,7 +516,7 @@ case 'read_invoice_pipeline':
                        ELSE 'Belum Bayar'
                    END AS st
             FROM project_invoices pinv
-            WHERE pinv.release_status = 'released'                              // [RELEASE-LAYER] hanya tagihan resmi
+            WHERE pinv.release_status = 'released'                              /* [RELEASE-LAYER] hanya tagihan resmi */
               AND (:pid = 0 OR pinv.project_id = :pid)
         ) t
         GROUP BY st
