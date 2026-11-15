@@ -100,3 +100,30 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
 **Verifikasi:**
 - Semua query read-only via `mcp__postgres__query`; tidak ada mutasi DB.
 - `git status -s` → hanya `?? docs/AUDIT_HULU_HILIR_PROYEK_2026-11-15.md` (belum ada perubahan file lain).
+
+---
+
+## Sesi 2026-11-15 19:49 — Patch Gelombang 1: Data Readiness & Leftover Return + Guard Hapus Item RAB
+
+**Permintaan:** terapkan Patch Gelombang 1 (audit hulu-hilir §9): F-3.1 & F-5.1 (daftarkan `material_leftover`/`subcon_leftover_buyback` sebagai reference_type jurnal valid + rule `PRJ_DEP_APPLY` di fiscal_config), F-5.2 & F-5.3 (guard hapus item RAB di `save_rab` + samakan daftar kategori DB vs PHP secara case-insensitive tanpa demote diam-diam), lengkap dengan uji E2E, HOWTO, dan pelaporan.
+
+**Koreksi asumsi audit:** `journal_entries.reference_type` ternyata bertipe **ENUM** `public.reference_type` (bukan varchar seperti dicatat §10 dokumen audit) → F-3.1 diselesaikan dengan `ALTER TYPE ... ADD VALUE` di migrasi, bukan sekadar daftar PHP.
+
+### File yang diubah
+
+| Tanggal & Waktu | Path file lengkap | Ringkasan perubahan & alasan | Status Git |
+|-----------------|-------------------|------------------------------|------------|
+| 2026-11-15 19:49 | `sql/2026-11-15_patch_gelombang1_readiness_rab.sql` | **BARU**: migrasi idempoten. (0) `ALTER TYPE public.reference_type ADD VALUE` untuk `material_leftover`, `subcon_leftover_buyback`, `subcon_invoice`, `subcon_invoice_pay` di luar blok transaksi (kewajiban PG) + 2 nilai terakhir menutup celah `subcon.invoiceCRD.php` yang sudah pakai tapi belum ada di enum; (1) pastikan `PRJ_DEP_APPLY` aktif di `fiscal_config` (Dr 2200 / Cr 1200, `ON CONFLICT DO UPDATE` + DO-block verifikasi); (2a–2c) petakan `'Alat'→'Peralatan'` & ganti CHECK `budget_items_category_check` + tambah CHECK `expense_master_category_check` agar daftar kategori sama persis dengan `RAB_CATEGORIES` PHP; (2d) tambah kolom `budget_items.updated_at` + trigger `trg_budget_items_touch` (bug pra-eksisting: path UPDATE non-material di `save_rab` memakai kolom tak ada → SQLSTATE[42703]). | Committed |
+| 2026-11-15 19:49 | `php-func/function.all.php` | Tambah konstanta `JRN_VALID_REF_TYPES` (daftar reference_type jurnal yang dikenal, termasuk `material_leftover` & `subcon_leftover_buyback`) + helper `AutoPostRefKnown()`; `AutoPostJournal()` menolak `reference_type` tak terdaftar via validasi `in_array` sebelum insert `journal_entries` (F-3.1). | Committed |
+| 2026-11-15 19:49 | `php-func/journal.stock.php` | Tambah konstanta `JRN_REF_MATERIAL_LEFTOVER` / `JRN_REF_SUBCON_LEFTOVER_BUYBACK` + `JRN_VALID_REF_TYPES` + helper `JrnRefKnown()`; `JrnPost()` & `JrnReverseByRef()` menolak `reference_type` tak dikenal via `in_array` (F-3.1). | Committed |
+| 2026-11-15 19:49 | `php-crud/rabCRD.php` | (F-5.2) fungsi baru `rabItemBlock()` (replika `mpItemBlock()` karena `rabCRD.php` tidak menyertakan `m.proyekCRD.php`), dipanggil `save_rab` untuk setiap `budget_item_id` lama yang hilang dari grid → hapus ditolak dengan pesan eksplisit bila item sudah dipakai PO/SPK/kontrak subkon/task expense/issue gudang; (F-5.3) fungsi baru `rabNormCategory()` normalisasi case-insensitive + penolakan kategori tak dikenal (mengganti 4x demote diam-diam ke `'Lain-lain'` di `load_rab` & 3 loop `save_rab`). | Committed |
+| 2026-11-15 19:49 | `php-crud/m.proyekCRD.php` | `mpExpCategory()` menjadi case-insensitive + melempar Exception untuk kategori tak dikenal (F-5.3, daftar `MP_EXPENSE_CATEGORIES` sudah sama dengan `RAB_CATEGORIES`); `expense_master` mendapat CHECK DB yang setara. | Committed |
+| 2026-11-15 19:49 | `tests/run_e2e_leftover_and_rab_guard.php` | **BARU**: runner E2E terhadap `proyekGMN_test` + web 8098. Setup idempoten menjalankan migrasi (enum + PRJ_DEP_APPLY + CHECK + updated_at/trigger), buat user harness level 4, proyek uji, issue material (fixture `material_out_header/items`), RAB + PO Draft 'Disetujui' pemakai budget item. TC-LGR-01..05 retur sisa material proyek (save → stok IN `MATERIAL_LEFTOVER` + jurnal WH_LEFTOVER Dr 23/Cr 47 → reverse → semua batal); TC-LGR-10/11 guard hapus RAB pemakai PO + rollback ACID; TC-LGR-12/13 kategori `'PERALATAN'` ternormalisasi menjadi `'Peralatan'`; TC-LGR-14 kategori tak dikenal ditolak eksplisit; TC-LGR-20 readiness PRJ_DEP_APPLY. | Committed |
+| 2026-11-15 19:49 | `docs/HOWTO_LEFTOVER_AND_RAB_GUARD_2026-11-15.md` | **BARU**: panduan singkat — tabel sebelum/sesudah, cara jalankan migrasi & uji, catatan operasional (pesan guard, syarat reverse, cakupan F-2.1 buy-back belum termasuk, bonus updated_at). | Committed |
+| 2026-11-15 19:49 | `AUDIT_CHANGELOG.md` | Tambah entri sesi ini (wajib CLAUDE.md §5). | Committed |
+
+**Verifikasi (semua terhadap proyekGMN_test):**
+- `php tests/run_e2e_leftover_and_rab_guard.php` → **PASS=11 FAIL=0**
+- `php tests/run_e2e_audit_sync.php` → **PASS=9 FAIL=0**
+- `php tests/run_e2e_release.php` → PASS=55 FAIL=0 · `run_e2e_inventory_check.php` → PASS=10 FAIL=0 · `run_e2e_po_prerelease.php` → PASS=10 FAIL=0
+- `php -l` bersih pada semua file PHP yang diubah.

@@ -420,6 +420,29 @@ function DbOrFail($db, $ok, $context = '') {
 }
 
 /*
+Daftar reference_type jurnal yang dikenal aplikasi.
+[PATCH 2026-11-15 F-3.1] journal_entries.reference_type bertipe VARCHAR (bukan enum), sehingga tanpa
+daftar ini nilai bebas bisa tersimpan. Tambah 'material_leftover' (retur sisa material proyek,
+material.leftoverCRD.php) dan 'subcon_leftover_buyback' (buy-back sisa subkontraktor, rancangan
+audit hulu-hilir §9.1) yang sebelumnya belum terdaftar -> posting jurnalnya ditolak/senyap.
+*/
+if (!defined('JRN_VALID_REF_TYPES')) {
+    define('JRN_VALID_REF_TYPES', implode('|', [
+        'sales_univoice', 'payment_entry', 'manual_entry', 'closing_entry', 'adjustment',
+        'wh_receiving', 'purchase_grn', 'purchase_invoice', 'purchase_return',
+        'project_invoice', 'project_payment', 'material_out', 'supplier_return',
+        'wip_release', 'stock_transfer', 'sales_proyekoice',
+        'material_leftover', 'subcon_leftover_buyback',
+        'subcon_progress', 'subcon_payment', 'subcon_invoice', 'subcon_invoice_pay',
+    ]));
+}
+
+/** Benarkah $refType termasuk reference_type jurnal yang terdaftar (validasi in_array, case-sensitive). */
+function AutoPostRefKnown(string $refType): bool {
+    return in_array($refType, explode('|', JRN_VALID_REF_TYPES), true);
+}
+
+/*
 Fungsi      : AutoPostJournal()
 Lokasi      : function.all.php (shared, dipakai lintas modul)
 Tujuan      : Generate jurnal otomatis dari modul transaksi (Sales Invoice,
@@ -476,6 +499,12 @@ function AutoPostJournal($db, $params) {
 
     if (empty($ruleCode) || empty($referenceType) || $amount <= 0) {
         return ['success' => false, 'message' => 'Parameter AutoPostJournal tidak lengkap (rule_code/reference_type/amount).', 'journal_id' => null];
+    }
+
+    // [PATCH 2026-11-15 F-3.1] reference_type wajib terdaftar di JRN_VALID_REF_TYPES (validasi in_array)
+    // agar nilai typo/tak dikenal (mis. 'material_leftover' sebelum patch ini) tidak lolak ke journal_entries.
+    if (!AutoPostRefKnown($referenceType)) {
+        return ['success' => false, 'message' => "reference_type '{$referenceType}' tidak terdaftar. Daftar valid: " . JRN_VALID_REF_TYPES . '.', 'journal_id' => null];
     }
 
     // 1. Cari rule di fiscal_config (tetap wajib ada & aktif, sebagai kontrol

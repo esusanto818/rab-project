@@ -23,6 +23,25 @@
 
 if (!defined('JRN_REF_ISSUE'))  { define('JRN_REF_ISSUE',  'material_out'); }     // reference_type jurnal issue proyek
 if (!defined('JRN_REF_RETURN')) { define('JRN_REF_RETURN', 'supplier_return'); }   // reference_type jurnal retur supplier
+// [PATCH 2026-11-15 F-3.1] reference_type retur sisa material proyek (material.leftoverCRD.php) &
+// buy-back sisa subkon (rancangan audit §9.1). Kolom journal_entries.reference_type bertipe VARCHAR,
+// sehingga satu-satunya gerbang keabsahan nilai adalah daftar valid di bawah (in_array).
+if (!defined('JRN_REF_MATERIAL_LEFTOVER'))       { define('JRN_REF_MATERIAL_LEFTOVER',       'material_leftover'); }
+if (!defined('JRN_REF_SUBCON_LEFTOVER_BUYBACK')) { define('JRN_REF_SUBCON_LEFTOVER_BUYBACK', 'subcon_leftover_buyback'); }
+if (!defined('JRN_VALID_REF_TYPES')) {
+    define('JRN_VALID_REF_TYPES', implode('|', [
+        'material_out', 'supplier_return', 'material_leftover', 'subcon_leftover_buyback',
+        'wh_receiving', 'purchase_grn', 'purchase_invoice', 'purchase_return',
+        'project_invoice', 'project_payment', 'payment_entry', 'wip_release',
+        'sales_univoice', 'sales_proyekoice', 'manual_entry', 'closing_entry', 'adjustment', 'stock_transfer',
+        'subcon_progress', 'subcon_payment', 'subcon_invoice', 'subcon_invoice_pay',
+    ]));
+}
+
+/** Benarkah $refType termasuk reference_type jurnal yang dikenal modul stok (validasi in_array). */
+function JrnRefKnown(string $refType): bool {
+    return in_array($refType, explode('|', JRN_VALID_REF_TYPES), true);
+}
 
 // [FIX] Potong teks maks $len karakter. Pakai mb_substr bila tersedia; bila tidak, fallback aman UTF-8 (tanpa mbstring)
 function JrnSub($str, $start, $len) {
@@ -59,6 +78,10 @@ function JrnPeriod($date) {
 function JrnPost($ruleCode, $refType, $refId, $date, $amount, $desc, $userId) {
     $amount = round((float)$amount, 2);
     if ($amount <= 0) { return null; }
+    // [PATCH 2026-11-15 F-3.1] reference_type wajib terdaftar (in_array) agar nilai tak dikenal tidak lolak.
+    if (!JrnRefKnown((string)$refType)) {
+        throw new WhException("reference_type '{$refType}' tidak dikenal. Daftar valid: " . JRN_VALID_REF_TYPES . '.');
+    }
     list($drAcc, $crAcc) = JrnAccounts($ruleCode);
     $periodId = JrnPeriod($date);
     $desc = JrnSub($desc, 0, 255);      // [FIX] was mb_substr
@@ -85,6 +108,10 @@ function JrnPost($ruleCode, $refType, $refId, $date, $amount, $desc, $userId) {
  * Mengembalikan jumlah jurnal yang di-reverse.
  */
 function JrnReverseByRef($refType, $refId, $date, $userId, $descPrefix) {
+    // [PATCH 2026-11-15 F-3.1] reference_type wajib terdaftar (in_array), sama seperti JrnPost.
+    if (!JrnRefKnown((string)$refType)) {
+        throw new WhException("reference_type '{$refType}' tidak dikenal. Daftar valid: " . JRN_VALID_REF_TYPES . '.');
+    }
     $orig = WhRows("SELECT e.id, e.ref_no FROM journal_entries e
                     WHERE e.reference_type=$1 AND e.reference_id=$2 AND e.status='posted'
                       AND e.description NOT LIKE 'Reverse of %'

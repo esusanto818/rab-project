@@ -402,7 +402,16 @@ function mpApplyInvoicePlan($db, array $plan) {
  * ============================================================ */
 const MP_EPS = 0.00005;
 const MP_EXPENSE_CATEGORIES = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];   // [AI-BOQ] = RAB_CATEGORIES (rabCRD.php) selain Material
-function mpExpCategory($c) { $c = trim((string)$c); return in_array($c, MP_EXPENSE_CATEGORIES, true) ? $c : 'Lain-lain'; }
+// [PATCH 2026-11-15 F-5.3] normalisasi CASE-INSENSITIVE; kategori kosong/tak dikenal -> Exception
+// (dulu demote diam-diam ke 'Lain-lain'). Daftar kini sama dengan CHECK DB budget_items_category_check.
+function mpExpCategory($c) {
+    $c = trim((string)$c);
+    $lc = strtolower($c);
+    foreach (MP_EXPENSE_CATEGORIES as $valid) {
+        if (strtolower($valid) === $lc) { return $valid; }
+    }
+    throw new Exception('Kategori biaya RAB tidak valid: "' . $c . '". Kategori yang diterima: ' . implode(', ', MP_EXPENSE_CATEGORIES) . '.');
+}
 
 function mpNorm($s) {                                   // kunci pencocokan nama
     $s = strtolower(trim((string)$s));

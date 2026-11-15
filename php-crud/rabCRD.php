@@ -27,6 +27,19 @@ const RAB_EPS_VAL = 0.01;
 const RAB_EPS_QTY = 0.00005;
 const RAB_CATEGORIES = ['Material', 'Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];
 
+// [PATCH 2026-11-15 F-5.3] Normalisasi kategori RAB CASE-INSENSITIVE dengan validasi KETAT:
+// category kosong di luar daftar -> RabBusinessError (dulu demote diam-diam ke 'Lain-lain', lalu baris
+// material ber-material_id dibuang tanpa peringatan -- audit F-5.3). Daftar ini kini sama persis dengan
+// CHECK DB budget_items_category_check (sql/2026-11-15_patch_gelombang1_readiness_rab.sql).
+function rabNormCategory($cat) {
+    $c = trim((string)$cat);
+    $lc = strtolower($c);
+    foreach (RAB_CATEGORIES as $valid) {
+        if (strtolower($valid) === $lc) { return $valid; }
+    }
+    throw new RabBusinessError('Kategori RAB tidak valid: "' . $c . '". Kategori yang diterima: ' . implode(', ', RAB_CATEGORIES) . '.');
+}
+
 class RabBusinessError extends Exception {}
 
 function mb_strlen_safe($str, $len) {
@@ -37,6 +50,40 @@ function mb_strlen_safe($str, $len) {
 }
 
 function rab_fmt($n): string { return number_format((float)$n, 2, ',', '.'); }
+
+// [PATCH 2026-11-15 F-5.2] Alasan budget_item tidak boleh dihapus dari RAB; '' = boleh.
+// Replika mpItemBlock() (m.proyekCRD.php) karena rabCRD.php tidak menyertakan file itu (m.proyekCRD menjalankan
+// controller top-level). Cakupan sama: PO, SPK, kontrak subkon, biaya task, issue gudang -- siap dipakai PO/SPK/issue.
+function rabItemBlock($db, int $projectId, int $bid): string {
+    $bid = (int)$bid;
+    if ($bid <= 0) { return ''; }
+    $one = function (string $sql, array $p) use ($db) {
+        $st = $db->prepare($sql); $st->execute($p);
+        return (int)$st->fetchColumn() > 0;
+    };
+    $r = $db->prepare("SELECT po.po_number FROM po_items i JOIN purchase_orders po ON po.id = i.po_id
+                       WHERE i.budget_item_id = :b ORDER BY po.id LIMIT 1");
+    $r->execute([':b' => $bid]);
+    $po = $r->fetch(PDO::FETCH_ASSOC);
+    if ($po && !empty($po['po_number'])) { return 'sudah dipakai PO ' . $po['po_number']; }
+    if ($db->query("SELECT to_regclass('public.spk_work_items')")->fetchColumn() &&
+        $one("SELECT COUNT(*) AS n FROM spk_work_items WHERE budget_item_id = :b", [':b' => $bid])) { return 'sudah dipakai SPK'; }
+    if ($db->query("SELECT to_regclass('public.subcon_contracts')")->fetchColumn() &&
+        $one("SELECT COUNT(*) AS n FROM subcon_contracts WHERE budget_item_id = :b", [':b' => $bid])) { return 'sudah dipakai kontrak subkon'; }
+    if ($db->query("SELECT to_regclass('public.task_expenses')")->fetchColumn() &&
+        $one("SELECT COUNT(*) AS n FROM task_expenses WHERE budget_item_id = :b", [':b' => $bid])) { return 'sudah dialokasikan sebagai biaya task'; }
+    if ($db->query("SELECT to_regclass('public.material_out_items')")->fetchColumn() && $db->query("SELECT to_regclass('public.material_out_header')")->fetchColumn()) {
+        $bi = $db->prepare("SELECT material_id FROM budget_items WHERE id = :b");
+        $bi->execute([':b' => $bid]);
+        $row = $bi->fetch(PDO::FETCH_ASSOC);
+        $mid = (is_array($row) && $row['material_id'] !== null) ? (int)$row['material_id'] : 0;
+        if ($mid > 0 && $one("SELECT COUNT(*) AS n FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
+                              WHERE h.project_id = :p AND i.material_id = :m AND h.status = 'posted'", [':p' => $projectId, ':m' => $mid])) {
+            return 'sudah di-issue dari gudang';
+        }
+    }
+    return '';
+}
 
 // [AI-BOQ] Rentang harga MILIK MASTER (mata uang dasar): materials.estimated_price_min .. estimated_price (max),
 // expense_master.default_price_min .. default_price (max). Harga satuan RAB default = max; user boleh mengubahnya di RAB
@@ -366,7 +413,8 @@ try {
                 $item['remaining_qty'] = (float)$item['remaining_qty'];
                 $item['usage_pct'] = (float)$item['usage_pct'];
                 $item['is_addendum'] = ($item['is_addendum'] === true || $item['is_addendum'] === 't' || $item['is_addendum'] === '1');
-                if (!in_array($item['category'], RAB_CATEGORIES)) $item['category'] = 'Lain-lain';
+                // [PATCH 2026-11-15 F-5.3] tampilkan kategori apa adanya (case-insensitive), tanpa demote diam-diam
+            $item['category'] = rabNormCategory($item['category'] ?? '');
                 if (empty($item['item_name'])) {
                     $item['item_name'] = $item['material_name'] ?: $item['category'];
                 }
@@ -450,7 +498,7 @@ try {
                 
                 $totalCur = 0.0; $flags = [];
                 foreach ($items as $item) {
-                    $cat = in_array($item['category'] ?? '', RAB_CATEGORIES) ? $item['category'] : 'Lain-lain';
+                    $cat = rabNormCategory($item['category'] ?? '');   // [PATCH 2026-11-15 F-5.3] case-insensitive + validasi ketat
                     $mid = (int)($item['material_id'] ?? 0);
                     $eid = (int)($item['expense_id'] ?? 0);
                     $q = (float)($item['budget_qty'] ?? 0);
@@ -498,7 +546,7 @@ try {
                 $userId = (int)($_SESSION['user_id'] ?? 0);
                 $addInfo = [];
                 foreach ($items as $item) {
-                    $cat = in_array($item['category'] ?? '', RAB_CATEGORIES) ? $item['category'] : 'Lain-lain';
+                    $cat = rabNormCategory($item['category'] ?? '');   // [PATCH 2026-11-15 F-5.3] case-insensitive + validasi ketat
                     $mid = (int)($item['material_id'] ?? 0);
                     $eid = (int)($item['expense_id'] ?? 0);
                     $q = (float)($item['budget_qty'] ?? 0);
@@ -519,7 +567,7 @@ try {
                 $activeKeys = [];
                 
                 foreach ($items as $item) {
-                    $cat = in_array($item['category'] ?? '', RAB_CATEGORIES) ? $item['category'] : 'Lain-lain';
+                    $cat = rabNormCategory($item['category'] ?? '');   // [PATCH 2026-11-15 F-5.3] case-insensitive + validasi ketat
                     $materialId = (int)($item['material_id'] ?? 0);
                     $expenseId = (int)($item['expense_id'] ?? 0);
                     $itemName = trim((string)($item['item_name'] ?? ''));
@@ -581,6 +629,19 @@ try {
                 }
                 
                 // Delete items yang tidak ada di grid
+                // [PATCH 2026-11-15 F-5.2] JANGAN hapus diam-diam budget_item lama yang sudah dipakai
+                // PO/SPK/kontrak subkon/task expense/issue gudang. mpItemBlock() dulu hanya dipanggil di
+                // m.proyekCRD edit; save_rab punya celah yang sama (audit F-5.2).
+                $blockedByItem = [];
+                foreach ($old as $oKey => $oRow) {
+                    if (in_array($oKey, $activeKeys, true)) continue;      // masih di grid -> bukan dihapus
+                    $why = rabItemBlock($db, $projectId, (int)$oRow['id']);
+                    if ($why !== '') { $blockedByItem[] = '"' . $oKey . '" (id ' . $oRow['id'] . '): ' . $why; }
+                }
+                if ($blockedByItem) {
+                    throw new RabBusinessError('Item RAB tidak dapat dihapus karena sudah dipakai transaksi lain: ' . implode('; ', $blockedByItem) . '. Hapus dulu rujukannya atau pertahankan item tersebut di grid.');
+                }
+
                 if ($activeKeys) {
                     $materialIds = []; $expenseIds = [];
                     foreach ($activeKeys as $k) {
