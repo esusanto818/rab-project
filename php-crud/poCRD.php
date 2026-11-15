@@ -3,6 +3,10 @@ require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * poCRD.php [VERSI BARU - sinkron po.js: kontrol nilai RAB + mata uang anggaran + PPN]
  * Lihat komentar lengkap pada versi yang diserahkan di percakapan.
+ *
+ * [CLIENT-SUPPLIED 2026-11-15 F-4.1] qty_to_buy untuk budget_items.material_source='CLIENT_SUPPLIED'
+ * (titipan klien) wajib 0 / skip (bukan GREATEST(...)) -- barang datang dari klien, tidak dibeli.
+ * Diterapkan di po_net_need(), list_rab_items, dan load_po.
  */
 ini_set('display_errors', '0');
 ob_start();
@@ -118,8 +122,11 @@ function po_project_stock_map($db, int $projectId): array {
     }
     return $map;
 }
-/* Kebutuhan bersih (qty yang benar-benar harus dibeli) = sisa kuota RAB - stok tersedia. */
-function po_net_need(float $qtyPlan, float $tolPct, float $ordered, float $onHand): float {
+/* Kebutuhan bersih (qty yang benar-benar harus dibeli) = sisa kuota RAB - stok tersedia.
+   [CLIENT-SUPPLIED 2026-11-15 F-4.1] bila $materialSource = 'CLIENT_SUPPLIED' (titipan klien),
+   kebutuhan beli WAJIB 0 (skip total, bukan GREATEST) -- barang datang dari klien, tidak dibeli. */
+function po_net_need(float $qtyPlan, float $tolPct, float $ordered, float $onHand, string $materialSource = 'COMPANY'): float {
+    if (strtoupper(trim($materialSource)) === 'CLIENT_SUPPLIED') { return 0.0; }
     $quota = $qtyPlan * (1 + $tolPct / 100) - $ordered;
     return max($quota - $onHand, 0.0);
 }
@@ -264,7 +271,7 @@ try {
             $prj = (int)($_REQUEST['project_id'] ?? 0); $excl = (int)($_REQUEST['po_id'] ?? 0);
             if ($prj <= 0) sendJsonResponse(true, [], '', ['summary'=>null]);
             $base = po_base_currency($db); $pb = po_project_budget($db, $prj, $base);
-            $st = $db->prepare("SELECT bi.id AS budget_item_id, bi.material_id, m.material_code, m.material_name, COALESCE(NULLIF(bi.unit,''),m.unit,'') AS unit, bi.qty_plan, COALESCE(bi.tolerance_pct,0) AS tolerance_pct, COALESCE(bi.unit_price_plan,0) AS unit_price_plan FROM public.budget_items bi JOIN public.materials m ON m.id=bi.material_id WHERE bi.project_id=:p AND bi.category='Material' AND COALESCE(bi.qty_plan,0)>0 ORDER BY m.material_name ASC");
+            $st = $db->prepare("SELECT bi.id AS budget_item_id, bi.material_id, m.material_code, m.material_name, COALESCE(NULLIF(bi.unit,''),m.unit,'') AS unit, bi.qty_plan, COALESCE(bi.tolerance_pct,0) AS tolerance_pct, COALESCE(bi.unit_price_plan,0) AS unit_price_plan, COALESCE(bi.material_source,'COMPANY') AS material_source FROM public.budget_items bi JOIN public.materials m ON m.id=bi.material_id WHERE bi.project_id=:p AND bi.category='Material' AND COALESCE(bi.qty_plan,0)>0 ORDER BY m.material_name ASC");
             $st->execute([':p'=>$prj]);
             $ordered = po_ordered_map($db, $prj, $excl); $committed = po_committed_map($db, $prj, $excl, $base['id']);
             $stockMap = po_project_stock_map($db, $prj);   // [INVENTORY] stok yg dapat dipakai proyek ini
@@ -273,7 +280,8 @@ try {
                 $bid=(int)$r['budget_item_id']; $plan=(float)$r['qty_plan']; $tol=(float)$r['tolerance_pct']; $ord=$ordered[$bid]??0.0;
                 $vPlan=round($plan*(float)$r['unit_price_plan'],2); $vLimit=round($vPlan*(1+$tol/100),2); $vComm=$committed['map'][$bid]??0.0;
                 $onHand = $stockMap[(int)$r['material_id']] ?? 0.0;   // [INVENTORY]
-                $data[] = ['budget_item_id'=>$bid,'material_id'=>(int)$r['material_id'],'material_code'=>$r['material_code'],'material_name'=>$r['material_name'],'unit'=>$r['unit'],'qty_plan'=>$plan,'tolerance_pct'=>$tol,'unit_price_plan'=>(float)$r['unit_price_plan'],'qty_ordered'=>$ord,'qty_remaining'=>max($plan-$ord,0),'qty_quota'=>max($plan*(1+$tol/100)-$ord,0),'value_plan'=>$vPlan,'value_limit'=>$vLimit,'value_committed'=>$vComm,'value_remaining'=>max(round($vLimit-$vComm,2),0),'qty_on_hand'=>$onHand,'qty_to_buy'=>po_net_need($plan,$tol,$ord,$onHand)];
+                $src = strtoupper(trim((string)$r['material_source']));   // [CLIENT-SUPPLIED F-4.1]
+                $data[] = ['budget_item_id'=>$bid,'material_id'=>(int)$r['material_id'],'material_code'=>$r['material_code'],'material_name'=>$r['material_name'],'unit'=>$r['unit'],'qty_plan'=>$plan,'tolerance_pct'=>$tol,'unit_price_plan'=>(float)$r['unit_price_plan'],'qty_ordered'=>$ord,'qty_remaining'=>max($plan-$ord,0),'qty_quota'=>max($plan*(1+$tol/100)-$ord,0),'value_plan'=>$vPlan,'value_limit'=>$vLimit,'value_committed'=>$vComm,'value_remaining'=>max(round($vLimit-$vComm,2),0),'qty_on_hand'=>$onHand,'qty_to_buy'=>po_net_need($plan,$tol,$ord,$onHand,$src),'material_source'=>$src];
             }
             $summary = ['budget_currency_id'=>$pb['currency_id'],'budget_code'=>$pb['code'],'budget_is_base'=>$pb['is_base'],'base_code'=>$base['code'],'total_limit'=>$pb['total_limit'],'total_committed'=>$committed['total'],'ceiling'=>$pb['ceiling']];
             sendJsonResponse(true, $data, '', ['summary'=>$summary]); break;
@@ -307,7 +315,7 @@ try {
             else $budRate=(float)$hdr['budget_exch_rate']>0?(float)$hdr['budget_exch_rate']:((float)$hdr['prj_budget_exch_rate']>0?(float)$hdr['prj_budget_exch_rate']:1.0);
             $factor=($curId===$budId)?1.0:($budRate>0?$hdr['exch_rate']/$budRate:0.0);
             $hdr['ppn_mode']=po_ppn_mode($hdr['ppn_mode']); $hdr['ppn_rate']=(float)$hdr['ppn_rate'];
-            $st = $db->prepare("SELECT i.id, i.budget_item_id, i.material_id, m.material_code, i.description, i.unit, i.qty, i.unit_price, i.currency_id, COALESCE(UPPER(TRIM(ic.init)),'IDR') AS item_currency_code, COALESCE(NULLIF(i.exch_rate,0),1) AS exch_rate, COALESCE(g.q,0) AS qty_received FROM po_items i LEFT JOIN public.materials m ON m.id=i.material_id LEFT JOIN public.m_currency ic ON ic.id=i.currency_id LEFT JOIN (SELECT d.po_item_id, SUM(d.qty_received) AS q FROM grn_dtl d JOIN grn_hdr h ON h.id=d.grn_hdr_id WHERE COALESCE(LOWER(h.status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed') GROUP BY d.po_item_id) g ON g.po_item_id=i.id WHERE i.po_id=:id ORDER BY i.id");
+            $st = $db->prepare("SELECT i.id, i.budget_item_id, i.material_id, m.material_code, i.description, i.unit, i.qty, i.unit_price, i.currency_id, COALESCE(UPPER(TRIM(ic.init)),'IDR') AS item_currency_code, COALESCE(NULLIF(i.exch_rate,0),1) AS exch_rate, COALESCE(g.q,0) AS qty_received, COALESCE(bi.material_source,'COMPANY') AS material_source FROM po_items i LEFT JOIN public.materials m ON m.id=i.material_id LEFT JOIN public.m_currency ic ON ic.id=i.currency_id LEFT JOIN public.budget_items bi ON bi.id=i.budget_item_id LEFT JOIN (SELECT d.po_item_id, SUM(d.qty_received) AS q FROM grn_dtl d JOIN grn_hdr h ON h.id=d.grn_hdr_id WHERE COALESCE(LOWER(h.status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed') GROUP BY d.po_item_id) g ON g.po_item_id=i.id WHERE i.po_id=:id ORDER BY i.id");
             $st->execute([':id'=>$id]); $items=$st->fetchAll(PDO::FETCH_ASSOC);
             // [PRERELEASE] stok proyek & kebutuhan bersih utk banner di UI
             $stockMap=po_project_stock_map($db,(int)$hdr['project_id']);
@@ -317,7 +325,9 @@ try {
                 $it['id']=(int)$it['id']; $it['budget_item_id']=$it['budget_item_id']!==null?(int)$it['budget_item_id']:null; $it['material_id']=$it['material_id']!==null?(int)$it['material_id']:null; $it['currency_id']=$it['currency_id']!==null?(int)$it['currency_id']:null; $it['qty']=(float)$it['qty']; $it['unit_price']=(float)$it['unit_price']; $it['exch_rate']=(float)$it['exch_rate']; $it['qty_received']=(float)$it['qty_received']; $received+=$it['qty_received'];
                 // [PRERELEASE] info stok & kuota per baris utk banner validasi release di UI
                 $onHand=$stockMap[(int)$it['material_id']]??0.0; $ordQty=$it['budget_item_id']!==null?($ordered[(int)$it['budget_item_id']]??0.0):0.0;
-                $it['qty_on_hand']=$onHand; $it['qty_to_buy']=max((float)$it['qty']-$ordQty-$onHand, 0.0);
+                $src=strtoupper(trim((string)($it['material_source']??'COMPANY')));   // [CLIENT-SUPPLIED F-4.1]
+                $it['material_source']=$src;
+                $it['qty_on_hand']=$onHand; $it['qty_to_buy']=($src==='CLIENT_SUPPLIED')?0.0:max((float)$it['qty']-$ordQty-$onHand, 0.0);
                 $lineDpp=po_line_dpp($it['qty'],$it['unit_price'],$hdr['ppn_mode'],$hdr['ppn_rate']);
                 $it['amount_budget']=round($lineDpp*$factor,2); $it['amount_base']=round($lineDpp*$hdr['exch_rate'],2);
                 $totBud+=$it['amount_budget']; $totBase+=$it['amount_base']; $subItems+=round($it['qty']*$it['unit_price'],2);

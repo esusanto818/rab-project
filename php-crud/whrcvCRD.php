@@ -22,6 +22,11 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  *   item dengan unit_cost=0 (data GRN yang belum diisi harga) tetap valid
  *   tersimpan, tidak keliru dianggap "tidak ada yang diterima".
  *
+ * [CLIENT-SUPPLIED 2026-11-15 F-4.1] GRN untuk PO titipan klien (budget_items.material_source =
+ * 'CLIENT_SUPPLIED'): unit_cost DIPAKSA 0 server-side (dari grn_dtl.unit_cost_base yang sudah 0),
+ * stock_movements IN tetap ditulis (fisik masuk, terlacak), dan AutoPostJournal GRN_RCV DI-SKIP
+ * bila total_amount = 0 (bukan lempar exception).
+ *
  * [FIX] Versi sebelumnya memuat BLOK TEMPELAN dari Master Proyek CRD (switch ($action) ... case 'read','save',
  *   'delete' milik m_proyek) tepat sebelum kode ini. Untuk request ber-'task' blok itu mencetak
  *   {"success":false,"message":"Aksi tidak valid!"} LALU kode WH Rcv mencetak respons asli -> dua JSON
@@ -277,9 +282,12 @@ try {
                         "SELECT (gd.qty_received - COALESCE(wd.qty_wh_sum,0)) AS qty_remaining, gd.grade_id,
                                 gd.unit_cost AS unit_cost_txn,
                                 COALESCE(NULLIF(gd.unit_cost_base, 0), gd.unit_cost * COALESCE(NULLIF(g.exch_rate,0), 1)) AS unit_cost_base,
-                                g.currency_id, COALESCE(NULLIF(g.exch_rate,0), 1) AS exch_rate
+                                g.currency_id, COALESCE(NULLIF(g.exch_rate,0), 1) AS exch_rate,
+                                COALESCE(bi.material_source, 'COMPANY') AS material_source
                            FROM grn_dtl gd
                            JOIN grn_hdr g ON g.id = gd.grn_hdr_id
+                           LEFT JOIN public.po_items pi ON pi.id = gd.po_item_id
+                           LEFT JOIN public.budget_items bi ON bi.id = pi.budget_item_id
                            LEFT JOIN (
                                SELECT d.grn_dtl_id, SUM(d.qty_received) AS qty_wh_sum
                                  FROM wh_receiving_dtl d
@@ -296,7 +304,10 @@ try {
                     }
 
                     // Biaya MATA UANG DASAR ditentukan server dari GRN (unit_cost kiriman klien diabaikan)
-                    $cost    = round((float)$chk['unit_cost_base'], 4);
+                    // [CLIENT-SUPPLIED 2026-11-15 F-4.1] titipan klien: biaya DIPAKSA 0 (grn_dtl.unit_cost_base
+                    // sudah 0 karena InsertGrnItems memaksa unit_cost=0); stok fisik tetap masuk (IN).
+                    $isClientSupplied = strtoupper(trim((string)($chk['material_source'] ?? 'COMPANY'))) === 'CLIENT_SUPPLIED';
+                    $cost    = $isClientSupplied ? 0.0 : round((float)$chk['unit_cost_base'], 4);
                     $costTxn = (float)$chk['unit_cost_txn'];
                     $total_amount += round($qty * $cost, 2);
                     $grade_id = !empty($it['grade_id']) ? $it['grade_id'] : $chk['grade_id'];
@@ -334,16 +345,21 @@ try {
                     ]);
                 }
 
-                $journalResult = AutoPostJournal($db, [
-                    'rule_code'      => 'GRN_RCV',
-                    'reference_type' => 'wh_receiving',
-                    'reference_id'   => $wh_receiving_hdr_id,
-                    'journal_date'   => $received_date,
-                    'amount'         => round($total_amount, 2),
-                    'description'    => "Penerimaan fisik gudang - {$ref_no}"
-                ]);
-                if (empty($journalResult['success'])) {
-                    throw new Exception('Gagal posting jurnal: ' . ($journalResult['message'] ?? 'tanpa pesan'));
+                // [CLIENT-SUPPLIED 2026-11-15 F-4.1] jurnal rupiah GRN_RCV hanya untuk nilai > 0.
+                // Titipan klien (unit_cost dipaksa 0) -> total_amount = 0 -> jurnal DI-SKIP (bukan error),
+                // sesuai komentar baris 22 ("item dengan unit_cost=0 tetap valid tersimpan").
+                if ($total_amount > 0) {
+                    $journalResult = AutoPostJournal($db, [
+                        'rule_code'      => 'GRN_RCV',
+                        'reference_type' => 'wh_receiving',
+                        'reference_id'   => $wh_receiving_hdr_id,
+                        'journal_date'   => $received_date,
+                        'amount'         => round($total_amount, 2),
+                        'description'    => "Penerimaan fisik gudang - {$ref_no}"
+                    ]);
+                    if (empty($journalResult['success'])) {
+                        throw new Exception('Gagal posting jurnal: ' . ($journalResult['message'] ?? 'tanpa pesan'));
+                    }
                 }
 
                 RecalcGrnStatus($grn_hdr_id, $db);

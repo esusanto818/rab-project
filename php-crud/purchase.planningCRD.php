@@ -23,6 +23,11 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  * Terpilih" di frontend hanya membawa data terpilih ke halaman PO lewat
  * sessionStorage; PO-nya sendiri baru dibuat di sana.
  *
+ * [CLIENT-SUPPLIED 2026-11-15 F-4.1]
+ * - load_planning & check_inventory kini mengembalikan material_source (dari budget_items.material_source).
+ *   Baris CLIENT_SUPPLIED (titipan klien) wajib punya qty_to_buy = 0 (skip total, bukan GREATEST) --
+ *   barang datang dari klien, tidak boleh muncul sebagai kebutuhan beli.
+ *
  * [PENGECEKAN INVENTORY 2026-11-15]
  * - load_planning kini juga mengembalikan qty_on_hand (saldo stok yang
  *   DAPAT DIPAKAI proyek ini: gudang milik proyek + gudang bersama
@@ -142,7 +147,8 @@ try {
                            GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) AS qty_remaining,
                            (GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) * COALESCE(bi.unit_price_plan, 0)) AS remaining_value,
                            0 AS qty_on_hand,
-                           GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) AS qty_to_buy
+                           GREATEST(bi.qty_plan - COALESCE(po_sum.qty_ordered, 0), 0) AS qty_to_buy,
+                           COALESCE(bi.material_source, 'COMPANY') AS material_source
                       FROM public.budget_items bi
                       JOIN public.materials m ON m.id = bi.material_id
                       LEFT JOIN (" . PLAN_PO_SUM . ") po_sum ON po_sum.budget_item_id = bi.id
@@ -153,12 +159,19 @@ try {
 
             // [INVENTORY] kaya tiap baris dg saldo stok yang dapat dipakai proyek ini.
             // Baris RAB ganda utk material sama dijumlahkan stoknya sekali saja per material.
+            // [CLIENT-SUPPLIED F-4.1] material_source='CLIENT_SUPPLIED' (titipan klien) TIDAK DIBELI:
+            // qty_to_buy wajib 0 (skip total, bukan GREATEST(...)) -- barang datangnya dari klien.
             $stockMap = GetProjectStockMap($db, $projectId);
             $seenMat  = [];
             foreach ($rows as &$row) {
                 $mid = (int)$row['material_id'];
                 $onHand = $stockMap[$mid] ?? 0.0;
                 $row['qty_on_hand'] = $onHand;
+                $row['material_source'] = strtoupper(trim((string)($row['material_source'] ?: 'COMPANY')));
+                if ($row['material_source'] === 'CLIENT_SUPPLIED') {
+                    $row['qty_to_buy'] = 0.0;
+                    continue;
+                }
                 // material sama muncul di >1 baris RAB: stok hanya boleh dipakai sekali
                 if (isset($seenMat[$mid])) {
                     $row['qty_on_hand'] = 0.0;
@@ -203,7 +216,8 @@ try {
             $rabById = [];
             $rs2 = PgOrFail(pg_query_params("
                 SELECT bi.id, bi.material_id, bi.qty_plan, COALESCE(bi.tolerance_pct, 0) AS tol,
-                       COALESCE(NULLIF(bi.unit, ''), m.unit, '') AS unit, m.material_name
+                       COALESCE(NULLIF(bi.unit, ''), m.unit, '') AS unit, m.material_name,
+                       COALESCE(bi.material_source, 'COMPANY') AS material_source
                   FROM public.budget_items bi
                   JOIN public.materials m ON m.id = bi.material_id
                  WHERE bi.project_id = $1 AND bi.category = 'Material' AND COALESCE(bi.qty_plan, 0) > 0", [$projectId]), 'check_inventory:rab');
@@ -235,7 +249,10 @@ try {
                 $claimed   = $usedStock[$mid] ?? 0.0;
                 $free      = max($onHand - $claimed, 0.0);        // stok belum diklaim baris lain
                 $covered   = min($qty, $free);
-                $toBuy     = max($qty - $free, 0.0);
+                $src       = strtoupper(trim((string)($bi['material_source'] ?: 'COMPANY')));
+                // [CLIENT-SUPPLIED F-4.1] titipan klien tidak dibeli -> qty_to_buy wajib 0 (skip,
+                // bukan GREATEST); stok gudang tetap boleh dipakai untuk cover kebutuhan proyek.
+                $toBuy     = ($src === 'CLIENT_SUPPLIED') ? 0.0 : max($qty - $free, 0.0);
                 $usedStock[$mid] = $claimed + $covered;
 
                 $msgs = [];
@@ -247,10 +264,13 @@ try {
                 if ($toBuy > 0.0001) {
                     // bukan error: stok tidak mencukupi -> sisa kebutuhan harus dibeli
                     $msgs[] = 'stok tersedia ' . $free . ' ' . $bi['unit'] . ', perlu beli ' . $toBuy . ' ' . $bi['unit'];
+                } elseif ($src === 'CLIENT_SUPPLIED') {
+                    $msgs[] = 'material titipan klien (CLIENT_SUPPLIED): tidak dibeli, qty_to_buy = 0';
                 }
                 $data[] = [
                     'line' => $no, 'rab_material_id' => $bid, 'material_id' => $mid,
                     'material_name' => $bi['material_name'] ?? '', 'unit' => $bi['unit'],
+                    'material_source' => $src,
                     'qty' => $qty, 'qty_remaining' => $remaining, 'quota_remaining' => max($quota, 0.0),
                     'qty_on_hand' => $onHand, 'qty_covered' => $covered, 'qty_to_buy' => $toBuy,
                     'ok' => !$err,

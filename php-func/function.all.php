@@ -729,15 +729,20 @@ function ReverseStockMovementByReference($db, $referenceType, $referenceId) {
 Fungsi   : GetStockBalance()
 Tujuan   : Ambil saldo stok saat ini untuk 1 item (+grade opsional) di
            1 gudang tertentu, langsung dari view_stock_balance.
+
+           [CLIENT-SUPPLIED 2026-11-15 F-4.1] view_stock_balance TIDAK diubah (view tanpa
+           material_source dipakai modul lain, mengganti definition-nya berisiko untuk
+           instalasi lama). Saldo dihitung langsung dari stock_movements di sini, sehingga
+           aman dan tidak bergantung pada kolom view.
 */
 function GetStockBalance($db, $itemId, $gradeId, $warehouseId) {
-    if ($gradeId) {
-        $stmt = $db->prepare("SELECT balance_qty FROM view_stock_balance WHERE item_id = :item_id AND grade_id = :grade_id AND warehouse_id = :warehouse_id");
-        $stmt->execute(['item_id' => $itemId, 'grade_id' => $gradeId, 'warehouse_id' => $warehouseId]);
-    } else {
-        $stmt = $db->prepare("SELECT balance_qty FROM view_stock_balance WHERE item_id = :item_id AND grade_id IS NULL AND warehouse_id = :warehouse_id");
-        $stmt->execute(['item_id' => $itemId, 'warehouse_id' => $warehouseId]);
-    }
+    $sql = "SELECT COALESCE(SUM(CASE WHEN movement_type = 'IN' THEN qty ELSE -qty END), 0) AS balance_qty
+              FROM stock_movements
+             WHERE item_id = :item_id AND warehouse_id = :warehouse_id " . ($gradeId ? "AND grade_id = :grade_id" : "AND grade_id IS NULL");
+    $stmt = $db->prepare($sql);
+    $params = ['item_id' => $itemId, 'warehouse_id' => $warehouseId];
+    if ($gradeId) { $params['grade_id'] = $gradeId; }
+    $stmt->execute($params);
     $balance = $stmt->fetchColumn();
     return $balance !== false ? round(floatval($balance), 4) : 0.0;
 }

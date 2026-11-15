@@ -190,6 +190,19 @@ Ext.onReady(function () {
             '&#9888; RAB proyek ini memuat material ganda (' + Ext.util.Format.htmlEncode(dupNames.join(', ')) +
             '). Rapikan di halaman RAB / data sebelum membuat PO agar kuota tidak terhitung dobel.</div>' : '';
 
+        // [CLIENT-SUPPLIED F-4.1] banner bila ada material titipan klien: tidak dibeli via PO (qty_to_buy 0, Rp 0)
+        var csNotice = '';
+        var csNames = [];
+        Ext.each(currentPlanningRows || [], function (r) {
+            if (String(r.material_source || '').toUpperCase() === 'CLIENT_SUPPLIED') { csNames.push(r.material_name); }
+        });
+        if (csNames.length) {
+            csNotice = '<div style="margin:0 0 10px 0; padding:8px 12px; background:#12283b; border:1px solid #1f6f9f; border-radius:4px; color:#7fc4e0; font-size:12px;">' +
+                       '&#9432; ' + csNames.length + ' material merupakan <b>Titipan Klien</b> (' +
+                       Ext.util.Format.htmlEncode(csNames.slice(0, 3).join(', ')) + (csNames.length > 3 ? ', …' : '') +
+                       '): tidak dibeli via PO (qty_to_buy = 0, Rp 0), jadi tidak dapat dicentang di sini.</div>';
+        }
+
         // [INVENTORY] ringkasan ketersediaan stok untuk header panel
         var stockNotice = '';
         var stockShort = [];
@@ -207,13 +220,14 @@ Ext.onReady(function () {
 
         var html = '<h3 class="detail-title">Sisa Perlu Dibeli: ' +
                    Ext.util.Format.htmlEncode(projectName || '') + '</h3>' +
-                   '<hr class="detail-hr" />' + dupNotice + stockNotice +
+                   '<hr class="detail-hr" />' + dupNotice + stockNotice + csNotice +
                    '<div id="planDtlScroll">' +
                    '<table id="planTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="0">' +
                    '<thead>' +
                    '<tr class="header-row">' +
                    '<th width="30" align="center"></th>' +
                    '<th align="left">Material</th>' +
+                   '<th align="center" title="Sumber material: Perusahaan (dibeli via PO) / Titipan Klien (Rp 0, tidak dibeli via PO)">Sumber</th>' +
                    '<th align="right">Budget RAB</th>' +
                    '<th align="right">Sudah di-PO</th>' +
                    '<th align="right">Sisa Perlu Beli</th>' +
@@ -227,7 +241,7 @@ Ext.onReady(function () {
                    '<tbody>';
 
         if (!currentPlanningRows || currentPlanningRows.length === 0) {
-            html += '<tr><td colspan="10" style="padding:15px; text-align:center; color:#557982;">Belum ada RAB material untuk proyek ini.</td></tr>';
+            html += '<tr><td colspan="11" style="padding:15px; text-align:center; color:#557982;">Belum ada RAB material untuk proyek ini.</td></tr>';
         } else {
             Ext.each(currentPlanningRows, function (r) {
                 var remaining = parseFloat(r.qty_remaining) || 0;
@@ -236,18 +250,24 @@ Ext.onReady(function () {
                 var isDone    = remaining <= 0.0001;
                 // [INVENTORY] material stoknya sudah mencukupi -> tidak perlu dibeli, checkbox di-nonaktifkan
                 var noNeed    = !isDone && remaining > 0.0001 && toBuy <= 0.0001;
+                // [CLIENT-SUPPLIED F-4.1] titipan klien: tidak dibeli via PO -> checkbox & input qty di-nonaktifkan
+                var isClient  = String(r.material_source || '').toUpperCase() === 'CLIENT_SUPPLIED';
+                var srcBadge  = isClient
+                    ? '<span style="color:#f5c542;font-weight:bold;" title="Material titipan klien: tidak dibeli via PO (qty_to_buy = 0, Rp 0)">&#9679; Titipan Klien</span>'
+                    : '<span style="color:#668894;">Perusahaan</span>';
 
-                var chkHtml = (isDone || noNeed) ? '' : '<input type="checkbox" class="planChk" data-rab-id="' + r.rab_material_id + '" />';
+                var chkHtml = (isDone || noNeed || isClient) ? '' : '<input type="checkbox" class="planChk" data-rab-id="' + r.rab_material_id + '" />';
 
                 html += '<tr class="data-row" data-rab-id="' + r.rab_material_id + '">' +
                         '<td align="center">' + chkHtml + '</td>' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.material_name || '-') + ' <span style="color:#668894;">(' + Ext.util.Format.htmlEncode(r.material_code || '') + ')</span></td>' +
+                        '<td align="center">' + srcBadge + '</td>' +
                         '<td align="right">' + fmtQty(r.budget_qty) + ' ' + Ext.util.Format.htmlEncode(r.unit || '') + '</td>' +
                         '<td align="right">' + fmtQty(r.qty_ordered) + '</td>' +
                         '<td align="right" style="font-weight:bold; color:' + (isDone ? '#2e9e4f' : '#e6a817') + ';">' + (isDone ? 'Lengkap' : fmtQty(remaining)) + '</td>' +
                         '<td align="right" style="color:' + (onHand > 0.0001 ? '#7fe0a0' : '#888888') + ';">' + fmtQty(onHand) + '</td>' +
                         '<td align="right" style="font-weight:bold; color:' + (noNeed ? '#2e9e4f' : '#e6a817') + ';">' + fmtQty(toBuy) + '</td>' +
-                        '<td align="right">' + (isDone || noNeed ? '<span style="color:#2e9e4f;">' + (isDone ? 'Lengkap' : 'Cukup stok') + '</span>' :
+                        '<td align="right">' + (isDone || noNeed || isClient ? '<span style="color:' + (isClient ? '#f5c542' : '#2e9e4f') + ';">' + (isDone ? 'Lengkap' : (isClient ? 'Titipan Klien' : 'Cukup stok')) + '</span>' :
                             '<input type="number" class="planQty" data-rab-id="' + r.rab_material_id + '" value="' + toBuy + '" min="0.0001" max="' + remaining + '" step="any" style="width:100px; text-align:right; background:#0d2133; color:#fff; border:1px solid #1a4f5c; border-radius:3px; padding:3px;" />'
                         ) + '</td>' +
                         '<td align="right">' + fmtAmt(r.unit_price) + '</td>' +

@@ -29,6 +29,10 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  *    dan nilai match invoice benar. Default unit_cost_this_grn = unit_price / (1 + tarif); unit_price_dpp, ppn_mode, ppn_rate ikut dikirim.
  *  - InsertGrnItems menolak unit_cost yang sama dengan harga PO inklusif PPN (klien lama / input keliru).
  *  - Mode EXCL / NONE: harga PO sudah DPP, tidak ada perubahan.
+ *
+ * [CLIENT-SUPPLIED 2026-11-15 F-4.1] InsertGrnItems(): bila po_items terikat ke budget_items dengan
+ * material_source='CLIENT_SUPPLIED' (titipan klien), unit_cost DIPAKSA 0 server-side (harga beli Rp 0),
+ * meski user mengirim unit_cost > 0. Qty tetap diterima & stok fisik tetap masuk (lihat whrcvCRD.php).
  * ============================================================
  */
 
@@ -500,8 +504,10 @@ function InsertGrnItems($grn_hdr_id, $arrItems, $exclude_grn_hdr_id, $rate = 1.0
         $qty = (float)($it['qty_received'] ?? 0);
         if ($qty <= 0) continue;
 
-        $poResult = pg_query_params("SELECT pi.qty AS po_qty, pi.unit_price, po.ppn_mode, po.ppn_rate
+        $poResult = pg_query_params("SELECT pi.qty AS po_qty, pi.unit_price, po.ppn_mode, po.ppn_rate,
+                                            COALESCE(bi.material_source, 'COMPANY') AS material_source
                                        FROM po_items pi JOIN purchase_orders po ON po.id = pi.po_id
+                                            LEFT JOIN public.budget_items bi ON bi.id = pi.budget_item_id
                                       WHERE pi.id = $1", [$it['po_dtl_id']]);        // [CHG][PPN] + harga & mode PPN PO
         PgOrFail($poResult, 'Gagal cek qty PO');
         $poRow = pg_fetch_assoc($poResult);
@@ -517,6 +523,11 @@ function InsertGrnItems($grn_hdr_id, $arrItems, $exclude_grn_hdr_id, $rate = 1.0
             }
         }
 
+        // [CLIENT-SUPPLIED 2026-11-15 F-4.1] barang titipan klien: biaya per unit DIPAKSA 0 server-side
+        // (harga beli Rp 0), meski user mengirim unit_cost > 0. Nilai yang masuk ledger/jurnal tetap 0.
+        $isClientSupplied = strtoupper(trim((string)$poRow['material_source'])) === 'CLIENT_SUPPLIED';
+        $unitCost         = $isClientSupplied ? 0.0 : (float)($it['unit_cost'] ?? 0);
+
         $tol = GetPoDtlTolerance($it['po_dtl_id'], (float)$poRow['po_qty'], $exclude_grn_hdr_id);
         if ($qty > $tol['qty_receivable_max'] + 0.0001) {
             throw new Exception("Qty GRN untuk {$it['item_name']} ({$qty}) melebihi batas toleransi +10% PO (sisa maksimal: " . round($tol['qty_receivable_max'], 4) . ")");
@@ -527,7 +538,7 @@ function InsertGrnItems($grn_hdr_id, $arrItems, $exclude_grn_hdr_id, $rate = 1.0
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
             [
                 $grn_hdr_id, $it['po_dtl_id'], $it['item_id'], $it['item_name'],
-                $qty, $it['unit_cost'], round((float)$it['unit_cost'] * $rate, 4), $it['remark'] ?? null
+                $qty, $unitCost, round($unitCost * $rate, 4), $it['remark'] ?? null
             ]
         );
         PgOrFail($dtlResult, 'Gagal insert grn_dtl');

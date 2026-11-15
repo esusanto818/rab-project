@@ -13,6 +13,10 @@ require_once __DIR__ . '/../php-func/user.valid.php';
 * - Budget control terintegrasi (satu plafon Nilai Kontrak)
 * - Multi-currency support
 * - Plafon & cadangan (addendum)
+* - [PATCH 2026-11-15 F-4.1] Sumber material per baris RAB: COMPANY (dibeli perusahaan, default) /
+*   CLIENT_SUPPLIED (titipan klien). Disimpan di budget_items.material_source (migrasi
+*   sql/2026-11-15_patch_gelombang2_client_supplied.sql). CLIENT_SUPPLIED -> qty_to_buy 0 di
+*   planning/PO, harga beli Rp 0 di GRN/WH Rcv, jurnal rupiah di-skip, fisik tetap tercatat.
 * 
 * File related: rab.js, m.expenses.js
 * Migration: sql/expense_master.sql
@@ -26,6 +30,21 @@ const RAB_REQUIRE_CONTRACT = true;
 const RAB_EPS_VAL = 0.01;
 const RAB_EPS_QTY = 0.00005;
 const RAB_CATEGORIES = ['Material', 'Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];
+
+// [PATCH 2026-11-15 F-4.1] Sumber material per baris RAB (budget_items.material_source, migrasi
+// sql/2026-11-15_patch_gelombang2_client_supplied.sql): COMPANY = dibeli perusahaan (default, perilaku
+// lama); CLIENT_SUPPLIED = titipan klien -> qty_to_buy wajib 0 di planning/PO, harga beli 0, fisik
+// tetap tercatat di stock_movements tanpa jurnal rupiah. Hanya berlaku untuk kategori 'Material'.
+const RAB_MATERIAL_SOURCES = ['COMPANY', 'CLIENT_SUPPLIED'];
+
+function rabNormSource($src) {
+    $s = strtoupper(trim((string)$src));
+    if ($s === '' || $s === null) { return 'COMPANY'; }
+    if (!in_array($s, RAB_MATERIAL_SOURCES, true)) {
+        throw new RabBusinessError('Sumber material tidak valid: "' . $s . '". Yang diterima: ' . implode(', ', RAB_MATERIAL_SOURCES) . '.');
+    }
+    return $s;
+}
 
 // [PATCH 2026-11-15 F-5.3] Normalisasi kategori RAB CASE-INSENSITIVE dengan validasi KETAT:
 // category kosong di luar daftar -> RabBusinessError (dulu demote diam-diam ke 'Lain-lain', lalu baris
@@ -181,6 +200,17 @@ try {
          * ============================================================ */
         case 'list_categories':
             sendJsonResponse(true, RAB_CATEGORIES);
+            break;
+
+        /* ============================================================
+         * LIST_MATERIAL_SOURCES - [PATCH 2026-11-15 F-4.1]
+         * Daftar nilai budget_items.material_source untuk dropdown Sumber di form RAB.
+         * ============================================================ */
+        case 'list_material_sources':
+            sendJsonResponse(true, [
+                ['id' => 'COMPANY', 'name' => 'Perusahaan (dibeli)'],
+                ['id' => 'CLIENT_SUPPLIED', 'name' => 'Titipan Klien (Rp 0)'],
+            ]);
             break;
 
         /* ============================================================
@@ -368,6 +398,7 @@ try {
             // [FIX] Hapus LEFT JOIN expense_usage - tidak ada tabel project_expenses
             $sql = RAB_USAGE_CTE . "
             SELECT bi.id, bi.project_id, bi.material_id, bi.expense_id, bi.category, bi.item_name,
+            bi.material_source,
             m.material_code, m.material_name,
             COALESCE(bi.qty_plan, 0) AS budget_qty,
             COALESCE(bi.unit_price_plan, 0) AS unit_price,
@@ -415,6 +446,8 @@ try {
                 $item['is_addendum'] = ($item['is_addendum'] === true || $item['is_addendum'] === 't' || $item['is_addendum'] === '1');
                 // [PATCH 2026-11-15 F-5.3] tampilkan kategori apa adanya (case-insensitive), tanpa demote diam-diam
             $item['category'] = rabNormCategory($item['category'] ?? '');
+                // [PATCH 2026-11-15 F-4.1] flag sumber material (default COMPANY bila kolom belum terisi)
+                $item['material_source'] = rabNormSource($item['material_source'] ?? '');
                 if (empty($item['item_name'])) {
                     $item['item_name'] = $item['material_name'] ?: $item['category'];
                 }
@@ -503,6 +536,8 @@ try {
                     $eid = (int)($item['expense_id'] ?? 0);
                     $q = (float)($item['budget_qty'] ?? 0);
                     $pr = (float)($item['unit_price'] ?? 0);
+                    // [PATCH 2026-11-15 F-4.1] normalisasi & validasi sumber material (hanya untuk Material)
+                    $src = rabNormSource($cat === 'Material' ? ($item['material_source'] ?? '') : '');
                     if ($cat === 'Material' && ($mid <= 0 || $q <= 0)) continue;
                     if ($cat !== 'Material' && ($eid <= 0 || $q <= 0)) continue;
                     $val = round($q * $pr, 2);
@@ -550,6 +585,8 @@ try {
                     $mid = (int)($item['material_id'] ?? 0);
                     $eid = (int)($item['expense_id'] ?? 0);
                     $q = (float)($item['budget_qty'] ?? 0);
+                    // [PATCH 2026-11-15 F-4.1] sumber material (validasi ulang, sama dg loop di atas)
+                    $src = rabNormSource($cat === 'Material' ? ($item['material_source'] ?? '') : '');
                     if ($cat === 'Material' && $mid <= 0) continue;
                     if ($cat !== 'Material' && ($eid <= 0 || $q <= 0)) continue;
                     $reason = trim((string)($item['addendum_reason'] ?? ''));
@@ -575,7 +612,9 @@ try {
                     $unitPrice = (float)($item['unit_price'] ?? 0);
                     $tolerance = (float)($item['tolerance_pct'] ?? 0);
                     $unitName = trim((string)($item['unit'] ?? 'Unit'));
-                    
+                    // [PATCH 2026-11-15 F-4.1] sumber material (validasi ulang, sama dg loop di atas)
+                    $src = rabNormSource($cat === 'Material' ? ($item['material_source'] ?? '') : '');
+
                     if ($cat === 'Material' && $materialId <= 0) continue;
                     if ($cat !== 'Material' && ($expenseId <= 0 || $budgetQty <= 0)) continue;
                     
@@ -584,14 +623,17 @@ try {
                     
                     if ($cat === 'Material') {
                         // UPSERT untuk Material
+                        // [PATCH 2026-11-15 F-4.1] material_source ikut tersimpan (COMPANY / CLIENT_SUPPLIED)
                         $stmtUpsert = $db->prepare("
-                            INSERT INTO public.budget_items (project_id, material_id, category, item_name, unit, qty_plan, unit_price_plan, tolerance_pct, created_at, is_addendum, addendum_reason, addendum_by, addendum_at)
+                            INSERT INTO public.budget_items (project_id, material_id, category, item_name, unit, qty_plan, unit_price_plan, tolerance_pct, created_at, is_addendum, addendum_reason, addendum_by, addendum_at, material_source)
                             SELECT :project_id, :material_id, 'Material', m.material_name, COALESCE(m.unit, :unit_name), :budget_qty, :unit_price, :tolerance_pct, NOW(),
-                            (CAST(:is_add AS integer) = 1), NULLIF(:reason, ''), CAST(NULLIF(:by, '') AS integer), CASE WHEN CAST(:is_add AS integer) = 1 THEN NOW() END
+                            (CAST(:is_add AS integer) = 1), NULLIF(:reason, ''), CAST(NULLIF(:by, '') AS integer), CASE WHEN CAST(:is_add AS integer) = 1 THEN NOW() END,
+                            :material_source
                             FROM public.materials m WHERE m.id = :material_id
                             ON CONFLICT (project_id, material_id) WHERE category = 'Material' AND material_id IS NOT NULL
                             DO UPDATE SET qty_plan = EXCLUDED.qty_plan, unit_price_plan = EXCLUDED.unit_price_plan, tolerance_pct = EXCLUDED.tolerance_pct,
                             item_name = EXCLUDED.item_name, unit = EXCLUDED.unit,
+                            material_source = EXCLUDED.material_source,
                             is_addendum = (budget_items.is_addendum OR EXCLUDED.is_addendum),
                             addendum_reason = CASE WHEN EXCLUDED.is_addendum THEN EXCLUDED.addendum_reason ELSE budget_items.addendum_reason END,
                             addendum_by = CASE WHEN EXCLUDED.is_addendum THEN EXCLUDED.addendum_by ELSE budget_items.addendum_by END,
@@ -601,7 +643,8 @@ try {
                             ':project_id' => $projectId, ':material_id' => $materialId, ':unit_name' => $unitName,
                             ':budget_qty' => $budgetQty, ':unit_price' => $unitPrice, ':tolerance_pct' => $tolerance,
                             ':is_add' => $addInfo[$key]['flag'] ?? 0, ':reason' => $addInfo[$key]['reason'] ?? '',
-                            ':by' => $userId > 0 ? (string)$userId : ''
+                            ':by' => $userId > 0 ? (string)$userId : '',
+                            ':material_source' => $src
                         ]);
                     } else {
                         // Non-Material: ambil nama dari expense_master
@@ -618,11 +661,12 @@ try {
                         $existingId = $stChk->fetchColumn();
                         
                         if ($existingId) {
-                            $db->prepare("UPDATE budget_items SET item_name = :name, unit = :unit, qty_plan = :qty, unit_price_plan = :price, tolerance_pct = :tol, updated_at = NOW() WHERE id = :id")
+                            // [PATCH 2026-11-15 F-4.1] material_source tetap COMPANY untuk non-Material (kolom NOT NULL)
+                            $db->prepare("UPDATE budget_items SET item_name = :name, unit = :unit, qty_plan = :qty, unit_price_plan = :price, tolerance_pct = :tol, material_source = 'COMPANY', updated_at = NOW() WHERE id = :id")
                                 ->execute([':name' => $finalItemName, ':unit' => $finalUnit, ':qty' => $budgetQty, ':price' => $unitPrice, ':tol' => $tolerance, ':id' => $existingId]);
                         } else {
-                            $db->prepare("INSERT INTO budget_items (project_id, material_id, expense_id, category, item_name, unit, qty_plan, unit_price_plan, tolerance_pct, created_at)
-                                VALUES (:p, NULL, :eid, :cat, :name, :unit, :qty, :price, :tol, NOW())")
+                            $db->prepare("INSERT INTO budget_items (project_id, material_id, expense_id, category, item_name, unit, qty_plan, unit_price_plan, tolerance_pct, created_at, material_source)
+                                VALUES (:p, NULL, :eid, :cat, :name, :unit, :qty, :price, :tol, NOW(), 'COMPANY')")
                                 ->execute([':p' => $projectId, ':eid' => $expenseId, ':cat' => $cat, ':name' => $finalItemName, ':unit' => $finalUnit, ':qty' => $budgetQty, ':price' => $unitPrice, ':tol' => $tolerance]);
                         }
                     }

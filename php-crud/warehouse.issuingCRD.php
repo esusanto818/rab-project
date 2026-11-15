@@ -11,6 +11,11 @@ require_once __DIR__ . '/../php-func/user.valid.php';
  *   4. [UPGRADE PROGRESS-GATED BUDGET] Total kumulatif actual cost tidak boleh melebihi plafon
  *      anggaran berjalan berdasarkan progress fisik proyek di lapangan (projects.progress) + 5% toleransi.
  *   Nilai issue = FIFO dari layer RCV (stock_movements IN).
+ *
+ * [CLIENT-SUPPLIED 2026-11-15 F-4.1] FIFO mengeluarkan layer termurah dulu, sehingga layer Rp 0
+ * titipan klien keluar lebih dulu dan HPP proyek = Rp 0 secara otomatis (tanpa perubahan alokasi).
+ * Guard eksplisit di IssSave(): bila issueValue == 0 (material CLIENT_SUPPLIED), jurnal ISSUE_PROJECT
+ * DI-SKIP (bukan error) agar WIP tidak tercemar jurnal Rp 0.
  */
 ob_start();
 ini_set('display_errors', '0');
@@ -317,14 +322,20 @@ function IssSave() {
                 array($hdrId, $mid, $ly['qty'], round($ly['unit_cost'], 2), $over ? 't' : 'f', $reason, $ln['notes']));
             WhPostMovement($date, $mid, $whId, 'OUT', $ly['qty'], $ly['unit_cost'],
                            ISSUE_REF_TYPE, $hdrId, $refNo, 'Issue ke proyek', $userId);
-            $issueValue += $ly['qty'] * $ly['unit_cost'];   
+            $issueValue += $ly['qty'] * $ly['unit_cost'];
         }
     }
-    
-    JrnPost('ISSUE_PROJECT', JRN_REF_ISSUE, $hdrId, $date, $issueValue,
-            'Issue material ke proyek - ' . $refNo, $userId);
+
+    // [CLIENT-SUPPLIED 2026-11-15 F-4.1] jurnal ISSUE_PROJECT hanya untuk nilai > 0.
+    // Titipan klien keluar dari FIFO layer Rp 0 -> issueValue = 0 -> jurnal DI-SKIP (bukan error),
+    // sehingga WIP tidak tercemar jurnal Rp 0. (JrnPost sudah diam-diam null bila amount <= 0;
+    // guard ini membuat perilaku itu eksplisit + terukur.)
+    if ($issueValue > 0) {
+        JrnPost('ISSUE_PROJECT', JRN_REF_ISSUE, $hdrId, $date, $issueValue,
+                'Issue material ke proyek - ' . $refNo, $userId);
+    }
     WhQ('COMMIT');
-    WhOk('Issuing berhasil diposting. No: ' . $refNo, array('id' => $hdrId, 'ref_no' => $refNo));
+    WhOk('Issuing berhasil diposting. No: ' . $refNo, array('id' => $hdrId, 'ref_no' => $refNo, 'issue_value' => round($issueValue, 2)));
 }
 
 function IssReverse() {

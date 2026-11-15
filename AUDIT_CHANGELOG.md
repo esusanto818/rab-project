@@ -127,3 +127,12 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
 - `php tests/run_e2e_audit_sync.php` → **PASS=9 FAIL=0**
 - `php tests/run_e2e_release.php` → PASS=55 FAIL=0 · `run_e2e_inventory_check.php` → PASS=10 FAIL=0 · `run_e2e_po_prerelease.php` → PASS=10 FAIL=0
 - `php -l` bersih pada semua file PHP yang diubah.
+
+## [2026-11-16] Patch Gelombang 2: Material Titipan Klien (`CLIENT_SUPPLIED` Rp 0)
+- **Status Git:** Committed
+- **Ringkasan Perubahan:**
+  - `sql/2026-11-15_patch_gelombang2_client_supplied.sql`: Penambahan kolom `material_source` (`COMPANY` | `CLIENT_SUPPLIED`) pada `public.budget_items`.
+  - `php-crud/rabCRD.php` & `js/rab.js`: Dukungan simpan dan tampil sumber material pada RAB.
+  - `php-crud/purchase.planningCRD.php`, `php-crud/poCRD.php`, `php-func/function.all.php`, `js/purchase.planning.js`, & `js/po.js`: Pengecualian otomatis `qty_to_buy = 0` dan pemblokiran PO untuk material titipan klien.
+  - `php-crud/grnCRD.php`, `php-crud/whrcvCRD.php`, & `php-crud/warehouse.issuingCRD.php`: Penerimaan (`IN`) dan pengeluaran (`OUT`) fisik material titipan klien dipaksa `unit_cost = 0` tanpa posting jurnal rupiah.
+  - `tests/run_e2e_client_supplied.php` & `docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md`: Pengujian E2E lengkap (`FAIL=0`) serta panduan operasional.

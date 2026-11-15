@@ -205,7 +205,20 @@ dtlDiv.style.overflowY = 'auto';
                 html += '<tr class="data-row"><td colspan="4" align="right" style="color:#9fc3d1;">PPN setara IDR (kurs PO ' + fmtAmt(h.exch_rate) + ')</td><td align="right" style="color:#9fc3d1;">' + fmtAmt(h.ppn_idr) + '</td>' + extraTd + '</tr>';
             }
         }
-        html += '</tbody></table>';
+        html += '</tbody></table>' + csBanner;
+
+        // [CLIENT-SUPPLIED F-4.1] banner bila PO memuat baris titipan klien: unit_cost wajib Rp 0
+        // server-side; tidak ada pembelian, hanya penerimaan fisik & mutasi stok Rp 0.
+        var csBanner = '';
+        var csItems = [];
+        Ext.each(items, function (i) {
+            if (String(i.material_source || '').toUpperCase() === 'CLIENT_SUPPLIED') { csItems.push(i.description || i.item_name || ''); }
+        });
+        if (csItems.length) {
+            csBanner = '<div style="margin-top:10px; padding:8px 12px; background:#12283b; border:1px solid #1f6f9f; border-radius:4px; color:#7fc4e0; font-size:12px;">' +
+                       '&#9432; ' + csItems.length + ' item <b>Titipan Klien</b> (' + enc(csItems.slice(0, 3).join(', ')) + (csItems.length > 3 ? ', …' : '') +
+                       '): harga beli Rp 0, tidak ada pembelian; penerimaan fisik & mutasi stok Rp 0 tanpa jurnal.</div>';
+        }
 
         // [PRERELEASE] Banner validasi real-time sebelum release (Diajukan/Disetujui):
         // stok & kuota RAB dibaca ulang server saat release; tampilkan kebutuhan bersih
@@ -310,6 +323,7 @@ dtlDiv.style.overflowY = 'auto';
             { name: 'value_plan', type: 'float' }, { name: 'value_limit', type: 'float' },
             { name: 'value_committed', type: 'float' }, { name: 'value_remaining', type: 'float' },
             { name: 'qty_on_hand', type: 'float' }, { name: 'qty_to_buy', type: 'float' },  // [INVENTORY] stok tersedia & kebutuhan bersih
+            { name: 'material_source' },                                                    // [CLIENT-SUPPLIED] COMPANY / CLIENT_SUPPLIED
             { name: 'label', convert: function (v, r) {
                 return r.material_name + ' (' + r.material_code + ') - sisa RAB ' + round3(r.qty_remaining) + ' ' + r.unit;
             } }
@@ -321,7 +335,8 @@ dtlDiv.style.overflowY = 'auto';
         { name: 'unit' }, { name: 'qty', type: 'float' }, { name: 'unit_price', type: 'float' },
         { name: 'subtotal', type: 'float' }, { name: 'amount_budget', type: 'float' },
         { name: 'quota', type: 'float' }, { name: 'value_remaining', type: 'float' },
-        { name: 'rab_price', type: 'float' }, { name: 'price_manual' }, { name: 'flag' }
+        { name: 'rab_price', type: 'float' }, { name: 'price_manual' }, { name: 'flag' },
+        { name: 'material_source' }                                       // [CLIENT-SUPPLIED] COMPANY / CLIENT_SUPPLIED
     ];
     var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, itemField) });
 
@@ -451,6 +466,16 @@ dtlDiv.style.overflowY = 'auto';
             {
                 header: 'Perlu<br/>Beli', dataIndex: 'qty_to_buy', width: 70, align: 'right',
                 renderer: function (v, meta, record) { return record.get('budget_item_id') ? fmtQty(v) : ''; }
+            },
+            {
+                // [CLIENT-SUPPLIED F-4.1] penanda sumber material: Titipan Klien -> tidak dibeli via PO (qty_to_buy 0, Rp 0)
+                header: 'Sumber', dataIndex: 'material_source', width: 95, align: 'center',
+                renderer: function (v, meta, record) {
+                    if (!record.get('budget_item_id')) { return ''; }
+                    var cs = String(v || '').toUpperCase() === 'CLIENT_SUPPLIED';
+                    return cs ? '<span style="color:#f5c542;font-weight:bold;" title="Material titipan klien: tidak dibeli via PO (qty_to_buy = 0, Rp 0)">&#9679; Titipan Klien</span>'
+                              : 'Perusahaan';
+                }
             },
             {
                 header: 'Sisa Nilai RAB', dataIndex: 'value_remaining', width: 110, align: 'right',

@@ -49,3 +49,6 @@ Setiap sesi audit otomatis atau pengujian regresi **WAJIB** menggabungkan audit 
 3. **Audit Kesiapan Data & Master Rule (`Data Readiness`):**
    - Periksa ketersediaan master `fiscal_config` (termasuk `PRJ_DEP_APPLY`), status `accounting_periods`, distribusi `m_user_access_menu`, dan data pra-migrasi yang sudah berjurnal agar tidak terjadi *double-posting*.
    - Setiap temuan baru wajib dibuatkan kasus uji otomatis di `tests/` dan dijalankan terhadap database uji `proyekGMN_test`.
+
+## 5. STANDAR MIGRASI SQL REVERSIBEL
+- Setiap file migrasi baru di folder `sql/YYYY-MM-DD.nama_fitur.sql` WAJIB menyertakan blok komentar `-- ROLLBACK / DOWN MIGRATION` di bagian paling bawah file (berisi perintah `DROP` / `ALTER` kebalikan yang aman) untuk mempercepat pemulihan saat pengujian.

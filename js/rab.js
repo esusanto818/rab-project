@@ -173,6 +173,7 @@ Ext.onReady(function () {
     var rabItemField = [
         { name: 'id' }, { name: 'material_id' }, { name: 'expense_id' }, { name: 'material_code' }, { name: 'material_name' },
         { name: 'unit' }, { name: 'category' }, { name: 'item_name' },
+        { name: 'material_source' },   // [CLIENT-SUPPLIED F-4.1] COMPANY (default) / CLIENT_SUPPLIED
         { name: 'budget_qty', type: 'float' }, { name: 'unit_price', type: 'float' },
         { name: 'master_min', type: 'float' }, { name: 'master_max', type: 'float' },      // [AI-BOQ] rentang harga master (mata uang dasar)
         { name: 'tolerance_pct', type: 'float' },
@@ -199,6 +200,22 @@ Ext.onReady(function () {
         listeners: { load: function () { if (itemGrid) itemGrid.getView().refresh(); } }
     });
     expenseDs.load();
+
+    // [CLIENT-SUPPLIED F-4.1] daftar sumber material untuk dropdown "Sumber" di grid editor RAB.
+    var srcField = [
+        { name: 'id' }, { name: 'name' }
+    ];
+    var srcDs = new Ext.data.Store({
+        url: '../dev/php-crud/rabCRD.php',
+        baseParams: { task: 'list_material_sources' },
+        reader: new Ext.data.JsonReader({ root: 'data', idProperty: 'id' }, srcField)
+    });
+    srcDs.load();
+    var srcLabel = function (v) {
+        var out = 'Perusahaan';
+        srcDs.each(function (s) { if (s.get('id') === v) out = s.get('name'); });
+        return out;
+    };
     
     var currencyDs = new Ext.data.Store({
         url: '../dev/php-crud/rabCRD.php', baseParams: { task: 'list_currencies' },
@@ -309,6 +326,28 @@ Ext.onReady(function () {
                     if (rec) return Ext.util.Format.htmlEncode(rec.get('material_name'));
                     if (record && record.get('material_name')) return '<span style="color:#e6a817;">' + Ext.util.Format.htmlEncode(record.get('material_name')) + '</span>';
                     return '<i>-- pilih material --</i>';
+                }
+            },
+            // [CLIENT-SUPPLIED F-4.1] kolom Sumber material (hanya berlaku untuk kategori Material).
+            // COMPANY = dibeli perusahaan (default); CLIENT_SUPPLIED = titipan klien -> qty_to_buy 0,
+            // harga beli Rp 0, fisik tetap tercatat di gudang tanpa jurnal rupiah.
+            {
+                header: 'Sumber', dataIndex: 'material_source', width: 150, align: 'center',
+                editor: new myComboField({
+                    store: srcDs, displayField: 'name', valueField: 'id', mode: 'local', triggerAction: 'all', forceSelection: true,
+                    listeners: {
+                        select: function (combo, record) {
+                            var row = itemGrid.getSelectionModel().getSelected();
+                            if (row) { row.set('material_source', record.get('id')); updateRabTotalLabel(); }
+                        }
+                    }
+                }),
+                renderer: function (v, meta, record) {
+                    if (record.get('category') !== 'Material') return '<span style="color:#668894;">-</span>';
+                    var lbl = srcLabel(v || 'COMPANY');
+                    return v === 'CLIENT_SUPPLIED'
+                        ? '<span style="color:#2e9e4f;font-weight:bold;">' + Ext.util.Format.htmlEncode(lbl) + '</span>'
+                        : Ext.util.Format.htmlEncode(lbl);
                 }
             },
             { header: 'Satuan', dataIndex: 'unit', width: 60, align: 'center', editor: new myTextField() },
@@ -508,7 +547,7 @@ Ext.onReady(function () {
     
     function addBlankRow() {
         var RabRecord = rabItemDs.recordType || Ext.data.Record.create(rabItemField);
-        rabItemDs.add(new RabRecord({ id: 0, material_id: null, expense_id: null, material_code: '', material_name: '', unit: 'Unit', category: currentCategory, item_name: '', budget_qty: 0, unit_price: 0, tolerance_pct: 0, total_qty_out: 0, remaining_qty: 0, usage_pct: 0, status: 'ON TRACK', master_min: 0, master_max: 0, orig_qty: 0, orig_price: 0, is_addendum: false, addendum_reason: '' }));
+        rabItemDs.add(new RabRecord({ id: 0, material_id: null, expense_id: null, material_code: '', material_name: '', unit: 'Unit', category: currentCategory, item_name: '', material_source: 'COMPANY', budget_qty: 0, unit_price: 0, tolerance_pct: 0, total_qty_out: 0, remaining_qty: 0, usage_pct: 0, status: 'ON TRACK', master_min: 0, master_max: 0, orig_qty: 0, orig_price: 0, is_addendum: false, addendum_reason: '' }));
         updateRabTotalLabel();
     }
     
@@ -565,7 +604,7 @@ Ext.onReady(function () {
             var origVal = origQty * (parseFloat(r.get('orig_price')) || 0);
             var isUp = origQty <= 0 || qty > origQty + 0.00005 || qty * price > origVal + 0.005;
             total += Math.round(qty * price * 100) / 100;
-            var item = { id: r.get('id') || 0, material_id: cat === 'Material' ? materialId : 0, expense_id: cat === 'Material' ? 0 : (parseInt(r.get('expense_id'), 10) || 0), category: cat, item_name: itemName, unit: r.get('unit') || 'Unit', budget_qty: qty, unit_price: price, tolerance_pct: parseFloat(r.get('tolerance_pct')) || 0, addendum_reason: '' };
+            var item = { id: r.get('id') || 0, material_id: cat === 'Material' ? materialId : 0, expense_id: cat === 'Material' ? 0 : (parseInt(r.get('expense_id'), 10) || 0), category: cat, item_name: itemName, unit: r.get('unit') || 'Unit', budget_qty: qty, unit_price: price, tolerance_pct: parseFloat(r.get('tolerance_pct')) || 0, addendum_reason: '', material_source: cat === 'Material' ? (r.get('material_source') || 'COMPANY') : 'COMPANY' };
             if (isUp) flagged.push(item);
             arrItems.push(item);
         });
