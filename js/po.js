@@ -207,6 +207,27 @@ dtlDiv.style.overflowY = 'auto';
         }
         html += '</tbody></table>';
 
+        // [PRERELEASE] Banner validasi real-time sebelum release (Diajukan/Disetujui):
+        // stok & kuota RAB dibaca ulang server saat release; tampilkan kebutuhan bersih
+        // per baris agar user mengerti alasan penolakan bila terjadi.
+        if (actions.length && (h.status === 'Draft' || h.status === 'Diajukan')) {
+            var warn = [];
+            Ext.each(items, function (i) {
+                if (i.qty_to_buy !== undefined && i.qty_to_buy !== null) {
+                    var tb = parseFloat(i.qty_to_buy) || 0;
+                    var qty = parseFloat(i.qty) || 0;
+                    if (qty > tb + 0.0001) {
+                        warn.push(enc(i.description || '') + ': qty PO ' + fmtQty(qty) + ' > kebutuhan bersih ' + fmtQty(tb) + ' ' + enc(i.unit || ''));
+                    }
+                }
+            });
+            if (warn.length) {
+                html += '<div style="margin-top:10px; padding:8px 12px; background:#3b2f0b; border:1px solid #8a6d1c; border-radius:4px; color:#f5c542; font-size:12px;">' +
+                        '&#9888; Validasi release akan membaca ulang stok & kuota RAB. Baris berikut melebihi kebutuhan bersih:<br/>' +
+                        warn.join('<br/>') + '</div>';
+            }
+        }
+
         // Tombol aksi status
         var actions = d.allowed_actions || [];
         if (actions.length) {

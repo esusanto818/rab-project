@@ -123,6 +123,104 @@ function po_net_need(float $qtyPlan, float $tolPct, float $ordered, float $onHan
     $quota = $qtyPlan * (1 + $tolPct / 100) - $ordered;
     return max($quota - $onHand, 0.0);
 }
+/* [PRERELEASE 2026-11-15] Kunci advisory per proyek: serialisasi save_po & change_status
+   supaya dua sesi tidak bisa sama-sama lolos validasi kuota/stok (race condition). */
+function po_lock_project($db, int $projectId): void {
+    if ($projectId <= 0) return;
+    $db->query("SELECT pg_advisory_xact_lock(" . (int)crc32('po_project:' . $projectId) . ")");
+}
+/* [PRERELEASE] Periode akuntansi yang memuat tanggal PO harus ada & masih terbuka. */
+function po_period_open($db, string $date): bool {
+    $st = $db->prepare("SELECT 1 FROM public.accounting_periods ap WHERE CAST(:d AS date) BETWEEN ap.start_date AND ap.end_date AND ap.is_closed = false");
+    $st->execute([':d' => $date]);
+    return (bool)$st->fetchColumn();
+}
+function po_supplier_active($db, int $supId): bool {
+    $st = $db->prepare("SELECT 1 FROM public.m_suppliers WHERE id = :id AND COALESCE(active, true)");
+    $st->execute([':id' => $supId]);
+    return (bool)$st->fetchColumn();
+}
+/* [PRERELEASE] Validasi real-time sebelum PO dilepas (Diajukan / Disetujui).
+   Dipanggil DI DALAM transaksi ACID (header PO sudah FOR UPDATE) sehingga stok & kuota
+   dibaca ulang persis sebelum status diubah. Melempar PoBusinessError bila ada yang gagal. */
+function po_release_validate($db, array $po, array $base): void {
+    $id  = (int)$po['id'];
+    $prj = (int)$po['project_id'];
+    $pno = $po['po_number'];
+
+    // 1. Supplier wajib ada & aktif (release tidak boleh untuk supplier non-aktif)
+    if ((int)$po['supplier_id'] > 0 && !po_supplier_active($db, (int)$po['supplier_id'])) {
+        throw new PoBusinessError("PO {$pno}: supplier tidak aktif; release ditolak. Pilih supplier aktif.");
+    }
+
+    // 2. Tanggal PO valid & berada pada periode akuntansi yang terbuka
+    $d = DateTime::createFromFormat('Y-m-d', (string)$po['po_date']);
+    if (!$d || $d->format('Y-m-d') !== (string)$po['po_date']) {
+        throw new PoBusinessError("PO {$pno}: tanggal PO tidak valid.");
+    }
+    if (!po_period_open($db, (string)$po['po_date'])) {
+        throw new PoBusinessError("PO {$pno}: periode akuntansi untuk tanggal " . date('d/m/Y', strtotime($po['po_date'])) . " sudah ditutup; release PO dibatalkan.");
+    }
+
+    // 3. Integrity header & item: minimal 1 baris po_items, qty > 0, harga valid
+    $st = $db->prepare("SELECT COUNT(*) AS n FROM po_items WHERE po_id = :id");
+    $st->execute([':id' => $id]);
+    if ((int)$st->fetchColumn() === 0) {
+        throw new PoBusinessError("PO {$pno}: tidak memiliki item; release ditolak.");
+    }
+
+    // 4. Validasi stok & kuota REAL-TIME: stok proyek/gudang bersama dibaca ulang,
+    //    PO lain yang baru masuk ikut mengurangi sisa kuota. Stok milik proyek LAIN
+    //    (warehouses.project_id <> proyek ini, bukan NULL) tidak pernah dihitung.
+    $ordered  = po_ordered_map($db, $prj, $id);            // PO lain (PO ini dikecualikan)
+    $stockMap = po_project_stock_map($db, $prj);           // GetProjectStockMap-equivalent via poCRD
+    $stIt = $db->prepare("
+        SELECT i.id, i.budget_item_id, i.material_id, i.qty, i.unit_price, i.amount_budget,
+               bi.qty_plan, COALESCE(bi.tolerance_pct,0) AS tol,
+               COALESCE(bi.unit_price_plan,0) AS price_plan,
+               m.material_name,
+               COALESCE(NULLIF(bi.unit,''), m.unit, '') AS unit
+          FROM po_items i
+          JOIN public.budget_items bi ON bi.id = i.budget_item_id AND bi.project_id = :p AND bi.category = 'Material'
+          JOIN public.materials m    ON m.id = i.material_id
+         WHERE i.po_id = :id
+         ORDER BY i.id");
+    $stIt->execute([':id' => $id, ':p' => $prj]);
+    $rows = $stIt->fetchAll(PDO::FETCH_ASSOC);
+    if (!$rows) {
+        throw new PoBusinessError("PO {$pno}: item tidak terikat ke RAB proyek ini; release ditolak.");
+    }
+    $tallyQty = []; $tallyVal = [];
+    $pb = po_project_budget($db, $prj, $base);
+    foreach ($rows as $row) {
+        $bid = (int)$row['budget_item_id'];
+        $qty = round((float)$row['qty'], 3);
+        $price = round((float)$row['unit_price'], 2);
+        $name = $row['material_name'];
+        if ($qty <= 0) throw new PoBusinessError("PO {$pno}: {$name} qty harus > 0.");
+        if ($price < 0) throw new PoBusinessError("PO {$pno}: {$name} harga satuan tidak valid.");
+        $qtyLimit = (float)$row['qty_plan'] * (1 + (float)$row['tol'] / 100);
+        $ordQty = $ordered[$bid] ?? 0.0;
+        $tallyQty[$bid] = ($tallyQty[$bid] ?? 0) + $qty;
+        if ($ordQty + $tallyQty[$bid] > $qtyLimit + PO_EPS) {
+            throw new PoBusinessError("PO {$pno}: {$name} qty PO " . po_fmt($tallyQty[$bid]) . " melebihi sisa kuota RAB (" . po_fmt(max($qtyLimit - $ordQty, 0)) . " {$row['unit']}).");
+        }
+        $onHand = $stockMap[(int)$row['material_id']] ?? 0.0;
+        $tallyBefore = $tallyQty[$bid] - $qty;
+        $netNeed = max($qtyLimit - $ordQty - $tallyBefore - $onHand, 0.0);
+        if ($qty > $netNeed + PO_EPS) {
+            throw new PoBusinessError("PO {$pno}: {$name} qty PO " . po_fmt($qty) . " melebihi kebutuhan bersih " . po_fmt($netNeed) . " {$row['unit']} (sisa kuota RAB " . po_fmt(max($qtyLimit - $ordQty - $tallyBefore, 0)) . " - stok tersedia " . po_fmt($onHand) . ").");
+        }
+        // kontrol nilai (konsisten dengan save_po): nilai PO baris ini vs batas anggaran baris RAB.
+        // amount_budget tersimpan di po_items saat save (sudah dikonversi ke mata uang anggaran).
+        $valLimit = round(round((float)$row['qty_plan'] * (float)$row['price_plan'], 2) * (1 + (float)$row['tol'] / 100), 2);
+        $lineVal = round((float)$row['amount_budget'], 2);
+        $tallyVal[$bid] = round(($tallyVal[$bid] ?? 0) + $lineVal, 2);
+        if ($tallyVal[$bid] > $valLimit + PO_VEPS) {
+            throw new PoBusinessError("PO {$pno}: {$name} nilai PO " . po_fmt($tallyVal[$bid]) . " melebihi sisa anggaran RAB baris ini (" . po_fmt($valLimit) . ").");
+        }
+    }
+}
 if (empty($_SESSION['user_id'])) { http_response_code(401); sendJsonResponse(false, [], 'Sesi berakhir, silakan login ulang.'); }
 $task = $_REQUEST['task'] ?? '';
 $poAccess = (int)($_SESSION['FormAccess'] ?? 0);
@@ -211,9 +309,15 @@ try {
             $hdr['ppn_mode']=po_ppn_mode($hdr['ppn_mode']); $hdr['ppn_rate']=(float)$hdr['ppn_rate'];
             $st = $db->prepare("SELECT i.id, i.budget_item_id, i.material_id, m.material_code, i.description, i.unit, i.qty, i.unit_price, i.currency_id, COALESCE(UPPER(TRIM(ic.init)),'IDR') AS item_currency_code, COALESCE(NULLIF(i.exch_rate,0),1) AS exch_rate, COALESCE(g.q,0) AS qty_received FROM po_items i LEFT JOIN public.materials m ON m.id=i.material_id LEFT JOIN public.m_currency ic ON ic.id=i.currency_id LEFT JOIN (SELECT d.po_item_id, SUM(d.qty_received) AS q FROM grn_dtl d JOIN grn_hdr h ON h.id=d.grn_hdr_id WHERE COALESCE(LOWER(h.status),'') NOT IN ('cancelled','canceled','dibatalkan','void','reversed') GROUP BY d.po_item_id) g ON g.po_item_id=i.id WHERE i.po_id=:id ORDER BY i.id");
             $st->execute([':id'=>$id]); $items=$st->fetchAll(PDO::FETCH_ASSOC);
+            // [PRERELEASE] stok proyek & kebutuhan bersih utk banner di UI
+            $stockMap=po_project_stock_map($db,(int)$hdr['project_id']);
+            $ordered=po_ordered_map($db,(int)$hdr['project_id'],$id);
             $received=0.0; $subItems=0.0; $totBud=0.0; $totBase=0.0;
             foreach ($items as &$it) {
                 $it['id']=(int)$it['id']; $it['budget_item_id']=$it['budget_item_id']!==null?(int)$it['budget_item_id']:null; $it['material_id']=$it['material_id']!==null?(int)$it['material_id']:null; $it['currency_id']=$it['currency_id']!==null?(int)$it['currency_id']:null; $it['qty']=(float)$it['qty']; $it['unit_price']=(float)$it['unit_price']; $it['exch_rate']=(float)$it['exch_rate']; $it['qty_received']=(float)$it['qty_received']; $received+=$it['qty_received'];
+                // [PRERELEASE] info stok & kuota per baris utk banner validasi release di UI
+                $onHand=$stockMap[(int)$it['material_id']]??0.0; $ordQty=$it['budget_item_id']!==null?($ordered[(int)$it['budget_item_id']]??0.0):0.0;
+                $it['qty_on_hand']=$onHand; $it['qty_to_buy']=max((float)$it['qty']-$ordQty-$onHand, 0.0);
                 $lineDpp=po_line_dpp($it['qty'],$it['unit_price'],$hdr['ppn_mode'],$hdr['ppn_rate']);
                 $it['amount_budget']=round($lineDpp*$factor,2); $it['amount_base']=round($lineDpp*$hdr['exch_rate'],2);
                 $totBud+=$it['amount_budget']; $totBase+=$it['amount_base']; $subItems+=round($it['qty']*$it['unit_price'],2);
@@ -242,6 +346,9 @@ try {
                 if (!is_array($items)||!count($items)) throw new PoBusinessError('Minimal satu material harus diisi.');
                 if ($ppnMode==='NONE') $ppnRate=0.0; elseif ($ppnRate<=0||$ppnRate>100) throw new PoBusinessError('Tarif PPN harus lebih dari 0 dan maksimal 100%.');
                 $pb=po_project_budget($db,$prj,$base);
+                // [PRERELEASE] periode akuntansi yang memuat tanggal PO harus ada & terbuka
+                if (!po_period_open($db, $date)) { throw new PoBusinessError('Periode akuntansi untuk tanggal PO '.$date.' sudah ditutup atau tidak ditemukan; penyimpanan PO dibatalkan.'); }
+                if ($sup && !po_supplier_active($db, $sup)) throw new PoBusinessError('Supplier tidak aktif; pilih supplier yang aktif.');
                 $st=$db->prepare("SELECT UPPER(TRIM(init)) FROM public.m_currency WHERE id=:id"); $st->execute([':id'=>$cur]); $curCode=$st->fetchColumn();
                 if (!$curCode) throw new PoBusinessError('Mata uang PO tidak ditemukan.');
                 if ($cur===$base['id']) $rate=1.0;
@@ -251,6 +358,7 @@ try {
                 $db->beginTransaction();
                 try {
                     if ($id>0) { $st=$db->prepare("SELECT status FROM purchase_orders WHERE id=:id FOR UPDATE"); $st->execute([':id'=>$id]); $cur0=$st->fetch(PDO::FETCH_ASSOC); if (!$cur0) throw new PoBusinessError('PO tidak ditemukan.'); if ($cur0['status']!=='Draft') throw new PoBusinessError('Hanya PO berstatus Draft yang dapat diubah.'); }
+                    po_lock_project($db, $prj);   // [PRERELEASE] kunci advisory per proyek: serialisasi vs change_status
                     if ($sup) { $st=$db->prepare("SELECT 1 FROM public.m_suppliers WHERE id=:id"); $st->execute([':id'=>$sup]); if (!$st->fetchColumn()) throw new PoBusinessError('Supplier tidak ditemukan.'); }
                     $ordered=po_ordered_map($db,$prj,$id); $committed=po_committed_map($db,$prj,$id,$base['id']);
                     $stockMap=po_project_stock_map($db,$prj);   // [INVENTORY] stok yg dapat dipakai proyek ini
@@ -306,11 +414,17 @@ try {
             $id=(int)($_POST['id']??0); $to=(string)($_POST['to']??'');
             $db->beginTransaction();
             try {
-                $st=$db->prepare("SELECT po_number, status, supplier_id FROM purchase_orders WHERE id=:id FOR UPDATE"); $st->execute([':id'=>$id]); $po=$st->fetch(PDO::FETCH_ASSOC);
+                $st=$db->prepare("SELECT id, po_number, status, supplier_id, project_id, po_date, currency_id, budget_currency_id, budget_exch_rate, exch_rate FROM purchase_orders WHERE id=:id FOR UPDATE"); $st->execute([':id'=>$id]); $po=$st->fetch(PDO::FETCH_ASSOC);
                 if (!$po) throw new PoBusinessError('PO tidak ditemukan.');
                 if (!in_array($to, PO_TRANSITIONS[$po['status']]??[], true)) throw new PoBusinessError("Status {$po['status']} tidak dapat diubah ke {$to}.");
                 if (in_array($to,['Dibatalkan','Draft'],true) && po_received_total($db,$id)>PO_EPS) throw new PoBusinessError('PO ini sudah ada barang yang diterima (GRN), tidak dapat dibatalkan / dikembalikan ke Draft.');
-                if (in_array($to,['Diajukan','Disetujui'],true)) { if (!$po['supplier_id']) throw new PoBusinessError('Supplier wajib diisi sebelum PO diajukan / disetujui.'); $st=$db->prepare("SELECT COUNT(*) FROM po_items WHERE po_id=:id"); $st->execute([':id'=>$id]); if ((int)$st->fetchColumn()===0) throw new PoBusinessError('PO belum memiliki item.'); }
+                if (in_array($to,['Diajukan','Disetujui'],true)) {
+                    // [PRERELEASE] validasi real-time di dalam transaksi ACID (header sudah FOR UPDATE):
+                    // supplier aktif, periode akuntansi terbuka, integrity item, stok & kuota RAB dibaca ulang.
+                    if (!$po['supplier_id']) throw new PoBusinessError('Supplier wajib diisi sebelum PO diajukan / disetujui.');
+                    po_lock_project($db, (int)$po['project_id']);
+                    po_release_validate($db, $po, po_base_currency($db));
+                }
                 $st=$db->prepare("UPDATE purchase_orders SET status=:s, updated_at=NOW() WHERE id=:id"); $st->execute([':s'=>$to,':id'=>$id]);
                 $db->commit(); sendJsonResponse(true, [], "PO {$po['po_number']} sekarang berstatus {$to}.");
             } catch (PoBusinessError $e) { if ($db->inTransaction()) $db->rollBack(); sendJsonResponse(false,[],$e->getMessage()); }

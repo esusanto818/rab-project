@@ -1,6 +1,6 @@
 # Test Report Cek Inventory sebelum Purchase Planning / PO (TC-101 s/d TC-110)
 
-**Tanggal eksekusi:** 2026-11-15 10:42:21  
+**Tanggal eksekusi:** 2026-11-15 14:04:32  
 **Baseline:** branch `dev` | DB `proyekGMN_test` | base URL `http://127.0.0.1:8098`  
 **Dokumen acuan:** `tests/run_e2e_inventory_check.php`  
 **Ringkasan sementara:** PASS = 10, FAIL = 0, SKIP = 0

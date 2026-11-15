@@ -49,3 +49,11 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
 ?? AUDIT_CHANGELOG.md
 ?? docs/HOWTO_CHECK_INVENTORY_PURCHASE_PLANNING_2026-11-15.md
 ```
+
+## [2026-11-15] Pengecekan Purchase Order (PO) Sebelum Release
+- **Status Git:** Committed
+- **Ringkasan Perubahan:**
+  - `php-crud/poCRD.php`: Menambahkan validasi real-time sebelum perubahan status (`change_status`) dalam transaksi ACID (`FOR UPDATE`), meliputi pengecekan ulang kebutuhan bersih stok proyek (`GetProjectStockMap` & `po_net_need`), kuota RAB aktual, integritas item PO, status aktif supplier, periode akuntansi terbuka, dan proteksi state machine anti double-release.
+  - `js/po.js`: Menambahkan konfirmasi serta pengamanan tombol aksi perubahan status PO di UI ExtJS.
+  - `tests/run_e2e_po_prerelease.php` & `test_report_po_prerelease.md`: Menambahkan 10 skenario uji E2E (`TC-201` s/d `TC-210`) dan lulus 100% (`PASS=10 FAIL=0`).
+  - `docs/HOWTO_PO_PRERELEASE_CHECK_2026-11-15.md`: Dokumentasi panduan fitur pengecekan PO sebelum release.
