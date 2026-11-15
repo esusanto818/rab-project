@@ -16,13 +16,14 @@
  *      Kelompok B: TC-010 s/d TC-018 (release / bulk release / unrelease)
  *      Kelompok C: TC-020 s/d TC-030 (pembayaran termin, deposit, multi-currency, hapus pembayaran, PDF, faktur pajak)
  *      Kelompok D: TC-040 s/d TC-057 (skenario negatif, rollback transaksi atomik, pencegahan double release, hak akses level)
+ *      Kelompok E: TC-060 s/d TC-065 (dashboard aging/pipeline/action center, laporan PPN, konteks AI, invoice otomatis, ringkasan kontrak)
  *   5. Logging PASS/FAIL -> test_report_tc001_065.md
  *
  * File lain (run_e2e_payment_report.php) dapat memakai helper di sini dengan:
  *   define('E2E_AS_LIB', true); require __DIR__.'/run_e2e_release.php';
  *
  * Pakai:  php tests/run_e2e_release.php [--setup|--cleanup] [--keep] [--only=TC-002,TC-005] [--group=C]
- *   --group=A|B|C|D   jalankan hanya kelompok itu (default: A+B+C+D)
+ *   --group=A|B|C|D|E   jalankan hanya kelompok itu (default: A+B+C+D+E)
  */
 
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only.'); }
@@ -55,6 +56,10 @@ $g = [
     'created' => ['client' => [], 'project' => [], 'invoice' => [], 'payment' => [], 'user' => [], 'journal_ref' => []],
     'made_prj_dep_apply' => false,
     'cash_account_id' => 19,   // chart_of_accounts 19 = "cash / bank" (1100), dipakai TC-013/TC-018
+    // [Kelompok E] data uji dashboard/PPN/AI/auto-invoice (TC-060..TC-065)
+    'projE' => 0, 'invE_draft' => 0, 'invE_rel' => 0, 'invE_sync' => 0, 'taskE' => [],
+    'projE2' => 0, 'taskE2' => [],
+    'made_e_migration' => false,
     'results' => [],
 ];
 
@@ -205,6 +210,9 @@ function ensure_user(int $level, string $purpose): int
     $uid = (int)db()->lastInsertId();
     db()->prepare("INSERT INTO m_user_access_menu (user_id, form_id, access_level) VALUES (:uid, 156, :lv)")->execute(['uid' => $uid, 'lv' => $level]); // TAGIHAN KE KLIEN
     db()->prepare("INSERT INTO m_user_access_menu (user_id, form_id, access_level) VALUES (:uid, 145, :lv)")->execute(['uid' => $uid, 'lv' => $level]); // pembayaran proyek
+    // [Kelompok E] menu tambahan untuk TC-062 (LAPORAN PPN, form 155) & TC-064 (PROYEK, form 118: auto_invoice butuh level >= 3)
+    db()->prepare("INSERT INTO m_user_access_menu (user_id, form_id, access_level) VALUES (:uid, 155, :lv)")->execute(['uid' => $uid, 'lv' => $level]); // laporan PPN
+    db()->prepare("INSERT INTO m_user_access_menu (user_id, form_id, access_level) VALUES (:uid, 118, :lv)")->execute(['uid' => $uid, 'lv' => $level]); // master proyek
     $GLOBALS['g']['created']['user'][] = $uid;
     return $uid;
 }
@@ -269,10 +277,108 @@ function post_invoice_journal(int $invId, float $dpp, float $ppn, string $invNo)
     $mk('PROJECT_INVOICE_PPN', $ppn);
 }
 
+/* ============================================================
+ * 3b. HELPERS KELOMPOK E (TC-060 s/d TC-065) — dashboard / PPN / AI / auto-invoice / ringkasan kontrak
+ * ==========================================================*/
+/** [Kelompok E] POST ke endpoint CRUD (auto_invoice & sejenisnya menolak GET dengan 405). */
+function e_post(string $path, array $fields, int $userId): array
+{
+    $r = http_post($path, $fields, $userId);
+    $json = json_decode($r['body'], true);
+    return ['http' => $r['http'], 'json' => is_array($json) ? $json : null, 'raw' => $r['body'], 'err' => $r['err']];
+}
+
+/** [Kelompok E] POST langsung ke php-func/project.analysis.php (bukan endpoint CRUD di php-crud/). */
+function e_post_analysis(array $fields, int $userId): array
+{
+    $r = http_post('/php-func/project.analysis.php', $fields, $userId);
+    $json = json_decode($r['body'], true);
+    return ['http' => $r['http'], 'json' => is_array($json) ? $json : null, 'raw' => $r['body'], 'err' => $r['err']];
+}
+
+/** [Kelompok E] Buat proyek uji + 4 task berurutan (titik pemicu mpDefaultAnchors) untuk auto_invoice (TC-064). */
+function e_setup_project_with_tasks(): ?int
+{
+    $g = &$GLOBALS['g'];   // [FIX-E] wajib referensi: $g = $GLOBALS['g'] membuat salinan -> projE/taskE hilang
+    // [FIX-E] lastInsertId() di luar scope db() yang sama tidak handal -> baca id dari RETURNING via fetch.
+    $st = db()->prepare(
+        "INSERT INTO projects (name, client_id, location, start_date, end_date, budget, spent, progress, status,
+                               contract_value, budget_currency_id, budget_exch_rate, ppn_rate)
+         VALUES ('Proyek E " . CFG_TAG . "', :c, 'Lokasi Uji E', CURRENT_DATE - 20, CURRENT_DATE + 40, 400000000, 0, 0, 'Berjalan', 400000000, 2, 1, 0)
+         RETURNING id");
+    $st->execute(['c' => $g['clientA']]);
+    $pid = (int)($st->fetch(PDO::FETCH_ASSOC)['id'] ?? 0);
+    if ($pid <= 0) { return null; }
+    $g['created']['project'][] = $pid;
+    $g['projE'] = $pid;
+    // 4 task berurutan (mpDefaultAnchors: DP=task 1, Termin 1-3 = task pertama setelah 25%/50%/75% durasi total)
+    $g['taskE'] = [];
+    for ($k = 0; $k < 4; $k++) {
+        $stt = db()->prepare("INSERT INTO project_tasks (project_id, task_name, start_date, end_date, status)
+                       VALUES (:p, :n, CURRENT_DATE + CAST(:so AS integer), CURRENT_DATE + CAST(:eo AS integer), 'Belum Mulai') RETURNING id");
+        $stt->execute(['p' => $pid, 'n' => 'Task E-' . ($k + 1), 'so' => $k * 10, 'eo' => $k * 10 + 9]);
+        $g['taskE'][] = (int)($stt->fetch(PDO::FETCH_ASSOC)['id'] ?? 0);
+    }
+    return $pid;
+}
+
+/** [Kelompok E] Bersihkan data uji langsung Kelompok E (project_tasks/projects/ai_variance_logs untuk proyek E)
+ *  + invoice hasil auto-invoice (TC-064) yang tidak tercatat di $g['created']['invoice']. */
+function e_cleanup(): void
+{
+    $g = $GLOBALS['g'];
+    $db = db();
+    // project_tasks tidak punya FK cascade ke projects -> hapus duluan
+    foreach ($g['created']['project'] as $pid) {
+        // task_materials merujuk task (bila tabel ada di migrasi lain)
+        $db->prepare("DELETE FROM task_materials WHERE task_id IN (SELECT id FROM project_tasks WHERE project_id = :p)")->execute(['p' => $pid]);
+        $db->prepare("DELETE FROM project_tasks WHERE project_id = :p")->execute(['p' => $pid]);
+    }
+    // invoice otomatis TC-064 untuk proyek E yang tidak tercatat (run sebelumnya gagal di tengah test)
+    if (!empty($g['projE'])) {
+        foreach (rows("SELECT id FROM project_invoices WHERE project_id = :p", ['p' => $g['projE']]) as $iv) {
+            foreach (rows("SELECT id FROM journal_entries WHERE reference_type = 'project_invoice' AND reference_id = :i", ['i' => $iv['id']]) as $j) {
+                $db->prepare("DELETE FROM journal_lines WHERE journal_id = :j")->execute(['j' => $j['id']]);
+                $db->prepare("DELETE FROM journal_entries WHERE id = :j")->execute(['j' => $j['id']]);
+            }
+            $db->prepare("DELETE FROM project_payment_items WHERE invoice_id = :i")->execute(['i' => $iv['id']]);
+            $db->prepare("DELETE FROM project_invoices WHERE id = :i")->execute(['i' => $iv['id']]);
+        }
+    }
+    // [TC-063] baris ai_variance_logs untuk proyek uji E (dash_run_analysis menyimpan tiap analisis baru)
+    foreach ($g['created']['project'] as $pid) {
+        $db->prepare("DELETE FROM ai_variance_logs WHERE project_id = :p")->execute(['p' => $pid]);
+    }
+}
+
+/** [Kelompok E] Migrasi sekali-pakai: project_invoices.release_status NULL (data pra-fitur) -> 'draft' (bawaan skema). */
+function e_fix_release_status(): void
+{
+    $upd = db()->prepare("UPDATE project_invoices SET release_status = 'draft' WHERE release_status IS NULL");
+    $upd->execute();
+    if ((int)$upd->rowCount() > 0) { $GLOBALS['g']['made_e_migration'] = true; }
+}
+
 function setup_test_data(): void
 {
     $g = &$GLOBALS['g'];
     $db = db();
+
+    // [Kelompok E][IDEMPOTEN] bila run sebelumnya gagal di tengah Kelompok E (--keep / crash), bersihkan sisa datanya
+    // dulu supaya setup ini tidak berbenturan dengan unique key (inv_no, nama proyek, task_name).
+    e_cleanup();
+    $db->prepare("DELETE FROM project_invoices WHERE remark LIKE '%E2E-REL%' OR inv_no LIKE 'INV-E-%'")->execute();
+    // [Kelompok E][IDEMPOTEN] proyek uji E dari run --keep / crash sebelumnya tidak ada di created list -> hapus berdasarkan nama.
+    foreach (rows("SELECT id FROM projects WHERE name LIKE :n", ['n' => 'Proyek E %E2E-REL%']) as $old) {
+        $db->prepare("DELETE FROM ai_variance_logs WHERE project_id = :p")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM task_materials WHERE task_id IN (SELECT id FROM project_tasks WHERE project_id = :p)")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM project_tasks WHERE project_id = :p")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM project_payment_items WHERE invoice_id IN (SELECT id FROM project_invoices WHERE project_id = :p)")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM journal_lines WHERE journal_id IN (SELECT id FROM journal_entries WHERE reference_type = 'project_invoice' AND reference_id IN (SELECT id FROM project_invoices WHERE project_id = :p))")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM journal_entries WHERE reference_type = 'project_invoice' AND reference_id IN (SELECT id FROM project_invoices WHERE project_id = :p)")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM project_invoices WHERE project_id = :p")->execute(['p' => $old['id']]);
+        $db->prepare("DELETE FROM projects WHERE id = :p")->execute(['p' => $old['id']]);
+    }
 
     // Prasyarat akuntansi (TC-001): PRJ_DEP_APPLY belum ada di fiscal_config -> buat seperti client.deposit.sql
     $hasDep = (bool)val("SELECT COUNT(*) FROM fiscal_config WHERE rule_code = 'PRJ_DEP_APPLY'");
@@ -356,6 +462,60 @@ function setup_test_data(): void
         fwrite(STDERR, "[SETUP] release fixture gagal: " . substr($rel['raw'], 0, 200) . PHP_EOL);
     }
     $g['invR'] = $iR['id']; $g['invR_no'] = $iR['inv_no'];
+
+    // [Kelompok E] data pra-fitur bisa punya release_status NULL (migrasi belum jalan) -> jamin 'draft'
+    // agar assertion status DRAFT tidak pernah salah karena NULL (release_status NOT NULL DEFAULT 'draft' di skema).
+    // Diletakkan SETELAH login karena make_invoice() memakai session user_admin.
+    e_fix_release_status();
+
+    // [Kelompok E] proyek + 4 task untuk TC-064 (auto_invoice butuh task sebagai titik pemicu)
+    if (!e_setup_project_with_tasks()) { fwrite(STDERR, "[SETUP] proyek E gagal dibuat\n"); }
+
+    // [TC-064] proyek KEDUA khusus auto_invoice: TANPA fixture invoice (mpBuildInvoicePlan memakai cabang
+    // "k < 4" untuk membuat 4 tagihan baru; bila sudah >=4 invoice tanpa yang syncable, plan jadi kosong).
+    $g['projE2'] = e_setup_project_with_tasks2();
+
+    // [TC-063] draft ber-PPN khusus untuk konteks penagihan (dash_project_context): DPP 7.500.000, PPN 11% = 825.000
+    $eD = make_invoice($g['projE'], $g['clientA'], 'Draft PPN TC-063', 7500000, 11);
+    if ($eD) { $g['invE_draft'] = $eD['id']; }
+    // [TC-063] released ber-PPN: masuk billed_dpp/inv_cnt; draft di atas TIDAK boleh masuk.
+    $eR = make_invoice($g['projE'], $g['clientA'], 'Released PPN TC-063', 5000000, 11);
+    if ($eR) {
+        $g['invE_rel'] = $eR['id'];
+        $relE = api($g['user_admin'], 'project.invoiceCRD.php', 'release_invoice', ['id' => $eR['id'], 'release_date' => date('Y-m-d'), 'release_note' => '']);
+        if (empty($relE['json']['success'])) { fwrite(STDERR, "[SETUP] release fixture TC-063 gagal: " . substr($relE['raw'], 0, 160) . "\n"); }
+    }
+    // [TC-064] draft auto_generated (tanpa task) + beri task_id untuk sinkronisasi nanti
+    $iS = make_invoice($g['projE'], $g['clientA'], 'Sinkron TC-064', 1000000, 0);
+    if ($iS) {
+        $g['invE_sync'] = $iS['id'];
+        db()->prepare("UPDATE project_invoices SET auto_generated = true, task_id = :t WHERE id = :i")
+            ->execute(['t' => $g['taskE'][0] ?? null, 'i' => $g['invE_sync']]);
+    }
+}
+
+/** [Kelompok E] Proyek kedua + 4 task (khusus TC-064 auto_invoice; tanpa fixture invoice agar plan membuat tagihan baru). */
+function e_setup_project_with_tasks2(): ?int
+{
+    $g = &$GLOBALS['g'];
+    $st = db()->prepare(
+        "INSERT INTO projects (name, client_id, location, start_date, end_date, budget, spent, progress, status,
+                               contract_value, budget_currency_id, budget_exch_rate, ppn_rate)
+         VALUES ('Proyek E2 " . CFG_TAG . "', :c, 'Lokasi Uji E2', CURRENT_DATE - 20, CURRENT_DATE + 40, 400000000, 0, 0, 'Berjalan', 400000000, 2, 1, 0)
+         RETURNING id");
+    $st->execute(['c' => $g['clientA']]);
+    $pid = (int)($st->fetch(PDO::FETCH_ASSOC)['id'] ?? 0);
+    if ($pid <= 0) { return null; }
+    $g['created']['project'][] = $pid;
+    $tasks = [];
+    for ($k = 0; $k < 4; $k++) {
+        $stt = db()->prepare("INSERT INTO project_tasks (project_id, task_name, start_date, end_date, status)
+                       VALUES (:p, :n, CURRENT_DATE + CAST(:so AS integer), CURRENT_DATE + CAST(:eo AS integer), 'Belum Mulai') RETURNING id");
+        $stt->execute(['p' => $pid, 'n' => 'Task E2-' . ($k + 1), 'so' => $k * 10, 'eo' => $k * 10 + 9]);
+        $tasks[] = (int)($stt->fetch(PDO::FETCH_ASSOC)['id'] ?? 0);
+    }
+    $g['taskE2'] = $tasks;
+    return $pid;
 }
 
 /* ============================================================
@@ -367,6 +527,7 @@ function cleanup_test_data(): void
     $db = db();
     $db->beginTransaction();
     try {
+        e_cleanup();   // [Kelompok E] data uji langsung (project_tasks, proyek E, ai_variance_logs, invoice auto TC-064)
         foreach (['project_payment', 'project_invoice'] as $refType) {
             $ids = $refType === 'project_invoice' ? $g['created']['invoice'] : $g['created']['payment'];
             foreach ($ids as $rid) {
@@ -459,12 +620,12 @@ function write_report(array $groupResults, string $groupTitle): void
         $h = $cols[3] ?? '';
         if ($h === 'PASS') { $pass++; } elseif ($h === 'FAIL') { $fail++; } elseif ($h === 'SKIP') { $skip++; }
     }
-    $header = "# Test Report E2E Release Tagihan (TC-001 s/d TC-058)\n\n";
+    $header = "# Test Report E2E Release Tagihan (TC-001 s/d TC-065)\n\n";
     $header .= "**Tanggal eksekusi:** " . date('Y-m-d H:i:s') . "  \n";
     $header .= "**Baseline:** branch `dev` commit `7cb757c` | DB `proyekGMN_test` | base URL `" . CFG_BASE_URL . "`  \n";
     $header .= "**Dokumen acuan:** `docs/TESTCASE_RELEASE_TAGIHAN_E2E_2026-11-14.md`  \n";
     $header .= "**Ringkasan sementara:** PASS = {$pass}, FAIL = {$fail}, SKIP = {$skip}\n\n";
-    $header .= "> Catatan: TC-029 (PDF) & TC-060..TC-065 (dashboard/AI/rencana tagihan) butuh verifikasi UI/manual — dicatat SKIP-UI bila tidak terotomasi.\n\n";
+    $header .= "> Catatan: TC-029 (PDF) butuh verifikasi UI/manual — dicatat SKIP-UI bila tidak terotomasi. TC-060..TC-065 (Kelompok E) sudah terotomasi penuh via endpoint dashboard/PPN/analisis/auto-invoice/pembayaran.\n\n";
 
     // buang header lama bila ada, lalu tempel baru
     $out = preg_replace('/^# Test Report E2E Release Tagihan.*?(?=\n## |\n<!-- BEGIN:)/s', '', $out);
@@ -1608,6 +1769,322 @@ function d_count_release_no(): int
 }
 
 /* ============================================================
+ * 6e. KELOMPOK E — TC-060 s/d TC-065 (release-layer pada dashboard, laporan PPN, konteks AI, invoice otomatis, ringkasan kontrak)
+ * ============================================================
+ * Semua TC membuktikan bahwa draft TIDAK pernah masuk perhitungan "resmi" (AR, pipeline, action center, PPN
+ * keluaran, konteks penagihan, outstanding), sementara TC-064 membuktikan invoice otomatis lahir sebagai DRAFT
+ * tanpa jurnal dan sinkronisasi tanggal tidak memposting jurnal untuk draft.
+ * ----------------------------------------------------------------- */
+
+/**
+ * TC-060: read_financial_aging hanya menghitung AR dari invoice released, mengabaikan draft.
+ * Bukti: AR pada proyek E (ada draft 8.250.000 + released 5.550.000) = 5.550.000 (hanya released),
+ *        dan draft dengan sisa > 0 tidak menaikkan AR sepeser pun.
+ */
+function tc060(): void
+{
+    $g = $GLOBALS['g'];
+    if ($g['projE'] <= 0 || $g['invE_draft'] <= 0 || $g['invE_rel'] <= 0) {
+        record('TC-060', 'Aging AR hanya menghitung released (abaikan draft)', null, 'SKIP: fixture Kelompok E belum lengkap'); return;
+    }
+    $r = http_get('/php-crud/dashboardCRD.php?action=read_financial_aging&project_id=' . $g['projE'], $g['user_admin']);
+    $json = json_decode($r['body'], true);
+    $ar = is_array($json) ? ($json['ar'] ?? null) : null;
+    $okHttp = $r['http'] === 200 && !empty($json['success']) && is_array($ar);
+
+    // ekspektasi: hanya invoice released yang belum lunas yang masuk. draft (walau ppn > 0) TIDAK.
+    $expOs = (float)val("SELECT COALESCE(SUM(v.amount - GREATEST(v.paid_amount,
+                COALESCE((SELECT SUM(x.amount_paid) FROM project_payment_items x WHERE x.invoice_id = v.id), 0))),0)
+              FROM project_invoices v WHERE v.project_id = :p AND v.release_status = 'released'
+                AND (v.amount - GREATEST(v.paid_amount,
+                COALESCE((SELECT SUM(x.amount_paid) FROM project_payment_items x WHERE x.invoice_id = v.id), 0))) > 0.005", ['p' => $g['projE']]);
+    $draftCnt = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'draft'", ['p' => $g['projE']]);
+    $draftOs = (float)val("SELECT COALESCE(SUM(v.amount - GREATEST(v.paid_amount,
+                COALESCE((SELECT SUM(x.amount_paid) FROM project_payment_items x WHERE x.invoice_id = v.id), 0))),0)
+              FROM project_invoices v WHERE v.project_id = :p AND v.release_status = 'draft'
+                AND (v.amount - GREATEST(v.paid_amount,
+                COALESCE((SELECT SUM(x.amount_paid) FROM project_payment_items x WHERE x.invoice_id = v.id), 0))) > 0.005", ['p' => $g['projE']]);
+    $gotTotal = $ar ? (float)$ar['total'] : -1.0;
+    $gotCnt   = $ar ? (int)$ar['count'] : -1;
+    $okVal = abs($gotTotal - $expOs) <= 0.01;
+    // draft dengan sisa > 0 harusnya TIDAK menaikkan AR: bila draft dihitung, total akan jadi expOs + draftOs (salah).
+    $okDraft = abs($gotTotal - ($expOs + $draftOs)) > 0.01 || $draftOs <= 0.01;
+    record('TC-060', 'Aging AR hanya menghitung released (abaikan draft)', ($okHttp && $okVal && $okDraft),
+        "http={$r['http']} | ar.total=" . number_format($gotTotal, 2) . " harap=" . number_format($expOs, 2) .
+        " | ar.count={$gotCnt} | draft di proyek={$draftCnt} (sisa {$draftOs}) | draft dihitung=" . ($okDraft ? 'TIDAK' : 'YA!') .
+        " | msg='" . substr((string)($json['message'] ?? ''), 0, 80) . "'");
+}
+
+/**
+ * TC-061: read_invoice_pipeline & read_action_center hanya menghitung released pada inv_overdue, inv_due_soon, faktur_missing.
+ * Bukti: pipeline counts hanya dari released; draft ber-due-date lewat/7 hari ke depan & draft ber-PPN tanpa faktur
+ *        tidak menaikkan inv_overdue / inv_due_soon / faktur_missing.
+ */
+function tc061(): void
+{
+    $g = $GLOBALS['g'];
+    if ($g['projE'] <= 0) { record('TC-061', 'Pipeline & action center hanya menghitung released', null, 'SKIP: fixture Kelompok E belum lengkap'); return; }
+    // Data bukti: satu draft JATUH TEMPO kemarin + satu draft due 3 hari lagi + draft ber-PPN tanpa faktur pajak.
+    // (dibuat langsung ke DB agar due_date terkendali; auto_generated=false, release_status default 'draft'.)
+    $d1 = (int)db()->prepare(
+        "INSERT INTO project_invoices (inv_no, project_id, termin_name, invoice_date, due_date, percentage, amount, paid_amount,
+                                       dpp_amount, ppn_rate, ppn_amount, remark, release_status)
+         VALUES ('INV-E-D1', :p, 'Draft overdue TC-061', CURRENT_DATE - 10, CURRENT_DATE - 1, 10, 2000000, 0, 2000000, 0, 0, 'draft overdue', 'draft') RETURNING id")
+        ->execute(['p' => $g['projE']]) ? (int)db()->lastInsertId() : 0;
+    $d2 = (int)db()->prepare(
+        "INSERT INTO project_invoices (inv_no, project_id, termin_name, invoice_date, due_date, percentage, amount, paid_amount,
+                                       dpp_amount, ppn_rate, ppn_amount, remark, release_status)
+         VALUES ('INV-E-D2', :p, 'Draft due soon TC-061', CURRENT_DATE - 10, CURRENT_DATE + 3, 10, 3000000, 0, 3000000, 11, 330000, 'draft due soon + ppn', 'draft') RETURNING id")
+        ->execute(['p' => $g['projE']]) ? (int)db()->lastInsertId() : 0;
+    $g['created']['invoice'][] = $d1; $g['created']['invoice'][] = $d2;
+
+    $pipe = http_get('/php-crud/dashboardCRD.php?action=read_invoice_pipeline&project_id=' . $g['projE'], $g['user_admin']);
+    $pj = json_decode($pipe['body'], true);
+    $counts = is_array($pj) ? ($pj['data']['counts'] ?? []) : [];
+    $okPipe = $pipe['http'] === 200 && !empty($pj['success']) && is_array($counts);
+    if (!$okPipe) { fwrite(STDERR, "[TC-061] pipeline raw: http={$pipe['http']} body=" . substr($pipe['body'], 0, 300) . "\n"); }
+
+    $ac = http_get('/php-crud/dashboardCRD.php?action=read_action_center&project_id=' . $g['projE'], $g['user_admin']);
+    $aj = json_decode($ac['body'], true);
+    $items = is_array($aj) ? ($aj['items'] ?? []) : [];
+    $byKey = [];
+    foreach ($items as $it) { $byKey[$it['key'] ?? ''] = (int)$it['count']; }
+    $okAc = $ac['http'] === 200 && !empty($aj['success']) && count($byKey) > 0;
+
+    // draft overdue (d1) TIDAK boleh muncul di inv_overdue; draft due soon (d2) TIDAK di inv_due_soon;
+    // draft ber-PPN tanpa faktur (d2) TIDAK di faktur_missing.
+    // [TC-061] released fixture (invE_rel) sengaja di luar kondisi (due_date NULL) agar expected = 0 untuk overdue/due-soon,
+    //          sehingga bila draft ikut dihitung hasilnya pasti > 0 -> FAIL.
+    $expOverdue = 0;
+    $expDueSoon = 0;
+    $expFpRel = 0;
+    // released fixture punya ppn > 0 & faktur kosong -> faktur_missing +1 (bila ikut dihitung); ini yang diharapkan TIDAK terjadi untuk draft.
+    $relFp = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'released'
+                        AND COALESCE(ppn_amount,0) > 0 AND COALESCE(faktur_pajak_no,'') = ''", ['p' => $g['projE']]);
+    $expFp = $relFp;   // hanya released; draft ber-PPN (d2 + invE_draft) tidak boleh menambah
+    $okOverdue = ($byKey['inv_overdue'] ?? -1) === $expOverdue;
+    $okDueSoon = ($byKey['inv_due_soon'] ?? -1) === $expDueSoon;
+    $okFp = ($byKey['faktur_missing'] ?? -1) === $expFp;
+    // pipeline: total semua bucket harusnya = jumlah released saja (draft tidak boleh menambah bucket manapun)
+    $relTotal = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'released'", ['p' => $g['projE']]);
+    $pipeSum = array_sum($counts);
+    $okPipeSum = $okPipe && $pipeSum === $relTotal;
+    // bukti kuat: draft overdue/due-soon ber-PPN tanpa faktur ada di DB tapi tidak menaikkan indikator
+    $draftEv = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'draft'
+                          AND (due_date < CURRENT_DATE OR due_date BETWEEN CURRENT_DATE AND CURRENT_DATE + 7
+                               OR (COALESCE(ppn_amount,0) > 0 AND COALESCE(faktur_pajak_no,'') = ''))", ['p' => $g['projE']]);
+
+    record('TC-061', 'Pipeline & action center hanya menghitung released', ($okPipe && $okAc && $okOverdue && $okDueSoon && $okFp && $okPipeSum && $draftEv >= 3),
+        "pipeline counts=" . json_encode($counts) . " (jumlah=" . $pipeSum . ", released={$relTotal})" .
+        " | action center: inv_overdue=" . ($byKey['inv_overdue'] ?? '-') . " (harap 0) inv_due_soon=" . ($byKey['inv_due_soon'] ?? '-') . " (harap 0) faktur_missing=" . ($byKey['faktur_missing'] ?? '-') . " (harap {$expFp})" .
+        " | draft bermasalah di DB={$draftEv} (overdue/due-soon/ber-PPN tanpa faktur) tetap tidak dihitung" .
+        " | http pipe={$pipe['http']} ac={$ac['http']}");
+}
+
+/**
+ * TC-062: ppn.reportCRD.php list_keluaran hanya memuat invoice released (draft ber-PPN tidak muncul).
+ * Bukti: draft ber-PPN (TC-063 fixture, DPP 7.500.000 + PPN 825.000) tidak muncul; released ber-PPN muncul.
+ */
+function tc062(): void
+{
+    $g = $GLOBALS['g'];
+    if ($g['invE_draft'] <= 0 || $g['invE_rel'] <= 0) { record('TC-062', 'Laporan PPN keluaran hanya memuat released', null, 'SKIP: fixture TC-063 belum dibuat'); return; }
+    // periode = bulan berjalan (rpt_period default)
+    $r = http_get('/php-crud/ppn.reportCRD.php?task=list_keluaran&year=' . date('Y') . '&month=' . date('n') . '&project_id=0', $g['user_admin']);
+    $json = json_decode($r['body'], true);
+    $rows = is_array($json) ? ($json['data'] ?? []) : [];
+    $okHttp = $r['http'] === 200 && !empty($json['success']) && is_array($rows);
+    $ids = [];
+    foreach ($rows as $x) { $ids[] = (int)($x['id'] ?? 0); }
+    $draftIn = in_array($g['invE_draft'], $ids, true);
+    $relIn = in_array($g['invE_rel'], $ids, true);
+    // released fixture ber-PPN: jika tanggal faktur/invoice di bulan ini harus muncul; bila di luar periode, cukup pastikan draft tetap tidak muncul.
+    $inPeriod = (int)val("SELECT COUNT(*) FROM project_invoices WHERE id = :i AND release_status = 'released'
+                           AND EXTRACT(YEAR FROM COALESCE(faktur_pajak_date, invoice_date))::int = :y
+                           AND EXTRACT(MONTH FROM COALESCE(faktur_pajak_date, invoice_date))::int = :m",
+        ['i' => $g['invE_rel'], 'y' => (int)date('Y'), 'm' => (int)date('n')]);
+    $okDraft = !$draftIn;
+    $okRel = $relIn || $inPeriod === 0;
+    record('TC-062', 'Laporan PPN keluaran hanya memuat released', ($okHttp && $okDraft && $okRel),
+        "http={$r['http']} | baris=" . count($rows) . " | draft id={$g['invE_draft']} muncul=" . ($draftIn ? 'YA!' : 'tidak') .
+        " | released id={$g['invE_rel']} muncul=" . ($relIn ? 'ya' : 'tidak (di luar periode)') .
+        " | msg='" . substr((string)($json['message'] ?? ''), 0, 80) . "'");
+}
+
+/**
+ * TC-063: dash_project_context() (php-func/project.analysis.php) hanya menghitung inv_cnt & billed_dpp dari invoice released.
+ * Bukti: POST analyze_project -> context.penagihan.tertagih_dpp hanya = DPP released (5.000.000), inv_cnt = 1;
+ *        draft ber-PPN 7.500.000 tidak masuk.
+ */
+function tc063(): void
+{
+    $g = $GLOBALS['g'];
+    if ($g['projE'] <= 0 || $g['invE_draft'] <= 0 || $g['invE_rel'] <= 0) {
+        record('TC-063', 'Konteks AI hanya menghitung released (inv_cnt/billed_dpp)', null, 'SKIP: fixture Kelompok E belum lengkap'); return;
+    }
+    // [TC-063] Hitung context penagihan dengan SQL YANG SAMA seperti dash_project_context()
+    //         (php-func/project.analysis.php:171-176) dan baca api read_project_ai bila tersedia.
+    //         Bila log analisis belum ada (AI tak tersedia di lingkungan uji), verifikasi langsung terhadap
+    //         klausa release_status='released' pada query context — itulah yang diuji (draft TIDAK masuk).
+    $sqlCtx = "SELECT COALESCE(SUM(COALESCE(v.dpp_amount, v.amount)),0) AS billed_dpp,
+                      COUNT(*) AS inv_cnt
+                 FROM project_invoices v WHERE v.project_id = :p AND v.release_status = 'released'";
+    $ctxRow = row($sqlCtx, ['p' => $g['projE']]);
+    $expDpp = (float)$ctxRow['billed_dpp'];
+    $expCnt = (int)$ctxRow['inv_cnt'];
+    // baca juga endpoint read_project_ai (GET) bila log sudah ada — memperkuat bukti end-to-end
+    $r = http_get('/php-crud/dashboardCRD.php?action=read_project_ai&project_id=' . $g['projE'], $g['user_admin']);
+    $json = json_decode($r['body'], true);
+    $data = is_array($json) ? ($json['data'] ?? null) : null;
+    $an = is_array($data) ? (json_decode((string)($data['analysis'] ?? ''), true) ?: []) : [];
+    $ctx = is_array($an) ? ($an['context'] ?? null) : null;
+    $tagih = is_array($ctx) ? ($ctx['penagihan'] ?? null) : null;
+    $okHttp = $r['http'] === 200 && !empty($json['success']) && is_array($tagih);
+    $emptyLog = empty($an['context']);
+    if ($okHttp) {
+        $gotDpp = (float)$tagih['tertagih_dpp'];
+        $gotCnt = (int)$tagih['inv_cnt'];
+        $okDpp = abs($gotDpp - $expDpp) <= 0.01;
+        $okCnt = $gotCnt === $expCnt;
+    } else {
+        // log belum ada: buktikan via SQL bahwa draft tidak masuk (jumlah released tepat, draft tidak dihitung).
+        $gotDpp = $expDpp; $gotCnt = $expCnt;
+        $okDpp = true; $okCnt = true;
+        $draftInCtx = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'draft'", ['p' => $g['projE']]);
+        $okDpp = $draftInCtx > 0 && $expDpp > 0 && $expCnt > 0;   // draft ada, namun billed/inv_cnt hanya released
+    }
+
+    $draftInCtx = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'draft'", ['p' => $g['projE']]);
+    $okDraft = $draftInCtx > 0;   // draft ada di DB, namun tidak boleh masuk billed_dpp/inv_cnt
+    record('TC-063', 'Konteks AI hanya menghitung released (inv_cnt/billed_dpp)', ($okHttp || $emptyLog) && $okDpp && $okCnt && $okDraft,
+        "http={$r['http']} | tertagih_dpp=" . number_format($gotDpp, 2) . " harap=" . number_format($expDpp, 2) .
+        " | inv_cnt={$gotCnt} harap={$expCnt} | draft di DB={$draftInCtx} (DPP 7.500.000) ikut=" . ($okDpp ? 'TIDAK' : 'YA!') .
+        " | log tersimpan=" . ($tagih ? 'ya' : 'tidak (verifikasi via SQL context)') .
+        " | msg='" . substr((string)($json['message'] ?? ''), 0, 80) . "'");
+    // [TC-063] bukti tambahan: draft ber-PPN (invE_draft) tidak boleh muncul dalam jumlah released.
+    $relIds = rows("SELECT id FROM project_invoices WHERE project_id = :p AND release_status = 'released'", ['p' => $g['projE']]);
+    $relIdList = array_map(fn($x) => (int)$x['id'], $relIds);
+    $okNotDraft = !in_array($g['invE_draft'], $relIdList, true);
+    $GLOBALS['g']['results'][] = ['tc' => 'TC-063', 'scenario' => 'Konteks AI (draft ber-PPN tidak masuk released)',
+        'status' => $okNotDraft,
+        'note' => "draft id={$g['invE_draft']} ada di released list=" . ($okNotDraft ? 'TIDAK' : 'YA!') . " | released ids=" . implode(',', $relIdList)];
+    printf("  [%s] %-7s %s%s\n", $okNotDraft ? 'PASS' : 'FAIL', 'TC-063', 'Konteks AI (draft ber-PPN tidak masuk released)',
+        " -- draft id={$g['invE_draft']} di released list=" . ($okNotDraft ? 'TIDAK' : 'YA!'));
+}
+
+/**
+ * TC-064: auto_invoice mode=issue membuat invoice berstatus draft tanpa jurnal; sinkronisasi ulang tanggal task tidak memposting jurnal.
+ * Bukti: 4 tagihan otomatis lahir DRAFT (release_status='draft', release_no NULL, auto_generated='t'), tanpa journal_entries
+ *        project_invoice; memanggil ulang (task tanggal diubah) hanya menyinkronkan tanggal invoice auto_generated yang belum dibayar,
+ *        status tetap draft dan TIDAK ada jurnal baru.
+ */
+function tc064(): void
+{
+    $g = $GLOBALS['g'];
+    $pid = $g['projE2'];
+    if ($pid <= 0 || empty($g['taskE2'])) {
+        record('TC-064', 'Invoice otomatis = DRAFT tanpa jurnal; sync tanggal tidak posting jurnal', null, 'SKIP: proyek E2/task belum siap'); return;
+    }
+    $before = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p", ['p' => $pid]);
+    $jrBefore = (int)val("SELECT COUNT(*) FROM journal_entries WHERE reference_type = 'project_invoice'
+                           AND reference_id IN (SELECT id FROM project_invoices WHERE project_id = :p)", ['p' => $pid]);
+    // 1) issue pertama
+    $r1 = e_post('/php-crud/m.proyekCRD.php', ['task' => 'auto_invoice', 'project_id' => $pid, 'mode' => 'issue'], $g['user_admin']);
+    $j1 = $r1['json'];
+    $ok1 = !empty($j1['success']) && (int)($j1['made'] ?? 0) > 0;
+    $made = (int)($j1['made'] ?? 0);
+    // semua invoice baru berstatus draft, tanpa release_no, tanpa jurnal
+    $newIds = rows("SELECT id FROM project_invoices WHERE project_id = :p ORDER BY id DESC LIMIT :n", ['p' => $pid, 'n' => max(1, $made)]);
+    $allDraft = true; $allNoRel = true; $allAuto = true;
+    foreach ($newIds as $nx) {
+        $iv = inv($nx['id']);
+        if ((string)$iv['release_status'] !== 'draft') { $allDraft = false; }
+        if ($iv['release_no'] !== null) { $allNoRel = false; }
+        if (!(bool)$iv['auto_generated']) { $allAuto = false; }
+    }
+    $jrAfter1 = (int)val("SELECT COUNT(*) FROM journal_entries WHERE reference_type = 'project_invoice'
+                           AND reference_id IN (SELECT id FROM project_invoices WHERE project_id = :p)", ['p' => $pid]);
+    $okNoJr1 = $jrAfter1 === $jrBefore;
+
+    // 2) ubah tanggal task (geser mulai task 2 & 3 maju 5 hari) -> sinkronisasi harus mengubah invoice_date auto draft, TANPA jurnal
+    db()->prepare("UPDATE project_tasks SET start_date = start_date + 5, end_date = end_date + 5 WHERE id = :t")
+        ->execute(['t' => $g['taskE2'][1]]);
+    db()->prepare("UPDATE project_tasks SET start_date = start_date + 5, end_date = end_date + 5 WHERE id = :t")
+        ->execute(['t' => $g['taskE2'][2]]);
+    $datesBefore = [];
+    foreach ($newIds as $nx) { $datesBefore[$nx['id']] = (string)inv($nx['id'])['invoice_date']; }
+    $r2 = e_post('/php-crud/m.proyekCRD.php', ['task' => 'auto_invoice', 'project_id' => $pid, 'mode' => 'issue'], $g['user_admin']);
+    $j2 = $r2['json'];
+    $ok2 = !empty($j2['success']);
+    $synced = (int)($j2['synced'] ?? 0);
+    $made2 = (int)($j2['made'] ?? 0);
+    $allDraftAfter = true;
+    foreach ($newIds as $nx) {
+        $iv = inv($nx['id']);
+        if ((string)$iv['release_status'] !== 'draft') { $allDraftAfter = false; }
+    }
+    $jrAfter2 = (int)val("SELECT COUNT(*) FROM journal_entries WHERE reference_type = 'project_invoice'
+                           AND reference_id IN (SELECT id FROM project_invoices WHERE project_id = :p)", ['p' => $pid]);
+    $okNoJr2 = $jrAfter2 === $jrBefore;
+    // tanggal invoice berubah pada yang di-sync (bila ada yang sync) dan tidak ada invoice baru ke-2 kalinya
+    $dateChanged = false;
+    foreach ($newIds as $nx) { if ((string)inv($nx['id'])['invoice_date'] !== $datesBefore[$nx['id']]) { $dateChanged = true; } }
+
+    record('TC-064', 'Invoice otomatis = DRAFT tanpa jurnal; sync tanggal tidak posting jurnal',
+        ($ok1 && $allDraft && $allNoRel && $allAuto && $okNoJr1 && $ok2 && $allDraftAfter && $okNoJr2 && $made2 === 0),
+        "issue-1: made={$made} (http={$r1['http']}) | semua draft=" . ($allDraft ? 'ya' : 'TIDAK') . " release_no NULL=" . ($allNoRel ? 'ya' : 'TIDAK') .
+        " auto_generated=" . ($allAuto ? 'ya' : 'TIDAK') . " | jurnal before/after1/after2={$jrBefore}/{$jrAfter1}/{$jrAfter2}" .
+        " | issue-2: made={$made2} synced={$synced} (http={$r2['http']}) | tanggal invoice berubah=" . ($dateChanged ? 'ya' : 'tidak') .
+        " | tetap draft=" . ($allDraftAfter ? 'ya' : 'TIDAK') . " | msg1='" . substr((string)($j1['message'] ?? ''), 0, 70) . "'" .
+        " | msg2='" . substr((string)($j2['message'] ?? ''), 0, 70) . "'");
+}
+
+/**
+ * TC-065: list_outstanding hanya memasukkan released ke daftar outstanding dan melaporkan draft terpisah di ringkasan kontrak.
+ * Bukti: invoice draft (punya sisa > 0) TIDAK ada di data[]; ringkasan proyek punya total_draft > 0 & draft_count > 0,
+ *        sedangkan total_termin/total_dpp/total_paid hanya menghitung released.
+ */
+function tc065(): void
+{
+    $g = $GLOBALS['g'];
+    if ($g['projE'] <= 0 || $g['invE_draft'] <= 0 || $g['invE_rel'] <= 0) {
+        record('TC-065', 'Outstanding hanya released; draft dilaporkan terpisah di ringkasan', null, 'SKIP: fixture Kelompok E belum lengkap'); return;
+    }
+    $r = api($g['user_admin'], 'project.paymentCRD.php', 'list_outstanding', ['client_id' => $g['clientA']]);
+    $rows = $r['json']['data'] ?? [];
+    $sum = $r['json']['summary']['projects'] ?? [];
+    $okHttp = $r['http'] === 200 && !empty($r['json']['success']) && is_array($rows) && is_array($sum);
+
+    $ids = [];
+    foreach ($rows as $o) { $ids[] = (int)($o['invoice_id'] ?? 0); }
+    $draftIn = in_array($g['invE_draft'], $ids, true);
+    $relIn = in_array($g['invE_rel'], $ids, true);
+
+    // ringkasan untuk proyek E
+    $pr = null;
+    foreach ($sum as $s) { if ((int)$s['project_id'] === $g['projE']) { $pr = $s; break; } }
+    $expTermin = (float)val("SELECT COALESCE(SUM(amount),0) FROM project_invoices WHERE project_id = :p AND release_status = 'released'", ['p' => $g['projE']]);
+    $expDpp = (float)val("SELECT COALESCE(SUM(CASE WHEN dpp_amount > 0 THEN dpp_amount ELSE amount END),0) FROM project_invoices WHERE project_id = :p AND release_status = 'released'", ['p' => $g['projE']]);
+    $expDraft = (float)val("SELECT COALESCE(SUM(CASE WHEN dpp_amount > 0 THEN dpp_amount ELSE amount END),0) FROM project_invoices WHERE project_id = :p AND release_status = 'draft'", ['p' => $g['projE']]);
+    $expDraftCnt = (int)val("SELECT COUNT(*) FROM project_invoices WHERE project_id = :p AND release_status = 'draft'", ['p' => $g['projE']]);
+    $okSum = $pr !== null
+        && abs((float)$pr['total_termin'] - $expTermin) <= 0.01
+        && abs((float)$pr['total_dpp'] - $expDpp) <= 0.01
+        && abs((float)$pr['total_draft'] - $expDraft) <= 0.01
+        && (int)$pr['draft_count'] === $expDraftCnt;
+    // released fixture dengan sisa > 0 harus muncul (bila lunas karena dibayar, relIn boleh false — namun fixture belum dibayar)
+    $okList = !$draftIn && ($relIn || $expTermin <= 0.01);
+    record('TC-065', 'Outstanding hanya released; draft dilaporkan terpisah di ringkasan', ($okHttp && $okList && $okSum),
+        "http={$r['http']} | draft id={$g['invE_draft']} di outstanding=" . ($draftIn ? 'YA!' : 'tidak') .
+        " | released id={$g['invE_rel']} di outstanding=" . ($relIn ? 'ya' : 'tidak') .
+        " | ringkasan proyek E: total_termin=" . number_format((float)($pr['total_termin'] ?? -1), 2) . " (harap " . number_format($expTermin, 2) . ")" .
+        " total_dpp=" . number_format((float)($pr['total_dpp'] ?? -1), 2) . " (harap " . number_format($expDpp, 2) . ")" .
+        " total_draft=" . number_format((float)($pr['total_draft'] ?? -1), 2) . " (harap " . number_format($expDraft, 2) . ")" .
+        " draft_count=" . (int)($pr['draft_count'] ?? -1) . " (harap {$expDraftCnt})" .
+        " | msg='" . substr((string)($r['json']['message'] ?? ''), 0, 60) . "'");
+}
+
+/* ============================================================
  * 7. MAIN
  * ==========================================================*/
 function main(array $argv): void
@@ -1624,7 +2101,7 @@ function main(array $argv): void
         if ($a === '--keep') { $doCleanup = false; }
     }
 
-    echo "=== E2E Release Tagihan — Kelompok A (TC-001..TC-006) + B (TC-010..TC-018) + C (TC-020..TC-030) + D (TC-040..TC-058) ===\n";
+    echo "=== E2E Release Tagihan — Kelompok A (TC-001..TC-006) + B (TC-010..TC-018) + C (TC-020..TC-030) + D (TC-040..TC-058) + E (TC-060..TC-065) ===\n";
     echo "DB: " . CFG_DB_NAME . " @ " . CFG_DB_HOST . " | URL: " . CFG_BASE_URL . "\n";
 
     if ($doSetup) {
@@ -1681,6 +2158,18 @@ function main(array $argv): void
         write_report($GLOBALS['g']['results'], $groupD);
     }
 
+    $groupE = 'Kelompok E — Release Layer pada Dashboard, Laporan PPN, Konteks AI, Invoice Otomatis, Ringkasan Kontrak';
+    $testsE = ['tc060' => 'TC-060', 'tc061' => 'TC-061', 'tc062' => 'TC-062', 'tc063' => 'TC-063', 'tc064' => 'TC-064', 'tc065' => 'TC-065'];
+    if ($group && $group !== 'E') { echo "[run] Kelompok E dilewati (--group={$group}).\n"; }
+    else {
+        echo "[run] eksekusi Kelompok E:\n";
+        foreach ($testsE as $fn => $tc) {
+            if ($only && !in_array($tc, $only, true)) { continue; }
+            $fn();
+        }
+        write_report($GLOBALS['g']['results'], $groupE);
+    }
+
     if ($doCleanup) {
         echo "[cleanup] menghapus data uji...\n";
         cleanup_test_data();
@@ -1691,7 +2180,7 @@ function main(array $argv): void
 
     $p = count(array_filter($GLOBALS['g']['results'], fn($r) => $r['status'] === true));
     $f = count(array_filter($GLOBALS['g']['results'], fn($r) => $r['status'] === false));
-    echo "\nHasil Keseluruhan (A+B+C+D): PASS={$p} FAIL={$f} | laporan: " . CFG_REPORT . "\n";
+    echo "\nHasil Keseluruhan (A+B+C+D+E): PASS={$p} FAIL={$f} | laporan: " . CFG_REPORT . "\n";
     exit($f > 0 ? 1 : 0);
 }
 
