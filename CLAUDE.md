@@ -37,3 +37,21 @@ Setiap kali Anda selesai melakukan audit, perbaikan bug, atau perubahan kode pad
    - Ringkasan perubahan (baris/fungsi) & alasan perbaikan
    - Status Git (`Committed` atau `Uncommitted`)
 3. Tampilkan daftar file tersebut secara eksplisit di akhir pesan terminal.
+
+## Standar Audit Mendalam (Setara Audit Manual)
+Setiap sesi audit otomatis atau pengujian regresi **WAJIB** mematuhi aturan berikut:
+1. **Cakupan File Lintas Lapisan:** Jangan membatasi pemindaian pada `php-crud/*.php` dan `js/*.js`. Wajib ikut memeriksa `php-func/*.php`, `views/*.php`, `pdf/*.php`, `js-func/*.js`, dan file berekstensi huruf besar seperti `*.PHP` (misalnya `db_connection.PHP`).
+2. **Audit Logika Bisnis & Sintaks SQL Dinamis:**
+   - Periksa komentar `//` di dalam string query SQL multi-baris yang dapat memicu error PostgreSQL.
+   - Verifikasi parsing nomor seri dokumen (`CreateRefNo`, `ti_next_release_no`, urutan `TAG-`/`INV-`/`PPAY-`) pada batas transisi bulan dan angka besar.
+   - Pastikan urutan validasi bisnis (cek status `released`, sisa tagihan, kepemilikan client) dieksekusi sebelum atau selaras dengan validasi input dasar.
+3. **Verifikasi via Eksekusi Nyata (Bukan Hanya Static Scan):** Setiap temuan logika bisnis atau celah akses wajib dibuatkan kasus uji otomatis di `tests/` dan dijalankan terhadap database uji `proyekGMN_test`.
+
+## Standar Audit Mendalam (Setara Audit Manual)
+Setiap sesi audit otomatis atau pengujian regresi **WAJIB** mematuhi aturan berikut:
+1. **Cakupan Lintas Lapisan:** Jangan membatasi pemindaian pada `php-crud/*.php` dan `js/*.js`. Wajib ikut memeriksa `php-func/*.php`, `views/*.php`, `pdf/*.php`, `js-func/*.js`, dan file berekstensi huruf besar seperti `*.PHP` (misalnya `db_connection.PHP`).
+2. **Audit Logika Bisnis, Regex PostgreSQL & SQL Dinamis:**
+   - Periksa komentar `//` di dalam string query SQL multi-baris yang dapat memicu error PostgreSQL.
+   - Verifikasi fungsi penomoran otomatis (`CreateRefNo`, `ti_next_release_no`, urutan `TAG-`/`INV-`/`PPAY-`) agar bebas dari bug regex karakter titik (`.`) atau transisi bulan.
+   - Pastikan urutan validasi bisnis (cek status `released`, sisa tagihan, kepemilikan client) dieksekusi selaras dengan validasi input dasar.
+3. **Verifikasi via Eksekusi Nyata & Data Aktual:** Setiap temuan logika bisnis atau celah akses wajib diverifikasi menggunakan database uji `proyekGMN_test` dan ditambahkan ke suite pengujian otomatis di `tests/`.
