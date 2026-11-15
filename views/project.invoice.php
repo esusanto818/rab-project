@@ -2,6 +2,7 @@
     /*
     Document        : Tagihan ke Klien
     Description     : Terbitkan invoice (tagihan termin) ke client, pantau pembayaran & jatuh tempo. Menu seq 6026 (grup 75).
+                      [MENU-RENAME 2026-11-15] label menu "TAGIHAN KE KLIEN" -> "TAGIHAN KLIEN"; id menu 156 & rute lama TIDAK berubah.
     File related    : - projectinvoice.js
                       - projectinvoiceCRD.php
                       - pdf/projectinvoice.php (cetak)
@@ -11,7 +12,7 @@
 ?>
 <html>
     <head>
-        <title id="page-title">Tagihan ke Klien</title>
+        <title id="page-title">Tagihan Klien</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
@@ -29,7 +30,7 @@
             document.getElementById('menu').innerHTML = <?php echo json_encode($_SESSION["linkMenu"] ?? ''); ?>;
         }
         if (document.getElementById('mainHeaderText')) {
-            document.getElementById("mainHeaderText").innerHTML = "Tagihan ke <em>Klien</em>";
+            document.getElementById("mainHeaderText").innerHTML = "Tagihan <em>Klien</em>";
         }
     </script>
 </html>

@@ -57,3 +57,29 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
   - `js/po.js`: Menambahkan konfirmasi serta pengamanan tombol aksi perubahan status PO di UI ExtJS.
   - `tests/run_e2e_po_prerelease.php` & `test_report_po_prerelease.md`: Menambahkan 10 skenario uji E2E (`TC-201` s/d `TC-210`) dan lulus 100% (`PASS=10 FAIL=0`).
   - `docs/HOWTO_PO_PRERELEASE_CHECK_2026-11-15.md`: Dokumentasi panduan fitur pengecekan PO sebelum release.
+
+## [2026-11-15] Tagihan Klien — Rename Menu, Watermark DRAFT di PDF, Cek Periode Akuntansi Saat Release
+
+**Permintaan:** lanjutan rilis layer tagihan klien: (1) rename menu "TAGIHAN KE KLIEN" →
+"TAGIHAN KLIEN", (2) watermark DRAFT sejati pada cetak PDF invoice belum release,
+(3) tolak release bila periode akuntansi tanggal terbit/tanggal invoice sudah ditutup.
+
+**Status Git:** Committed
+
+**Ringkasan Perubahan:**
+
+| Tanggal & Waktu | Path file | Ringkasan perubahan & alasan | Status Git |
+|-----------------|-----------|------------------------------|------------|
+| 2026-11-15 14:58 | `sql/2026-11-15.menu_tagihan_klien_rename.sql` | **BARU**: migrasi idempoten `UPDATE m_form_name SET title='TAGIHAN KLIEN' WHERE id=156 AND title='TAGIHAN KE KLIEN'`. id/seq/grup/php_url/js_url TIDAK berubah → rute lama tetap aman. | Committed |
+| 2026-11-15 14:58 | `views/project.invoice.php` | `<title>` dan header `mainHeaderText`: "Tagihan ke Klien" → "Tagihan Klien"; catatan docblock rename. | Committed |
+| 2026-11-15 14:58 | `js/project.invoice.js` | Header `mainHeaderText` = "Tagihan <em>Klien</em>"; catatan docblock rename. | Committed |
+| 2026-11-15 14:58 | `pdf/project.invoice.php` | Watermark DRAFT sejati: bila `release_status <> 'RELEASED'`, injeksi CSS `body::before`/`body::after` bertumpuk "DRAFT" + "BUKAN DOKUMEN RESMI - TERBITKAN DULUAN (RELEASE) SEBELUM DISERAHKAN KE CLIENT" via `pr_open(..., $extraCss)`. Invoice RELEASED tanpa watermark. | Committed |
+| 2026-11-15 14:58 | `php-crud/project.invoiceCRD.php` | Fungsi baru `ti_ensure_period_open($db, $journalDate, $invNo)`: cek `accounting_periods` (periode ada & `is_closed=false`) untuk tanggal terbit & tanggal invoice (NULL/'' dilewati aman) SEBELUM mutasi release dalam transaksi sama → gagal cek = release batal whole, tidak ada invoice released tanpa jurnal. `ti_release_one`: SELECT tambah kolom `invoice_date`. | Committed |
+| 2026-11-15 14:58 | `tests/run_e2e_release.php` | Tambah TC-007 (rename menu: id 156/seq 6026/rute lama tak berubah, views+js ikut, label lama hilang), TC-008 (PDF DRAFT ada watermark `content: "DRAFT"` + "BUKAN DOKUMEN RESMI", RELEASED tanpa watermark), TC-009 (release ke periode tertutup ditolak; invoice tetap draft, tanpa `TAG-`, tanpa jurnal). Setup: migrasi rename menu di DB uji; cleanup: hapus periode uji "Uji Tertutup 2020". | Committed |
+| 2026-11-15 14:58 | `test_report_tc001_065.md` | Hasil run suite release terkini: PASS=55 FAIL=0 (TC-001..TC-065 termasuk TC-007..TC-009). | Committed |
+| 2026-11-15 14:58 | `docs/HOWTO_TAGIHAN_KLIEN_RELEASE_2026-11-15.md` | **BARU**: dokumen panduan fitur (rename menu, watermark DRAFT, cek periode akuntansi saat release, verifikasi otomatis, catatan operasional). | Committed |
+
+**Verifikasi:**
+- `php tests/run_e2e_release.php` → **PASS=55 FAIL=0**.
+- `php tests/run_e2e_audit_sync.php` → **PASS=9 FAIL=0**.
+- `php -l` bersih untuk semua file PHP yang diubah.

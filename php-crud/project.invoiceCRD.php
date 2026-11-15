@@ -3,8 +3,9 @@ require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * projectinvoiceCRD.php
  * ============================================================
- * Backend "Tagihan ke Klien" (invoice termin proyek). Front end: js/projectinvoice.js, views/projectinvoice.php,
+ * Backend "Tagihan Klien" (invoice termin proyek). Front end: js/projectinvoice.js, views/projectinvoice.php,
  * cetak: pdf/projectinvoice.php. Menu: m_form_name seq 6026 (grup 75).
+ * [MENU-RENAME 2026-11-15] label menu "TAGIHAN KE KLIEN" -> "TAGIHAN KLIEN"; id menu 156 & rute lama TIDAK berubah.
  *
  * Alur   : SIMPAN invoice (DRAFT, internal) -> RELEASE tagihan (terbit dokumen TAG-..., jurnal penagihan posting,
  *          invoice masuk daftar tagihan di modul Project Payment) -> client membayar (alokasi ke invoice ini) ->
@@ -110,6 +111,27 @@ function ti_has_payment($db, int $invId, float $paid): bool {
     return $paid > TI_EPS || (int)$st->fetchColumn() > 0;
 }
 
+/**
+ * [RELEASE-LAYER 2026-11-15] Cek periode akuntansi terbuka untuk tanggal jurnal penagihan.
+ * Dijalankan SEBELUM mutasi release (dalam transaksi yang sama) supaya gagal cek = release batal whole,
+ * bukan invoice released tapi jurnal gagal posting (inkonsisten). is_closed bertipe boolean.
+ */
+function ti_ensure_period_open($db, string $journalDate, string $invNo): void {
+    $st = $db->prepare("
+        SELECT id, is_closed
+          FROM public.accounting_periods
+         WHERE CAST(:jdate AS date) BETWEEN start_date AND end_date
+         LIMIT 1");
+    $st->execute([':jdate' => $journalDate]);
+    $period = $st->fetch(PDO::FETCH_ASSOC);
+    if (!$period) {
+        throw new TiError("Tidak ada periode akuntansi yang mencakup tanggal {$journalDate} (invoice {$invNo}). Buat periode-nya dulu di menu Fiscal Period.");
+    }
+    if ((bool)$period['is_closed']) {
+        throw new TiError("Periode akuntansi untuk tanggal {$journalDate} sudah ditutup. Invoice {$invNo} tidak dapat diterbitkan.");
+    }
+}
+
 /** Cek no. faktur pajak keluaran unik antar invoice. */
 function ti_check_faktur_unique($db, $fpNo, int $exclId): void {
     if ($fpNo === null || $fpNo === '') return;
@@ -143,7 +165,7 @@ function ti_next_release_no($db): string {
  * Catatan penerbitan (release_note) opsional, maks 200 karakter; nilai kosong -> ''.
  */
 function ti_release_one($db, int $id, string $relDate, int $userId, string $relNote = ''): array {
-    $st = $db->prepare("SELECT id, inv_no, project_id, paid_amount, release_status FROM public.project_invoices WHERE id = :id FOR UPDATE");
+    $st = $db->prepare("SELECT id, inv_no, project_id, paid_amount, release_status, invoice_date FROM public.project_invoices WHERE id = :id FOR UPDATE");
     $st->execute([':id' => $id]);
     $inv = $st->fetch(PDO::FETCH_ASSOC);
     if (!$inv) throw new TiError('Invoice tidak ditemukan.');
@@ -153,6 +175,11 @@ function ti_release_one($db, int $id, string $relDate, int $userId, string $relN
     if (ti_has_payment($db, $id, (float)$inv['paid_amount'])) {
         throw new TiError("Invoice {$inv['inv_no']} sudah memiliki pembayaran, tidak dapat diterbitkan ulang.");
     }
+    // [RELEASE-LAYER 2026-11-15] periode akuntansi tanggal terbit & tanggal invoice (dasar tanggal jurnal) wajib terbuka.
+    // invoice_date NULL/'' (data tidak lazim) -> cukup tanggal terbit; jangan sampai CAST('' AS date) error.
+    ti_ensure_period_open($db, $relDate, $inv['inv_no']);
+    $invDate = isset($inv['invoice_date']) ? trim((string)$inv['invoice_date']) : '';
+    if ($invDate !== '') { ti_ensure_period_open($db, $invDate, $inv['inv_no']); }
     $relNo = ti_next_release_no($db);
     $st = $db->prepare("
         UPDATE public.project_invoices

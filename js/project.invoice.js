@@ -1,6 +1,7 @@
 /*
   Document      : projectinvoice.js
-  Description   : Tagihan ke Klien (invoice termin proyek).  Alur: SIMPAN invoice (DRAFT, internal) -> RELEASE tagihan
+  Description   : Tagihan Klien (invoice termin proyek).  [MENU-RENAME 2026-11-15] label "Tagihan ke Klien" -> "Tagihan Klien"; id menu 156 & rute lama tidak berubah.
+                   Alur: SIMPAN invoice (DRAFT, internal) -> RELEASE tagihan
                    (terbit dokumen TAG-... yang diserahkan ke client; jurnal penagihan posting; invoice baru muncul di
                    modul Project Payment) -> client membayar -> kelebihan bayar jadi deposit client.
                    Grid utama = daftar invoice (status dokumen DRAFT/TERBIT + status Belum Bayar / Sebagian / Lunas,
@@ -20,7 +21,7 @@
 */
 Ext.onReady(function () {
     Ext.QuickTips.init();
-    document.getElementById("mainHeaderText").innerHTML = "Tagihan ke <em>Klien</em>";
+    document.getElementById("mainHeaderText").innerHTML = "Tagihan <em>Klien</em>";
 
     var CRD = main_url + '/php-crud/project.invoiceCRD.php';
 

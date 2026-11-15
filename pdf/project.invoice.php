@@ -1,6 +1,6 @@
 <?php
 /*
-  Document      : pdf/projectinvoice.php   [TAGIHAN KE KLIEN]
+  Document      : pdf/projectinvoice.php   [TAGIHAN KLIEN]
   Description   : Cetak invoice (tagihan termin) ke client: nomor & tanggal, jatuh tempo, client, proyek, rincian DPP / PPN / total,
                   pembayaran yang sudah diterima, sisa tagihan, dan no. faktur pajak. Memakai helper print.common.php
                   (pr_boot, pr_open, pr_close, pr_e, pr_n, pr_date) seperti pdf/profitloss.php.
@@ -51,7 +51,29 @@ $info = [
         : '',
 ];
 $info = array_values(array_filter($info, function ($x) { return $x !== ''; }));   // buang baris kosong
-pr_open('Invoice ' . $inv['inv_no'], 'INVOICE / TAGIHAN', $info);
+// [RELEASE-LAYER 2026-11-15] watermark DRAFT sejati: tagihan belum Released diblokir dari pencetakan resmi
+// via tumpukan besar miring + buram di seluruh halaman, bukan cuma baris status di header.
+$isReleased = strtoupper((string)$inv['release_status']) === 'RELEASED';
+$extraCss = '';
+if (!$isReleased) {
+    $extraCss = '<style>
+        body { position: relative; }
+        body::before {
+            content: "DRAFT"; position: fixed; z-index: 9999;
+            top: 42%; left: 0; width: 100%;
+            text-align: center; font-size: 110px; font-weight: bold; letter-spacing: 12px;
+            color: rgba(179, 84, 30, 0.28); transform: rotate(-32deg);
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+        body::after {
+            content: "BUKAN DOKUMEN RESMI - TERBITKAN DULUAN (RELEASE) SEBELUM DISERAHKAN KE CLIENT";
+            position: fixed; z-index: 9999; top: 56%; left: 0; width: 100%;
+            text-align: center; font-size: 13px; font-weight: bold; color: rgba(179, 84, 30, 0.28);
+            transform: rotate(-32deg); -webkit-print-color-adjust: exact; print-color-adjust: exact;
+        }
+    </style>';
+}
+pr_open('Invoice ' . $inv['inv_no'], 'INVOICE / TAGIHAN', $info, '', true, $extraCss);
 ?>
 <table class="rpt fx">
     <colgroup><col><col style="width:200px"></colgroup>

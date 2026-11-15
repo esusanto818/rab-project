@@ -13,6 +13,7 @@
  *      Invoice 1 (DPP+PPN 11%), Invoice 2 (tanpa PPN), Invoice 3 (pra-migrasi: draft tapi sudah punya jurnal),
  *      Invoice R (fixture released utk TC-004/TC-005), user FormAccess level 1/3/4.
  *   4. Kelompok A: TC-001 s/d TC-006 (dokumen docs/TESTCASE_RELEASE_TAGIHAN_E2E_2026-11-14.md)
+ *                + TC-007 s/d TC-009 (rename menu Tagihan Klien, watermark DRAFT di PDF, periode akuntansi tertutup)
  *      Kelompok B: TC-010 s/d TC-018 (release / bulk release / unrelease)
  *      Kelompok C: TC-020 s/d TC-030 (pembayaran termin, deposit, multi-currency, hapus pembayaran, PDF, faktur pajak)
  *      Kelompok D: TC-040 s/d TC-057 (skenario negatif, rollback transaksi atomik, pencegahan double release, hak akses level)
@@ -401,6 +402,10 @@ function setup_test_data(): void
         $g['made_period_open'] = $perNow['period_name'];
     }
 
+    // [MENU-RENAME 2026-11-15] migrasi label menu di DB uji: "TAGIHAN KE KLIEN" -> "TAGIHAN KLIEN" (id 156/seq 6026/rute tak berubah).
+    // Idempoten: hanya bila title masih label lama; sql/2026-11-15.menu_tagihan_klien_rename.sql memakai pernyataan sama.
+    db()->prepare("UPDATE m_form_name SET title = 'TAGIHAN KLIEN' WHERE id = 156 AND title = 'TAGIHAN KE KLIEN'")->execute();
+
     // Client A (2 proyek) & Client B (1 proyek)
     foreach ([['A', 500000000], ['B', 300000000]] as [$huruf, $cv]) {
         $db->prepare("INSERT INTO clients (name, contact_person, phone, email, address)
@@ -573,6 +578,8 @@ function cleanup_test_data(): void
         if ($g['made_prj_dep_apply']) {
             $db->prepare("DELETE FROM fiscal_config WHERE rule_code = 'PRJ_DEP_APPLY' AND rule_name LIKE '%(E2E)%'")->execute();
         }
+        // [TC-009] hapus periode uji tertutup yang dibuat test bila belum ada data transaksi di dalamnya
+        $db->prepare("DELETE FROM accounting_periods WHERE period_name = 'Uji Tertutup 2020'")->execute();
         $db->commit();
     } catch (Throwable $e) {
         $db->rollBack();
@@ -636,6 +643,83 @@ function write_report(array $groupResults, string $groupTitle): void
 /* ============================================================
  * 6. KELOMPOK A — TC-001 s/d TC-006 (Persiapan & Invoice fase DRAFT)
  * ==========================================================*/
+/**
+ * TC-007: penamaan menu "TAGIHAN KLIEN" (rename [MENU-RENAME 2026-11-15]) — id 156, seq 6026, rute lama tetap.
+ * Label lama "TAGIHAN KE KLIEN" TIDAK boleh dipakai lagi; php_url/js_url TIDAK berubah.
+ */
+function tc007(): void
+{
+    $m = row("SELECT id, group_id, seq, title, php_url, js_url FROM m_form_name WHERE id = 156");
+    $okId   = $m && (int)$m['id'] === 156;                                   // id menu tidak berubah
+    $okSeq  = $m && $m['seq'] === '6026';                                    // seq tidak berubah
+    $okUrl  = $m && $m['php_url'] === 'project.invoice.php' && $m['js_url'] === 'project.invoice.js';  // rute lama aman
+    $okName = $m && strtoupper((string)$m['title']) === 'TAGIHAN KLIEN';     // label baru
+    $noOld  = (int)val("SELECT COUNT(*) FROM m_form_name WHERE title ILIKE :t", ['t' => '%TAGIHAN KE KLIEN%']) === 0;
+    $view   = file_get_contents(__DIR__ . '/../views/project.invoice.php');
+    $js     = file_get_contents(__DIR__ . '/../js/project.invoice.js');
+    $okView = strpos($view, 'Tagihan Klien') !== false && strpos($view, 'Tagihan ke <em>Klien</em>') === false;
+    $okJs   = strpos($js, 'Tagihan <em>Klien</em>') !== false;
+    record('TC-007', 'Menu rename: label "TAGIHAN KLIEN", id 156/seq 6026/rute lama tak berubah, views+js ikut',
+        ($okId && $okSeq && $okUrl && $okName && $noOld && $okView && $okJs),
+        'title=' . ($m ? $m['title'] : '(null)') . ' oldLabelLeft=' . $noOld);
+}
+
+/**
+ * TC-008: PDF cetak invoice DRAFT membawa watermark DRAFT + status bukan dokumen resmi;
+ * invoice RELEASED TIDAK membawa watermark (pola css body::before "DRAFT" cuma untuk draft).
+ */
+function tc008(): void
+{
+    // draft: pakai invoice fixture TC-003 bila masih ada; bila sudah dihapus, buat baru
+    $g = &$GLOBALS['g'];
+    $draftId = (int)$g['inv2'];
+    $st = db()->prepare("SELECT release_status FROM public.project_invoices WHERE id = :i");
+    $st->execute(['i' => $draftId]);
+    if (!$st->fetchColumn()) {
+        $inv = make_invoice($g['projA1'], $g['clientA'], 'Draft untuk TC-008', 1000000, 0);
+        $draftId = $inv ? (int)$inv['id'] : 0;
+    }
+    $r = http_get('/pdf/project.invoice.php?id=' . $draftId, $g['user_admin']);
+    $hasWatermark = strpos($r['body'], 'content: "DRAFT"') !== false;
+    $hasNotOfficial = stripos($r['body'], 'BUKAN DOKUMEN RESMI') !== false;
+    $r2 = http_get('/pdf/project.invoice.php?id=' . (int)$g['invR'], $g['user_admin']);
+    $noWatermarkReleased = strpos($r2['body'], 'content: "DRAFT"') === false;
+    record('TC-008', 'PDF invoice DRAFT = watermark DRAFT + keterangan bukan dokumen resmi; RELEASED = tanpa watermark',
+        ($r['http'] === 200 && $hasWatermark && $hasNotOfficial && $noWatermarkReleased),
+        'draftHttp=' . $r['http'] . ' wm=' . ($hasWatermark ? 'ada' : 'tiada') . ' releasedWm=' . ($noWatermarkReleased ? 'tiada' : 'ADA'));
+}
+
+/**
+ * TC-009: release ditolak bila periode akuntansi tanggal terbit sudah ditutup (jurnal tak bisa posting),
+ * dan status invoice tetap draft (gagal sebelum mutasi — tidak ada invoice released tanpa jurnal).
+ */
+function tc009(): void
+{
+    $g = &$GLOBALS['g'];
+    // cari periode yang ditutup & tidak mencakup hari ini
+    $per = row("SELECT id, start_date, end_date, is_closed FROM accounting_periods WHERE is_closed = true ORDER BY id LIMIT 1");
+    if (!$per) {
+        // buat periode tertutup khusus: 2020-01-01 .. 2020-12-31 (tahun lama, tak bentrok CURRENT_DATE)
+        $exists = (int)val("SELECT COUNT(*) FROM accounting_periods WHERE start_date = '2020-01-01'::date AND end_date = '2020-12-31'::date");
+        if (!$exists) {
+            db()->prepare("INSERT INTO accounting_periods (period_name, start_date, end_date, is_closed) VALUES ('Uji Tertutup 2020', '2020-01-01', '2020-12-31', true)")->execute();
+        }
+        $per = row("SELECT id, start_date, end_date, is_closed FROM accounting_periods WHERE period_name = 'Uji Tertutup 2020'");
+    }
+    if (!$per) { record('TC-009', 'Release ditolak saat periode akuntansi tertutup', null, 'tidak ada periode tertutup untuk fixture'); return; }
+    $inv = make_invoice($g['projA1'], $g['clientA'], 'Draft periode tertutup TC-009', 2000000, 0);
+    if (!$inv) { record('TC-009', 'Release ditolak saat periode akuntansi tertutup', false, 'fixture invoice gagal dibuat'); return; }
+    $r = api($g['user_admin'], 'project.invoiceCRD.php', 'release_invoice', ['id' => $inv['id'], 'release_date' => '2020-06-15']);
+    $rejected = empty($r['json']['success']) && stripos((string)($r['json']['message'] ?? ''), 'periode') !== false;
+    $stillDraft = (string)val("SELECT release_status FROM public.project_invoices WHERE id = :i", ['i' => $inv['id']]) === 'draft';
+    $noTag    = (int)val("SELECT COUNT(*) FROM public.project_invoices WHERE id = :i AND release_no IS NOT NULL", ['i' => $inv['id']]) === 0;
+    $noJrn    = (int)val("SELECT COUNT(*) FROM journal_entries WHERE reference_type = 'project_invoice' AND reference_id = :i", ['i' => $inv['id']]) === 0;
+    // restore: invoice tetap draft -> cleanup Test menghapusnya lewat created list
+    record('TC-009', 'Release ke periode akuntansi tertutup ditolak; invoice tetap draft, tanpa TAG-, tanpa jurnal',
+        ($rejected && $stillDraft && $noTag && $noJrn),
+        'msg=' . substr((string)($r['json']['message'] ?? ''), 0, 90));
+}
+
 function tc001(): void
 {
     $rules = ['PROJECT_INVOICE', 'PROJECT_INVOICE_PPN', 'PRJ_PAY_AR', 'PRJ_PAY_DEP', 'PRJ_DEP_APPLY'];
@@ -2101,7 +2185,7 @@ function main(array $argv): void
         if ($a === '--keep') { $doCleanup = false; }
     }
 
-    echo "=== E2E Release Tagihan — Kelompok A (TC-001..TC-006) + B (TC-010..TC-018) + C (TC-020..TC-030) + D (TC-040..TC-058) + E (TC-060..TC-065) ===\n";
+    echo "=== E2E Release Tagihan — Kelompok A (TC-001..TC-007) + B (TC-008..TC-009, TC-010..TC-018) + C (TC-020..TC-030) + D (TC-040..TC-058) + E (TC-060..TC-065) ===\n";
     echo "DB: " . CFG_DB_NAME . " @ " . CFG_DB_HOST . " | URL: " . CFG_BASE_URL . "\n";
 
     if ($doSetup) {
@@ -2110,8 +2194,8 @@ function main(array $argv): void
         echo "[setup] selesai. clientA={$GLOBALS['g']['clientA']} projA1={$GLOBALS['g']['projA1']} projA2={$GLOBALS['g']['projA2']} projB1={$GLOBALS['g']['projB1']} inv1={$GLOBALS['g']['inv1']} invR={$GLOBALS['g']['invR']}\n";
     }
 
-    $groupA = 'Kelompok A — Persiapan & Invoice (fase DRAFT)';
-    $testsA = ['tc001' => 'TC-001', 'tc002' => 'TC-002', 'tc003' => 'TC-003', 'tc004' => 'TC-004', 'tc005' => 'TC-005', 'tc006' => 'TC-006'];
+    $groupA = 'Kelompok A — Persiapan & Invoice (fase DRAFT) + Menu/Periode';
+    $testsA = ['tc001' => 'TC-001', 'tc002' => 'TC-002', 'tc003' => 'TC-003', 'tc004' => 'TC-004', 'tc005' => 'TC-005', 'tc006' => 'TC-006', 'tc007' => 'TC-007'];
     if ($group && $group !== 'A') { echo "[run] Kelompok A dilewati (--group={$group}).\n"; }
     else {
         echo "[run] eksekusi Kelompok A:\n";
@@ -2123,7 +2207,7 @@ function main(array $argv): void
     }
 
     $groupB = 'Kelompok B — Release (draft -> released) & Unrelease';
-    $testsB = ['tc010' => 'TC-010', 'tc011' => 'TC-011', 'tc012' => 'TC-012', 'tc013' => 'TC-013', 'tc014' => 'TC-014', 'tc015' => 'TC-015', 'tc016' => 'TC-016', 'tc017' => 'TC-017', 'tc018' => 'TC-018'];
+    $testsB = ['tc008' => 'TC-008', 'tc009' => 'TC-009', 'tc010' => 'TC-010', 'tc011' => 'TC-011', 'tc012' => 'TC-012', 'tc013' => 'TC-013', 'tc014' => 'TC-014', 'tc015' => 'TC-015', 'tc016' => 'TC-016', 'tc017' => 'TC-017', 'tc018' => 'TC-018'];
     if ($group && $group !== 'B') { echo "[run] Kelompok B dilewati (--group={$group}).\n"; }
     else {
         echo "[run] eksekusi Kelompok B:\n";
