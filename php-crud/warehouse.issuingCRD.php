@@ -85,17 +85,24 @@ function IssRabInfo($projectId, $materialId) {
 }
 
 /**
- * [NEW PROGRESS-GATED VALIDATION] Validasi pengeluaran material terhadap progress fisik proyek
+ * [NEW PROGRESS-GATED VALIDATION] Validasi pengeluaran material terhadap progress fisik proyek.
+ * [F-1.2 2026-11-16] Biaya terpakai dihitung dari rumusan terpadu v_project_actual_cost:
+ *   material (posted/reversed-null/PROJECT) + expenses (status bukan void/cancelled) + subkon tersertifikasi.
+ *   Plafon = budget terpadu (projects.budget x kurs, atau SUM(budget_items) bila budget kosong) x progress% x (1 + 5%).
+ *   Bila view belum dimigrasi (F-1.2 SQL), jatuh kembali ke perilaku lama: budget header + material saja.
  */
 function validateMaterialOutAgainstProgress($projectId, $newMaterialCost) {
-    $proj = WhRow("SELECT budget, COALESCE(progress, 0) AS progress FROM public.projects WHERE id = $1", array((int)$projectId));
+    $proj = WhRow("SELECT budget, COALESCE(progress, 0) AS progress,
+                          COALESCE(NULLIF(budget * COALESCE(NULLIF(budget_exch_rate, 0), 1), 0),
+                                   (SELECT COALESCE(SUM(b.qty_plan*b.unit_price_plan), 0) FROM budget_items b WHERE b.project_id = $1), 0) AS budget_base
+                   FROM public.projects WHERE id = $1", array((int)$projectId));
     if (!$proj) {
         throw new WhException('Proyek tidak ditemukan.');
     }
 
-    $totalBudget = floatval($proj['budget']);
-    $currentProgress = intval($proj['progress']); 
-    $tolerancePct = 5.0; 
+    $totalBudget = floatval($proj['budget_base']);
+    $currentProgress = intval($proj['progress']);
+    $tolerancePct = 5.0;
 
     if ($totalBudget <= 0) {
         return;
@@ -103,17 +110,28 @@ function validateMaterialOutAgainstProgress($projectId, $newMaterialCost) {
 
     $allowedBudgetLimit = ($totalBudget * ($currentProgress / 100.0)) * (1 + ($tolerancePct / 100.0));
 
-    $spentData = WhRow("SELECT COALESCE(SUM(i.qty_out * i.unit_cost), 0) AS total_spent 
-                        FROM material_out_header h 
-                        JOIN material_out_items i ON i.material_out_id = h.id 
-                        WHERE h.project_id = $1 AND h.status = 'posted' AND h.issue_type = 'PROJECT'", 
-                       array((int)$projectId));
-    $currentSpent = floatval($spentData['total_spent']);
+    // [F-1.2] Realisasi biaya = material + expense + subkon (satu rumus, dibaca dari view terpadu).
+    $costRow = WhRow("SELECT COALESCE(cost_total, 0) AS total_spent
+                      FROM public.v_project_actual_cost
+                      WHERE project_id = $1", array((int)$projectId));
+    if ($costRow) {
+        $currentSpent = floatval($costRow['total_spent']);
+    } else {
+        // Fallback lama (view belum dimigrasi): material posted saja.
+        $spentData = WhRow("SELECT COALESCE(SUM(i.qty_out * i.unit_cost), 0) AS total_spent
+                            FROM material_out_header h
+                            JOIN material_out_items i ON i.material_out_id = h.id
+                            WHERE h.project_id = $1 AND h.status = 'posted' AND h.reversed_at IS NULL AND h.issue_type = 'PROJECT'",
+                           array((int)$projectId));
+        $currentSpent = floatval($spentData['total_spent']);
+    }
     $projectedSpent = $currentSpent + $newMaterialCost;
 
     if ($projectedSpent > $allowedBudgetLimit) {
+        // [F-1.1 BUGFIX 2026-11-16] format string sebelumnya memakai placeholder yang di-escape (%%d%%/%%s)
+        // sehingga pesan dilog tidak pernah memuat angka (selalu tercetak literal "%d%" / "%s").
         throw new WhException(sprintf(
-            "TRANSAKSI DITOLAK: Pemakaian anggaran melampaui batas progress fisik saat ini! Progress fisik: %%d%%%. Plafon diizinkan: Rp %%s. Total pengajuan: Rp %%s.",
+            "TRANSAKSI DITOLAK: Pemakaian anggaran melampaui batas progress fisik saat ini! Progress fisik: %d%%. Plafon diizinkan: Rp %s. Total pengajuan: Rp %s.",
             $currentProgress,
             number_format($allowedBudgetLimit, 2, ',', '.'),
             number_format($projectedSpent, 2, ',', '.')

@@ -172,6 +172,15 @@ try {
                     $st->execute([':id' => $prj]);
                     if (!$st->fetchColumn()) throw new PrgBusinessError('Proyek tidak ditemukan.');
 
+                    // [F-1.1 2026-11-16] Hard-block yang sama dengan modul web (project.progressCRD.php):
+                    // klaim/laporan 100% hanya sah bila ada realisasi material (issue posted) untuk proyek ini.
+                    if ($pct >= 100 && function_exists('ProjectActualCost')) {
+                        $acMobile = ProjectActualCost($db, $prj);
+                        if ($acMobile !== null && $acMobile['cost_material'] <= 0) {
+                            throw new PrgBusinessError('Laporan 100% DITOLAK: belum ada realisasi pemakaian material (issue material Rp 0) untuk proyek ini. Catat issue material di modul Warehouse Issuing terlebih dahulu.');
+                        }
+                    }
+
                     $st = $db->prepare("
                         INSERT INTO public.project_progress
                             (project_id, progress_date, percent, notes, latitude, longitude, client_uuid, created_by)

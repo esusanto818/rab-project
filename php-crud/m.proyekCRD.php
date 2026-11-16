@@ -1682,6 +1682,20 @@ PROMPT;
                 throw new Exception('Status proyek tidak valid.');
             }
             if ($progress !== null && ($progress < 0 || $progress > 100)) throw new Exception('Progress harus antara 0-100.');
+            // [F-1.1 2026-11-16] Progress hanya boleh BERUBAH oleh admin (FormAccess >= 4); non-admin harus
+            // lewat modul Project Progress (klaim -> verifikasi). Nilai yang TIDAK berubah tetap boleh dikirim
+            // (UI lama mengirim ulang nilai yang sama); yang ditolak hanyalah nilai yang menyimpang dari DB.
+            if ($progress !== null && $access < 4 && $task === 'update' && $id > 0) {
+                $curProg = mpFetchOne($db, "SELECT COALESCE(progress, 0) AS progress FROM projects WHERE id = :id",
+                    ['id' => $id], 'cek progress proyek');
+                if ($curProg !== null && (int)$curProg['progress'] !== $progress) {
+                    throw new Exception('Set progress manual hanya untuk admin (akses 4). Gunakan modul Project Progress untuk klaim & verifikasi progress.');
+                }
+            }
+            if ($progress !== null && $progress > 0 && $task === 'create' && $access < 4) {
+                // Proyek baru non-admin selalu mulai dari 0%; progress diisi lewat klaim terverifikasi.
+                $progress = 0;
+            }
             if ($end_date && $start_date && $end_date < $start_date) {
                 throw new Exception('Tanggal Selesai tidak boleh sebelum Tanggal Mulai.');
             }

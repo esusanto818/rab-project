@@ -898,3 +898,64 @@ function CreateRefNoDb($db, $table, $column, $prefix) {
     $st->execute([':pat' => '^' . $p . '[0-9]{5}$']);
     return $p . str_pad((string)intval($st->fetchColumn()), 5, '0', STR_PAD_LEFT);
 }
+
+// ============================================================
+// [F-1.2 2026-11-16] SATU RUMUS "realisasi biaya proyek" (HPP).
+// Sumber kebenaran tunggal: view public.v_project_actual_cost
+// (migration sql/2026-11-16.project_actual_cost_view.sql).
+// Dipakai oleh: project.analysis.php (dash_project_context), project.progressCRD.php (prog_metrics),
+//               project.wipreleaseCRD.php (wr_calc). JANGAN hitung ulang dengan rumus sendiri.
+// ============================================================
+if (!function_exists('ProjectActualCost')) {
+    /**
+     * Kembalikan baris v_project_actual_cost untuk satu proyek (null bila view/proyek tidak ada).
+     * @param PDO   $db             Koneksi PDO (dalam transaksi apa pun).
+     * @param int   $pid            ID proyek.
+     * @param float|null $progressOverride Bila diisi, earned value dihitung seolah progress sebesar ini
+     *                             (dipakai saat verifikasi klaim). cost_* TIDAK ikut berubah.
+     * @return array|null          [project_id, progress, budget_base, rab_budget, cost_material, cost_expense,
+     *                              cost_subcon, cost_total, hpp_released, wip_remaining, earned_value, cpi]
+     */
+    function ProjectActualCost($db, int $pid, ?float $progressOverride = null): ?array {
+        try {
+            $st = $db->prepare("SELECT project_id, project_name, project_status, progress,
+                                       budget_base_raw, rab_budget,
+                                       cost_material, cost_expense, cost_subcon, cost_total,
+                                       hpp_released, wip_remaining
+                                  FROM public.v_project_actual_cost
+                                 WHERE project_id = :p");
+            $st->execute([':p' => $pid]);
+            $r = $st->fetch(PDO::FETCH_ASSOC);
+        } catch (Exception $e) {
+            error_log('[function.all] ProjectActualCost: view tidak tersedia / gagal: ' . $e->getMessage()
+                . ' -- jalankan migration sql/2026-11-16.project_actual_cost_view.sql');
+            return null;
+        }
+        if (!$r) return null;
+        $progress = $progressOverride !== null ? (float)$progressOverride : (float)$r['progress'];
+        $budgetBase = (float)$r['budget_base_raw'] > 0 ? (float)$r['budget_base_raw'] : (float)$r['rab_budget'];
+        $cm = (float)$r['cost_material'];
+        $ce = (float)$r['cost_expense'];
+        $cs = (float)$r['cost_subcon'];
+        $total = (float)$r['cost_total'];
+        if ($total <= 0.000001) $total = $cm + $ce + $cs;   // jaga konsistensi bila kolom view berubah
+        $ev = $budgetBase * $progress / 100.0;
+        $cpi = $total > 0 ? round($ev / $total, 4) : null;
+        return [
+            'project_id'    => (int)$r['project_id'],
+            'project_name'  => (string)$r['project_name'],
+            'project_status'=> (string)$r['project_status'],
+            'progress'      => (int)round($progress),
+            'budget_base'   => round($budgetBase, 2),
+            'rab_budget'    => round((float)$r['rab_budget'], 2),
+            'cost_material' => round($cm, 2),
+            'cost_expense'  => round($ce, 2),
+            'cost_subcon'   => round($cs, 2),
+            'cost_total'    => round($total, 2),
+            'hpp_released'  => round((float)$r['hpp_released'], 2),
+            'wip_remaining' => round((float)$r['wip_remaining'], 2),
+            'earned_value'  => round($ev, 2),
+            'cpi'           => $cpi,
+        ];
+    }
+}

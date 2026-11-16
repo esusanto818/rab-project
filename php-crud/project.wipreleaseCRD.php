@@ -97,7 +97,12 @@ function wr_calc($db, int $projectId, string $mode, $pctIn, int $excludeReleaseI
     $st->execute([':p' => $projectId]);
     $journaled = (float)$st->fetchColumn();
 
-    // nilai issue menurut dokumen (pembanding: bila > journaled berarti ada issue yang belum berjurnal)
+    // nilai issue menurut dokumen (pembanding: bila > journaled berarti ada issue yang belum berjurnal).
+    // [F-1.2 2026-11-16] dasar terpadu: angka realisasi biaya (material+expense+subkon) dibaca dari
+    // public.v_project_actual_cost via ProjectActualCost() — sama persis dengan menu Progress &
+    // dashboard, sehingga selisih "issue berjurnal vs total realisasi" langsung terlihat.
+    $ac = function_exists('ProjectActualCost') ? ProjectActualCost($db, $projectId) : null;
+
     $st = $db->prepare("
         SELECT COALESCE(SUM(i.qty_out * i.unit_cost), 0)
           FROM public.material_out_items i
@@ -135,6 +140,13 @@ function wr_calc($db, int $projectId, string $mode, $pctIn, int $excludeReleaseI
         'released_before' => round($released, 2),
         'target_released' => $target,
         'amount'          => $amount,
+        // [F-1.2] konteks terpadu untuk dibandingkan di UI/preview — bukan dasar pelepasan.
+        'actual_cost'         => $ac ? (float)$ac['cost_total'] : null,
+        'actual_cost_material'=> $ac ? (float)$ac['cost_material'] : null,
+        'actual_cost_expense' => $ac ? (float)$ac['cost_expense'] : null,
+        'actual_cost_subcon'  => $ac ? (float)$ac['cost_subcon'] : null,
+        'cost_released'       => $ac ? (float)$ac['hpp_released'] : null,
+        'cost_remaining_wip'  => $ac ? (float)$ac['wip_remaining'] : null,
     ];
 }
 

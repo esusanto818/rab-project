@@ -48,6 +48,7 @@ const PROG_CPI_YELLOW       = 0.90;     // indeks biaya di bawah ini -> KUNING
 const PROG_CPI_RED          = 0.80;     // indeks biaya di bawah ini -> MERAH
 const PROG_REQUIRE_EVIDENCE = true;     // bukti (no. foto / BAP / link) wajib pada klaim
 const PROG_ALLOW_SELF_VERIFY = false;   // false = pelapor tidak boleh memverifikasi klaimnya sendiri
+const PROG_COST_LAG_WARN    = 25;       // progress mendahului realisasi biaya >= gap ini -> PERINGATAN (lunak, tidak memblokir)
 
 class ProgBusinessError extends Exception {}
 
@@ -93,6 +94,8 @@ function prog_status(float $budgetBase, float $actual, ?float $cpi): string {
 /**
  * Metrik per proyek (satu proyek bila $projectId > 0). $progressOverride = hitung seolah-olah progress sebesar itu
  * (dipakai saat verifikasi untuk menghitung indeks pada progress yang diklaim).
+ * [F-1.2 2026-11-16] Realisasi biaya TIDAK dihitung ulang di sini: satu rumus = view public.v_project_actual_cost
+ * (via ProjectActualCost() di function.all.php). cost_actual = material + expense + prestasi subkon tersertifikasi.
  */
 function prog_metrics($db, int $projectId = 0, string $query = '', ?int $progressOverride = null): array {
     $where = []; $params = [];
@@ -100,45 +103,39 @@ function prog_metrics($db, int $projectId = 0, string $query = '', ?int $progres
     if ($query !== '') { $where[] = 'p.name ILIKE :q'; $params[':q'] = '%' . $query . '%'; }
     $w = $where ? 'WHERE ' . implode(' AND ', $where) : '';
     $st = $db->prepare("
-        WITH iss AS (
-            SELECT moh.project_id, SUM(moi.qty_out * moi.unit_cost) AS c
-              FROM material_out_items moi
-              JOIN material_out_header moh ON moh.id = moi.material_out_id AND moh.status = 'posted' AND moh.issue_type = 'PROJECT'
-             GROUP BY moh.project_id
-        ), oth AS (
-            SELECT project_id, SUM(amount) AS c
-              FROM financial_expenses
-             WHERE project_id IS NOT NULL AND UPPER(COALESCE(status, '')) NOT IN ('CANCELLED', 'CANCELED', 'VOID', 'DIBATALKAN')
-             GROUP BY project_id
-        ), pend AS (
-            SELECT project_id, COUNT(*) AS n FROM project_progress_log WHERE status = 'Diajukan' GROUP BY project_id
-        )
         SELECT p.id, p.name, p.status, COALESCE(p.progress, 0) AS progress,
-               COALESCE(p.budget, 0) * COALESCE(NULLIF(p.budget_exch_rate, 0), 1) AS budget_base,
                COALESCE(p.contract_value, 0) AS contract_value,
-               COALESCE(iss.c, 0) AS cost_material, COALESCE(oth.c, 0) AS cost_other,
                COALESCE(pend.n, 0) AS pending_count
           FROM projects p
-          LEFT JOIN iss ON iss.project_id = p.id
-          LEFT JOIN oth ON oth.project_id = p.id
-          LEFT JOIN pend ON pend.project_id = p.id
+          LEFT JOIN (SELECT project_id, COUNT(*) AS n FROM project_progress_log WHERE status = 'Diajukan' GROUP BY project_id) pend ON pend.project_id = p.id
           {$w}
          ORDER BY p.id DESC");
     $st->execute($params);
     $rows = $st->fetchAll(PDO::FETCH_ASSOC);
     foreach ($rows as &$r) {
-        $r['id'] = (int)$r['id'];
-        $r['progress'] = $progressOverride !== null ? $progressOverride : (int)$r['progress'];
+        $pid = (int)$r['id'];
+        $r['id'] = $pid;
+        $ov = $progressOverride !== null ? (float)$progressOverride : null;
+        $ac = ProjectActualCost($db, $pid, $ov);                     // [F-1.2] satu rumus terpadu
+        $curProgress = (int)($progressOverride !== null ? $progressOverride : (int)$r['progress']);
+        $r['progress'] = $curProgress;
         $r['pending_count'] = (int)$r['pending_count'];
-        $bb = round((float)$r['budget_base'], 2);
-        $cm = round((float)$r['cost_material'], 2);
-        $co = round((float)$r['cost_other'], 2);
-        $actual = round($cm + $co, 2);
-        $ev = round($bb * $r['progress'] / 100, 2);
-        $cpi = $actual > 0 ? round($ev / $actual, 4) : null;
-        $r['budget_base'] = $bb; $r['contract_value'] = (float)$r['contract_value'];
-        $r['cost_material'] = $cm; $r['cost_other'] = $co; $r['cost_actual'] = $actual;
-        $r['earned_value'] = $ev;
+        if ($ac === null) {
+            // fallback defensif bila view belum dimigrasi: angka 0 + status NO BUDGET, jangan gagalkan daftar proyek
+            $bb = 0.0; $cm = 0.0; $co = 0.0; $cs = 0.0; $actual = 0.0; $ev = 0.0; $cpi = null;
+        } else {
+            $bb = $ac['budget_base'];
+            $cm = $ac['cost_material'];
+            $co = $ac['cost_expense'];
+            $cs = $ac['cost_subcon'];
+            $actual = $ac['cost_total'];
+            $ev = $ac['earned_value'];
+            $cpi = $ac['cpi'];
+        }
+        $r['budget_base'] = round($bb, 2); $r['contract_value'] = (float)$r['contract_value'];
+        $r['cost_material'] = round($cm, 2); $r['cost_other'] = round($co, 2); $r['cost_subcon'] = round($cs, 2);
+        $r['cost_actual'] = round($actual, 2);
+        $r['earned_value'] = round($ev, 2);
         $r['cost_pct'] = $bb > 0 ? round($actual / $bb * 100, 2) : null;
         $r['cpi'] = $cpi;
         $r['cpi_status'] = prog_status($bb, $actual, $cpi);
@@ -299,6 +296,23 @@ try {
                 $st->execute([':p' => $pid]);
                 if ($st->fetchColumn()) throw new ProgBusinessError('Masih ada klaim progress yang menunggu verifikasi. Verifikasi / batalkan dulu.');
 
+                // [F-1.1 2026-11-16] Kontrol klaim vs realisasi biaya (satu rumus: v_project_actual_cost).
+                $warn = [];
+                $ac = ProjectActualCost($db, $pid);
+                if ($ac !== null) {
+                    // Hard-block: klaim 100% tanpa satu pun material terpakai (temuan audit A1).
+                    if ($pct >= 100 && $ac['cost_material'] <= 0) {
+                        throw new ProgBusinessError(
+                            'Klaim 100% DITOLAK: belum ada realisasi pemakaian material (issue material Rp 0) untuk proyek ini. ' .
+                            'Catat issue material di modul Warehouse Issuing terlebih dahulu, atau ajukan klaim di bawah 100%.');
+                    }
+                    $usagePct = $ac['budget_base'] > 0 ? $ac['cost_total'] / $ac['budget_base'] * 100 : null;
+                    if ($usagePct !== null && $pct - $usagePct >= PROG_COST_LAG_WARN) {
+                        $warn[] = 'PERHATIAN: klaim ' . $pct . '% melampaui realisasi biaya ' . round($usagePct, 1) . '% (gap +' .
+                            round($pct - $usagePct) . '). Pastikan bukti lapangan lengkap; verifikator wajib mengisi catatan.';
+                    }
+                }
+
                 $st = $db->prepare("
                     INSERT INTO project_progress_log (project_id, report_date, percent_claimed, prev_percent, reported_by, note, evidence_ref, status)
                     VALUES (:p, CAST(:d AS date), :pct, :prev, :u, :n, :e, 'Diajukan') RETURNING id");
@@ -306,7 +320,9 @@ try {
                               ':n' => $note !== '' ? $note : null, ':e' => $evid !== '' ? $evid : null]);
                 $id = (int)$st->fetchColumn();
                 $db->commit();
-                sendJsonResponse(true, ['id' => $id], "Klaim progress {$pct}% untuk {$pj['name']} diajukan, menunggu verifikasi.");
+                $msg = "Klaim progress {$pct}% untuk {$pj['name']} diajukan, menunggu verifikasi.";
+                if (!empty($warn)) { $msg .= ' ' . implode(' ', $warn); }
+                sendJsonResponse(true, ['id' => $id, 'warning' => $warn ? implode(' ', $warn) : null], $msg);
             } catch (Throwable $e) {
                 if ($db->inTransaction()) { $db->rollBack(); }
                 throw $e;
@@ -352,6 +368,14 @@ try {
                 // Setujui: hitung posisi biaya pada progress yang diklaim, simpan sebagai jejak audit
                 if ($pct <= (int)$pj['progress']) {
                     throw new ProgBusinessError("Klaim {$pct}% tidak lebih besar dari progress terverifikasi sekarang ({$pj['progress']}%). Tolak atau batalkan klaim ini.");
+                }
+                // [F-1.1 2026-11-16] Hard-block yang sama seperti submit_claim, ditegakkan ulang saat verifikasi:
+                // bila antara pengajuan dan verifikasi belum ada issue material, klaim 100% tetap ditolak (audit A1).
+                $acV = ProjectActualCost($db, $pid);
+                if ($acV !== null && $pct >= 100 && $acV['cost_material'] <= 0) {
+                    throw new ProgBusinessError(
+                        'Klaim 100% DITOLAK: belum ada realisasi pemakaian material (issue material Rp 0) untuk proyek ini. ' .
+                        'Catat issue material di modul Warehouse Issuing terlebih dahulu.');
                 }
                 $m = prog_metrics($db, $pid, '', $pct)[0] ?? null;
                 if (!$m) throw new ProgBusinessError('Data proyek tidak ditemukan.');

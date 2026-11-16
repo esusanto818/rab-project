@@ -689,12 +689,13 @@ case 'read_project_profitability':
                         THEN p.contract_value / (1 + p.ppn_rate / 100) ELSE p.contract_value END AS contract_dpp,
                    COALESCE((SELECT SUM(COALESCE(v.dpp_amount, v.amount)) FROM project_invoices v WHERE v.project_id = p.id), 0) AS billed_dpp,
                    COALESCE((SELECT SUM(ppi.amount_paid) FROM project_payment_items ppi JOIN project_invoices v ON v.id = ppi.invoice_id WHERE v.project_id = p.id), 0) AS collected,
-                   COALESCE((SELECT SUM(i.qty_out * i.unit_cost) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
+                   COALESCE(ac.cost_material, (SELECT SUM(i.qty_out * i.unit_cost) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
                               WHERE h.project_id = p.id AND h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type,'PROJECT') = 'PROJECT'), 0) AS cost_material,
-                   COALESCE((SELECT SUM(e.amount) FROM financial_expenses e WHERE e.project_id = p.id
-                              AND COALESCE(UPPER(e.status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL')), 0) AS cost_expense,
-                   {$subSql} AS cost_subcon
+                   COALESCE(ac.cost_expense, (SELECT SUM(e.amount) FROM financial_expenses e WHERE e.project_id = p.id
+                              AND COALESCE(UPPER(e.status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL','DIBATALKAN')), 0) AS cost_expense,
+                   COALESCE(ac.cost_subcon, {$subSql}, 0) AS cost_subcon
             FROM projects p
+            LEFT JOIN public.v_project_actual_cost ac ON ac.project_id = p.id
             WHERE p.status IN ('Berjalan', 'Selesai') AND p.contract_value > 0 AND (:pid = 0 OR p.id = :pid)
         ) x
         ORDER BY (x.cost_material + x.cost_expense + x.cost_subcon) / NULLIF(x.contract_dpp, 0) DESC NULLS LAST
@@ -788,12 +789,13 @@ case 'read_project_health':
         SELECT p.id, p.name, COALESCE(p.progress, 0) AS progress, p.start_date, p.end_date,
                COALESCE(NULLIF(p.budget * COALESCE(NULLIF(p.budget_exch_rate, 0), 1), 0),
                         (SELECT SUM(b.qty_plan * b.unit_price_plan) FROM budget_items b WHERE b.project_id = p.id), 0) AS budget,
-               COALESCE((SELECT SUM(i.qty_out * i.unit_cost) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
+               COALESCE(ac.cost_material, (SELECT SUM(i.qty_out * i.unit_cost) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id
                           WHERE h.project_id = p.id AND h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type,'PROJECT') = 'PROJECT'), 0) AS cost_material,
-               COALESCE((SELECT SUM(e.amount) FROM financial_expenses e WHERE e.project_id = p.id
-                          AND COALESCE(UPPER(e.status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL')), 0) AS cost_expense,
-               {$subSql} AS cost_subcon
+               COALESCE(ac.cost_expense, (SELECT SUM(e.amount) FROM financial_expenses e WHERE e.project_id = p.id
+                          AND COALESCE(UPPER(e.status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL','DIBATALKAN')), 0) AS cost_expense,
+               COALESCE(ac.cost_subcon, {$subSql}, 0) AS cost_subcon
         FROM projects p
+        LEFT JOIN public.v_project_actual_cost ac ON ac.project_id = p.id
         WHERE p.status = 'Berjalan' AND (:pid = 0 OR p.id = :pid)
     ";
     try {

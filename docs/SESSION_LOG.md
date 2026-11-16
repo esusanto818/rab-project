@@ -1,0 +1,75 @@
+# Session Log
+
+Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diubah, ringkasan teknis/keputusan, dan status verifikasi.
+
+---
+
+## [2026-11-16 15:52 WIB] - Penyelesaian Akhir Patch Gelombang 2: Material Titipan Klien (CLIENT_SUPPLIED Rp 0)
+
+- **Tujuan / Permintaan**: Delegasikan penyelesaian akhir Patch Gelombang 2 ke sub-agen `qa-test-engineer` dan `tech-writer`: (1) cek nilai valid enum `reference_type` pada `stock_movements`/`journal_entries`, perbaiki TC-10 serta hapus baris debug `[DBG-TC10]` di `tests/run_e2e_client_supplied.php`, lalu jalankan 3 suite E2E hingga semuanya `FAIL=0`; (2) buat dokumen panduan `docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md` dan perbarui `AUDIT_CHANGELOG.md` (status `Uncommitted`); (3) tampilkan `php -l`, `git status -s`, `git diff --stat`. Jangan commit. Penutupan sesi: perbarui `AUDIT_CHANGELOG.md` dengan status `Uncommitted` untuk 4 file yang berubah, dan buat `docs/SESSION_LOG.md` — dilakukan langsung di thread utama (tanpa background agent).
+
+- **File yang Diubah / Dibuat** (`git status -s`):
+  ```
+   M AUDIT_CHANGELOG.md
+   M docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md
+   M test_report_inventory_check.md
+  ?? test_report_client_supplied.md
+  ```
+  Catatan: `?? ccsr.txt` (323 byte, catatan UI provider OpenRouter) muncul sebagai untracked dan BUKAN hasil pekerjaan sesi ini — tidak disentuh, tidak di-commit, perlu konfirmasi pemilik.
+
+- **Ringkasan Teknis & Keputusan**:
+  - QA menemukan premis brief salah: `journal_entries.reference_type` adalah **ENUM** `public.reference_type` bernilai `'material_out'` (lowercase, dari `JRN_REF_ISSUE` di `php-func/journal.stock.php:24`), sedangkan `stock_movements.reference_type` adalah **varchar** bernilai `'MATERIAL_OUT'` (uppercase, dari `ISSUE_REF_TYPE` di `php-crud/warehouse.issuingCRD.php:28`). Query TC-CS-10 baris 480 (`reference_type = 'material_out'` untuk `journal_entries`) **sudah benar** — mengubahnya ke `'MATERIAL_OUT'` justru menyebabkan error ENUM invalid. Tidak ada perubahan code produksi.
+  - Tidak ada baris debug `[DBG-TC10]` maupun `var_dump`/`echo` debug tersisa di `tests/run_e2e_client_supplied.php`.
+  - Kegagalan TC-CS-10 pertama (`mv=null item_cost=n/a jurnal_rows=-1 saldo=0`) adalah efek sisa fixture kotor di DB uji, bukan bug query — setelah run penuh (setup+cleanup otomatis) semua PASS.
+  - Guard klien-supplied di `IssSave()`: `issueValue == 0` → jurnal `ISSUE_PROJECT` di-skip eksplisit (bukan error) agar WIP tidak tercemar jurnal Rp 0; FIFO mengeluarkan layer Rp 0 lebih dulu sehingga HPP = Rp 0 otomatis.
+  - Tech-writer: HOWTO diperluas dari 4 section menjadi 6 section (tujuan/konteks, tabel before/after, migrasi SQL idempoten, cara jalankan E2E TC-CS-01..12, catatan operasional, daftar file).
+  - AUDIT_CHANGELOG.md diperbarui berlapis: entri verifikasi TC-CS-10, entri penyelesaian akhir, dan blok status akhir sesi ini yang menegaskan `Uncommitted` untuk 4 file.
+
+- **Status Verifikasi**:
+  - `php tests/run_e2e_client_supplied.php` → **PASS=12 FAIL=0**
+  - `php tests/run_e2e_inventory_check.php` → **PASS=10 FAIL=0**
+  - `php tests/run_e2e_audit_sync.php` → **PASS=9 FAIL=0**
+  - `php -l` bersih: `tests/run_e2e_client_supplied.php`, `tests/run_e2e_inventory_check.php`, `tests/run_e2e_audit_sync.php`, `php-crud/warehouse.issuingCRD.php`.
+  - Semua perubahan **Uncommitted** (sesuai instruksi "Jangan commit dulu"). Sub-agen `tech-writer` dihentikan user sebelum sempat menyerahkan laporan, namun hasil kerjanya sudah ada di disk dan isi dokumennya diperiksa ulang penuh (konsisten).
+
+---
+
+## [2026-11-17] - Patch Gelombang 3 Bagian Kedua: F-1.1 & F-1.2 (Progress vs Realisasi Biaya)
+
+- **Tujuan / Permintaan**: lanjutkan Patch Gelombang 3 bagian kedua — F-1.1 & F-1.2 (Kontrol Progress Proyek vs Realisasi Biaya). Muat skill, cek skema `material_out_items`/`projects`/`budget_items` di `proyekGMN_test`, implementasikan validasi perbandingan HPP aktual vs RAB + % progress fisik pada `m.proyekCRD.php`, `php-func/project.analysis.php`, `project.wipreleaseCRD.php`, `projectprogressCRD.php`, `warehouse.issuingCRD.php`. Jalankan `tests/run_e2e_progress_cost_control.php` hingga FAIL=0 dan `php -l` bersih; buat panduan `docs/HOWTO_PROGRESS_COST_CONTROL_2026-11-16.md`; perbarui `AUDIT_CHANGELOG.md` + `docs/SESSION_LOG.md`. Jangan commit (sesuai instruksi utama).
+
+- **File yang Diubah / Dibuat** (`git status -s`):
+  ```
+   M php-crud/dashboardCRD.php
+   M php-crud/m.proyekCRD.php
+   M php-crud/project.progressCRD.php
+   M php-crud/project.wipreleaseCRD.php
+   M php-crud/projectprogressCRD.php
+   M php-crud/warehouse.issuingCRD.php
+   M php-func/function.all.php
+   M php-func/project.analysis.php
+  ?? sql/2026-11-16.project_actual_cost_view.sql
+  ?? tests/run_e2e_progress_cost_control.php
+  ?? test_report_progress_cost_control.md
+  ?? docs/HOWTO_PROGRESS_COST_CONTROL_2026-11-16.md
+  ?? docs/SESSION_LOG.md (file ini)
+  ```
+  Catatan: `docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md`, `test_report_inventory_check.md`, `test_report_po_prerelease.md`, `test_report_tc001_065.md` ikut berubah karena runner E2E menulis ulang laporan (tanggal/id fixture saja, bukan kode). `ccsr.txt` & `docs/GUIDE_CCR_CLAUDE_CODE_SETUP.md` **bukan** hasil sesi ini.
+
+- **Ringkasan Teknis & Keputusan**:
+  - F-1.1: `submit_claim` & `verify` (`project.progressCRD.php`) **hard-block** klaim 100% bila realisasi material `cost_material = 0`; mobile (`projectprogressCRD.php`) memakai blok yang sama. Klaim yang jauh melampaui realisasi biaya (>= 25%) diterima tetapi memicu **warning lunak** di pesan (verifikator wajib catatan bila CPI merah). `m.proyekCRD.php`: perubahan `progress` hanya untuk admin; non-admin create dipaksa 0; non-admin update hanya boleh mengirim nilai yang sama.
+  - F-1.2: view `public.v_project_actual_cost` (migrasi idempoten, blok ROLLBACK di bagian bawah) = satu rumus `cost_total` (material issue posted + expense tanpa status batal + subkon tersertifikasi APPROVED). Helper `ProjectActualCost()` membungkus view (prepared statement). Dipakai `prog_metrics`, `dash_project_context`, `wr_calc` (preview), gate issuing, dan `dashboardCRD.php` (LEFT JOIN + fallback `COALESCE` subquery). `$cs` tidak di-double-count: nilai subkon dari `progressCRD`/`wr` memakai view; `dash_project_context` memakai hasil view bila tersedia, fallback hitung sertifikat lama bila tidak. Filter status expense disamakan di semua jalur (`VOID/CANCELLED/CANCELED/BATAL/DIBATALKAN`).
+  - Gate issuing: plafon = `rab_budget` (budget×kurs, fallback `SUM(budget_items)`) × progress% × 1.05; `currentSpent` = `cost_total` view; fallback ke material-posted bila view belum dimigrasi. Perbaikan bug `sprintf`: `%%d%%`/`%%s` literal → `%d%%`.
+  - WIP release **tidak** diubah dasar pelepasannya (tetap `material_out` jurnal); preview hanya menampilkan konteks terpadu (`actual_cost`, `cost_released`, `cost_remaining_wip`).
+  - Bug tes yang dikoreksi: `$g` harus referensi `&$GLOBALS['g']`; `project_progress` tidak ada di DB uji (yang ada `project_progress_log`); `journal_entries.reference_type` ENUM lowercase `material_out`; `dashboardCRD.php` membaca `action` (bukan `task`); `progress` awal fixture harus > 0 agar gate issue mengizinkan.
+
+- **Status Verifikasi**:
+  - `php tests/run_e2e_progress_cost_control.php` → **PASS=13 FAIL=0** (`test_report_progress_cost_control.md`).
+  - `php -l` bersih pada 9 file yang diubah/dibuat (lihat AUDIT_CHANGELOG).
+  - Regresi: `run_e2e_inventory_check.php` → **PASS=10 FAIL=0**; `run_e2e_client_supplied.php` → **PASS=12 FAIL=0**; `run_e2e_leftover_and_rab_guard.php` → **PASS=11 FAIL=0**; `run_e2e_release.php` → **PASS=55 FAIL=0**; `run_e2e_po_prerelease.php` → **PASS=10 FAIL=0**.
+  - Semua perubahan **Uncommitted** (menunggu instruksi user untuk commit).
+  - Migrasi `sql/2026-11-16.project_actual_cost_view.sql` sudah dijalankan di `proyekGMN_test` (splash `BEGIN/CREATE VIEW/DO/COMMIT` sukses, view diverifikasi berisi data). **Belum dijalankan di produksi.**
+
+---
+**Auto-Log (2026-11-17 01:24:33)**
+

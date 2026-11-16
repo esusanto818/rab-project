@@ -80,8 +80,24 @@ function dash_project_context($db, int $pid): ?array {
     $contractDpp = ($inclusive && (float)$proj['ppn_rate'] > 0) ? $cv / (1 + (float)$proj['ppn_rate'] / 100) : $cv;
 
     $issueWhere = "h.project_id = :p AND h.status = 'posted' AND h.reversed_at IS NULL AND COALESCE(h.issue_type,'PROJECT') = 'PROJECT'";
-    $cm = (float)$q("SELECT COALESCE(SUM(i.qty_out*i.unit_cost),0) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id WHERE {$issueWhere}", [':p' => $pid])->fetchColumn();
-    $ce = (float)$q("SELECT COALESCE(SUM(amount),0) FROM financial_expenses WHERE project_id = :p AND COALESCE(UPPER(status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL')", [':p' => $pid])->fetchColumn();
+    // [F-1.2 2026-11-16] SATU RUMUS realisasi: public.v_project_actual_cost via ProjectActualCost().
+    // cost_total WAJIB sama dengan prog_metrics() (menu Progress) dan wr_calc() (modul WIP Release).
+    if (function_exists('ProjectActualCost')) {
+        $ac = ProjectActualCost($db, $pid);
+    } else {
+        $ac = null;
+    }
+    if ($ac !== null) {
+        $cm = $ac['cost_material'];
+        $ce = $ac['cost_expense'];
+        $cs = $ac['cost_subcon'];
+        $budget = (float)$ac['budget_base'];
+    } else {
+        // Fallback defensif bila migration F-1.2 belum dijalankan: rumus lama dipertahankan.
+        $cm = (float)$q("SELECT COALESCE(SUM(i.qty_out*i.unit_cost),0) FROM material_out_items i JOIN material_out_header h ON h.id = i.material_out_id WHERE {$issueWhere}", [':p' => $pid])->fetchColumn();
+        $ce = (float)$q("SELECT COALESCE(SUM(amount),0) FROM financial_expenses WHERE project_id = :p AND COALESCE(UPPER(status),'') NOT IN ('VOID','CANCELLED','CANCELED','BATAL','DIBATALKAN')", [':p' => $pid])->fetchColumn();
+        $cs = 0.0;
+    }
     $hasSub = tbl_exists($db, 'subcon_progress') && tbl_exists($db, 'subcon_contracts');
     $sub = ['kontrak_aktif' => 0, 'nilai_kontrak' => 0.0, 'tertagih_dpp' => 0.0, 'sisa_hutang' => 0.0];
     if ($hasSub) {
@@ -128,7 +144,14 @@ function dash_project_context($db, int $pid): ?array {
         }
         $sub = ['kontrak_aktif' => (int)$r['n'], 'nilai_kontrak' => round((float)$r['v'], 2), 'tertagih_dpp' => round((float)$r['g'], 2), 'sisa_hutang' => round((float)$r['h'], 2)];
     }
-    $cs = $sub['tertagih_dpp'];
+    // [F-1.2] Bila view sudah dimigrasi, $cs (realisasi subkon) sudah datang dari ProjectActualCost() dan jumlah
+    //   sertifikat dihitung dengan sumber yang SAMA (subcon_payment_certificates.gross_amount APPROVED), jadi
+    //   memakai $sub['tertagih_dpp'] di sini akan dobel-hitung. Bila view BELUM ada ($ac === null), tetap pakai
+    //   logika lama agar dashboard tetap jalan tanpa migrasi.
+    // Catatan: $sub (nilai kontrak, sisa hutang, dst.) tetap ditampilkan — hanya sisi BIAYA yang disatukan.
+    if ($ac === null) {
+        $cs = $sub['tertagih_dpp'];
+    }
     $cost = $cm + $ce + $cs;
     $usage = $budget > 0 ? $cost / $budget * 100 : null;
     $gap = $usage !== null ? $usage - $progress : null;
