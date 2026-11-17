@@ -19,6 +19,33 @@ Ext.onReady(function () {
     Ext.QuickTips.init();
     document.getElementById("mainHeaderText").innerHTML = "Penerimaan <em>Fisik Gudang</em>";
 
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid halaman W/H Rcv:
+    // #divMainGrid (daftar WH Rcv) & #editorFormGrid (item) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Supplier, Gudang, Item, No. DO) terpotong "...".
+    // Paksa wrap + clip + tinggi baris dinamis; angka tetap rata kanan (align ColumnModel dihormati).
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            '#divMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#divMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+            '#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
+
     var task = '';
     var dataRecord = null;
     var whCur = { code: 'IDR', base: 'IDR', rate: 1 };      // mata uang GRN yang sedang diterima
@@ -138,6 +165,8 @@ Ext.onReady(function () {
         store: mainDs,
         renderTo: 'divMainGrid',
         height: mainHeight,
+        // [GRID-WRAP 2026-11-17] forceFit:true -> false agar Supplier/Gudang/Item wrap, bukan terpotong "...".
+        viewConfig: { forceFit: false, scrollOffset: 0 },
         columns: [
             { header: 'No. WH Rcv', dataIndex: 'ref_no', width: 120, renderer: CellWrap },
             { header: 'No. GRN', dataIndex: 'grn_ref_no', width: 120, renderer: CellWrap },
@@ -273,7 +302,8 @@ Ext.onReady(function () {
     var itemGrid = new stdGridEditor({
         store: itemGridDs,
         renderTo: 'editorFormGrid',
-        viewConfig: { forceFit: true, scrollOffset: 0 },
+        // [GRID-WRAP 2026-11-17] forceFit:true -> false agar Item/nama panjang wrap, bukan terpotong "...".
+        viewConfig: { forceFit: false, scrollOffset: 0 },
         height: 220,
         columns: [
             {

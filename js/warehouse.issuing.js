@@ -47,6 +47,33 @@ Ext.onReady(function () {
 
     var CRD =  main_url + '/php-crud/warehouse.issuingCRD.php';     // relatif dari /proyek/views/
 
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid halaman Warehouse Issuing:
+    // #divMainGrid (daftar issue) & #editorFormGrid (item issue) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Proyek, Gudang, Pengiriman) terpotong "...".
+    // Paksa wrap + clip + tinggi baris dinamis; angka tetap rata kanan (align ColumnModel dihormati).
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            '#divMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#divMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+            '#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
+
     var ACCESS_ADD = 2;      // level akses minimal: buat issue
     var ACCESS_EDIT = 3;     // level akses minimal: reverse issue
     var EPS = 0.00005;       // toleransi qty
@@ -593,7 +620,8 @@ Ext.onReady(function () {
               renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
         ],
         stripeRows : true,
-        viewConfig: { forceFit: true },
+        // [GRID-WRAP 2026-11-17] forceFit:true -> false agar kolom Proyek/Gudang/Pengiriman wrap, bukan terpotong "...".
+        viewConfig: { forceFit: false, scrollOffset: 0 },
         loadMask: true,
         listeners: {
             rowclick: function (grid, rowIndex) {
@@ -624,7 +652,8 @@ Ext.onReady(function () {
     var itemGrid = new stdGridEditor({
         store: itemDs,
         renderTo: 'editorFormGrid',
-        viewConfig: { forceFit: true, scrollOffset: 0 },
+        // [GRID-WRAP 2026-11-17] forceFit:true -> false agar Material/nama panjang wrap, bukan terpotong "...".
+        viewConfig: { forceFit: false, scrollOffset: 0 },
         height: 300,
         enableHdMenu: false,
         enableColumnMove: false,

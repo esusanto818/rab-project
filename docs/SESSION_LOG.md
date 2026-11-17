@@ -109,3 +109,31 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 ---
 **Auto-Log (2026-11-17 09:50:49)**
 
+
+---
+**Auto-Log (2026-11-17 10:27:16)**
+
+
+---
+**Auto-Log (2026-11-17 11:30:37)**
+
+
+## [2026-11-17] - Verifikasi & Perbaikan Pola Grid Wrap Gelombang 3 (bin.location, stock.opname, dashboard)
+
+- **Tujuan / Permintaan**: cek `git diff` gelombang 3 (`js/purchase.order.js`, `js/warehouse.issuing.js`, `js/whrcv.js`), pastikan pola scoped grid text-wrap sudah diterapkan juga pada `js/bin.location.js` & Dashboard, lalu perbarui `docs/SESSION_LOG.md`.
+- **File yang Diubah**:
+  - `js/bin.location.js` — perbaikan BUG: injected CSS memakai kurawal ganda `{{`/`}}` (sisa gaya f-string Python) sehingga selector CSS tidak valid; selector juga menyasar `#editorFormGrid` (bukan grid Ext di halaman ini — editor hanya `#editorFormMain`) dan `#binDtlContainer` (adalah `<table>` HTML biasa, bukan grid ExtJS). Dikembalikan ke pola standar: IIFE `injectGridWrapCss()` scoped `#divMainGrid` saja, brace `{}` tunggal, `viewConfig: { forceFit: false, scrollOffset: 0 }` (sudah ada sejak diff sebelumnya).
+  - `js/stock.opname.js` — perbaikan BUG `{{`/`}}` yang sama pada injected CSS; scope sudah benar (`#divMainGrid` + `#editorFormGrid` — keduanya memang grid Ext di halaman ini), hanya kurung kurawal yang dikoreksi.
+  - `js/purchase.order.js`, `js/warehouse.issuing.js`, `js/whrcv.js`, `js/stock.card.js`, `views/dashboard.php` — sudah sesuai pola (terverifikasi, tidak diubah sesi ini).
+  - `tests/run_grid_wrap_static.php` — **BARU**: uji statis wajib per CLAUDE.md §6 (ketersediaan kasus uji otomatis untuk setiap temuan). Mencakup: TC-GW-01 bebas `{{ }}` di literal string, TC-GW-02 brace seimbang pada CSS inject, TC-GW-03 `forceFit:false` & tiada `forceFit:true` sisa, TC-GW-04 keempat tabel dashboard ber-id + CSS scoped + `.text-right` tetap nowrap, TC-GW-05 `node --check` bersih.
+  - `docs/AUDIT_GRID_WRAP_REPORT.md` — (laporan induk gelombang A/B sudah ada; temuan gelombang 3 dicatat di sini & AUDIT_CHANGELOG).
+- **Ringkasan Teknis**: akar masalah sama dengan gelombang sebelumnya — rule global ExtJS 3.4.1 `.x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}` + `forceFit:true` memotong header/sel. Pola fix: override CSS **scoped** via `<style>` yang di-inject JS (IIFE `injectGridWrapCss()`), `forceFit:false` + `scrollOffset:0` (scroll horizontal alih-alih potong), `white-space:normal`/`text-overflow:clip`/`word-wrap:break-word`/`height:auto` pada hd-inner/cell-inner/row td/header-offset; align angka kanan tetap dihormati (hanya `white-space` yang berubah). CSS global (`ext-all.css`, `grddetail.css`, `mainCSS.css`, `js-func/ExtExtend.js`) TIDAK diubah. Dashboard: aturan `<style>` scoped per `id` tabel (`#profit_table`, `#aging_table`, `#tax_rate_table`, `#material_table`) dengan pengecualian `.text-right` tetap `nowrap`.
+- **Status Verifikasi**: `php tests/run_grid_wrap_static.php` → **PASS=52 FAIL=0**; `php -l views/dashboard.php` bersih; `node --check` lolos untuk 6 file JS gelombang 3. Temuan luar scope: `js-func/ExtExtend.js` (`stdGrid*`) masih `forceFit:true` global — TIDAK diubah agar tidak merusak modul lain (sudah tercatat di laporan gelombang B).
+- **Status Git**: semua perubahan **Uncommitted** (menunggu instruksi user untuk commit).
+
+---
+**Auto-Log (2026-11-17 12:05:00)**
+
+---
+**Auto-Log (2026-11-17 11:57:55)**
+

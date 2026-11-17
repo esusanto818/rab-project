@@ -16,6 +16,32 @@ Ext.onReady(function () {
     if (document.getElementById('mainHeaderText')) {
         document.getElementById('mainHeaderText').innerHTML = 'Kartu <em>Stok</em>';
     }
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid Kartu Stok (#divMainGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Gudang, Keterangan, No. Dokumen) terpotong "...".
+    // Paksa wrap + clip + tinggi baris dinamis; angka tetap rata kanan (align ColumnModel dihormati).
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            '#divMainGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#divMainGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+            '#divMainGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#divMainGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#divMainGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
     try { editDataDisable(); } catch (e) {}
     try { mainBtnDisable('#addData'); mainBtnDisable('#editData'); mainBtnDisable('#deleteData'); } catch (e) {}
     
@@ -195,7 +221,8 @@ var fWh = new Ext.form.ComboBox({
         store: mainDs, renderTo: 'divMainGrid',
         height: gridHeight, loadMask: true, stripeRows: true,
         viewConfig: {
-            forceFit: true,
+            // [GRID-WRAP 2026-11-17] forceFit:true -> false agar Gudang/Keterangan wrap, bukan terpotong "...".
+            forceFit: false, scrollOffset: 0,
             getRowClass: function (rec) { return rec.get('row_type') === 'OPEN' ? 'x-grid3-row-open' : ''; }
         },
         columns: [

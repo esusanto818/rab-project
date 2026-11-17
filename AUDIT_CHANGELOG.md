@@ -349,3 +349,39 @@ Catatan: `CLAUDE.md`, `backups/`, `os`, `scripts/`, `ccsr.txt` muncul di `git st
 (+ `docs/SESSION_LOG.md` & `AUDIT_CHANGELOG.md` entri dokumen; file lain di `git status` bukan hasil sesi ini)
 ```
 Tidak ada commit baru dibuat oleh sesi ini (sesuai instruksi).
+
+---
+
+## Sesi 2026-11-17 — Verifikasi & Perbaikan Pola Grid Wrap Gelombang 3
+
+**Permintaan:** cek `git diff` gelombang 3 (`js/purchase.order.js`, `js/warehouse.issuing.js`,
+`js/whrcv.js`); terapkan pola scoped grid text-wrap yang sama pada `js/bin.location.js` dan
+file Dashboard bila belum; lalu perbarui `docs/SESSION_LOG.md`.
+
+### File yang diubah / dibuat
+
+| Tanggal & Waktu Sesi | File | Ringkasan Perubahan | Status Git |
+|---|---|---|---|
+| 2026-11-17 12:05 | `js/bin.location.js` | FIX BUG: injected CSS memakai kurawal ganda `{{`/`}}` (sisa gaya f-string Python) → selector CSS tidak valid; selector menyasar `#editorFormGrid` (bukan grid Ext di halaman ini — editor hanya `#editorFormMain`) dan `#binDtlContainer` (adalah `<table>` HTML biasa, bukan grid). Dikembalikan ke pola standar scoped `#divMainGrid` saja, brace `{}` tunggal, `forceFit:false` (sudah ada di diff). | Uncommitted |
+| 2026-11-17 12:05 | `js/stock.opname.js` | FIX BUG `{{`/`}}` yang sama pada injected CSS. Scope `#divMainGrid` + `#editorFormGrid` (keduanya memang grid Ext di halaman ini) dipertahankan; hanya kurung kurawal yang dikoreksi. | Uncommitted |
+| 2026-11-17 12:05 | `tests/run_grid_wrap_static.php` | BARU. Uji statis per CLAUDE.md §6 (setiap temuan wajib punya kasus uji otomatis): TC-GW-01 bebas `{{ }}` di literal string, TC-GW-02 brace seimbang pada CSS inject, TC-GW-03 `forceFit:false` & tiada `forceFit:true` sisa, TC-GW-04 keempat tabel dashboard ber-id + CSS scoped + `.text-right` tetap nowrap, TC-GW-05 `node --check` bersih. | Uncommitted |
+| 2026-11-17 12:05 | `docs/SESSION_LOG.md` | Entri kronologis sesi (tujuan, file, verifikasi). | Uncommitted |
+| 2026-11-17 12:05 | `AUDIT_CHANGELOG.md` | Entri sesi ini. | Uncommitted |
+
+### Diverifikasi, TIDAK diubah sesi ini (sudah sesuai pola)
+
+- `js/purchase.order.js`, `js/warehouse.issuing.js`, `js/whrcv.js`, `js/stock.card.js`,
+  `views/dashboard.php` — override CSS scoped + `forceFit:false`/`.text-right nowrap` sesuai pola.
+- `docs/HOWTO_AGENTS_GUIDE.md` — perubahan pada disk BUKAN hasil sesi ini (konten
+  `theme-styler-auditor`, bagian E terduplikasi). Dibiarkan sebagai WIP terpisah.
+
+### Verifikasi
+
+- `php tests/run_grid_wrap_static.php` → **PASS=52 FAIL=0**
+- `php -l views/dashboard.php` bersih; `node --check` lolos untuk 6 file JS gelombang 3.
+- Sisa `{{`/`}}` di `js/stock.card.js` & `js/purchase.order.js` adalah kode JS valid
+  (objek/`{params:{...}}`), bukan string CSS — tidak diubah.
+- CSS global (`ext-all.css`, `grddetail.css`, `mainCSS.css`, `js-func/ExtExtend.js`) TIDAK diubah.
+- Temuan luar scope: `js-func/ExtExtend.js` (`stdGrid*`) masih `forceFit:true` global — tidak diubah
+  agar tidak merusak modul lain (sudah tercatat di laporan gelombang B).
+- Tidak ada commit baru dibuat oleh sesi ini.

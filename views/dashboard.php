@@ -42,6 +42,26 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* [GRID-WRAP 2026-11-17] Wrap teks rapi pada keempat tabel dashboard (profit, aging, tax rate, material).
+   Scoped per id tabel halaman ini saja — CSS global TIDAK diubah.
+   Kolom angka (th/td.text-right) tetap nowrap agar desimal tidak patah. */
+#profit_table th, #profit_table td,
+#aging_table th, #aging_table td,
+#tax_rate_table th, #tax_rate_table td,
+#material_table th, #material_table td {
+  white-space: normal !important;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.35;
+}
+#profit_table th.text-right, #profit_table td.text-right,
+#aging_table th.text-right, #aging_table td.text-right,
+#tax_rate_table th.text-right, #tax_rate_table td.text-right,
+#material_table th.text-right, #material_table td.text-right {
+  white-space: nowrap !important;
+}
+
 /* Mega Menu */
 .nav-item { position: static; }
 .nav-item:hover .dropdown-menu, .nav-item:focus-within .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
@@ -269,7 +289,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <h2 class="text-base font-bold text-emerald-400 uppercase tracking-wider font-rajdhani">📊 Profitabilitas Proyek (Biaya Riil vs Tertagih)</h2>
 </div>
 <div class="overflow-x-auto max-h-64 no-scrollbar">
-<table class="w-full text-left text-xs">
+<table id="profit_table" class="w-full text-left text-xs">
 <thead class="text-slate-400 border-b border-[#0a2d4a] sticky top-0 bg-[#04101c]">
 <tr><th class="pb-2">Proyek</th><th class="pb-2 text-right">Progres</th><th class="pb-2 text-right">Kontrak (DPP)</th><th class="pb-2 text-right">Tertagih (DPP)</th><th class="pb-2 text-right">Biaya Riil</th><th class="pb-2 text-right">Biaya/Kontrak</th><th class="pb-2 text-right">Margin</th></tr>
 </thead>
@@ -286,7 +306,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <h2 class="text-base font-bold text-slate-200 uppercase tracking-wider font-rajdhani">Financial Aging Analysis (Umur Piutang & Hutang)</h2>
 </div>
 <div class="overflow-x-auto no-scrollbar">
-<table class="w-full text-left text-[11px]">
+<table id="aging_table" class="w-full text-left text-[11px]">
 <thead><tr class="text-slate-400 border-b border-[#0a2d4a] font-semibold text-[10px] uppercase tracking-wider">
 <th class="pb-2 text-slate-400">Kategori</th><th class="pb-2 text-right">&lt;30 HARI</th><th class="pb-2 text-right">31-60 HARI</th><th class="pb-2 text-right">61-90 HARI</th><th class="pb-2 text-right">&gt;90 HARI</th><th class="pb-2 text-right">TOTAL</th>
 </tr></thead>
@@ -350,7 +370,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <button id="btn_sync_tax" onclick="syncTaxRates()" class="text-[10px] bg-cyan-700 hover:bg-cyan-600 text-white px-2 py-1 rounded transition whitespace-nowrap">Update Kurs</button>
 </div></div>
 <div class="max-h-56 overflow-y-auto no-scrollbar">
-<table class="w-full text-left text-[13px]">
+<table id="tax_rate_table" class="w-full text-left text-[13px]">
 <thead class="bg-[#071d30] text-cyan-300 sticky top-0">
 <tr><th class="p-1.5">Mata Uang</th><th class="p-1.5 text-right">Kurs (IDR)</th><th class="p-1.5 text-center">Ubah</th></tr>
 </thead>
@@ -429,7 +449,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <span class="text-base text-slate-400" id="table_count_label">Total Material: 0 Item</span>
 </div>
 <div class="overflow-x-auto">
-<table class="w-full text-left text-sm">
+<table id="material_table" class="w-full text-left text-sm">
 <thead class="bg-[#071d30] text-cyan-300">
 <tr>
 <th class="p-3 text-base">Nama / Kode Material</th>

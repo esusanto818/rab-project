@@ -4,6 +4,33 @@ Ext.onReady(function() {
   let deleteDs = new Ext.data.Store({url: '../php-crud/purchase.orderCRD.php'});
   ArrayItem=[], editReq=0, costStatus='local';
   let gridEditorHeight=0, gridItemHeight=0;
+  // [GRID-WRAP 2026-11-17] Override SCOPED untuk seluruh grid di halaman Purchase Order:
+  // #divMainGrid (daftar PO), #editorFormGrid (item PO & costs), #addFormGrid (pilih item),
+  // #divDetailGrid (detail PO), #logFormMain (history). Tidak menyentuh CSS global maupun
+  // js-func/ExtExtend.js. ExtJS 3.4.1 (css/ext-all.css) memasang
+  //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  // sehingga header & sel panjang terpotong "...". Paksa wrap + clip + tinggi baris dinamis.
+  // Angka tetap rata kanan (align ColumnModel dihormati — hanya white-space yang berubah).
+  (function injectGridWrapCss() {
+    var st = document.createElement('style');
+    st.type = 'text/css';
+    st.appendChild(document.createTextNode(
+      '#divMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner, #addFormGrid .x-grid3-hd-inner, #divDetailGrid .x-grid3-hd-inner, #logFormMain .x-grid3-hd-inner {' +
+      ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+      ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+      ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+      ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+      ' display:flex !important; flex-direction:column; justify-content:center; }' +
+      '#divMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner, #addFormGrid .x-grid3-cell-inner, #divDetailGrid .x-grid3-cell-inner, #logFormMain .x-grid3-cell-inner {' +
+      ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+      ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+      ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+      // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+      '#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd, #addFormGrid .x-grid3-hd, #divDetailGrid .x-grid3-hd, #logFormMain .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+      '#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td, #addFormGrid .x-grid3-row td, #divDetailGrid .x-grid3-row td, #logFormMain .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+      '#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset, #addFormGrid .x-grid3-header-offset, #divDetailGrid .x-grid3-header-offset, #logFormMain .x-grid3-header-offset { height:auto !important; }'));
+    document.getElementsByTagName('head')[0].appendChild(st);
+  })();
   function setGridEditorHeight(){
     gridEditorHeight = $('#editorForm').height() - $('#editorFormHeader').height() - $('#editorFormMain').height() - 2;
     frmGridEditor.setHeight(gridEditorHeight); gridEditor.setHeight(gridEditorHeight); gridCosts.setHeight(gridEditorHeight);
@@ -256,6 +283,8 @@ Ext.onReady(function() {
     store   : gridCostDs,
 		region  : 'east',
 		width   : '20%',
+    // [GRID-WRAP 2026-11-17] forceFit dimatikan agar header/teks tidak terpotong "..." (pola js/po.js).
+    viewConfig: { forceFit: false, scrollOffset: 0 },
     columns : [
       {header: 'Costs', dataIndex: 'cost_name', width: 150, renderer: CellWrap},
 			{header: 'Amount', dataIndex: 'amount', width: 120, fixed: true, align: 'right', renderer: format_number, editor: new Ext.form.NumberField(), css: cssGridEditColumn },
@@ -284,6 +313,8 @@ Ext.onReady(function() {
     store      : gridEditorDs,
     region     : 'center',
     selModel   : editorDeleter,
+    // [GRID-WRAP 2026-11-17] forceFit dimatikan agar header/teks tidak terpotong "..." (pola js/po.js).
+    viewConfig: { forceFit: false, scrollOffset: 0 },
     columns    : [
       {header: 'Name',dataIndex: 'item_name',width: 200,align: 'left',renderer: CellWrap},
       {header: 'Size', dataIndex: 'size', width: 100, renderer: CellWrap},
@@ -382,6 +413,8 @@ Ext.onReady(function() {
   let gridAddEditor = new stdGrid({
     store  : gridAddEditorDs,
     renderTo: 'addFormGrid',
+    // [GRID-WRAP 2026-11-17] forceFit dimatikan agar header/teks tidak terpotong "..." (pola js/po.js).
+    viewConfig: { forceFit: false, scrollOffset: 0 },
     columns:[
       addCheckColumn,
       {header: 'Name', dataIndex: 'item_name', width: 150, renderer: CellWrap},
@@ -404,6 +437,8 @@ Ext.onReady(function() {
     store     : mainDs,
     height   : mainHeight,
     renderTo : 'divMainGrid',
+    // [GRID-WRAP 2026-11-17] forceFit dimatikan agar header/nominal tidak terpotong "..." (pola js/po.js).
+    viewConfig: { forceFit: false, scrollOffset: 0 },
     columns  :[
       poPPNCheck,
       {header: 'Doc. No.', dataIndex: 'ref_no', width: 145, fixed: true, renderer: CellWrap},
@@ -447,6 +482,8 @@ Ext.onReady(function() {
     store  : gridDetailDs,
     height : detailHeight,
     renderTo: 'divDetailGrid',
+    // [GRID-WRAP 2026-11-17] forceFit dimatikan agar header/nominal tidak terpotong "..." (pola js/po.js).
+    viewConfig: { forceFit: false, scrollOffset: 0 },
     columns:[
       {header: 'Name',dataIndex: 'item_name',width: 200,align: 'left',renderer: CellWrap},
       {header: 'Size', dataIndex: 'size', width: 100, renderer: CellWrap},
@@ -464,7 +501,8 @@ Ext.onReady(function() {
   });
   /* History */
   let GridHistoryDs = new historyDs({url: '../php-crud/purchase.orderCRD.php'});
-  let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain'});
+  // [GRID-WRAP 2026-11-17] forceFit dimatikan agar history tidak terpotong "..." (pola js/po.js).
+  let GridHistory = new historyGrid({store  : GridHistoryDs, renderTo: 'logFormMain', viewConfig: { forceFit: false, scrollOffset: 0 }});
 
 	/* disable unneeded element */
   document.getElementById('editorWdw').style.display='none';
