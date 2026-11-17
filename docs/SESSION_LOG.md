@@ -137,3 +137,40 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 ---
 **Auto-Log (2026-11-17 11:57:55)**
 
+
+---
+**Auto-Log (2026-11-17 12:08:21)**
+
+
+---
+**Auto-Log (2026-11-17 12:12:24)**
+
+
+---
+**Auto-Log (2026-11-17 Fase 1 Business Gap Analysis — AR/AP/GL)**
+
+- Fase 1 (Business Gap Analysis) selesai; tidak ada kode/db diubah, hanya laporan baru: docs/BUSINESS_GAP_REPORT.md.
+- Scope: AR (Tagihan/Retensi/Termin/Deposit/Kartu/Aging) + AP (PO/GRN/Kontrabon/PPh-PPN/Deposit/Kartu/Aging) + jurnal otomatis ke GL (AutoPostJournal di php-func/function.all.php:488).
+- Temuan utama: retensi klien belum ada (migrasi sql/20261115.project_invoice_retention.sql belum diterapkan ke DB aktif proyekGMN); tidak ada laporan Kartu Piutang/Hutang & Aging standalone (hanya agregat dashboard); rule PRJ_DEP_APPLY tak ada di fiscal_config (42 rule) → deposit client gagal berjurnal; GRN approval gate belum aktif; periode akuntansi semua open; views/supplier.payment.php punya marker konflik merge.
+- Rekomendasi urutan: #1 terapkan migrasi + #5 rule PRJ_DEP_APPLY, lalu #2/#3 Aging AR/AP, #4 Retensi klien, #7 GRN gate, #8 tutup periode, #11 test E2E AR/AP.
+- Menunggu user memilih nomor modul (1-12) di Bagian 4 laporan sebelum Fase 2 pembangunan.
+
+---
+**Auto-Log (2026-11-17 13:04:03)**
+
+
+---
+**Auto-Log (2026-11-17 13:13:46)**
+
+---
+
+**Auto-Log (2026-11-17 13:34:27)**
+
+- Fase 2 (pilihan #1+#5): 13 migrasi gelombang 1-4 + rule PRJ_DEP_APPLY (Dr 2200/Cr 1200) diterapkan ke proyekGMN_test SAJA via scripts/apply_migrations_wave1_4.php (bulk_release dilewati).
+- Fase 3 re-audit: scripts/reaudit_fase3.php → PASS=38 FAIL=0 (struktur, trigger guard, menu 156, uji fungsional AutoPostJournal PRJ_DEP_APPLY + rollback, trigger over-allocation + rollback, historis jurnal seimbang).
+- Produksi proyekGMN TIDAK disentuh. Laporan: docs/BUSINESS_GAP_REAUDIT_2026-11-17.md. Sisa gap: #2/#3 aging AR/AP, #4 retensi klien UI, #7 GRN gate UI, #6/#8/#9/#10/#11/#12.
+- File baru: scripts/apply_migrations_wave1_4.php, scripts/reaudit_fase3.php, docs/BUSINESS_GAP_REAUDIT_2026-11-17.md; AUDIT_CHANGELOG.md + SESSION_LOG.md diperbarui. Semua Uncommitted.
+
+---
+**Auto-Log (2026-11-17 14:27:00)**
+

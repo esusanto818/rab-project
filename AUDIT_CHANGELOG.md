@@ -5,6 +5,47 @@ Format: Tanggal & Waktu sesi | Path file lengkap | Ringkasan perubahan (baris/fu
 
 ---
 
+## Sesi 2026-11-17 13:34 WIB — Business Gap Fase 2+3: migrasi gelombang 1-4 & rule PRJ_DEP_APPLY ke proyekGMN_test
+
+**Permintaan:** eksekusi pilihan #1 + #5 dari `docs/BUSINESS_GAP_REPORT.md` (Business Gap Analysis
+siklus AR/AP/GL) ke database UJI `proyekGMN_test` SAJA (bukan produksi `proyekGMN`), lewati
+`sql/2026-11-14.project_invoice_bulk_release.sql` (butuh parameter & ubah data), lalu jalankan
+re-audit otomatis Fase 3.
+
+### File yang diubah / dibuat
+
+| Tanggal & Waktu | Path file | Ringkasan perubahan & alasan | Status Git |
+|-----------------|-----------|------------------------------|------------|
+| 2026-11-17 13:30 | `scripts/apply_migrations_wave1_4.php` | **BARU**: runner Fase 2 — snapshot baseline, terapkan 13 file migrasi gelombang 1-4 ke `proyekGMN_test` (idempoten), upsert rule `PRJ_DEP_APPLY` (Dr 2200 / Cr 1200, aktif), verifikasi pasca-terapkan. Bukan produksi; target DB dipaksa konstan `DB_NAME='proyekGMN_test'`. | Uncommitted |
+| 2026-11-17 13:33 | `scripts/reaudit_fase3.php` | **BARU**: runner Fase 3 — 38 cek otomatis: struktur (kolom retensi/FX/GRN approval, FK, constraint, view, enum, trigger guard), menu 156 rename, rule PRJ_DEP_APPLY, uji fungsional `AutoPostJournal('PRJ_DEP_APPLY')` dalam transaksi + ROLLBACK (Dr 2200 / Cr 1200, Dr==Cr==amount, bukan akun kas), uji trigger guard menolak alokasi > saldo invoice (+ROLLBACK), saldo jurnal historis tetap seimbang. | Uncommitted |
+| 2026-11-17 13:30 | DB `proyekGMN_test` (bukan file) | Migrasi diterapkan: `2026-11-14.project_invoice_release.sql`, `2026-11-15.menu_tagihan_klien_rename.sql`, `2026-11-15_patch_gelombang1_readiness_rab.sql`, `2026-11-15_patch_gelombang2_client_supplied.sql`, `2026-11-16.project_actual_cost_view.sql`, `20261115.project_invoice_retention.sql`, `20261115.project_payment_fx_and_allocation.sql`, `20261115.grn_approval_and_supplier_payment.sql`, `20261115.subcon_inspection_certification.sql`, `20261115.task_material_allocation.sql`, `20261115.year_close.sql`, `2026-11-12.ap_currency.sql`, `2026-11-12.subcon_and_leftover_upgrade.sql` + upsert `fiscal_config.PRJ_DEP_APPLY`. Semua OK. | Committed (DDL di DB) |
+| 2026-11-17 13:34 | `docs/SESSION_LOG.md` | +entri sesi ini (ringkasan Fase 2+3). | Uncommitted |
+| 2026-11-17 13:34 | `docs/BUSINESS_GAP_REAUDIT_2026-11-17.md` | **BARU**: laporan re-audit Fase 3 (38 PASS / 0 FAIL) + sisa gap yang belum ditutup (Retensi Klien UI, Kartu/Aging AR/AP standalone, GRN approval gate UI, PPh supplier biasa, tutup periode, hygiene marker merge). | Uncommitted |
+
+### Verifikasi
+- `php -l scripts/apply_migrations_wave1_4.php` & `php -l scripts/reaudit_fase3.php` bersih.
+- `php scripts/apply_migrations_wave1_4.php` → 13 migrasi OK + PRJ_DEP_APPLY OK, post-check lengkap.
+- `php scripts/reaudit_fase3.php` → **PASS=38 FAIL=0** (DB: proyekGMN_test).
+- Tidak ada baris yang mengubah DB produksi `proyekGMN` (konstan DB_NAME + verifikasi
+  `current_database()` di kedua runner).
+
+### Daftar file aktual di disk (git status -s)
+```
+ M AUDIT_CHANGELOG.md
+ M CLAUDE.md
+ M docs/HOWTO_AGENTS_GUIDE.md
+ M docs/SESSION_LOG.md
+?? .claudeignore
+?? backups/
+?? ccsr.txt
+?? docs/BUSINESS_GAP_REAUDIT_2026-11-17.md
+?? docs/BUSINESS_GAP_REPORT.md
+?? os
+?? scripts/
+```
+
+---
+
 ## Sesi 2026-11-15 — Cek Inventory sebelum Purchase Planning / Purchase Order
 
 **Permintaan:** tambahkan pengecekan inventory sebelum membuat purchase planning; cek apakah
@@ -386,4 +427,20 @@ file Dashboard bila belum; lalu perbarui `docs/SESSION_LOG.md`.
 - CSS global (`ext-all.css`, `grddetail.css`, `mainCSS.css`, `js-func/ExtExtend.js`) TIDAK diubah.
 - Temuan luar scope: `js-func/ExtExtend.js` (`stdGrid*`) masih `forceFit:true` global — tidak diubah
   agar tidak merusak modul lain (sudah tercatat di laporan gelombang B).
+- Tidak ada commit baru dibuat oleh sesi ini.
+
+---
+
+## [2026-11-17] Fase 1 — Business Gap Analysis (AR / AP / GL)
+
+| Tanggal & Waktu | Path file | Ringkasan perubahan & alasan | Status Git |
+|---|---|---|---|
+| 2026-11-17 (Fase 1) | `docs/BUSINESS_GAP_REPORT.md` | **BARU** — Laporan Business Gap Analysis siklus AR (Tagihan/Retensi/Termin/Deposit/Kartu/Aging) & AP (PO/GRN/Kontrabon/PPh-PPN/Deposit/Kartu/Aging) + integrasi jurnal otomatis ke GL. Berisi: ringkasan eksekutif (10 temuan), tabel kelengkapan AR (11 baris) & AP (14 baris) dengan bukti file, analisis gap integrasi jurnal (J-1 s.d. J-11), Data Readiness, serta DAFTAR PILIHAN MODUL bernomor #1-#12 beserta kompleksitas & prioritas. | Uncommitted |
+| 2026-11-17 (Fase 1) | `docs/SESSION_LOG.md` | Tambah entri Auto-Log Fase 1 (maks 5 baris): scope, temuan utama, rekomendasi urutan, status menunggu pilihan user. | Uncommitted |
+
+### Verifikasi sesi
+
+- Fase 1 bersifat **READ-ONLY** terhadap kode & DB (hanya membuat 2 file dokumentasi di `docs/`).
+- Tidak ada modul yang dibangun (sesuai instruksi Fase 1); menunggu user memilih nomor modul.
+- DB aktif yang diverifikasi: `proyekGMN` (koneksi aplikasi; `psql` ke `proyekGMN_test` ditolak auto-mode classifier, dicatat transparan di laporan).
 - Tidak ada commit baru dibuat oleh sesi ini.
