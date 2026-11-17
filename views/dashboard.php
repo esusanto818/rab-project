@@ -722,12 +722,38 @@ const token = ++aiRequestToken;
 const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
 const pname = card ? card.getAttribute('data-name') : '';
 box.innerHTML = `<div class="bg-purple-950/30 border border-purple-700/40 rounded-lg p-4 text-sm text-purple-200 animate-pulse">🧠 AI sedang menganalisis <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
+let d = null, errMsg = null, canRefresh = false, httpOk = true;
 try {
 const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`, { method: refresh ? 'POST' : 'GET' });
-const json = await res.json();
+httpOk = !!res.ok;
+const json = await res.json().catch(() => null);
+// [FIX 2026-11-17] can_refresh dihormati dari SEMUA respons (sukses maupun error) agar tombol tidak hilang.
+if (json && json.can_refresh === true) canRefresh = true;
+if (json && json.success) { d = json.data; }
+else {
+const detail = (json && json.message) ? json.message : (httpOk ? 'Respons server tidak valid.' : 'Server menolak permintaan (HTTP ' + res.status + ').');
+errMsg = detail;
+}
+} catch (err) { errMsg = 'Gagal menghubungi server: ' + ((err && err.message) ? err.message : 'koneksi'); canRefresh = true; }
 if (token !== aiRequestToken) return;
-if (!json.success) { box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
-const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
+if (!d && errMsg) {
+// [FIX 2026-11-17] Jalur error TETAP menampilkan tombol Analisis Ulang bila server mengizinkan (can_refresh),
+// termasuk saat analisis pertama belum ada atau analisis AI sebelumnya gagal, supaya tombol tidak pernah hilang.
+box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">
+<div class="mb-1">${esc(errMsg)}</div>
+${canRefresh ? '<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded bg-[#066b78] text-white cursor-pointer border-0">Analisis Ulang</button>' : '<span class="text-[11px] text-slate-500">Analisis Ulang memerlukan level 3 pada menu Pembayaran Proyek.</span>'}
+<div class="mt-1"><button type="button" class="aiRetry px-3 py-1 text-[11px] font-bold rounded bg-slate-700 text-slate-200 cursor-pointer border-0">Coba Lagi</button></div>
+</div>`;
+const retryBtn = box.querySelector('.aiRefresh');
+if (retryBtn) retryBtn.onclick = () => loadProjectAI(id, true);
+const retry2 = box.querySelector('.aiRetry');
+if (retry2) retry2.onclick = () => loadProjectAI(id, false);
+return;
+}
+if (!d) { box.innerHTML = ''; return; }
+// [FIX 2026-11-17] Fase render dibungkus try: jika template gagal, panel tetap menampilkan tombol Analisis Ulang.
+try {
+const rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
 const li = (arr, cls) => arr.map(t => `<li class="${cls || ''}">${esc(t)}</li>`).join('');
 const findings = (d.findings || []).map(f => `
 <div class="border-l-4 ${SEV_STYLE[f.sev] || SEV_STYLE.low} bg-[#071d30] rounded px-2 py-1 mb-1">
@@ -751,7 +777,17 @@ ${d.ai_note ? `<div class="text-[11px] text-amber-400 mt-2">${esc(d.ai_note)}</d
 const refreshBtn = box.querySelector('.aiRefresh');
 if (refreshBtn) refreshBtn.onclick = () => loadProjectAI(id, true);
 applyAiRiskToCard(id, d.risk);
-} catch (err) { if (token === aiRequestToken) box.innerHTML = '<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">Error memuat rekomendasi AI</div>'; }
+} catch (err) {
+// [FIX 2026-11-17] Catch jaringan/render juga tidak boleh menghapus tombol Analisis Ulang.
+if (token === aiRequestToken) {
+box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">
+<div class="mb-1">Error memuat rekomendasi AI: ${esc((err && err.message) ? err.message : 'koneksi')}</div>
+<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded bg-[#066b78] text-white cursor-pointer border-0">Analisis Ulang</button>
+</div>`;
+const retryBtn = box.querySelector('.aiRefresh');
+if (retryBtn) retryBtn.onclick = () => loadProjectAI(id, true);
+}
+}
 }
 async function loadProjectHealth() {
 const box = document.getElementById('health_cards'), reco = document.getElementById('health_reco');

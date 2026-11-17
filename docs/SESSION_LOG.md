@@ -174,3 +174,6 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 ---
 **Auto-Log (2026-11-17 14:27:00)**
 
+
+### 2026-11-17 15:22 - Perbaikan Tombol Analisa Ulang Dashboard
+- Memastikan `can_refresh` dikembalikan pada jalur error backend (`php-crud/dashboardCRD.php`) dan fallback catch jaringan frontend (`views/dashboard.php`).

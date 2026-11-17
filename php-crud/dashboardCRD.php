@@ -926,7 +926,8 @@ case 'read_project_ai':
         out(['success' => true, 'data' => $result]);
     } catch (Exception $e) {
         error_log('[dashboardCRD] project_ai: ' . $e->getMessage());
-        out(['success' => false, 'message' => 'Analisis proyek gagal: ' . $e->getMessage()]);
+        // [FIX 2026-11-17] Jangan bocorkan detail exception ke client; sertakan can_refresh agar frontend bisa menampilkan tombol Analisis Ulang untuk user berhak.
+        out(['success' => false, 'message' => 'Analisis proyek gagal. Coba lagi beberapa saat; bila berulang hubungi administrator.', 'can_refresh' => ((int)($aiAccessLevel ?? 0) >= 3)]);
     }
     break;
 
