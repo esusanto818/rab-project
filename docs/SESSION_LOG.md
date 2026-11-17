@@ -71,5 +71,23 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
   - Migrasi `sql/2026-11-16.project_actual_cost_view.sql` sudah dijalankan di `proyekGMN_test` (splash `BEGIN/CREATE VIEW/DO/COMMIT` sukses, view diverifikasi berisi data). **Belum dijalankan di produksi.**
 
 ---
+
+## [2026-11-17] - Audit Grid Wrap: Halaman Tagihan Klien (menu id 156)
+
+- **Tujuan / Permintaan**: audit HANYA halaman Tagihan Klien (`views/router?id=156`) + file JS/CSS grid yang dipakai; terapkan wrap text & penyesuaian lebar kolom agar header & isi sel (nomor invoice, tanggal, nominal DPP/PPN/Total/Sisa, status) terbaca utuh tanpa `...`. Jangan ubah modul lain. Simpan laporan ke `docs/AUDIT_GRID_WRAP_REPORT.md`.
+- **File yang Diubah**: `js/project.invoice.js` (injectCss scoped `#divMainGrid`, `forceFit:false`, lebar kolom disesuaikan). `views/project.invoice.php` tidak diubah (grid/CSS di JS).
+- **Ringkasan Teknis**: Akar masalah = rule global ExtJS 3.4.1 `.x-grid3-cell-inner/.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}` memotong teks. `grddetail.css`/`mainCSS.css` tidak menghapusnya. Perbaikan: override SCOPED `#divMainGrid .x-grid3-cell-inner/#divMainGrid .x-grid3-hd-inner{white-space:normal;overflow:visible;...}` + `forceFit:false` (scroll horizontal alih-alih memaksa kolom menyusut) + lebar kolom diperlebar (No.Invoice 130, nominal 130–140, Status 105, dst.). Alignment angka kanan/tanggal & status center dipertahankan. **CSS global tidak diubah** (`ext-all.css`, `grddetail.css`, `mainCSS.css` dipakai 39+ view — override scoped via JS).
+- **Status Verifikasi**: `php -l views/project.invoice.php` bersih; `node --check js/project.invoice.js` lolos. Audit murni tampilan, tidak menjalankan E2E. Semua perubahan **Uncommitted**.
+- **Laporan**: `docs/AUDIT_GRID_WRAP_REPORT.md`. Temuan luar scope (modul lain dengan `forceFit:true`/potensi potong) dicatat di laporan, TIDAK diubah.
+
+---
 **Auto-Log (2026-11-17 01:24:33)**
+
+
+---
+**Auto-Log (2026-11-17 06:42:27)**
+
+
+---
+**Auto-Log (2026-11-17 07:47:04)**
 

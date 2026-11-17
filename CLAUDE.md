@@ -52,3 +52,8 @@ Setiap sesi audit otomatis atau pengujian regresi **WAJIB** menggabungkan audit 
 
 ## 5. STANDAR MIGRASI SQL REVERSIBEL
 - Setiap file migrasi baru di folder `sql/YYYY-MM-DD.nama_fitur.sql` WAJIB menyertakan blok komentar `-- ROLLBACK / DOWN MIGRATION` di bagian paling bawah file (berisi perintah `DROP` / `ALTER` kebalikan yang aman) untuk mempercepat pemulihan saat pengujian.
+
+## Aturan Wajib Dokumentasi Pasca-Tugas (Berlaku untuk Semua Agent & Sesi)
+- Setiap agent atau sub-agent yang selesai menjalankan tugas **WAJIB** membuat dokumentasi ringkasan hasil kerja dalam format Markdown (`.md`).
+- Lokasi penyimpanan wajib berada di **`/home/myadmin/proyekgmn-dev/docs/`**.
+- Jangan pernah menaruh file laporan audit, panduan, atau changelog baru di root `/home/myadmin/proyekgmn-dev/`.

@@ -83,7 +83,21 @@ Ext.onReady(function () {
             '.ti-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 10px 8px 10px;color:#9fc3d1;font:13px arial;}',
             '.ti-filter select{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;min-width:170px;}',
             '.ti-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}',
-            '.ti-filter .btn.warn{background:#8a6d1f;} .ti-filter .btn.danger{background:#800020;}'
+            '.ti-filter .btn.warn{background:#8a6d1f;} .ti-filter .btn.danger{background:#800020;}',
+            // [GRID-WRAP 2026-11-17] Override SCOPED ke grid Tagihan Klien (renderTo #divMainGrid) — TIDAK menyentuh
+            // file CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+            //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            // sehingga header & isi sel yang panjang terpotong "...". Kita paksa wrap + clip + lebar sel 100%.
+            '#divMainGrid .x-grid3-hd-inner,#divMainGrid .x-grid3-cell-inner{white-space:normal !important;overflow:visible !important;' +
+                'text-overflow:clip !important;-o-text-overflow:clip !important;' +
+                'word-wrap:break-word !important;overflow-wrap:break-word !important;word-break:break-word !important;' +
+                'line-height:1.25 !important;vertical-align:middle !important;}',
+            // Header: izinkan 2 baris rapi (bukan ellipsis); text-align TIDAK dipaksa agar mengikuti
+            // align kolom ColumnModel (center untuk tanggal/nominal, kiri untuk teks) seperti semula.
+            '#divMainGrid .x-grid3-hd-inner{vertical-align:middle !important;padding:4px 5px !important;}',
+            // Sel isi: judul kolom rata kiri; sel angka tetap rata kanan (align dari ColumnModel tetap dihormati
+            // karena kita hanya mengubah white-space, bukan text-align sel data).
+            '#divMainGrid .x-grid3-cell-inner{padding:3px 5px !important;}'
         ].join('\n');
         var st = document.createElement('style');
         st.type = 'text/css';
@@ -177,11 +191,14 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     var gridMain = new Ext.grid.GridPanel({
         store: mainDs, renderTo: 'divMainGrid', height: mainHeight, loadMask: true, stripeRows: true,
-        viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada invoice. Klik Add untuk membuat invoice, lalu Release untuk menerbitkan dokumen tagihan ke client.</div>' },
+        // [GRID-WRAP 2026-11-17] forceFit dimatikan: forceFit memaksa semua kolom menyusut agar pas lebar panel,
+        // sehingga kolom nominal/invoice terpotong "...". Dengan forceFit:false grid memakai lebar kolom
+        // sesuai definisi + scroll horizontal bila ruang tidak cukup -> teks selalu utuh (wrap, bukan potong).
+        viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada invoice. Klik Add untuk membuat invoice, lalu Release untuk menerbitkan dokumen tagihan ke client.</div>' },
         columns: [
-            { header: 'No. Invoice', dataIndex: 'inv_no', width: 110 },
+            { header: 'No. Invoice', dataIndex: 'inv_no', width: 130 },                              // [GRID-WRAP] 110 -> 130 (INV-2611-00057)
             {                                                                                       // [RELEASE-LAYER] kolom dokumen tagihan
-                header: 'Dokumen Tagihan', dataIndex: 'release_no', width: 150,
+                header: 'Dokumen Tagihan', dataIndex: 'release_no', width: 145,                       // [GRID-WRAP] 150 -> 145 (sudah muat TAG-... + tgl 2 baris)
                 renderer: function (v, meta, r) {
                     if (r.get('release_status') === 'released') {
                         return '<span style="color:#2e9e4f;font-weight:bold;">' + enc(v || '-') + '</span>' +
@@ -190,24 +207,24 @@ Ext.onReady(function () {
                     return '<span style="color:#e6a817;font-weight:bold;">DRAFT</span>';
                 }
             },
-            { header: 'Tanggal', dataIndex: 'invoice_date', width: 82, align: 'center' },
+            { header: 'Tanggal', dataIndex: 'invoice_date', width: 90, align: 'center' },             // [GRID-WRAP] 82 -> 90 (DD/MM/YYYY)
             {
-                header: 'Jatuh Tempo', dataIndex: 'due_date', width: 105, align: 'center',
+                header: 'Jatuh Tempo', dataIndex: 'due_date', width: 120, align: 'center',            // [GRID-WRAP] 105 -> 120 (overdue "+N hr" ikut muat)
                 renderer: function (v, meta, r) {
                     if (!v) return '<span style="color:#668894;">-</span>';
                     return r.get('is_overdue') ? '<span style="color:#ff6b5e;font-weight:bold;">' + enc(v) + ' (+' + r.get('days_overdue') + ' hr)</span>' : enc(v);
                 }
             },
-            { header: 'Client', dataIndex: 'client_name', width: 150, renderer: function (v) { return CellWrap(v || '-'); } },
-            { header: 'Proyek', dataIndex: 'project_name', width: 180, renderer: CellWrap },
-            { header: 'Termin', dataIndex: 'termin_name', width: 110, renderer: CellWrap },
-            { header: 'DPP', dataIndex: 'dpp_amount', width: 105, align: 'right', renderer: function (v) { return fmtAmt(v); } },
-            { header: 'PPN', dataIndex: 'ppn_amount', width: 90, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },
-            { header: 'Total Tagihan', dataIndex: 'amount', width: 115, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } },
-            { header: 'Terbayar', dataIndex: 'paid_amount', width: 105, align: 'right', renderer: function (v) { return fmtAmt(v); } },
-            { header: 'Sisa', dataIndex: 'remaining', width: 105, align: 'right', renderer: function (v) { return v > VEPS ? '<b>' + fmtAmt(v) + '</b>' : '-'; } },
+            { header: 'Client', dataIndex: 'client_name', width: 160, renderer: function (v) { return CellWrap(v || '-'); } },  // [GRID-WRAP] 150 -> 160
+            { header: 'Proyek', dataIndex: 'project_name', width: 190, renderer: CellWrap },          // [GRID-WRAP] 180 -> 190
+            { header: 'Termin', dataIndex: 'termin_name', width: 130, renderer: CellWrap },           // [GRID-WRAP] 110 -> 130
+            { header: 'DPP', dataIndex: 'dpp_amount', width: 130, align: 'right', renderer: function (v) { return fmtAmt(v); } },        // [GRID-WRAP] 105 -> 130 (nominal panjang)
+            { header: 'PPN', dataIndex: 'ppn_amount', width: 110, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },  // [GRID-WRAP] 90 -> 110
+            { header: 'Total Tagihan', dataIndex: 'amount', width: 140, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } },  // [GRID-WRAP] 115 -> 140
+            { header: 'Terbayar', dataIndex: 'paid_amount', width: 130, align: 'right', renderer: function (v) { return fmtAmt(v); } },   // [GRID-WRAP] 105 -> 130
+            { header: 'Sisa', dataIndex: 'remaining', width: 130, align: 'right', renderer: function (v) { return v > VEPS ? '<b>' + fmtAmt(v) + '</b>' : '-'; } },  // [GRID-WRAP] 105 -> 130
             {
-                header: 'Status', dataIndex: 'status', width: 90, align: 'center',
+                header: 'Status', dataIndex: 'status', width: 105, align: 'center',                   // [GRID-WRAP] 90 -> 105 (Belum Bayar / Sebagian)
                 renderer: function (v) { return '<span style="color:' + statusColor(v) + ' !important;font-weight:bold;">' + enc(v) + '</span>'; }
             }
         ],

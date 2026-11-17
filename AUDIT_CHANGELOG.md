@@ -266,7 +266,7 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
 - `php tests/run_e2e_progress_cost_control.php` → **PASS=13 FAIL=0** (laporan `test_report_progress_cost_control.md`).
 - Regresi: `run_e2e_inventory_check.php` → **PASS=10**; `run_e2e_client_supplied.php` → **PASS=12**; `run_e2e_leftover_and_rab_guard.php` → **PASS=11**; `run_e2e_release.php` → **PASS=55**; `run_e2e_po_prerelease.php` → **PASS=10**.
 
-**Daftar file aktual di disk (`git status -s`) — sesi ini & sisa Wave 2:**
+**Daftar file aktual di disk (`git status -s`) — sesi ini & sisa Wave 2 + Wave 3:**
 ```
  M AUDIT_CHANGELOG.md
  M docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md
@@ -291,3 +291,30 @@ planningkan sesuai kebutuhan (kebutuhan bersih = sisa kuota RAB − stok tersedi
 ?? tests/run_e2e_progress_cost_control.php
 ```
 Catatan: tidak ada perubahan pada file produksi lain; `docs/GUIDE_CCR_CLAUDE_CODE_SETUP.md` & `ccsr.txt` **bukan** hasil pekerjaan sesi ini (muncul sebagai untracked). Tidak ada commit dibuat.
+
+---
+
+## Sesi 2026-11-17 (lanjutan) — Audit Grid Wrap: Tagihan Klien (menu id 156)
+
+**Permintaan:** audit dan perbaiki HANYA halaman Tagihan Klien (`views/router?id=156`) beserta file JS dan CSS grid yang dipakai. Terapkan wrap text & penyesuaian lebar kolom agar header & isi sel (nomor invoice, tanggal, nominal DPP/PPN/Total/Sisa, status) terbaca utuh tanpa titik-titik (`...`). Jangan ubah modul lain. Simpan laporan ke `docs/AUDIT_GRID_WRAP_REPORT.md`.
+
+**Implementasi (scope ketat Tagihan Klien):**
+
+| File | Ringkasan perubahan | Status |
+|---|---|---|
+| `js/project.invoice.js` | **a.** `injectCss()`: override SCOPED `#divMainGrid .x-grid3-hd-inner/#divMainGrid .x-grid3-cell-inner` → `white-space:normal`, `overflow:visible`, `text-overflow:clip`, `word-wrap:break-word`, `word-break:break-word`; header `vertical-align:middle`, padding perbaikan. <br> **b.** `viewConfig.forceFit:true` → `forceFit:false` + `scrollOffset:0` agar grid scroll horizontal bila lebar kolom > panel, bukan memaksa kolom menyusut & memotong teks. <br> **c.** Lebar kolom disesuaikan (No. Invoice 110→130, Dokumen Tagihan 150→145, Tanggal 82→90, Jatuh Tempo 105→120, Client 150→160, Proyek 180→190, Termin 110→130, DPP 105→130, PPN 90→110, Total Tagihan 115→140, Terbayar 105→130, Sisa 105→130, Status 90→105). Alignment angka/teks dipertahankan. | Uncommitted |
+| `views/project.invoice.php` | Tidak diubah (grid & CSS di-JS). | Uncommitted |
+
+**Verifikasi:**
+- `php -l views/project.invoice.php` bersih; `node --check js/project.invoice.js` lolos.
+- Laporan audit: `docs/AUDIT_GRID_WRAP_REPORT.md` (ringkasan masalah, akar, perbaikan, verifikasi manual, temuan luar scope, status git).
+- **CSS global TIDAK diubah** (`ext-all.css`, `grddetail.css`, `mainCSS.css` memakai 39+ view — override scoped via JS `injectCss()` scoped ke `#divMainGrid`).
+
+**Daftar file aktual di disk (`git status -s`) — sesi grid-wrap (Wave 3 F-1.1/F-1.2 sudah di-commit di `31cfb68` & `ade1f35`):**
+```
+ M AUDIT_CHANGELOG.md
+ M docs/SESSION_LOG.md
+ M js/project.invoice.js
+?? docs/AUDIT_GRID_WRAP_REPORT.md
+```
+Catatan: `CLAUDE.md`, `backups/`, `os`, `scripts/`, `ccsr.txt` muncul di `git status` tetapi **bukan** hasil pekerjaan sesi ini. Tidak ada commit baru dibuat oleh sesi ini.
