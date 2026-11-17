@@ -23,6 +23,10 @@ table { width: 100%; border-collapse: collapse; }
 th, td { border: 1px solid #cbd3d8; padding: 6px; vertical-align: top; }
 th { background: #edf4f4; text-align: left; }
 .num { text-align: right; white-space: nowrap; }
+/* [GRID-WRAP 2026-11-17] sel tabel daftar pembayaran boleh membungkus rapi (overflow normal) agar
+   proyek/client/nomor panjang tidak terpotong saat cetak; kolom angka (.num) tetap nowrap. */
+table td, table th { white-space: normal; overflow-wrap: break-word; word-wrap: break-word; line-height: 1.35; }
+table td.num { white-space: nowrap; }
 tfoot td { font-weight: bold; }
 .status { padding: 20px; text-align: center; color: #64717d; }
 .footer { margin-top: 12px; border-top: 1px solid #d8dee4; padding-top: 6px; color: #7a858e; text-align: center; font-size: 9px; }

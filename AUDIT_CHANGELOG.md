@@ -318,3 +318,34 @@ Catatan: tidak ada perubahan pada file produksi lain; `docs/GUIDE_CCR_CLAUDE_COD
 ?? docs/AUDIT_GRID_WRAP_REPORT.md
 ```
 Catatan: `CLAUDE.md`, `backups/`, `os`, `scripts/`, `ccsr.txt` muncul di `git status` tetapi **bukan** hasil pekerjaan sesi ini. Tidak ada commit baru dibuat oleh sesi ini.
+
+---
+
+## Sesi 2026-11-17 (lanjutan 2) — Audit Grid Wrap: Pembayaran Termin & Purchase Order (PO)
+
+**Permintaan:** lanjutkan audit wrap text ke modul **Pembayaran Termin** dan **Purchase Order (PO)** dengan pola KONSISTEN commit `3e68211` (scoped CSS override per container grid, `forceFit:true → false`, pelebaran kolom; CSS global TIDAK diubah). Jangan ubah logika bisnis; hanya presentasi (CSS, `viewConfig`, `width`, header text). JANGAN commit. Simpan laporan ke `docs/AUDIT_GRID_WRAP_REPORT.md`.
+
+**File yang diubah:**
+
+| File | Ringkasan perubahan & alasan | Status |
+|---|---|---|
+| `js/project.payment.js` | `injectHeaderCss()` (~baris 271–292): ganti override LAMA yang mengunci `height:36px !important` dengan override SCOPED ke `.ppMainGrid`/`#editorFormGrid`/`.ppDepGrid` — `white-space:normal`, `overflow:visible`, `text-overflow:clip`, `word-wrap/overflow-wrap/word-break:break-word`, `height:auto` pada hd-inner/cell-inner/row td/header-offset (header & sel boleh wrap 2 baris; align angka kanan tetap dihormati). gridMain + editor alokasi + window riwayat deposit: `forceFit:true` → `false` (+`scrollOffset:0`); lebar kolom diperlebar (No. Pembayaran 140, nominal 130–150, Metode 110, Akun 150, Tgl Termin 92, No. Dokumen 120, dst.). | Uncommitted |
+| `js/po.js` | IIFE `injectGridWrapCss()` baru (~setelah baris 123): override SCOPED ke `#divMainGrid` & `#editorFormGrid` (aturan sama). gridMain daftar PO + `itemGrid` editor: `forceFit:true` → `false`; lebar kolom diperlebar (No. PO 145, DPP 130, PPN 115, Total 135, Setara Anggaran 170, Material 240, Harga Satuan 115, Subtotal 125, Sumber 105, dst.). `renderDetailPanel()`: `<td>` deskripsi material ditambah inline wrap (pola `CellWrap`). | Uncommitted |
+| `views/project.payment.print.php` | `<style>`: `table.items td/th` → `white-space:normal; overflow-wrap:break-word; word-wrap:break-word; line-height:1.35`; pengecualian `td.r-al` tetap `nowrap` (angka tidak patah) — teks proyek/termin/akun tidak terpotong saat cetak A4. | Uncommitted |
+| `views/project.payment.list.print.php` | `<style>`: `table td/th` → wrap normal yang sama; pengecualian `td.num` tetap `nowrap`. | Uncommitted |
+| `docs/AUDIT_GRID_WRAP_REPORT.md` | Diperluas: bagian A (Tagihan Klien, committed `3e68211`) + bagian B (Pembayaran Termin & PO, sesi ini): daftar grid yang diaudit, temuan, perbaikan, verifikasi, status git. | Uncommitted |
+
+**Tidak diubah (scope):** `css/ext-all.css`, `css/grddetail.css`, `css/mainCSS.css`, `css/frm_err1.css`, `js-func/ExtExtend.js` (`stdGrid*` helper dipakai lusinan modul), `js/purchase.order.js` (menu legacy; sudah `CellWrap` — tercatat temuan luar scope), backend `php-crud/*` & logika bisnis JS.
+
+**Verifikasi:** `node --check` lolos untuk `js/po.js`, `js/project.payment.js`, `js/project.payment.print.js`, `js/project.payment.list.print.js`; `php -l` bersih untuk 2 view print. Tidak ada `echo`/debug baru; PHP 7.4-compatible.
+
+**Daftar file aktual di disk (`git status -s`) — sesi ini:**
+```
+ M docs/AUDIT_GRID_WRAP_REPORT.md
+ M js/po.js
+ M js/project.payment.js
+ M views/project.payment.list.print.php
+ M views/project.payment.print.php
+(+ `docs/SESSION_LOG.md` & `AUDIT_CHANGELOG.md` entri dokumen; file lain di `git status` bukan hasil sesi ini)
+```
+Tidak ada commit baru dibuat oleh sesi ini (sesuai instruksi).

@@ -122,6 +122,32 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     var gridContainer = document.getElementById('divMainGrid');
 
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk seluruh grid di halaman PO (#divMainGrid = daftar PO,
+    // #editorFormGrid = item PO) — tidak menyentuh CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang terpotong "...". Paksa wrap + clip + tinggi baris dinamis.
+    // Angka tetap rata kanan (align ColumnModel dihormati — hanya white-space yang berubah).
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            '#divMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#divMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+            '#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
+
     var GridMainHeight = (maxGridHeight(document.getElementById('divMainGrid')));
     var DtlHeight = Math.round(GridMainHeight-(GridMainHeight * 0.6)-30);
 
@@ -186,7 +212,7 @@ dtlDiv.style.overflowY = 'auto';
             grand += sub;
             var recvColor = i.qty_received >= i.qty - EPS ? '#2e9e4f' : (i.qty_received > 0 ? '#e6a817' : '#668894');
             html += '<tr class="data-row">' +
-                    '<td align="left">' + enc(i.description) + ' <span style="color:#668894;">(' + enc(i.material_code || '') + ')</span></td>' +
+                    '<td align="left" style="white-space:normal !important; overflow-wrap:break-word; word-wrap:break-word;">' + enc(i.description) + ' <span style="color:#668894;">(' + enc(i.material_code || '') + ')</span></td>' +
                     '<td align="right">' + fmtQty(i.qty) + ' ' + enc(i.unit || '') + '</td>' +
                     '<td align="right" style="color:' + recvColor + ';">' + fmtQty(i.qty_received) + '</td>' +
                     '<td align="right">' + fmtAmt(i.unit_price) + '</td>' +
@@ -359,30 +385,30 @@ dtlDiv.style.overflowY = 'auto';
         renderTo: 'divMainGrid',
         height: mainHeight,
         columns: [
-            { header: 'No. PO', dataIndex: 'po_number', width: 130 },
-            { header: 'Tanggal', dataIndex: 'po_date', width: 90, align: 'center' },
+            { header: 'No. PO', dataIndex: 'po_number', width: 145 },                                    // [GRID-WRAP] 130 -> 145 (PO-2611-00012)
+            { header: 'Tanggal', dataIndex: 'po_date', width: 95, align: 'center' },                     // [GRID-WRAP] 90 -> 95 (DD/MM/YYYY)
             { header: 'Proyek', dataIndex: 'project_name', width: 220, renderer: CellWrap },
             { header: 'Supplier', dataIndex: 'supplier_name', width: 180, renderer: function (v) { return CellWrap(v || '-'); } },
-            { header: 'Mata Uang', dataIndex: 'currency_code', width: 80, align: 'center', renderer: function (v) { return v || 'IDR'; } },
+            { header: 'Mata Uang', dataIndex: 'currency_code', width: 85, align: 'center', renderer: function (v) { return v || 'IDR'; } },   // [GRID-WRAP] 80 -> 85
             { header: 'Item', dataIndex: 'item_count', width: 50, align: 'center' },
-            { header: 'DPP', dataIndex: 'dpp', width: 115, align: 'right', renderer: function (v) { return fmtAmt(v); } },                       // [PPN]
+            { header: 'DPP', dataIndex: 'dpp', width: 130, align: 'right', renderer: function (v) { return fmtAmt(v); } },                        // [GRID-WRAP] 115 -> 130 (nominal panjang)
             {
-                header: 'PPN', dataIndex: 'ppn_amount', width: 100, align: 'right',                                                                  // [PPN]
+                header: 'PPN', dataIndex: 'ppn_amount', width: 115, align: 'right',                                                               // [GRID-WRAP] 100 -> 115
                 renderer: function (v, meta, rec) { return rec.get('ppn_mode') === 'NONE' ? '-' : fmtAmt(v); }
             },
-            { header: 'Total', dataIndex: 'grand_total', width: 120, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } },   // [PPN] total + PPN
+            { header: 'Total', dataIndex: 'grand_total', width: 135, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } },  // [GRID-WRAP] 120 -> 135
             {
-                header: 'Setara Anggaran', dataIndex: 'total_budget', width: 150, align: 'right',
+                header: 'Setara Anggaran', dataIndex: 'total_budget', width: 170, align: 'right',                                                  // [GRID-WRAP] 150 -> 170
                 renderer: function (v, meta, rec) { return fmtAmt(v) + ' ' + enc(rec.get('budget_code') || ''); }
             },
             {
-                header: 'Status', dataIndex: 'status', width: 95, align: 'center',
+                header: 'Status', dataIndex: 'status', width: 105, align: 'center',                                                               // [GRID-WRAP] 95 -> 105
                 renderer: function (v) {
                     return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>';
                 }
             }
         ],
-        viewConfig: { forceFit: true },
+        viewConfig: { forceFit: false, scrollOffset: 0 },   // [GRID-WRAP 2026-11-17] true->false (pola js/project.invoice.js)
         loadMask: true,
         listeners: {
             rowclick: function (grid, rowIndex) {
@@ -419,11 +445,12 @@ dtlDiv.style.overflowY = 'auto';
         selModel: editorDeleter,                                       // [CHANGED]
         store: itemDs,
         renderTo: 'editorFormGrid',
-        viewConfig: { forceFit: true, scrollOffset: 0 },
+        // [GRID-WRAP 2026-11-17] forceFit dimatikan agar header/nominal tidak terpotong "..." (pola js/project.invoice.js).
+        viewConfig: { forceFit: false, scrollOffset: 0 },
         height: 300,
         columns: [
             {
-                header: 'Material (RAB proyek)', dataIndex: 'budget_item_id', width: 230,
+                header: 'Material (RAB proyek)', dataIndex: 'budget_item_id', width: 240,
                 editor: new myComboField({
                     store: rabDs, displayField: 'label', valueField: 'budget_item_id',
                     mode: 'local', triggerAction: 'all', forceSelection: true,
@@ -455,7 +482,7 @@ dtlDiv.style.overflowY = 'auto';
             },
             { header: 'Satuan', dataIndex: 'unit', width: 50, align: 'center' },
             {
-                header: 'Sisa Kuota Qty', dataIndex: 'quota', width: 90, align: 'right',
+                header: 'Sisa Kuota Qty', dataIndex: 'quota', width: 100, align: 'right',                 // [GRID-WRAP] 90 -> 100
                 renderer: function (v, meta, record) { return record.get('budget_item_id') ? fmtQty(v) : ''; }
             },
             {
@@ -469,7 +496,7 @@ dtlDiv.style.overflowY = 'auto';
             },
             {
                 // [CLIENT-SUPPLIED F-4.1] penanda sumber material: Titipan Klien -> tidak dibeli via PO (qty_to_buy 0, Rp 0)
-                header: 'Sumber', dataIndex: 'material_source', width: 95, align: 'center',
+                header: 'Sumber', dataIndex: 'material_source', width: 105, align: 'center',          // [GRID-WRAP] 95 -> 105 ('Perusahaan' / 'Titipan Klien')
                 renderer: function (v, meta, record) {
                     if (!record.get('budget_item_id')) { return ''; }
                     var cs = String(v || '').toUpperCase() === 'CLIENT_SUPPLIED';
@@ -478,7 +505,7 @@ dtlDiv.style.overflowY = 'auto';
                 }
             },
             {
-                header: 'Sisa Nilai RAB', dataIndex: 'value_remaining', width: 110, align: 'right',
+                header: 'Sisa Nilai RAB', dataIndex: 'value_remaining', width: 125, align: 'right',       // [GRID-WRAP] 110 -> 125
                 renderer: function (v, meta, record) { return record.get('budget_item_id') ? fmtAmt(v) : ''; }
             },
             {
@@ -487,16 +514,16 @@ dtlDiv.style.overflowY = 'auto';
                 renderer: function (v) { return fmtQty(v); }
             },
             {
-                header: 'Harga Satuan', dataIndex: 'unit_price', width: 100, align: 'right',
+                header: 'Harga Satuan', dataIndex: 'unit_price', width: 115, align: 'right',               // [GRID-WRAP] 100 -> 115
                 editor: new myNumberField({ decimalPrecision: 2 }),
                 renderer: function (v) { return fmtAmt(v); }
             },
             {
-                header: 'Subtotal', dataIndex: 'subtotal', width: 110, align: 'right',
+                header: 'Subtotal', dataIndex: 'subtotal', width: 125, align: 'right',                     // [GRID-WRAP] 110 -> 125
                 renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; }
             },
             {
-                header: 'Setara Anggaran', dataIndex: 'amount_budget', width: 110, align: 'right',
+                header: 'Setara Anggaran', dataIndex: 'amount_budget', width: 130, align: 'right',
                 renderer: function (v) { return '<span style="color:#9fc3d1;">' + fmtAmt(v) + '</span>'; }
             },
             {

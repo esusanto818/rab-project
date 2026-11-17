@@ -37,6 +37,10 @@ $paymentId = intval($_GET['id'] ?? 0);
         table.items th, table.items td { border: 1px solid #cbd3d8; padding: 6px; vertical-align: top; }
         table.items th { background: #edf4f4; text-align: left; }
         .r-al { text-align: right; white-space: nowrap; }
+        /* [GRID-WRAP 2026-11-17] izinkan sel tabel pembungkusan rapi (overflow normal) agar teks panjang
+           (nama proyek/termin/akun, nomor invoice) tidak terpotong saat cetak; angka tetap nowrap di .r-al. */
+        table.items td, table.items th { white-space: normal; overflow-wrap: break-word; word-wrap: break-word; line-height: 1.35; }
+        table.items td.r-al { white-space: nowrap; }
         .sign { display: table; width: 100%; margin-top: 28px; text-align: center; }
         .sign > div { display: table-cell; width: 50%; }
         .sign .space { height: 58px; }

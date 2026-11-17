@@ -91,3 +91,21 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 ---
 **Auto-Log (2026-11-17 07:47:04)**
 
+
+---
+**Auto-Log (2026-11-17 08:27:48)**
+
+
+---
+
+## [2026-11-17] - Audit Grid Wrap: Pembayaran Termin & Purchase Order (PO)
+
+- **Tujuan / Permintaan**: lanjutkan audit wrap text ke modul Pembayaran Termin (`project.payment.js`) dan PO (`po.js`) dengan pola KONSISTEN commit `3e68211` (scoped CSS override per container grid, `forceFit:true → false`, pelebaran kolom; CSS global TIDAK diubah). Hanya presentasi — tanpa ubah logika bisnis. JANGAN commit. Laporan ke `docs/AUDIT_GRID_WRAP_REPORT.md`.
+- **File yang Diubah**: `js/project.payment.js` (ganti `injectHeaderCss()` lama yang mengunci `height:36px` → override scoped wrap untuk `.ppMainGrid`/`#editorFormGrid`/`.ppDepGrid`; `forceFit:false` pada grid utama, editor alokasi, window riwayat deposit; lebar kolom nominal/nomor dokumen diperlebar), `js/po.js` (IIFE `injectGridWrapCss()` scoped ke `#divMainGrid`/`#editorFormGrid`; `forceFit:false` pada grid daftar PO & editor item; lebar kolom diperlebar; `<td>` deskripsi material di panel detail ditambah inline wrap), `views/project.payment.print.php` & `views/project.payment.list.print.php` (aturan `<style>` scoped: sel tabel boleh wrap; kelas angka `.r-al`/`.num` tetap `nowrap`), `docs/AUDIT_GRID_WRAP_REPORT.md` (diperluas jadi bagian A invoice + bagian B termin/PO), `AUDIT_CHANGELOG.md` (entri sesi).
+- **Ringkasan Teknis**: akar masalah sama seperti modul invoice — rule global ExtJS 3.4.1 `.x-grid3-cell-inner/.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}` + `forceFit:true` memotong header/nominal panjang. Pola fix: override CSS scoped via `<style>` yang di-inject JS (tidak menyentuh `ext-all.css`/`grddetail.css`/`mainCSS.css`), `forceFit:false` + `scrollOffset:0` (scroll horizontal alih-alih potong), `white-space:normal`/`text-overflow:clip`/`word-wrap:break-word`/`height:auto` pada hd-inner & cell-inner, align angka kanan tetap dihormati.
+- **Status Verifikasi**: `node --check` lolos (`po.js`, `project.payment.js`, `project.payment.print.js`, `project.payment.list.print.js`); `php -l` bersih (2 view print). Audit murni presentasi; tidak ada perubahan backend/DB. Semua perubahan **Uncommitted**.
+- **Laporan**: `docs/AUDIT_GRID_WRAP_REPORT.md` (bagian B). Temuan luar scope: `js/purchase.order.js` (menu legacy) & helper `stdGrid*` di `js-func/ExtExtend.js` masih `forceFit:true` global — dicatat, TIDAK diubah agar tidak merusak modul lain.
+
+---
+**Auto-Log (2026-11-17 09:50:49)**
+

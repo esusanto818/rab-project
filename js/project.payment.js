@@ -272,11 +272,25 @@ Ext.onReady(function () {
         var st = document.createElement('style');
         st.type = 'text/css';
         st.appendChild(document.createTextNode(
-            '.ppMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner {' +
-            ' white-space:normal !important; overflow:hidden !important; text-overflow:clip !important;' +
-            ' line-height:14px !important; height:36px !important; padding:0 6px !important; box-sizing:border-box;' +
+            // [GRID-WRAP 2026-11-17] Override SCOPED ke grid Pembayaran Termin (.ppMainGrid / #editorFormGrid /
+            // .ppDepGrid) — tidak menyentuh CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+            //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            // sehingga header & sel panjang terpotong "...". Paksa wrap + clip + tinggi baris dinamis.
+            // Angka tetap rata kanan (align ColumnModel dihormati — kita hanya mengubah white-space).
+            '.ppMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner, .ppDepGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box;' +
             ' display:flex !important; flex-direction:column; justify-content:center; }' +
-            '.ppMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:top; }'));
+            '.ppMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner, .ppDepGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Header & baris tinggi dinamis (tidak mengunci 36px / tinggi tetap): teks membungkus ke 2 baris bila perlu.
+            '.ppMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd, .ppDepGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '.ppMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td, .ppDepGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '.ppMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset, .ppDepGrid .x-grid3-header-offset { height:auto !important; }'));
         document.getElementsByTagName('head')[0].appendChild(st);
     })();
 
@@ -552,25 +566,29 @@ Ext.onReady(function () {
         cls: 'ppMainGrid',
         height: mainHeight,
         columns: [
-            { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 130 },
-            { header: 'Tanggal', dataIndex: 'payment_date', width: 90, align: 'center' },
+            { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 140 },                 // [GRID-WRAP] 130 -> 140 (PPAY-2611-00012)
+            { header: 'Tanggal', dataIndex: 'payment_date', width: 95, align: 'center' },     // [GRID-WRAP] 90 -> 95 (DD/MM/YYYY)
             { header: 'Client', dataIndex: 'client_name', width: 180, renderer: CellWrap },
             { header: 'Proyek', dataIndex: 'project_names', width: 220, renderer: function (v) { return CellWrap(v || '-'); } },
-            { header: 'Metode', dataIndex: 'payment_method', width: 100, align: 'center', renderer: function (v) { return methodLabel(v); } },
-            { header: 'Akun', dataIndex: 'account_name', width: 140, renderer: function (v) { return CellWrap(v || '-'); } },
-            { header: 'Mata Uang', dataIndex: 'currency_code', width: 70, align: 'center', renderer: function (v) { return v || 'IDR'; } },
-            { header: 'Jumlah Diterima', dataIndex: 'total_amount_cur', width: 120, align: 'right', renderer: function (v) { return fmtAmt(v); } },
-            { header: 'Total Diterima (IDR)', dataIndex: 'total_amount', width: 130, align: 'right', renderer: function (v) { return fmtAmt(v); } },
-            { header: 'Teralokasi (IDR)', dataIndex: 'allocated_amount', width: 120, align: 'right', renderer: function (v) { return fmtAmt(v); } },
+            { header: 'Metode', dataIndex: 'payment_method', width: 110, align: 'center', renderer: function (v) { return methodLabel(v); } },  // [GRID-WRAP] 100 -> 110 ('Transfer Bank')
+            { header: 'Akun', dataIndex: 'account_name', width: 150, renderer: function (v) { return CellWrap(v || '-'); } },              // [GRID-WRAP] 140 -> 150
+            { header: 'Mata Uang', dataIndex: 'currency_code', width: 75, align: 'center', renderer: function (v) { return v || 'IDR'; } },  // [GRID-WRAP] 70 -> 75
+            { header: 'Jumlah Diterima', dataIndex: 'total_amount_cur', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },  // [GRID-WRAP] 120 -> 140
+            { header: 'Total Diterima (IDR)', dataIndex: 'total_amount', width: 150, align: 'right', renderer: function (v) { return fmtAmt(v); } },  // [GRID-WRAP] 130 -> 150
+            { header: 'Teralokasi (IDR)', dataIndex: 'allocated_amount', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },  // [GRID-WRAP] 120 -> 140
             {
-                header: 'Lebih Bayar (IDR)', dataIndex: 'excess_amount', width: 100, align: 'right',
+                header: 'Lebih Bayar (IDR)', dataIndex: 'excess_amount', width: 120, align: 'right',  // [GRID-WRAP] 100 -> 120
                 renderer: function (v) { return v > VEPS ? '<span style="color:#e6a817;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; }
             },
-            { header: 'Deposit Dipakai (IDR)', dataIndex: 'deposit_applied', width: 110, align: 'right',          // [DEPOSIT]
+            { header: 'Deposit Dipakai (IDR)', dataIndex: 'deposit_applied', width: 130, align: 'right',          // [GRID-WRAP] 110 -> 130
               renderer: function (v) { return v > VEPS ? '<span style="color:#2bc1e2;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; } },
-            { header: 'Referensi', dataIndex: 'reference_no', width: 120, renderer: function (v) { return CellWrap(v || ''); } }
+            { header: 'Referensi', dataIndex: 'reference_no', width: 130, renderer: function (v) { return CellWrap(v || ''); } }  // [GRID-WRAP] 120 -> 130
         ],
-        viewConfig: { forceFit: true },
+        // [GRID-WRAP 2026-11-17] forceFit dimatikan (pola sama seperti js/project.invoice.js):
+        // forceFit:true memaksa kolom menyusut agar pas lebar panel -> nominal panjang terpotong "...".
+        // Dengan forceFit:false + scrollOffset:0, lebar kolom mengikuti definisi + scroll horizontal;
+        // teks membungkus rapi alih-alih dipotong.
+        viewConfig: { forceFit: false, scrollOffset: 0 },
         loadMask: true,
         listeners: {
             rowclick: function (grid, rowIndex) {
@@ -604,30 +622,31 @@ Ext.onReady(function () {
         store: outDs,
         renderTo: 'editorFormGrid',
         // [RELEASE-LAYER] kosong = belum ada tagihan resmi yang diterbitkan ke client ini
-        viewConfig: { forceFit: true, scrollOffset: 0, deferEmptyText: false,
+        // [GRID-WRAP 2026-11-17] forceFit dimatikan agar nominal / header panjang tidak terpotong "..." (pola js/project.invoice.js).
+        viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false,
                       emptyText: '<div style="padding:12px;color:#9fc3d1;">Belum ada tagihan yang diterbitkan (release) untuk client ini. ' +
                                  'Release dulu dari menu Tagihan ke Klien.</div>' },
         height: 280,
         columns: [
-            { header: 'Proyek', dataIndex: 'project_name', width: 170, renderer: CellWrap },
-            { header: 'Termin', dataIndex: 'termin_name', width: 150, renderer: CellWrap },
-            { header: 'No. Invoice', dataIndex: 'inv_no', width: 110 },
-            { header: 'No. Dokumen', dataIndex: 'release_no', width: 100, renderer: function (v) { return v ? '<span style="color:#2e9e4f;">' + enc(v) + '</span>' : '-'; } },   // [RELEASE-LAYER]
-            { header: 'Tgl Termin', dataIndex: 'invoice_date', width: 85, align: 'center' },
+            { header: 'Proyek', dataIndex: 'project_name', width: 175, renderer: CellWrap },   // [GRID-WRAP] 170 -> 175
+            { header: 'Termin', dataIndex: 'termin_name', width: 155, renderer: CellWrap },    // [GRID-WRAP] 150 -> 155
+            { header: 'No. Invoice', dataIndex: 'inv_no', width: 125 },                        // [GRID-WRAP] 110 -> 125 (INV-2611-00057)
+            { header: 'No. Dokumen', dataIndex: 'release_no', width: 120, renderer: function (v) { return v ? '<span style="color:#2e9e4f;">' + enc(v) + '</span>' : '-'; } },   // [GRID-WRAP] 100 -> 120 (TAG-2611-00012) [RELEASE-LAYER]
+            { header: 'Tgl Termin', dataIndex: 'invoice_date', width: 92, align: 'center' },   // [GRID-WRAP] 85 -> 92 (DD/MM/YYYY)
             {
-                header: '%', dataIndex: 'percentage', width: 50, align: 'right',
+                header: '%', dataIndex: 'percentage', width: 55, align: 'right',                // [GRID-WRAP] 50 -> 55
                 renderer: function (v) { return v ? fmtAmt(v) : ''; }
             },
-            { header: 'Tagihan incl. PPN (IDR)', dataIndex: 'amount', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
-            { header: 'Terbayar (IDR)', dataIndex: 'paid_amount', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
-            { header: 'Sisa Tagihan (IDR)', dataIndex: 'remaining', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
+            { header: 'Tagihan incl. PPN (IDR)', dataIndex: 'amount', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },   // [GRID-WRAP] 110 -> 140
+            { header: 'Terbayar (IDR)', dataIndex: 'paid_amount', width: 135, align: 'right', renderer: function (v) { return fmtAmt(v); } },      // [GRID-WRAP] 110 -> 135
+            { header: 'Sisa Tagihan (IDR)', dataIndex: 'remaining', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },    // [GRID-WRAP] 110 -> 140
             {
-                header: 'Bayar Sekarang', dataIndex: 'pay', width: 120, align: 'right',
+                header: 'Bayar Sekarang', dataIndex: 'pay', width: 140, align: 'right',           // [GRID-WRAP] 120 -> 140
                 editor: new myNumberField({ decimalPrecision: 2 }),
                 renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; }
             },
             {
-                header: 'Setara IDR', dataIndex: 'pay_idr', width: 110, align: 'right',
+                header: 'Setara IDR', dataIndex: 'pay_idr', width: 135, align: 'right',           // [GRID-WRAP] 110 -> 135
                 renderer: function (v) { return '<span style="color:#9fc3d1;">' + fmtAmt(v) + '</span>'; }
             },
             {
@@ -749,14 +768,17 @@ Ext.onReady(function () {
         new Ext.Window({
             title: 'Riwayat Deposit - ' + enc(fClient.getRawValue()), width: 760, height: 380, modal: true, layout: 'fit',
             items: new Ext.grid.GridPanel({
-                store: ds, stripeRows: true, viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:12px;">Belum ada deposit.</div>' },
+                store: ds, stripeRows: true, cls: 'ppDepGrid',
+                // [GRID-WRAP 2026-11-17] forceFit dimatikan + wrap scoped (.ppDepGrid) agar header/nominal
+                // riwayat deposit tidak terpotong "..." (pola sama seperti grid utama pembayaran).
+                viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false, emptyText: '<div style="padding:12px;">Belum ada deposit.</div>' },
                 columns: [
-                    { header: 'Tanggal', dataIndex: 'payment_date', width: 90, align: 'center' },
-                    { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 130 },
-                    { header: 'Referensi', dataIndex: 'reference_no', width: 120, renderer: function (v) { return enc(v || ''); } },
-                    { header: 'Lebih Bayar (+)', dataIndex: 'deposit_in', width: 120, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },
-                    { header: 'Dipakai (-)', dataIndex: 'deposit_out', width: 120, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },
-                    { header: 'Saldo', dataIndex: 'balance_after', width: 120, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } }
+                    { header: 'Tanggal', dataIndex: 'payment_date', width: 95, align: 'center' },                       // [GRID-WRAP] 90 -> 95
+                    { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 140 },                                     // [GRID-WRAP] 130 -> 140 (PPAY-...)
+                    { header: 'Referensi', dataIndex: 'reference_no', width: 130, renderer: function (v) { return enc(v || ''); } },  // [GRID-WRAP] 120 -> 130
+                    { header: 'Lebih Bayar (+)', dataIndex: 'deposit_in', width: 130, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },     // [GRID-WRAP] 120 -> 130
+                    { header: 'Dipakai (-)', dataIndex: 'deposit_out', width: 130, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },         // [GRID-WRAP] 120 -> 130
+                    { header: 'Saldo', dataIndex: 'balance_after', width: 130, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } }          // [GRID-WRAP] 120 -> 130
                 ]
             })
         }).show();
