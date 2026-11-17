@@ -354,6 +354,8 @@ Tidak ada commit baru dibuat oleh sesi ini (sesuai instruksi).
 
 ## Sesi 2026-11-17 — Verifikasi & Perbaikan Pola Grid Wrap Gelombang 3
 
+**Status akhir sesi:** seluruh perubahan di bawah telah di-**commit** (`git commit` pada cabang `dev`, SHA `39b524c`). Kolom "Status Git" pada tabel mengikuti keadaan saat entri dibuat (sebelum commit).
+
 **Permintaan:** cek `git diff` gelombang 3 (`js/purchase.order.js`, `js/warehouse.issuing.js`,
 `js/whrcv.js`); terapkan pola scoped grid text-wrap yang sama pada `js/bin.location.js` dan
 file Dashboard bila belum; lalu perbarui `docs/SESSION_LOG.md`.
