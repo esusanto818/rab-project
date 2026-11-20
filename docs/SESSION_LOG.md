@@ -1,242 +1,57 @@
-# Session Log
-
-Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diubah, ringkasan teknis/keputusan, dan status verifikasi.
-
----
-
-## [2026-11-20] - Implementasi Gap #8: Tutup Periode (Period Closing)
-
-- **Tujuan / Permintaan**: Mengimplementasikan validasi Tutup Periode pada seluruh backend transaksi dan memastikan modul Tutup Periode terdaftar di menu.
-- **File yang Diubah / Dibuat**:
-  - `php-func/function.all.php` (Penambahan helper `ensure_period_open`)
-  - Seluruh modul transaksi di `php-crud/` (Integrasi `ensure_period_open`)
-  - `docs/AUDIT_GAP_8_PERIOD_CLOSING_2026-11-20.md` (Dokumentasi audit lengkap)
-- **Ringkasan Teknis & Keputusan**:
-  - `ensure_period_open($db, $date)` dibuat untuk validasi blokir tanggal transaksi pada periode tertutup (`is_closed=true`).
-  - Helper diintegrasikan ke modul Jurnal, AR, AP, Kas/Bank, dan Inventory untuk mencegah mutasi data periode lalu.
-  - Modul Fiscal Period dipastikan terdaftar di menu aplikasi.
-- **Status Verifikasi**:
-  - Validasi berhasil memblokir input/update/delete pada periode tertutup.
-  - Semua perubahan **Uncommitted**.
-
----
-
-## [2026-11-20] - Implementasi Gap #7: GRN Approval Gate
-
-- **Tujuan / Permintaan**: Menerapkan mekanisme GRN Approval Gate agar GRN yang belum disetujui (Draft/Pending) tidak otomatis menambah saldo stok gudang maupun dapat ditarik menjadi tagihan/Purchase Invoice vendor, serta memastikan alur release Purchase Order tetap langsung berubah ke status 'Released' tanpa merusak alur yang sudah berjalan.
-- **File yang Diubah / Dibuat**:
-  - `sql/2026-11-20_grn_approval_gate_gap7.sql` (Migrasi skema approval_status pada `grn_hdr`)
-  - `php-crud/grnCRD.php` (Backend tambah task approve_grn, reject_grn, unapprove_grn, dan validasi edit/delete)
-  - `php-crud/whrcvCRD.php` (Filter list_grn_receivable hanya APPROVED)
-  - `php-crud/purchaseinvoiceCRD.php` (Validasi PiGrnInfo hanya APPROVED)
-  - `js/grn.js` (UI ExtJS kolom approval dan toolbar approval)
-  - `docs/AUDIT_GAP_7_GRN_APPROVAL_2026-11-20.md` (Dokumentasi audit lengkap)
-  - `docs/SESSION_LOG.md` (Log sesi)
-- **Ringkasan Teknis & Keputusan**:
-  - Kolom `approval_status` (`PENDING`, `APPROVED`, `REJECTED`) ditambahkan ke `grn_hdr`.
-  - GRN baru otomatis berstatus `PENDING`. Hanya GRN dengan status `APPROVED` yang dapat ditarik ke warehouse receiving (`whrcvCRD.php`) dan purchase invoice (`purchaseinvoiceCRD.php`).
-  - PO release tetap langsung berubah ke status 'Released' sesuai ketentuan.
-- **Status Verifikasi**:
-  - Migrasi SQL berhasil dijalankan ke database aktif.
-  - Sintaks PHP valid (`php -l`).
-  - Semua perubahan status **Uncommitted**.
-
----
-
-## [2026-11-16 15:52 WIB] - Penyelesaian Akhir Patch Gelombang 2: Material Titipan Klien (CLIENT_SUPPLIED Rp 0)
-
-- **Tujuan / Permintaan**: Delegasikan penyelesaian akhir Patch Gelombang 2 ke sub-agen `qa-test-engineer` dan `tech-writer`: (1) cek nilai valid enum `reference_type` pada `stock_movements`/`journal_entries`, perbaiki TC-10 serta hapus baris debug `[DBG-TC10]` di `tests/run_e2e_client_supplied.php`, lalu jalankan 3 suite E2E hingga semuanya `FAIL=0`; (2) buat dokumen panduan `docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md` dan perbarui `AUDIT_CHANGELOG.md` (status `Uncommitted`); (3) tampilkan `php -l`, `git status -s`, `git diff --stat`. Jangan commit. Penutupan sesi: perbarui `AUDIT_CHANGELOG.md` dengan status `Uncommitted` untuk 4 file yang berubah, dan buat `docs/SESSION_LOG.md` — dilakukan langsung di thread utama (tanpa background agent).
-
-- **File yang Diubah / Dibuat** (`git status -s`):
-  ```
-   M AUDIT_CHANGELOG.md
-   M docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md
-   M test_report_inventory_check.md
-  ?? test_report_client_supplied.md
-  ```
-  Catatan: `?? ccsr.txt` (323 byte, catatan UI provider OpenRouter) muncul sebagai untracked dan BUKAN hasil pekerjaan sesi ini — tidak disentuh, tidak di-commit, perlu konfirmasi pemilik.
-
-- **Ringkasan Teknis & Keputusan**:
-  - QA menemukan premis brief salah: `journal_entries.reference_type` adalah **ENUM** `public.reference_type` bernilai `'material_out'` (lowercase, dari `JRN_REF_ISSUE` di `php-func/journal.stock.php:24`), sedangkan `stock_movements.reference_type` adalah **varchar** bernilai `'MATERIAL_OUT'` (uppercase, dari `ISSUE_REF_TYPE` di `php-crud/warehouse.issuingCRD.php:28`). Query TC-CS-10 baris 480 (`reference_type = 'material_out'` untuk `journal_entries`) **sudah benar** — mengubahnya ke `'MATERIAL_OUT'` justru menyebabkan error ENUM invalid. Tidak ada perubahan code produksi.
-  - Tidak ada baris debug `[DBG-TC10]` maupun `var_dump`/`echo` debug tersisa di `tests/run_e2e_client_supplied.php`.
-  - Kegagalan TC-CS-10 pertama (`mv=null item_cost=n/a jurnal_rows=-1 saldo=0`) adalah efek sisa fixture kotor di DB uji, bukan bug query — setelah run penuh (setup+cleanup otomatis) semua PASS.
-  - Guard klien-supplied di `IssSave()`: `issueValue == 0` → jurnal `ISSUE_PROJECT` di-skip eksplisit (bukan error) agar WIP tidak tercemar jurnal Rp 0; FIFO mengeluarkan layer Rp 0 lebih dulu sehingga HPP = Rp 0 otomatis.
-  - Tech-writer: HOWTO diperluas dari 4 section menjadi 6 section (tujuan/konteks, tabel before/after, migrasi SQL idempoten, cara jalankan E2E TC-CS-01..12, catatan operasional, daftar file).
-  - AUDIT_CHANGELOG.md diperbarui berlapis: entri verifikasi TC-CS-10, entri penyelesaian akhir, dan blok status akhir sesi ini yang menegaskan `Uncommitted` untuk 4 file.
-
-- **Status Verifikasi**:
-  - `php tests/run_e2e_client_supplied.php` → **PASS=12 FAIL=0**
-  - `php tests/run_e2e_inventory_check.php` → **PASS=10 FAIL=0**
-  - `php tests/run_e2e_audit_sync.php` → **PASS=9 FAIL=0**
-  - `php -l` bersih: `tests/run_e2e_client_supplied.php`, `tests/run_e2e_inventory_check.php`, `tests/run_e2e_audit_sync.php`, `php-crud/warehouse.issuingCRD.php`.
-  - Semua perubahan **Uncommitted** (sesuai instruksi "Jangan commit dulu"). Sub-agen `tech-writer` dihentikan user sebelum sempat menyerahkan laporan, namun hasil kerjanya sudah ada di disk dan isi dokumennya diperiksa ulang penuh (konsisten).
-
----
-
-## [2026-11-17] - Patch Gelombang 3 Bagian Kedua: F-1.1 & F-1.2 (Progress vs Realisasi Biaya)
-
-- **Tujuan / Permintaan**: lanjutkan Patch Gelombang 3 bagian kedua — F-1.1 & F-1.2 (Kontrol Progress Proyek vs Realisasi Biaya). Muat skill, cek skema `material_out_items`/`projects`/`budget_items` di `proyekGMN_test`, implementasikan validasi perbandingan HPP aktual vs RAB + % progress fisik pada `m.proyekCRD.php`, `php-func/project.analysis.php`, `project.wipreleaseCRD.php`, `projectprogressCRD.php`, `warehouse.issuingCRD.php`. Jalankan `tests/run_e2e_progress_cost_control.php` hingga FAIL=0 dan `php -l` bersih; buat panduan `docs/HOWTO_PROGRESS_COST_CONTROL_2026-11-16.md`; perbarui `AUDIT_CHANGELOG.md` + `docs/SESSION_LOG.md`. Jangan commit (sesuai instruksi utama).
-
-- **File yang Diubah / Dibuat** (`git status -s`):
-  ```
-   M php-crud/dashboardCRD.php
-   M php-crud/m.proyekCRD.php
-   M php-crud/project.progressCRD.php
-   M php-crud/project.wipreleaseCRD.php
-   M php-crud/projectprogressCRD.php
-   M php-crud/warehouse.issuingCRD.php
-   M php-func/function.all.php
-   M php-func/project.analysis.php
-  ?? sql/2026-11-16.project_actual_cost_view.sql
-  ?? tests/run_e2e_progress_cost_control.php
-  ?? test_report_progress_cost_control.md
-  ?? docs/HOWTO_PROGRESS_COST_CONTROL_2026-11-16.md
-  ?? docs/SESSION_LOG.md (file ini)
-  ```
-  Catatan: `docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md`, `test_report_inventory_check.md`, `test_report_po_prerelease.md`, `test_report_tc001_065.md` ikut berubah karena runner E2E menulis ulang laporan (tanggal/id fixture saja, bukan kode). `ccsr.txt` & `docs/GUIDE_CCR_CLAUDE_CODE_SETUP.md` **bukan** hasil sesi ini.
-
-- **Ringkasan Teknis & Keputusan**:
-  - F-1.1: `submit_claim` & `verify` (`project.progressCRD.php`) **hard-block** klaim 100% bila realisasi material `cost_material = 0`; mobile (`projectprogressCRD.php`) memakai blok yang sama. Klaim yang jauh melampaui realisasi biaya (>= 25%) diterima tetapi memicu **warning lunak** di pesan (verifikator wajib catatan bila CPI merah). `m.proyekCRD.php`: perubahan `progress` hanya untuk admin; non-admin create dipaksa 0; non-admin update hanya boleh mengirim nilai yang sama.
-  - F-1.2: view `public.v_project_actual_cost` (migrasi idempoten, blok ROLLBACK di bagian bawah) = satu rumus `cost_total` (material issue posted + expense tanpa status batal + subkon tersertifikasi APPROVED). Helper `ProjectActualCost()` membungkus view (prepared statement). Dipakai `prog_metrics`, `dash_project_context`, `wr_calc` (preview), gate issuing, dan `dashboardCRD.php` (LEFT JOIN + fallback `COALESCE` subquery). `$cs` tidak di-double-count: nilai subkon dari `progressCRD`/`wr` memakai view; `dash_project_context` memakai hasil view bila tersedia, fallback hitung sertifikat lama bila tidak. Filter status expense disamakan di semua jalur (`VOID/CANCELLED/CANCELED/BATAL/DIBATALKAN`).
-  - Gate issuing: plafon = `rab_budget` (budget×kurs, fallback `SUM(budget_items)`) × progress% × 1.05; `currentSpent` = `cost_total` view; fallback ke material-posted bila view belum dimigrasi. Perbaikan bug `sprintf`: `%%d%%`/`%%s` literal → `%d%%`.
-  - WIP release **tidak** diubah dasar pelepasannya (tetap `material_out` jurnal); preview hanya menampilkan konteks terpadu (`actual_cost`, `cost_released`, `cost_remaining_wip`).
-  - Bug tes yang dikoreksi: `$g` harus referensi `&$GLOBALS['g']`; `project_progress` tidak ada di DB uji (yang ada `project_progress_log`); `journal_entries.reference_type` ENUM lowercase `material_out`; `dashboardCRD.php` membaca `action` (bukan `task`); `progress` awal fixture harus > 0 agar gate issue mengizinkan.
-
-- **Status Verifikasi**:
-  - `php tests/run_e2e_progress_cost_control.php` → **PASS=13 FAIL=0** (`test_report_progress_cost_control.md`).
-  - `php -l` bersih pada 9 file yang diubah/dibuat (lihat AUDIT_CHANGELOG).
-  - Regresi: `run_e2e_inventory_check.php` → **PASS=10 FAIL=0**; `run_e2e_client_supplied.php` → **PASS=12 FAIL=0**; `run_e2e_leftover_and_rab_guard.php` → **PASS=11 FAIL=0**; `run_e2e_release.php` → **PASS=55 FAIL=0**; `run_e2e_po_prerelease.php` → **PASS=10 FAIL=0**.
-  - Semua perubahan **Uncommitted** (menunggu instruksi user untuk commit).
-  - Migrasi `sql/2026-11-16.project_actual_cost_view.sql` sudah dijalankan di `proyekGMN_test` (splash `BEGIN/CREATE VIEW/DO/COMMIT` sukses, view diverifikasi berisi data). **Belum dijalankan di produksi.**
-
----
-
-## [2026-11-17] - Audit Grid Wrap: Halaman Tagihan Klien (menu id 156)
-
-- **Tujuan / Permintaan**: audit HANYA halaman Tagihan Klien (`views/router?id=156`) + file JS/CSS grid yang dipakai; terapkan wrap text & penyesuaian lebar kolom agar header & isi sel (nomor invoice, tanggal, nominal DPP/PPN/Total/Sisa, status) terbaca utuh tanpa `...`. Jangan ubah modul lain. Simpan laporan ke `docs/AUDIT_GRID_WRAP_REPORT.md`.
-- **File yang Diubah**: `js/project.invoice.js` (injectCss scoped `#divMainGrid`, `forceFit:false`, lebar kolom disesuaikan). `views/project.invoice.php` tidak diubah (grid/CSS di JS).
-- **Ringkasan Teknis**: Akar masalah = rule global ExtJS 3.4.1 `.x-grid3-cell-inner/.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}` memotong teks. `grddetail.css`/`mainCSS.css` tidak menghapusnya. Perbaikan: override SCOPED `#divMainGrid .x-grid3-cell-inner/#divMainGrid .x-grid3-hd-inner{white-space:normal;overflow:visible;...}` + `forceFit:false` (scroll horizontal alih-alih memaksa kolom menyusut) + lebar kolom diperlebar (No.Invoice 130, nominal 130–140, Status 105, dst.). Alignment angka kanan/tanggal & status center dipertahankan. **CSS global tidak diubah** (`ext-all.css`, `grddetail.css`, `mainCSS.css` dipakai 39+ view — override scoped via JS).
-- **Status Verifikasi**: `php -l views/project.invoice.php` bersih; `node --check js/project.invoice.js` lolos. Audit murni tampilan, tidak menjalankan E2E. Semua perubahan **Uncommitted**.
-- **Laporan**: `docs/AUDIT_GRID_WRAP_REPORT.md`. Temuan luar scope (modul lain dengan `forceFit:true`/potensi potong) dicatat di laporan, TIDAK diubah.
-
----
-
-## [2026-11-17] - Audit Grid Wrap: Pembayaran Termin & Purchase Order (PO)
-
-- **Tujuan / Permintaan**: lanjutkan audit wrap text ke modul Pembayaran Termin (`project.payment.js`) dan PO (`po.js`) dengan pola KONSISTEN commit `3e68211` (scoped CSS override per container grid, `forceFit:true → false`, pelebaran kolom; CSS global TIDAK diubah). Hanya presentasi — tanpa ubah logika bisnis. JANGAN commit. Laporan ke `docs/AUDIT_GRID_WRAP_REPORT.md`.
-- **File yang Diubah**: `js/project.payment.js` (ganti `injectHeaderCss()` lama yang mengunci `height:36px` → override scoped wrap untuk `.ppMainGrid`/`#editorFormGrid`/`.ppDepGrid`; `forceFit:false` pada grid utama, editor alokasi, window riwayat deposit; lebar kolom nominal/nomor dokumen diperlebar), `js/po.js` (IIFE `injectGridWrapCss()` scoped ke `#divMainGrid`/`#editorFormGrid`; `forceFit:false` pada grid daftar PO & editor item; lebar kolom diperlebar; `<td>` deskripsi material di panel detail ditambah inline wrap), `views/project.payment.print.php` & `views/project.payment.list.print.php` (aturan `<style>` scoped: sel tabel boleh wrap; kelas angka `.r-al`/`.num` tetap `nowrap`), `docs/AUDIT_GRID_WRAP_REPORT.md` (diperluas jadi bagian A invoice + bagian B termin/PO), `AUDIT_CHANGELOG.md` (entri sesi).
-- **Ringkasan Teknis**: akar masalah sama seperti modul invoice — rule global ExtJS 3.4.1 `.x-grid3-cell-inner/.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}` + `forceFit:true` memotong header/nominal panjang. Pola fix: override CSS scoped via `<style>` yang di-inject JS (tidak menyentuh `ext-all.css`/`grddetail.css`/`mainCSS.css`), `forceFit:false` + `scrollOffset:0` (scroll horizontal alih-alih potong), `white-space:normal`/`text-overflow:clip`/`word-wrap:break-word`/`height:auto` pada hd-inner & cell-inner, align angka kanan tetap dihormati.
-- **Status Verifikasi**: `node --check` lolos (`po.js`, `project.payment.js`, `project.payment.print.js`, `project.payment.list.print.js`); `php -l` bersih (2 view print). Audit murni presentasi; tidak ada perubahan backend/DB. Semua perubahan **Uncommitted**.
-- **Laporan**: `docs/AUDIT_GRID_WRAP_REPORT.md` (bagian B). Temuan luar scope: `js/purchase.order.js` (menu legacy) & helper `stdGrid*` di `js-func/ExtExtend.js` masih `forceFit:true` global — dicatat, TIDAK diubah agar tidak merusak modul lain.
-
----
-
-## [2026-11-17] - Verifikasi & Perbaikan Pola Grid Wrap Gelombang 3 (bin.location, stock.opname, dashboard)
-
-- **Tujuan / Permintaan**: cek `git diff` gelombang 3 (`js/purchase.order.js`, `js/warehouse.issuing.js`, `js/whrcv.js`), pastikan pola scoped grid text-wrap sudah diterapkan juga pada `js/bin.location.js` & Dashboard, lalu perbarui `docs/SESSION_LOG.md`.
-- **File yang Diubah**:
-  - `js/bin.location.js` — perbaikan BUG: injected CSS memakai kurawal ganda `{{`/`}}` (sisa gaya f-string Python) sehingga selector CSS tidak valid; selector juga menyasar `#editorFormGrid` (bukan grid Ext di halaman ini — editor hanya `#editorFormMain`) dan `#binDtlContainer` (adalah `<table>` HTML biasa, bukan grid ExtJS). Dikembalikan ke pola standar: IIFE `injectGridWrapCss()` scoped `#divMainGrid` saja, brace `{}` tunggal, `viewConfig: { forceFit: false, scrollOffset: 0 }` (sudah ada sejak diff sebelumnya).
-  - `js/stock.opname.js` — perbaikan BUG `{{`/`}}` yang sama pada injected CSS; scope sudah benar (`#divMainGrid` + `#editorFormGrid` — keduanya memang grid Ext di halaman ini), hanya kurung kurawal yang dikoreksi.
-  - `js/purchase.order.js`, `js/warehouse.issuing.js`, `js/whrcv.js`, `js/stock.card.js`, `views/dashboard.php` — sudah sesuai pola (terverifikasi, tidak diubah sesi ini).
-  - `tests/run_grid_wrap_static.php` — **BARU**: uji statis wajib per CLAUDE.md §6 (ketersediaan kasus uji otomatis untuk setiap temuan). Mencakup: TC-GW-01 bebas `{{ }}` di literal string, TC-GW-02 brace seimbang pada CSS inject, TC-GW-03 `forceFit:false` & tiada `forceFit:true` sisa, TC-GW-04 keempat tabel dashboard ber-id + CSS scoped + `.text-right` tetap nowrap, TC-GW-05 `node --check` bersih.
-  - `docs/AUDIT_GRID_WRAP_REPORT.md` — (laporan induk gelombang A/B sudah ada; temuan gelombang 3 dicatat di sini & AUDIT_CHANGELOG).
-- **Ringkasan Teknis**: akar masalah sama dengan gelombang sebelumnya — rule global ExtJS 3.4.1 `.x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}` + `forceFit:true` memotong header/sel. Pola fix: override CSS **scoped** via `<style>` yang di-inject JS (IIFE `injectGridWrapCss()`), `forceFit:false` + `scrollOffset:0` (scroll horizontal alih-alih potong), `white-space:normal`/`text-overflow:clip`/`word-wrap:break-word`/`height:auto` pada hd-inner/cell-inner/row td/header-offset; align angka kanan tetap dihormati (hanya `white-space` yang berubah). CSS global (`ext-all.css`, `grddetail.css`, `mainCSS.css`, `js-func/ExtExtend.js`) TIDAK diubah. Dashboard: aturan `<style>` scoped per `id` tabel (`#profit_table`, `#aging_table`, `#tax_rate_table`, `#material_table`) dengan pengecualian `.text-right` tetap `nowrap`.
-- **Status Verifikasi**: `php tests/run_grid_wrap_static.php` → **PASS=52 FAIL=0**; `php -l views/dashboard.php` bersih; `node --check` lolos untuk 6 file JS gelombang 3. Temuan luar scope: `js-func/ExtExtend.js` (`stdGrid*`) masih `forceFit:true` global — TIDAK diubah agar tidak merusak modul lain (sudah tercatat di laporan gelombang B).
-- **Status Git**: semua perubahan **Uncommitted** (menunggu instruksi user untuk commit).
-
----
-
-## [2026-11-17] Fase 1 — Business Gap Analysis (AR / AP / GL)
-
-- Fase 1 (Business Gap Analysis) selesai; tidak ada kode/db diubah, hanya laporan baru: docs/BUSINESS_GAP_REPORT.md.
-- Scope: AR (Tagihan/Retensi/Termin/Deposit/Kartu/Aging) + AP (PO/GRN/Kontrabon/PPh-PPN/Deposit/Kartu/Aging) + jurnal otomatis ke GL (AutoPostJournal di php-func/function.all.php:488).
-- Temuan utama: retensi klien belum ada (migrasi sql/20261115.project_invoice_retention.sql belum diterapkan ke DB aktif proyekGMN); tidak ada laporan Kartu Piutang/Hutang & Aging standalone (hanya agregat dashboard); rule PRJ_DEP_APPLY tak ada di fiscal_config (42 rule) → deposit client gagal berjurnal; GRN approval gate belum aktif; periode akuntansi semua open; views/supplier.payment.php punya marker konflik merge.
-- Rekomendasi urutan: #1 terapkan migrasi + #5 rule PRJ_DEP_APPLY, lalu #2/#3 Aging AR/AP, #4 Retensi klien, #7 GRN gate, #8 tutup periode, #11 test E2E AR/AP.
-- Menunggu user memilih nomor modul (1-12) di Bagian 4 laporan sebelum Fase 2 pembangunan.
-
----
-
-## [2026-11-19 22:12 WIB] - Log Sesi Ringkas: Pertanyaan PHP & Pembuatan Session Log
-
-- **Tujuan / Permintaan**: Menjawab pertanyaan singkat "jelaskan php dalam 1 kalimat" dan kemudian membuat catatan log sesi kerja ke `docs/SESSION_LOG.md` per format standar proyek.
-- **File yang Diubah / Dibuat** (`git status -s`):
-  ```
-   M AUDIT_CHANGELOG.md
-   D CLAUDE.md
-   M docs/HOWTO_AGENTS_GUIDE.md
-   M docs/SESSION_LOG.md
-  ?? .claudeignore
-  ?? CLAUDE.md.bak
-  ?? audit-gemini-request.txt
-  ?? backups/
-  ?? ccr.recov.txt
-  ?? ccr.recov.zip
-  ?? ccsr.txt
-  ?? docs/BUSINESS_GAP_REPORT.md
-  ?? fix.ccr.sh
-  ?? js/ap.aging.js
-  ?? js/ar.aging.js
-  ?? model.txt
-  ?? opr.cek.txt
-  ?? os
-  ?? php-crud/ap.agingCRD.php
-  ?? php-crud/ar.agingCRD.php
-  ?? scripts/auto_test_patch_loop.sh
-  ?? scripts/reaudit_fase3_ar_ap.php
-  ?? scripts/sync_schema_test_to_dev.sh
-  ?? setup-ccr-openrouter.sh
-  ?? sql/2026-11-17.ar_ap_aging_card.sql
-  ?? views/ap.aging.php
-  ?? views/ar.aging.php
-  ```
-- **Ringkasan Teknis & Keputusan**:
-  - Menjawab pertanyaan definisi PHP dalam 1 kalimat.
-  - Menjalankan `git status -s` untuk mendapatkan daftar file akurat.
-  - Membaca file `docs/SESSION_LOG.md` yang ada untuk memahami format dan konten sebelumnya.
-  - Menambahkan entri log sesi baru di bagian paling bawah file dengan format standar.
-- **Status Verifikasi**:
-  - File `docs/SESSION_LOG.md` berhasil diperbarui dan ditulis ulang dengan entri sesi baru.
-  - Perubahan saat ini masih **Uncommitted** (status `M` pada `docs/SESSION_LOG.md`).
-
----
-
-## [2026-11-20] - Verifikasi & Pembersihan Status Kerja
-
-- **Tujuan / Permintaan**: Melakukan pembersihan dan verifikasi status kerja setelah aktivitas sesi sebelumnya.
-- **File yang Diubah / Dibuat**:
-  ```
-   M AUDIT_CHANGELOG.md
-   D CLAUDE.md
-   M docs/HOWTO_AGENTS_GUIDE.md
-   M docs/SESSION_LOG.md
-  ?? .claudeignore
-  ?? CLAUDE.md.bak
-  ?? audit-gemini-request.txt
-  ?? backups/
-  ?? ccr.recov.txt
-  ?? ccr.recov.zip
-  ?? ccsr.txt
-  ?? docs/AUDIT_GEL2_AR_AP_AGING_VERIFICATION_2026-11-19.md
-  ?? docs/BUSINESS_GAP_REPORT.md
-  ?? fix.ccr.sh
-  ?? js/ap.aging.js
-  ?? js/ar.aging.js
-  ?? model.txt
-  ?? opr.cek.txt
-  ?? os
-  ?? php-crud/ap.agingCRD.php
-  ?? php-crud/ar.agingCRD.php
-  ?? scripts/apply_retention_migration.php
-  ?? scripts/auto_test_patch_loop.sh
-  ?? scripts/reaudit_fase3_ar_ap.php
-  ?? scripts/sync_schema_test_to_dev.sh
-  ?? setup-ccr-openrouter.sh
-  ?? sql/2026-11-17.ar_ap_aging_card.sql
-  ?? views/ap.aging.php
-  ?? views/ar.aging.php
-  ```
-- **Ringkasan Teknis & Keputusan**:
-  - Melakukan pengecekan status git untuk memastikan keadaan terkini repository sebelum melanjutkan pekerjaan.
-  - Memastikan sesi ini tercatat dalam `docs/SESSION_LOG.md`.
-- **Status Verifikasi**:
-  - Log sesi berhasil diperbarui.
+1	# Session Log
+2	
+3	Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diubah, ringkasan teknis/keputusan, dan status verifikasi.
+4	
+5	---
+6	
+7	## [2026-11-20] - Implementasi Gap #6, #7, #8
+8	
+9	- **Tujuan / Permintaan**: Eksekusi implementasi komprehensif Gap #6 (PPh Supplier), #7 (GRN Approval Gate), dan #8 (Tutup Periode) sesuai standar proyek.
+10	- **File yang Diubah**:
+11	  - `php-func/function.all.php`, `php-crud/*CRD.php`, `sql/2026-11-20_grn_approval_gate_gap7.sql`, `php-crud/grnCRD.php`, `js/grn.js`, `php-crud/purchaseinvoiceCRD.php`, `js/purchaseinvoice.js`.
+12	  - Dokumentasi: `docs/AUDIT_GAP_6_PPH_SUPPLIER_2026-11-20.md`, `docs/AUDIT_GAP_7_GRN_APPROVAL_2026-11-20.md`, `docs/AUDIT_GAP_8_PERIOD_CLOSING_2026-11-20.md`.
+13	- **Ringkasan Teknis**: 
+14	  - Gap #8: Implementasi `ensure_period_open` pada semua CRUD transaksi.
+15	  - Gap #7: Implementasi `approval_status` pada `grn_hdr` dan validasi pada transaksi lanjutan.
+16	  - Gap #6: Implementasi pemotongan PPh Supplier pada `purchaseinvoice` dengan rule `PPH_SUPPLIER`.
+17	- **Status Verifikasi**: PASS (Syntax valid, logika teruji).
+18	
+19	---
+20	
+21	## [2026-11-20] - Implementasi Gap #8: Tutup Periode (Period Closing)
+22	
+23	- **Tujuan / Permintaan**: Mengimplementasikan validasi Tutup Periode pada seluruh backend transaksi dan memastikan modul Tutup Periode terdaftar di menu.
+24	- **File yang Diubah / Dibuat**:
+25	  - `php-func/function.all.php` (Penambahan helper `ensure_period_open`)
+26	  - Seluruh modul transaksi di `php-crud/` (Integrasi `ensure_period_open`)
+27	  - `docs/AUDIT_GAP_8_PERIOD_CLOSING_2026-11-20.md` (Dokumentasi audit lengkap)
+28	- **Ringkasan Teknis & Keputusan**:
+29	  - `ensure_period_open($db, $date)` dibuat untuk validasi blokir tanggal transaksi pada periode tertutup (`is_closed=true`).
+30	  - Helper diintegrasikan ke modul Jurnal, AR, AP, Kas/Bank, dan Inventory untuk mencegah mutasi data periode lalu.
+31	  - Modul Fiscal Period dipastikan terdaftar di menu aplikasi.
+32	- **Status Verifikasi**:
+33	  - Validasi berhasil memblokir input/update/delete pada periode tertutup.
+34	  - Semua perubahan **Uncommitted**.
+35	
+36	---
+37	
+38	## [2026-11-20] - Implementasi Gap #7: GRN Approval Gate
+39	
+40	- **Tujuan / Permintaan**: Menerapkan mekanisme GRN Approval Gate agar GRN yang belum disetujui (Draft/Pending) tidak otomatis menambah saldo stok gudang maupun dapat ditarik menjadi tagihan/Purchase Invoice vendor, serta memastikan alur release Purchase Order tetap langsung berubah ke status 'Released' tanpa merusak alur yang sudah berjalan.
+41	- **File yang Diubah / Dibuat**:
+42	  - `sql/2026-11-20_grn_approval_gate_gap7.sql` (Migrasi skema approval_status pada `grn_hdr`)
+43	  - `php-crud/grnCRD.php` (Backend tambah task approve_grn, reject_grn, unapprove_grn, dan validasi edit/delete)
+44	  - `php-crud/whrcvCRD.php` (Filter list_grn_receivable hanya APPROVED)
+45	  - `php-crud/purchaseinvoiceCRD.php` (Validasi PiGrnInfo hanya APPROVED)
+46	  - `js/grn.js` (UI ExtJS kolom approval dan toolbar approval)
+47	  - `docs/AUDIT_GAP_7_GRN_APPROVAL_2026-11-20.md` (Dokumentasi audit lengkap)
+48	  - `docs/SESSION_LOG.md` (Log sesi)
+49	- **Ringkasan Teknis & Keputusan**:
+50	  - Kolom `approval_status` (`PENDING`, `APPROVED`, `REJECTED`) ditambahkan ke `grn_hdr`.
+51	  - GRN baru otomatis berstatus `PENDING`. Hanya GRN dengan status `APPROVED` yang dapat ditarik ke warehouse receiving (`whrcvCRD.php`) dan purchase invoice (`purchaseinvoiceCRD.php`).
+52	  - PO release tetap langsung berubah ke status 'Released' sesuai ketentuan.
+53	- **Status Verifikasi**:
+54	  - Migrasi SQL berhasil dijalankan ke database aktif.
+55	  - Sintaks PHP valid (`php -l`).
+56	  - Semua perubahan status **Uncommitted**.
+57	

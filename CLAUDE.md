@@ -69,3 +69,8 @@ Setiap kali agen membuat halaman, modul, atau laporan baru (`views/`, `js/`):
 1. **Wajib Daftar ke Tabel Menu & Permission DB:** Periksa struktur tabel menu dan role/hak akses yang berlaku di proyek ini, lalu otomatis masukkan (*INSERT*) entri menu baru (lengkap dengan *parent menu*, ikon, urutan, URL/handler JS, dan hak akses role) ke database target (`proyekGMN_test`).
 2. **Sertakan di File Migrasi SQL:** Tulis query `INSERT ... ON CONFLICT DO NOTHING` (atau pengecekan `WHERE NOT EXISTS`) untuk pendaftaran menu dan hak akses tersebut di dalam file migrasi `.sql` modul terkait agar otomatis ikut terpasang saat deploy ke database produksi (`proyekGMN`).
 3. **Verifikasi Menu pada Fase Audit:** Pastikan query pengecekan menu masuk ke dalam daftar verifikasi sebelum tugas dinyatakan selesai.
+
+## 9. ATURAN WAJIB NOTIFIKASI WHATSAPP PASCA-TUGAS
+Setiap kali selesai menyelesaikan 1 Gap, 1 fitur, atau sebelum mengakhiri sesi:
+1. Wajib kirim ringkasan hasil pengerjaan (Nomor Gap, status selesai, dan commit hash) ke WhatsApp `6281231788177` menggunakan gateway Hermes Agent yang terpasang di sistem lokal (periksa konfigurasi di `~/.hermes/` atau skrip notifier di proyek jika perlu).
+2. Jika pengiriman notifikasi gagal, tampilkan pesan error pengiriman WhatsApp secara eksplisit di bagian akhir output terminal.
