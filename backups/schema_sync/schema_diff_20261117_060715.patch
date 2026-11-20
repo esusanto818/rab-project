@@ -1,0 +1,875 @@
+--- /home/myadmin/proyekgmn-dev/backups/schema_sync/proyekGMN_schema_20261117_060715.sql	2026-11-17 06:13:09.440558474 +0700
++++ /home/myadmin/proyekgmn-dev/backups/schema_sync/proyekGMN_test_schema_20261117_060715.sql	2026-11-17 06:13:04.281555845 +0700
+@@ -205,7 +205,11 @@
+     'supplier_return',
+     'wip_release',
+     'subcon_progress',
+-    'subcon_payment'
++    'subcon_payment',
++    'material_leftover',
++    'subcon_leftover_buyback',
++    'subcon_invoice',
++    'subcon_invoice_pay'
+ );
+ 
+ 
+@@ -262,6 +266,49 @@
+ 
+ 
+ --
++-- Name: fn_block_journal_for_closed_period(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_block_journal_for_closed_period() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++BEGIN
++    IF (SELECT is_closed
++        FROM public.accounting_periods
++        WHERE id = NEW.period_id) THEN
++        RAISE EXCEPTION 'Cannot post journal for a closed accounting period (period_id = %)',
++                        NEW.period_id;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
++-- Name: fn_block_journallines_for_closed_period(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_block_journallines_for_closed_period() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++DECLARE
++    v_period_id integer;
++BEGIN
++    SELECT je.period_id INTO v_period_id
++      FROM public.journal_entries je
++     WHERE je.id = NEW.journal_id;
++
++    IF v_period_id IS NOT NULL AND
++       (SELECT is_closed FROM public.accounting_periods WHERE id = v_period_id) THEN
++        RAISE EXCEPTION 'Cannot post journal_line for a journal whose accounting period is closed (period_id = %)',
++                        v_period_id;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
+ -- Name: fn_block_posted_leftover_transaction_change(); Type: FUNCTION; Schema: public; Owner: -
+ --
+ 
+@@ -285,6 +332,176 @@
+ 
+ 
+ --
++-- Name: fn_budget_items_touch(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_budget_items_touch() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++BEGIN NEW.updated_at := NOW(); RETURN NEW; END $$;
++
++
++--
++-- Name: fn_check_project_payment_items_within_header(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_check_project_payment_items_within_header() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++DECLARE
++    v_total      numeric(18,2);
++    v_allocated  numeric(18,2);
++BEGIN
++    SELECT COALESCE(total_amount, 0) INTO v_total
++      FROM public.project_payments
++     WHERE id = NEW.payment_id;
++
++    SELECT COALESCE(SUM(amount_paid), 0) INTO v_allocated
++      FROM public.project_payment_items
++     WHERE payment_id = NEW.payment_id;
++
++    IF v_allocated > v_total + 0.01 THEN
++        RAISE EXCEPTION 'Project payment item allocation (%.2F) exceeds payment total (%.2F)',
++                        v_allocated, v_total;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
++-- Name: fn_check_project_payment_within_invoice(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_check_project_payment_within_invoice() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++DECLARE
++    v_balance numeric(18,2);
++BEGIN
++    SELECT COALESCE(amount,0)
++         - COALESCE(paid_amount,0)
++         - COALESCE(retention_amount,0)
++      INTO v_balance
++      FROM public.project_invoices
++     WHERE id = NEW.invoice_id;
++
++    IF v_balance < 0 THEN
++        v_balance := 0;
++    END IF;
++
++    IF NEW.amount_paid > v_balance + 0.01 THEN
++        RAISE EXCEPTION 'Project payment allocation (%.2F) exceeds invoice balance (%.2F)',
++                        NEW.amount_paid, v_balance;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
++-- Name: fn_check_spk_task_material_alloc(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_check_spk_task_material_alloc() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++DECLARE
++    v_task_qty numeric(18,4);
++BEGIN
++    SELECT COALESCE(tm.qty_budget, 0) INTO v_task_qty
++      FROM public.task_materials tm
++     WHERE tm.id = NEW.task_material_id AND tm.active;
++
++    IF v_task_qty <= 0 THEN
++        RAISE EXCEPTION 'No active task_materials allocation found for task_material_id = % (spk_task_materials qty = %.4F)',
++                        NEW.task_material_id, NEW.qty;
++    END IF;
++
++    IF NEW.qty > v_task_qty + 0.001 THEN
++        RAISE EXCEPTION 'spk_task_materials qty (%.4F) exceeds task material allocation (%.4F)',
++                        NEW.qty, v_task_qty;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
++-- Name: fn_check_subcon_cert_item_within_passed(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_check_subcon_cert_item_within_passed() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++DECLARE
++    v_passed numeric(18,4);
++BEGIN
++    SELECT COALESCE(sii.qty_passed, 0) INTO v_passed
++      FROM public.subcon_inspection_items sii
++     WHERE sii.id = NEW.inspection_item_id;
++
++    IF NEW.qty_certified > v_passed + 0.001 THEN
++        RAISE EXCEPTION 'subcon_payment_certificate_items qty_certified (%.4F) exceeds passed qty (%.4F)',
++                        NEW.qty_certified, v_passed;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
++-- Name: fn_check_supplier_payment_within_invoice(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_check_supplier_payment_within_invoice() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++DECLARE
++    v_total   numeric(18,2);
++    v_allocated numeric(18,2);
++BEGIN
++    SELECT COALESCE(total_amount, 0) INTO v_total
++      FROM public.purchase_invoice_hdr
++     WHERE id = NEW.invoice_id;
++
++    SELECT COALESCE(SUM(amount_paid), 0) INTO v_allocated
++      FROM public.supplier_payment_items
++     WHERE invoice_id = NEW.invoice_id;
++
++    IF v_allocated > v_total + 0.01 THEN
++        RAISE EXCEPTION 'Supplier payment allocation (%.2F) exceeds invoice total (%.2F)',
++                        v_allocated, v_total;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
++-- Name: fn_check_task_material_category(); Type: FUNCTION; Schema: public; Owner: -
++--
++
++CREATE FUNCTION public.fn_check_task_material_category() RETURNS trigger
++    LANGUAGE plpgsql
++    AS $$
++BEGIN
++    IF NEW.budget_item_id IS NOT NULL THEN
++        PERFORM id
++          FROM public.budget_items
++         WHERE id = NEW.budget_item_id
++           AND category <> 'Material';
++        IF FOUND THEN
++            RAISE EXCEPTION 'task_materials can only reference budget_items with category = Material (budget_item_id = %)',
++                            NEW.budget_item_id;
++        END IF;
++    END IF;
++    RETURN NEW;
++END;
++$$;
++
++
++--
+ -- Name: fn_guard_budget_item_task_allocations(); Type: FUNCTION; Schema: public; Owner: -
+ --
+ 
+@@ -1219,7 +1436,7 @@
+     analysis jsonb,
+     source character varying(20),
+     ai_used boolean,
+-    CONSTRAINT ai_variance_logs_risk_level_check CHECK (((risk_level)::text = ANY ((ARRAY['LOW'::character varying, 'MEDIUM'::character varying, 'HIGH'::character varying, 'CRITICAL'::character varying])::text[])))
++    CONSTRAINT ai_variance_logs_risk_level_check CHECK (((risk_level)::text = ANY (ARRAY[('LOW'::character varying)::text, ('MEDIUM'::character varying)::text, ('HIGH'::character varying)::text, ('CRITICAL'::character varying)::text])))
+ );
+ 
+ 
+@@ -1300,7 +1517,10 @@
+     expense_id integer,
+     unit_price_min numeric(18,2),
+     unit_price_max numeric(18,2),
+-    CONSTRAINT budget_items_category_check CHECK (((category)::text = ANY ((ARRAY['Material'::character varying, 'Upah'::character varying, 'Alat'::character varying, 'Lain-lain'::character varying])::text[])))
++    updated_at timestamp without time zone,
++    material_source character varying(20) DEFAULT 'COMPANY'::character varying NOT NULL,
++    CONSTRAINT budget_items_category_check CHECK (((category)::text = ANY ((ARRAY['Material'::character varying, 'Upah'::character varying, 'Peralatan'::character varying, 'Transport'::character varying, 'Konsumsi'::character varying, 'Lain-lain'::character varying])::text[]))),
++    CONSTRAINT budget_items_material_source_check CHECK (((material_source)::text = ANY ((ARRAY['COMPANY'::character varying, 'CLIENT_SUPPLIED'::character varying])::text[])))
+ );
+ 
+ 
+@@ -1418,8 +1638,8 @@
+     is_postable boolean DEFAULT true NOT NULL,
+     active boolean DEFAULT true NOT NULL,
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+-    CONSTRAINT coa_accounts_account_type_check CHECK (((account_type)::text = ANY ((ARRAY['Aset'::character varying, 'Kewajiban'::character varying, 'Ekuitas'::character varying, 'Pendapatan'::character varying, 'Beban'::character varying])::text[]))),
+-    CONSTRAINT coa_accounts_normal_balance_check CHECK (((normal_balance)::text = ANY ((ARRAY['Debit'::character varying, 'Kredit'::character varying])::text[])))
++    CONSTRAINT coa_accounts_account_type_check CHECK (((account_type)::text = ANY (ARRAY[('Aset'::character varying)::text, ('Kewajiban'::character varying)::text, ('Ekuitas'::character varying)::text, ('Pendapatan'::character varying)::text, ('Beban'::character varying)::text]))),
++    CONSTRAINT coa_accounts_normal_balance_check CHECK (((normal_balance)::text = ANY (ARRAY[('Debit'::character varying)::text, ('Kredit'::character varying)::text])))
+ );
+ 
+ 
+@@ -1824,7 +2044,8 @@
+     updated_at timestamp without time zone,
+     created_by integer,
+     updated_by integer,
+-    default_price_min numeric(15,2)
++    default_price_min numeric(15,2),
++    CONSTRAINT expense_master_category_check CHECK (((category)::text = ANY ((ARRAY['Upah'::character varying, 'Peralatan'::character varying, 'Transport'::character varying, 'Konsumsi'::character varying, 'Lain-lain'::character varying])::text[])))
+ );
+ 
+ 
+@@ -1876,10 +2097,10 @@
+     updated_at timestamp without time zone DEFAULT now() NOT NULL,
+     updated_by integer,
+     CONSTRAINT finance_settings_amount_decimals_check CHECK (((amount_decimals >= 0) AND (amount_decimals <= 4))),
+-    CONSTRAINT finance_settings_default_rate_type_check CHECK (((default_rate_type)::text = ANY ((ARRAY['KMK'::character varying, 'BI'::character varying, 'MANUAL'::character varying])::text[]))),
++    CONSTRAINT finance_settings_default_rate_type_check CHECK (((default_rate_type)::text = ANY (ARRAY[('KMK'::character varying)::text, ('BI'::character varying)::text, ('MANUAL'::character varying)::text]))),
+     CONSTRAINT finance_settings_fiscal_year_start_month_check CHECK (((fiscal_year_start_month >= 1) AND (fiscal_year_start_month <= 12))),
+     CONSTRAINT finance_settings_id_check CHECK ((id = 1)),
+-    CONSTRAINT finance_settings_rate_basis_pl_check CHECK (((rate_basis_pl)::text = ANY ((ARRAY['TRANSACTION'::character varying, 'AVERAGE'::character varying, 'PERIOD_END'::character varying])::text[])))
++    CONSTRAINT finance_settings_rate_basis_pl_check CHECK (((rate_basis_pl)::text = ANY (ARRAY[('TRANSACTION'::character varying)::text, ('AVERAGE'::character varying)::text, ('PERIOD_END'::character varying)::text])))
+ );
+ 
+ 
+@@ -2139,8 +2360,14 @@
+     vehicle_plate_no character varying(20),
+     driver_name character varying(100),
+     supplier_do_no character varying(100),
++    approval_status text DEFAULT 'PENDING'::text NOT NULL,
++    approved_by integer,
++    approved_at timestamp without time zone,
++    approved_note text,
++    CONSTRAINT grn_hdr_approval_status_check CHECK ((approval_status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))),
++    CONSTRAINT grn_hdr_approval_status_check1 CHECK ((approval_status = ANY (ARRAY['PENDING'::text, 'APPROVED'::text, 'REJECTED'::text]))),
+     CONSTRAINT grn_hdr_exch_rate_chk CHECK ((exch_rate > (0)::numeric)),
+-    CONSTRAINT grn_hdr_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'partial'::character varying, 'closed'::character varying])::text[])))
++    CONSTRAINT grn_hdr_status_check CHECK (((status)::text = ANY (ARRAY[('open'::character varying)::text, ('partial'::character varying)::text, ('closed'::character varying)::text])))
+ );
+ 
+ 
+@@ -3460,7 +3687,7 @@
+     delivery_receiver character varying(100),
+     delivery_proof text,
+     spk_id integer,
+-    CONSTRAINT chk_material_out_status CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'prepared'::character varying, 'posted'::character varying, 'reversed'::character varying, 'cancelled'::character varying])::text[])))
++    CONSTRAINT chk_material_out_status CHECK (((status)::text = ANY (ARRAY[('pending'::character varying)::text, ('prepared'::character varying)::text, ('posted'::character varying)::text, ('reversed'::character varying)::text, ('cancelled'::character varying)::text])))
+ );
+ 
+ 
+@@ -3540,7 +3767,7 @@
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+     reversed_at timestamp without time zone,
+     reversed_by integer,
+-    CONSTRAINT material_receipt_header_status_check CHECK (((status)::text = ANY ((ARRAY['draft'::character varying, 'posted'::character varying, 'reversed'::character varying])::text[])))
++    CONSTRAINT material_receipt_header_status_check CHECK (((status)::text = ANY (ARRAY[('draft'::character varying)::text, ('posted'::character varying)::text, ('reversed'::character varying)::text])))
+ );
+ 
+ 
+@@ -3784,6 +4011,8 @@
+     release_date date,
+     released_by integer,
+     release_note text DEFAULT ''::text NOT NULL,
++    retention_pct numeric(5,2) DEFAULT 0 NOT NULL,
++    retention_amount numeric(18,2) DEFAULT 0 NOT NULL,
+     CONSTRAINT project_invoices_amount_check CHECK ((amount > (0)::numeric))
+ );
+ 
+@@ -3861,7 +4090,11 @@
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+     currency_id bigint,
+     exch_rate numeric(15,4) DEFAULT 1.0000 NOT NULL,
+-    total_amount_cur numeric(18,2)
++    total_amount_cur numeric(18,2),
++    total_amount_base numeric(18,2) DEFAULT 0 NOT NULL,
++    allocated_amount_base numeric(18,2) DEFAULT 0 NOT NULL,
++    excess_amount_base numeric(18,2) DEFAULT 0 NOT NULL,
++    deposit_applied_base numeric(18,2) DEFAULT 0 NOT NULL
+ );
+ 
+ 
+@@ -3906,7 +4139,7 @@
+     snap_cpi numeric(8,4),
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+     CONSTRAINT project_progress_log_percent_claimed_check CHECK (((percent_claimed >= 0) AND (percent_claimed <= 100))),
+-    CONSTRAINT project_progress_log_status_check CHECK (((status)::text = ANY ((ARRAY['Diajukan'::character varying, 'Diverifikasi'::character varying, 'Ditolak'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT project_progress_log_status_check CHECK (((status)::text = ANY (ARRAY[('Diajukan'::character varying)::text, ('Diverifikasi'::character varying)::text, ('Ditolak'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -3981,7 +4214,7 @@
+     remark text,
+     created_by integer,
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+-    CONSTRAINT project_wip_release_mode_check CHECK (((mode)::text = ANY ((ARRAY['progress'::character varying, 'complete'::character varying])::text[])))
++    CONSTRAINT project_wip_release_mode_check CHECK (((mode)::text = ANY (ARRAY[('progress'::character varying)::text, ('complete'::character varying)::text])))
+ );
+ 
+ 
+@@ -4035,7 +4268,7 @@
+     project_scope text,
+     CONSTRAINT projects_budget_exch_rate_chk CHECK ((budget_exch_rate > (0)::numeric)),
+     CONSTRAINT projects_progress_check CHECK (((progress >= 0) AND (progress <= 100))),
+-    CONSTRAINT projects_status_check CHECK (((status)::text = ANY ((ARRAY['Belum Mulai'::character varying, 'Berjalan'::character varying, 'Tertunda'::character varying, 'Selesai'::character varying])::text[])))
++    CONSTRAINT projects_status_check CHECK (((status)::text = ANY (ARRAY[('Belum Mulai'::character varying)::text, ('Berjalan'::character varying)::text, ('Tertunda'::character varying)::text, ('Selesai'::character varying)::text])))
+ );
+ 
+ 
+@@ -4156,10 +4389,10 @@
+     total_budget numeric(18,2) DEFAULT 0 NOT NULL,
+     ppn_mode character varying(4) DEFAULT 'NONE'::character varying NOT NULL,
+     ppn_rate numeric(5,2) DEFAULT 0 NOT NULL,
+-    CONSTRAINT chk_po_ppn_mode CHECK (((ppn_mode)::text = ANY ((ARRAY['NONE'::character varying, 'EXCL'::character varying, 'INCL'::character varying])::text[]))),
++    CONSTRAINT chk_po_ppn_mode CHECK (((ppn_mode)::text = ANY (ARRAY[('NONE'::character varying)::text, ('EXCL'::character varying)::text, ('INCL'::character varying)::text]))),
+     CONSTRAINT chk_po_ppn_rate CHECK (((ppn_rate >= (0)::numeric) AND (ppn_rate <= (100)::numeric))),
+     CONSTRAINT purchase_orders_budget_exch_rate_chk CHECK ((budget_exch_rate > (0)::numeric)),
+-    CONSTRAINT purchase_orders_status_check CHECK (((status)::text = ANY ((ARRAY['Draft'::character varying, 'Diajukan'::character varying, 'Disetujui'::character varying, 'Selesai'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT purchase_orders_status_check CHECK (((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Diajukan'::character varying)::text, ('Disetujui'::character varying)::text, ('Selesai'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -4237,7 +4470,7 @@
+     remark text,
+     created_by integer,
+     created_at timestamp without time zone DEFAULT now(),
+-    CONSTRAINT purchase_return_hdr_status_check CHECK (((status)::text = ANY ((ARRAY['posted'::character varying, 'cancelled'::character varying])::text[])))
++    CONSTRAINT purchase_return_hdr_status_check CHECK (((status)::text = ANY (ARRAY[('posted'::character varying)::text, ('cancelled'::character varying)::text])))
+ );
+ 
+ 
+@@ -4293,9 +4526,9 @@
+     cancelled_at timestamp without time zone,
+     cancel_reason text,
+     CONSTRAINT ck_spk_execution_party CHECK (((((spk_type)::text = 'INTERNAL'::text) AND (execution_subcontractor_id IS NULL)) OR (((spk_type)::text = 'SUBCON'::text) AND (execution_subcontractor_id IS NOT NULL)))),
+-    CONSTRAINT ck_spk_type CHECK (((spk_type)::text = ANY ((ARRAY['INTERNAL'::character varying, 'SUBCON'::character varying])::text[]))),
++    CONSTRAINT ck_spk_type CHECK (((spk_type)::text = ANY (ARRAY[('INTERNAL'::character varying)::text, ('SUBCON'::character varying)::text]))),
+     CONSTRAINT ck_spk_work_dates CHECK (((work_end_date IS NULL) OR (work_start_date IS NULL) OR (work_end_date >= work_start_date))),
+-    CONSTRAINT spk_status_check CHECK (((status)::text = ANY ((ARRAY['Draft'::character varying, 'Diterbitkan'::character varying, 'Selesai'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT spk_status_check CHECK (((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Diterbitkan'::character varying)::text, ('Selesai'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -4379,14 +4612,14 @@
+     created_by integer,
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+     parent_lot_id bigint,
+-    CONSTRAINT ck_leftover_current_owner CHECK (((((current_owner_type)::text = 'SUBCON'::text) AND (current_subcontractor_id IS NOT NULL)) OR (((current_owner_type)::text = ANY ((ARRAY['COMPANY'::character varying, 'CLIENT'::character varying])::text[])) AND (current_subcontractor_id IS NULL)))),
++    CONSTRAINT ck_leftover_current_owner CHECK (((((current_owner_type)::text = 'SUBCON'::text) AND (current_subcontractor_id IS NOT NULL)) OR (((current_owner_type)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('CLIENT'::character varying)::text])) AND (current_subcontractor_id IS NULL)))),
+     CONSTRAINT ck_leftover_qty CHECK ((qty_available <= qty_origin)),
+     CONSTRAINT ck_leftover_source_owner CHECK (((((source_owner_type)::text = 'COMPANY'::text) AND (source_subcontractor_id IS NULL)) OR (((source_owner_type)::text = 'SUBCON'::text) AND (source_subcontractor_id IS NOT NULL)))),
+-    CONSTRAINT spk_material_leftover_lots_current_owner_type_check CHECK (((current_owner_type)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'CLIENT'::character varying])::text[]))),
++    CONSTRAINT spk_material_leftover_lots_current_owner_type_check CHECK (((current_owner_type)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text, ('CLIENT'::character varying)::text]))),
+     CONSTRAINT spk_material_leftover_lots_qty_available_check CHECK ((qty_available >= (0)::numeric)),
+     CONSTRAINT spk_material_leftover_lots_qty_origin_check CHECK ((qty_origin > (0)::numeric)),
+-    CONSTRAINT spk_material_leftover_lots_source_owner_type_check CHECK (((source_owner_type)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying])::text[]))),
+-    CONSTRAINT spk_material_leftover_lots_status_check CHECK (((status)::text = ANY ((ARRAY['AVAILABLE'::character varying, 'PARTIAL'::character varying, 'EXHAUSTED'::character varying, 'CLOSED'::character varying])::text[])))
++    CONSTRAINT spk_material_leftover_lots_source_owner_type_check CHECK (((source_owner_type)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text]))),
++    CONSTRAINT spk_material_leftover_lots_status_check CHECK (((status)::text = ANY (ARRAY[('AVAILABLE'::character varying)::text, ('PARTIAL'::character varying)::text, ('EXHAUSTED'::character varying)::text, ('CLOSED'::character varying)::text])))
+ );
+ 
+ 
+@@ -4449,12 +4682,12 @@
+     inventory_out_doc_id integer,
+     CONSTRAINT ck_leftover_buyer_party CHECK (((((buyer_type)::text = 'SUBCON'::text) AND (buyer_subcontractor_id IS NOT NULL)) OR (((buyer_type)::text <> 'SUBCON'::text) AND (buyer_subcontractor_id IS NULL)))),
+     CONSTRAINT ck_leftover_seller_party CHECK (((((seller_type)::text = 'SUBCON'::text) AND (seller_subcontractor_id IS NOT NULL)) OR (((seller_type)::text <> 'SUBCON'::text) AND (seller_subcontractor_id IS NULL)))),
+-    CONSTRAINT spk_material_leftover_transactions_buyer_type_check CHECK (((buyer_type)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'CLIENT'::character varying])::text[]))),
++    CONSTRAINT spk_material_leftover_transactions_buyer_type_check CHECK (((buyer_type)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text, ('CLIENT'::character varying)::text]))),
+     CONSTRAINT spk_material_leftover_transactions_qty_check CHECK ((qty > (0)::numeric)),
+-    CONSTRAINT spk_material_leftover_transactions_seller_type_check CHECK (((seller_type)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'CLIENT'::character varying])::text[]))),
+-    CONSTRAINT spk_material_leftover_transactions_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'APPROVED'::character varying, 'POSTED'::character varying, 'CANCELLED'::character varying])::text[]))),
++    CONSTRAINT spk_material_leftover_transactions_seller_type_check CHECK (((seller_type)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text, ('CLIENT'::character varying)::text]))),
++    CONSTRAINT spk_material_leftover_transactions_status_check CHECK (((status)::text = ANY (ARRAY[('DRAFT'::character varying)::text, ('APPROVED'::character varying)::text, ('POSTED'::character varying)::text, ('CANCELLED'::character varying)::text]))),
+     CONSTRAINT spk_material_leftover_transactions_total_amount_check CHECK ((total_amount >= (0)::numeric)),
+-    CONSTRAINT spk_material_leftover_transactions_transaction_type_check CHECK (((transaction_type)::text = ANY ((ARRAY['RETURN_COMPANY'::character varying, 'BUY_FROM_SUBCON'::character varying, 'SELL_TO_CLIENT'::character varying])::text[]))),
++    CONSTRAINT spk_material_leftover_transactions_transaction_type_check CHECK (((transaction_type)::text = ANY (ARRAY[('RETURN_COMPANY'::character varying)::text, ('BUY_FROM_SUBCON'::character varying)::text, ('SELL_TO_CLIENT'::character varying)::text]))),
+     CONSTRAINT spk_material_leftover_transactions_unit_price_check CHECK ((unit_price >= (0)::numeric))
+ );
+ 
+@@ -4508,11 +4741,11 @@
+     spk_task_id bigint,
+     CONSTRAINT ck_spk_supply_accepted CHECK ((qty_accepted <= qty_received)),
+     CONSTRAINT ck_spk_supply_owner CHECK (((((supply_source)::text = 'COMPANY'::text) AND ((owner_type)::text = 'COMPANY'::text) AND (subcontractor_id IS NULL)) OR (((supply_source)::text = 'SUBCON'::text) AND ((owner_type)::text = 'SUBCON'::text) AND (subcontractor_id IS NOT NULL)))),
+-    CONSTRAINT spk_material_supply_owner_type_check CHECK (((owner_type)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying])::text[]))),
++    CONSTRAINT spk_material_supply_owner_type_check CHECK (((owner_type)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text]))),
+     CONSTRAINT spk_material_supply_qty_accepted_check CHECK ((qty_accepted >= (0)::numeric)),
+     CONSTRAINT spk_material_supply_qty_planned_check CHECK ((qty_planned >= (0)::numeric)),
+     CONSTRAINT spk_material_supply_qty_received_check CHECK ((qty_received >= (0)::numeric)),
+-    CONSTRAINT spk_material_supply_supply_source_check CHECK (((supply_source)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying])::text[])))
++    CONSTRAINT spk_material_supply_supply_source_check CHECK (((supply_source)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text])))
+ );
+ 
+ 
+@@ -4671,8 +4904,8 @@
+     spk_task_id bigint,
+     CONSTRAINT spk_work_items_contract_qty_check CHECK ((contract_qty > (0)::numeric)),
+     CONSTRAINT spk_work_items_line_amount_check CHECK ((line_amount >= (0)::numeric)),
+-    CONSTRAINT spk_work_items_material_supply_check CHECK (((material_supply)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'MIXED'::character varying])::text[]))),
+-    CONSTRAINT spk_work_items_status_check CHECK (((status)::text = ANY ((ARRAY['ACTIVE'::character varying, 'COMPLETED'::character varying, 'CANCELLED'::character varying])::text[]))),
++    CONSTRAINT spk_work_items_material_supply_check CHECK (((material_supply)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text, ('MIXED'::character varying)::text]))),
++    CONSTRAINT spk_work_items_status_check CHECK (((status)::text = ANY (ARRAY[('ACTIVE'::character varying)::text, ('COMPLETED'::character varying)::text, ('CANCELLED'::character varying)::text]))),
+     CONSTRAINT spk_work_items_unit_price_check CHECK ((unit_price >= (0)::numeric))
+ );
+ 
+@@ -4722,7 +4955,7 @@
+     remark text,
+     created_by integer,
+     created_at timestamp without time zone DEFAULT now(),
+-    CONSTRAINT stock_movements_movement_type_check CHECK (((movement_type)::text = ANY ((ARRAY['IN'::character varying, 'OUT'::character varying])::text[]))),
++    CONSTRAINT stock_movements_movement_type_check CHECK (((movement_type)::text = ANY (ARRAY[('IN'::character varying)::text, ('OUT'::character varying)::text]))),
+     CONSTRAINT stock_movements_qty_check CHECK ((qty > (0)::numeric))
+ );
+ 
+@@ -4806,7 +5039,7 @@
+     cancel_reason text,
+     total_gain numeric(18,2) DEFAULT 0 NOT NULL,
+     total_loss numeric(18,2) DEFAULT 0 NOT NULL,
+-    CONSTRAINT chk_so_status CHECK (((status)::text = ANY ((ARRAY['Draft'::character varying, 'Diajukan'::character varying, 'Disetujui'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT chk_so_status CHECK (((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Diajukan'::character varying)::text, ('Disetujui'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -4970,9 +5203,9 @@
+     spk_id integer,
+     contract_revision integer DEFAULT 0 NOT NULL,
+     material_supply_default character varying(12) DEFAULT 'SUBCON'::character varying NOT NULL,
+-    CONSTRAINT chk_sc_status CHECK (((status)::text = ANY ((ARRAY['Draft'::character varying, 'Diajukan'::character varying, 'Disetujui'::character varying, 'Selesai'::character varying, 'Dibatalkan'::character varying])::text[]))),
++    CONSTRAINT chk_sc_status CHECK (((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Diajukan'::character varying)::text, ('Disetujui'::character varying)::text, ('Selesai'::character varying)::text, ('Dibatalkan'::character varying)::text]))),
+     CONSTRAINT chk_sc_value CHECK ((contract_value > (0)::numeric)),
+-    CONSTRAINT ck_subcon_material_supply_default CHECK (((material_supply_default)::text = ANY ((ARRAY['COMPANY'::character varying, 'SUBCON'::character varying, 'MIXED'::character varying])::text[])))
++    CONSTRAINT ck_subcon_material_supply_default CHECK (((material_supply_default)::text = ANY (ARRAY[('COMPANY'::character varying)::text, ('SUBCON'::character varying)::text, ('MIXED'::character varying)::text])))
+ );
+ 
+ 
+@@ -5011,12 +5244,13 @@
+     evidence_ref text,
+     notes text,
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
++    rework_required boolean DEFAULT false NOT NULL,
+     CONSTRAINT ck_inspection_qty_sum CHECK ((((qty_passed + qty_rejected) + qty_rework) <= qty_inspected)),
+     CONSTRAINT subcon_inspection_items_qty_inspected_check CHECK ((qty_inspected >= (0)::numeric)),
+     CONSTRAINT subcon_inspection_items_qty_passed_check CHECK ((qty_passed >= (0)::numeric)),
+     CONSTRAINT subcon_inspection_items_qty_rejected_check CHECK ((qty_rejected >= (0)::numeric)),
+     CONSTRAINT subcon_inspection_items_qty_rework_check CHECK ((qty_rework >= (0)::numeric)),
+-    CONSTRAINT subcon_inspection_items_result_check CHECK (((result)::text = ANY ((ARRAY['PASS'::character varying, 'PARTIAL'::character varying, 'REJECT'::character varying, 'REWORK'::character varying, 'PENDING'::character varying])::text[])))
++    CONSTRAINT subcon_inspection_items_result_check CHECK (((result)::text = ANY (ARRAY[('PASS'::character varying)::text, ('PARTIAL'::character varying)::text, ('REJECT'::character varying)::text, ('REWORK'::character varying)::text, ('PENDING'::character varying)::text])))
+ );
+ 
+ 
+@@ -5059,7 +5293,7 @@
+     cancelled_by integer,
+     cancelled_at timestamp without time zone,
+     cancel_reason text,
+-    CONSTRAINT subcon_inspections_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'APPROVED'::character varying, 'REJECTED'::character varying, 'CANCELLED'::character varying])::text[])))
++    CONSTRAINT subcon_inspections_status_check CHECK (((status)::text = ANY (ARRAY[('DRAFT'::character varying)::text, ('APPROVED'::character varying)::text, ('REJECTED'::character varying)::text, ('CANCELLED'::character varying)::text])))
+ );
+ 
+ 
+@@ -5111,7 +5345,7 @@
+     cancelled_at timestamp without time zone,
+     cancel_reason text,
+     CONSTRAINT chk_subcon_inv_pay_amount CHECK ((amount > (0)::numeric)),
+-    CONSTRAINT chk_subcon_inv_pay_status CHECK (((status)::text = ANY ((ARRAY['Posted'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT chk_subcon_inv_pay_status CHECK (((status)::text = ANY (ARRAY[('Posted'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -5168,7 +5402,7 @@
+     certificate_id bigint,
+     certificate_amount_snapshot numeric(18,2),
+     CONSTRAINT chk_subcon_inv_amount CHECK (((total_amount >= (0)::numeric) AND (paid_amount >= (0)::numeric))),
+-    CONSTRAINT chk_subcon_inv_status CHECK (((status)::text = ANY ((ARRAY['Draft'::character varying, 'Diajukan'::character varying, 'Disetujui'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT chk_subcon_inv_status CHECK (((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Diajukan'::character varying)::text, ('Disetujui'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -5263,6 +5497,7 @@
+     cancelled_by integer,
+     cancelled_at timestamp without time zone,
+     cancel_reason text,
++    CONSTRAINT chk_subcon_cert_net_payable CHECK ((net_payable = (((((gross_amount - ppn_amount) - pph_amount) - retention_amount) - dp_recovery) - other_deduction))),
+     CONSTRAINT subcon_payment_certificates_dp_recovery_check CHECK ((dp_recovery >= (0)::numeric)),
+     CONSTRAINT subcon_payment_certificates_gross_amount_check CHECK ((gross_amount >= (0)::numeric)),
+     CONSTRAINT subcon_payment_certificates_net_payable_check CHECK ((net_payable >= (0)::numeric)),
+@@ -5270,7 +5505,7 @@
+     CONSTRAINT subcon_payment_certificates_pph_amount_check CHECK ((pph_amount >= (0)::numeric)),
+     CONSTRAINT subcon_payment_certificates_ppn_amount_check CHECK ((ppn_amount >= (0)::numeric)),
+     CONSTRAINT subcon_payment_certificates_retention_amount_check CHECK ((retention_amount >= (0)::numeric)),
+-    CONSTRAINT subcon_payment_certificates_status_check CHECK (((status)::text = ANY ((ARRAY['DRAFT'::character varying, 'APPROVED'::character varying, 'CANCELLED'::character varying])::text[])))
++    CONSTRAINT subcon_payment_certificates_status_check CHECK (((status)::text = ANY (ARRAY[('DRAFT'::character varying)::text, ('APPROVED'::character varying)::text, ('CANCELLED'::character varying)::text])))
+ );
+ 
+ 
+@@ -5322,8 +5557,8 @@
+     cancelled_at timestamp without time zone,
+     cancel_reason text,
+     CONSTRAINT chk_spy_amount CHECK ((amount > (0)::numeric)),
+-    CONSTRAINT chk_spy_status CHECK (((status)::text = ANY ((ARRAY['Posted'::character varying, 'Dibatalkan'::character varying])::text[]))),
+-    CONSTRAINT chk_spy_type CHECK (((pay_type)::text = ANY ((ARRAY['DP'::character varying, 'PROGRESS'::character varying, 'RETENSI'::character varying])::text[])))
++    CONSTRAINT chk_spy_status CHECK (((status)::text = ANY (ARRAY[('Posted'::character varying)::text, ('Dibatalkan'::character varying)::text]))),
++    CONSTRAINT chk_spy_type CHECK (((pay_type)::text = ANY (ARRAY[('DP'::character varying)::text, ('PROGRESS'::character varying)::text, ('RETENSI'::character varying)::text])))
+ );
+ 
+ 
+@@ -5373,7 +5608,7 @@
+     cancelled_by integer,
+     cancelled_at timestamp without time zone,
+     cancel_reason text,
+-    CONSTRAINT chk_sp_status CHECK (((status)::text = ANY ((ARRAY['Draft'::character varying, 'Disetujui'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT chk_sp_status CHECK (((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Disetujui'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -5652,7 +5887,7 @@
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+     updated_at timestamp without time zone DEFAULT now() NOT NULL,
+     wh_receiving_hdr_id integer,
+-    CONSTRAINT chk_supplier_return_status CHECK (((status)::text = ANY ((ARRAY['Diajukan'::character varying, 'Diperintahkan'::character varying, 'Disiapkan'::character varying, 'Dikirim'::character varying, 'Diganti'::character varying, 'Kredit'::character varying, 'Dibatalkan'::character varying])::text[])))
++    CONSTRAINT chk_supplier_return_status CHECK (((status)::text = ANY (ARRAY[('Diajukan'::character varying)::text, ('Diperintahkan'::character varying)::text, ('Disiapkan'::character varying)::text, ('Dikirim'::character varying)::text, ('Diganti'::character varying)::text, ('Kredit'::character varying)::text, ('Dibatalkan'::character varying)::text])))
+ );
+ 
+ 
+@@ -5761,6 +5996,7 @@
+     qty_budget numeric(18,4) NOT NULL,
+     created_at timestamp without time zone DEFAULT now() NOT NULL,
+     updated_at timestamp without time zone DEFAULT now() NOT NULL,
++    active boolean DEFAULT true NOT NULL,
+     CONSTRAINT task_materials_qty_budget_check CHECK ((qty_budget > (0)::numeric))
+ );
+ 
+@@ -5949,6 +6185,68 @@
+ 
+ 
+ --
++-- Name: v_project_actual_cost; Type: VIEW; Schema: public; Owner: -
++--
++
++CREATE VIEW public.v_project_actual_cost AS
++ WITH iss AS (
++         SELECT h.project_id,
++            sum((i.qty_out * i.unit_cost)) AS cost_material
++           FROM (public.material_out_header h
++             JOIN public.material_out_items i ON ((i.material_out_id = h.id)))
++          WHERE (((h.status)::text = 'posted'::text) AND (h.reversed_at IS NULL) AND ((COALESCE(h.issue_type, 'PROJECT'::character varying))::text = 'PROJECT'::text))
++          GROUP BY h.project_id
++        ), oth AS (
++         SELECT e.project_id,
++            sum(e.amount) AS cost_expense
++           FROM public.financial_expenses e
++          WHERE ((e.project_id IS NOT NULL) AND (upper((COALESCE(e.status, ''::character varying))::text) <> ALL (ARRAY['VOID'::text, 'CANCELLED'::text, 'CANCELED'::text, 'BATAL'::text, 'DIBATALKAN'::text])))
++          GROUP BY e.project_id
++        ), sub_cert AS (
++         SELECT sc.project_id,
++            sum(spc.gross_amount) AS cost_subcon
++           FROM (((public.subcon_payment_certificates spc
++             JOIN public.subcon_inspections si ON ((si.id = spc.inspection_id)))
++             JOIN public.subcon_progress sp ON ((sp.id = si.progress_id)))
++             JOIN public.subcon_contracts sc ON ((sc.id = sp.contract_id)))
++          WHERE ((spc.status)::text = 'APPROVED'::text)
++          GROUP BY sc.project_id
++        ), sub_fallback AS (
++         SELECT sc.project_id,
++            sum(sp.gross_amount) AS cost_subcon
++           FROM (public.subcon_progress sp
++             JOIN public.subcon_contracts sc ON ((sc.id = sp.contract_id)))
++          WHERE ((sp.status)::text = 'Disetujui'::text)
++          GROUP BY sc.project_id
++        ), wip AS (
++         SELECT r.project_id,
++            sum(r.amount) AS hpp_released
++           FROM public.project_wip_release r
++          GROUP BY r.project_id
++        )
++ SELECT p.id AS project_id,
++    p.name AS project_name,
++    p.status AS project_status,
++    COALESCE((p.progress)::integer, 0) AS progress,
++    (COALESCE(p.budget, (0)::numeric) * COALESCE(NULLIF(p.budget_exch_rate, (0)::numeric), (1)::numeric)) AS budget_base_raw,
++    COALESCE(NULLIF((p.budget * COALESCE(NULLIF(p.budget_exch_rate, (0)::numeric), (1)::numeric)), (0)::numeric), ( SELECT COALESCE(sum((b.qty_plan * b.unit_price_plan)), (0)::numeric) AS "coalesce"
++           FROM public.budget_items b
++          WHERE (b.project_id = p.id)), (0)::numeric) AS rab_budget,
++    (COALESCE(iss.cost_material, (0)::numeric))::numeric(18,2) AS cost_material,
++    (COALESCE(oth.cost_expense, (0)::numeric))::numeric(18,2) AS cost_expense,
++    (COALESCE(sub_cert.cost_subcon, sub_fallback.cost_subcon, (0)::numeric))::numeric(18,2) AS cost_subcon,
++    (((COALESCE(iss.cost_material, (0)::numeric) + COALESCE(oth.cost_expense, (0)::numeric)) + COALESCE(sub_cert.cost_subcon, sub_fallback.cost_subcon, (0)::numeric)))::numeric(18,2) AS cost_total,
++    (COALESCE(wip.hpp_released, (0)::numeric))::numeric(18,2) AS hpp_released,
++    (GREATEST((COALESCE(iss.cost_material, (0)::numeric) - COALESCE(wip.hpp_released, (0)::numeric)), (0)::numeric))::numeric(18,2) AS wip_remaining
++   FROM (((((public.projects p
++     LEFT JOIN iss ON ((iss.project_id = p.id)))
++     LEFT JOIN oth ON ((oth.project_id = p.id)))
++     LEFT JOIN sub_cert ON ((sub_cert.project_id = p.id)))
++     LEFT JOIN sub_fallback ON ((sub_fallback.project_id = p.id)))
++     LEFT JOIN wip ON ((wip.project_id = p.id)));
++
++
++--
+ -- Name: v_project_material_detail_vs_progress; Type: VIEW; Schema: public; Owner: -
+ --
+ 
+@@ -6098,7 +6396,7 @@
+     reversed_by integer,
+     created_at timestamp without time zone DEFAULT now(),
+     remark text,
+-    CONSTRAINT wh_receiving_hdr_status_check CHECK (((status)::text = ANY ((ARRAY['posted'::character varying, 'reversed'::character varying])::text[])))
++    CONSTRAINT wh_receiving_hdr_status_check CHECK (((status)::text = ANY (ARRAY[('posted'::character varying)::text, ('reversed'::character varying)::text])))
+ );
+ 
+ 
+@@ -8865,6 +9163,14 @@
+ 
+ 
+ --
++-- Name: year_closing uq_year_closing_fiscal_year; Type: CONSTRAINT; Schema: public; Owner: -
++--
++
++ALTER TABLE ONLY public.year_closing
++    ADD CONSTRAINT uq_year_closing_fiscal_year UNIQUE (fiscal_year);
++
++
++--
+ -- Name: warehouses warehouses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+ --
+ 
+@@ -9067,6 +9373,13 @@
+ 
+ 
+ --
++-- Name: idx_grn_hdr_approval_status; Type: INDEX; Schema: public; Owner: -
++--
++
++CREATE INDEX idx_grn_hdr_approval_status ON public.grn_hdr USING btree (approval_status);
++
++
++--
+ -- Name: idx_grn_hdr_po_id; Type: INDEX; Schema: public; Owner: -
+ --
+ 
+@@ -9326,6 +9639,13 @@
+ 
+ 
+ --
++-- Name: idx_project_invoices_outstanding; Type: INDEX; Schema: public; Owner: -
++--
++
++CREATE INDEX idx_project_invoices_outstanding ON public.project_invoices USING btree (project_id) WHERE ((release_status = 'released'::text) AND (amount > paid_amount));
++
++
++--
+ -- Name: idx_project_invoices_project; Type: INDEX; Schema: public; Owner: -
+ --
+ 
+@@ -9375,6 +9695,13 @@
+ 
+ 
+ --
++-- Name: idx_project_payments_overallocated; Type: INDEX; Schema: public; Owner: -
++--
++
++CREATE INDEX idx_project_payments_overallocated ON public.project_payments USING btree (client_id, payment_date) WHERE ((allocated_amount > total_amount) OR (allocated_amount_base > total_amount_base));
++
++
++--
+ -- Name: idx_project_tasks_project_id; Type: INDEX; Schema: public; Owner: -
+ --
+ 
+@@ -10064,7 +10391,7 @@
+ -- Name: uq_so_open_per_wh; Type: INDEX; Schema: public; Owner: -
+ --
+ 
+-CREATE UNIQUE INDEX uq_so_open_per_wh ON public.stock_opname_hdr USING btree (warehouse_id) WHERE ((status)::text = ANY ((ARRAY['Draft'::character varying, 'Diajukan'::character varying])::text[]));
++CREATE UNIQUE INDEX uq_so_open_per_wh ON public.stock_opname_hdr USING btree (warehouse_id) WHERE ((status)::text = ANY (ARRAY[('Draft'::character varying)::text, ('Diajukan'::character varying)::text]));
+ 
+ 
+ --
+@@ -10173,6 +10500,20 @@
+ 
+ 
+ --
++-- Name: journal_entries trg_block_journal_for_closed_period; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_block_journal_for_closed_period BEFORE INSERT OR UPDATE ON public.journal_entries FOR EACH ROW EXECUTE PROCEDURE public.fn_block_journal_for_closed_period();
++
++
++--
++-- Name: journal_lines trg_block_journallines_for_closed_period; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_block_journallines_for_closed_period BEFORE INSERT OR UPDATE ON public.journal_lines FOR EACH ROW EXECUTE PROCEDURE public.fn_block_journallines_for_closed_period();
++
++
++--
+ -- Name: spk_material_leftover_transactions trg_block_posted_leftover_transaction_change; Type: TRIGGER; Schema: public; Owner: -
+ --
+ 
+@@ -10180,6 +10521,55 @@
+ 
+ 
+ --
++-- Name: budget_items trg_budget_items_touch; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_budget_items_touch BEFORE UPDATE ON public.budget_items FOR EACH ROW EXECUTE PROCEDURE public.fn_budget_items_touch();
++
++
++--
++-- Name: project_payment_items trg_check_project_payment_items_within_header; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_check_project_payment_items_within_header BEFORE INSERT OR UPDATE OF amount_paid ON public.project_payment_items FOR EACH ROW EXECUTE PROCEDURE public.fn_check_project_payment_items_within_header();
++
++
++--
++-- Name: project_payment_items trg_check_project_payment_within_invoice; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_check_project_payment_within_invoice BEFORE INSERT OR UPDATE OF amount_paid ON public.project_payment_items FOR EACH ROW EXECUTE PROCEDURE public.fn_check_project_payment_within_invoice();
++
++
++--
++-- Name: spk_task_materials trg_check_spk_task_material_alloc; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_check_spk_task_material_alloc BEFORE INSERT OR UPDATE OF qty ON public.spk_task_materials FOR EACH ROW EXECUTE PROCEDURE public.fn_check_spk_task_material_alloc();
++
++
++--
++-- Name: subcon_payment_certificate_items trg_check_subcon_cert_item_within_passed; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_check_subcon_cert_item_within_passed BEFORE INSERT OR UPDATE OF qty_certified ON public.subcon_payment_certificate_items FOR EACH ROW EXECUTE PROCEDURE public.fn_check_subcon_cert_item_within_passed();
++
++
++--
++-- Name: supplier_payment_items trg_check_supplier_payment_within_invoice; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_check_supplier_payment_within_invoice BEFORE INSERT OR UPDATE OF amount_paid ON public.supplier_payment_items FOR EACH ROW EXECUTE PROCEDURE public.fn_check_supplier_payment_within_invoice();
++
++
++--
++-- Name: task_materials trg_check_task_material_category; Type: TRIGGER; Schema: public; Owner: -
++--
++
++CREATE TRIGGER trg_check_task_material_category BEFORE INSERT OR UPDATE ON public.task_materials FOR EACH ROW EXECUTE PROCEDURE public.fn_check_task_material_category();
++
++
++--
+ -- Name: budget_items trg_guard_budget_item_task_allocations; Type: TRIGGER; Schema: public; Owner: -
+ --
+ 
+@@ -10752,6 +11142,14 @@
+ 
+ 
+ --
++-- Name: supplier_payment_items fk_spi_invoice; Type: FK CONSTRAINT; Schema: public; Owner: -
++--
++
++ALTER TABLE ONLY public.supplier_payment_items
++    ADD CONSTRAINT fk_spi_invoice FOREIGN KEY (invoice_id) REFERENCES public.purchase_invoice_hdr(id) ON DELETE RESTRICT;
++
++
++--
+ -- Name: spk fk_spk_execution_subcontractor; Type: FK CONSTRAINT; Schema: public; Owner: -
+ --
+ 
+@@ -10808,6 +11206,14 @@
+ 
+ 
+ --
++-- Name: year_closing fk_year_closing_journal; Type: FK CONSTRAINT; Schema: public; Owner: -
++--
++
++ALTER TABLE ONLY public.year_closing
++    ADD CONSTRAINT fk_year_closing_journal FOREIGN KEY (journal_id) REFERENCES public.journal_entries(id) ON DELETE SET NULL;
++
++
++--
+ -- Name: general_ledger general_ledger_account_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+ --
+ 
+@@ -11208,6 +11614,22 @@
+ 
+ 
+ --
++-- Name: project_payments project_payments_currency_id_fkey1; Type: FK CONSTRAINT; Schema: public; Owner: -
++--
++
++ALTER TABLE ONLY public.project_payments
++    ADD CONSTRAINT project_payments_currency_id_fkey1 FOREIGN KEY (currency_id) REFERENCES public.m_currency(id);
++
++
++--
++-- Name: project_payments project_payments_currency_id_fkey2; Type: FK CONSTRAINT; Schema: public; Owner: -
++--
++
++ALTER TABLE ONLY public.project_payments
++    ADD CONSTRAINT project_payments_currency_id_fkey2 FOREIGN KEY (currency_id) REFERENCES public.m_currency(id);
++
++
++--
+ -- Name: project_progress_log project_progress_log_project_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+ --
+ 

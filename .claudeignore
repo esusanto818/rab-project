@@ -1,0 +1,11 @@
+ext-3.4.1/
+extjs/
+vendor/
+node_modules/
+backups/
+logs/
+*.bak
+*.sql.gz
+*.log
+ccsr.txt
+docs/full_schema_reference.sql

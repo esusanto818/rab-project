@@ -1,0 +1,1 @@
+- [Gap 6 PPh Supplier](memory/gap-6-pph-supplier.md) — Implementasi PPh Supplier (akun, rule, dan kolom)

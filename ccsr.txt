@@ -1,0 +1,21 @@
+Choose provider > Addcredentials > Pickmodels > Verify connection > Connect agent
+
+Configure provider
+
+|Add or verify 2 model provider.
+choose provider
+Pick preset provider or use a custom compatible APl endpoint
+
+ELECT PRESET PROVIDER
+
+< ‘OpenRouter g
+hetps://openrouter .ai/api/vi
+
+Name
+
+‘openrouter
+
+>
+
+Let's start
+

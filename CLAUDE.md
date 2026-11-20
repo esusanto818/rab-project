@@ -57,3 +57,15 @@ Setiap sesi audit otomatis atau pengujian regresi **WAJIB** menggabungkan audit 
 - Setiap agent atau sub-agent yang selesai menjalankan tugas **WAJIB** membuat dokumentasi ringkasan hasil kerja dalam format Markdown (`.md`).
 - Lokasi penyimpanan wajib berada di **`/home/myadmin/proyekgmn-dev/docs/`**.
 - Jangan pernah menaruh file laporan audit, panduan, atau changelog baru di root `/home/myadmin/proyekgmn-dev/`.
+
+## Aturan Kecepatan Eksekusi Agen (Fast Mode)
+- **Single-File Logging:** Cukup catat ringkasan perubahan ke `docs/SESSION_LOG.md` (maksimal 5 baris per sesi). Jangan menulis ulang laporan panjang kecuali diminta eksplisit oleh user.
+- **Targeted Search:** Gunakan `Grep` langsung pada nama file/modul target; hindari memindai seluruh direktori proyek secara berulang.
+- **Minimal Verification:** Cukup jalankan `node --check` (untuk JS) atau `php -l` (untuk PHP) pada file yang diubah; jangan membuat file unit-test baru kecuali diminta.
+- **Concise Output:** Berikan jawaban dan ringkasan akhir secara padat dan langsung ke poin utama.
+
+## Aturan Wajib Pendaftaran Menu & Hak Akses (App/Modul Baru)
+Setiap kali agen membuat halaman, modul, atau laporan baru (`views/`, `js/`):
+1. **Wajib Daftar ke Tabel Menu & Permission DB:** Periksa struktur tabel menu dan role/hak akses yang berlaku di proyek ini, lalu otomatis masukkan (*INSERT*) entri menu baru (lengkap dengan *parent menu*, ikon, urutan, URL/handler JS, dan hak akses role) ke database target (`proyekGMN_test`).
+2. **Sertakan di File Migrasi SQL:** Tulis query `INSERT ... ON CONFLICT DO NOTHING` (atau pengecekan `WHERE NOT EXISTS`) untuk pendaftaran menu dan hak akses tersebut di dalam file migrasi `.sql` modul terkait agar otomatis ikut terpasang saat deploy ke database produksi (`proyekGMN`).
+3. **Verifikasi Menu pada Fase Audit:** Pastikan query pengecekan menu masuk ke dalam daftar verifikasi sebelum tugas dinyatakan selesai.
