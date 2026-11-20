@@ -27,7 +27,6 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<link rel="stylesheet" href="../assets/css/app-standard.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Dashboard - RAB Project Monitor</title>
@@ -46,8 +45,7 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 #profit_table th, #profit_table td,
 #aging_table th, #aging_table td,
 #tax_rate_table th, #tax_rate_table td,
-#material_table th, #material_table td .th_fix_mobile { white-space: nowrap !important; word-break: normal !important; }
-{
+#material_table th, #material_table td {
   white-space: normal !important;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -62,8 +60,8 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 }
 
 /* Mega Menu */
-.nav-item { position: relative; }
-.nav-item .dropdown-menu.show { opacity: 1; visibility: visible; transform: translateY(0); }
+.nav-item { position: static; }
+.nav-item:hover .dropdown-menu, .nav-item:focus-within .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
 .dropdown-menu {
 position: absolute; top: 100%; left: 0;
 width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
@@ -147,14 +145,6 @@ html, body {
     overflow-x: hidden;
     max-width: 100vw;
 }
-@media (max-width: 768px) { .grid { grid-template-columns: minmax(0, 1fr) !important; width: 100% !important; } table { width: 100% !important; } .overflow-x-auto { max-width: 100% !important; } }
-
-@media (max-width: 768px) {
-    .grid { grid-template-columns: minmax(0, 1fr) !important; width: 100% !important; }
-    .table-container { overflow-x: auto; max-width: 100%; }
-    table { min-width: 640px !important; width: 100% !important; }
-    th { white-space: nowrap !important; word-break: normal !important; }
-}
 </style>
 </head>
 <?php $favVer = date('YmdHis'); ?>
@@ -167,25 +157,6 @@ html, body {
 <header class="bg-[#000000] border-b border-[#0a2d4a] sticky top-0 z-50 shadow-lg">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div class="flex items-center justify-between h-14">
-<button id="theme_toggle" class="p-2 ml-2 rounded-lg bg-[#0a2d4a] text-white cursor-pointer z-[100] relative">
-    <span id="theme_icon">🌙</span>
-</button>
-<script>
-    const toggle = document.getElementById('theme_toggle');
-    const icon = document.getElementById('theme_icon');
-    const html = document.documentElement;
-    function applyTheme(theme) {
-        html.setAttribute('data-theme', theme);
-        localStorage.setItem('app_theme', theme);
-        icon.textContent = theme === 'light' ? '☀️' : '🌙';
-    }
-    toggle.addEventListener('click', () => {
-        const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-        applyTheme(next);
-    });
-    applyTheme(localStorage.getItem('app_theme') || 'dark');
-</script>
-
 <div class="flex items-center space-x-6">
 <a href="dashboard.php" class="flex items-center space-x-3 group">
 <?php if (file_exists(__DIR__ . '/../assets/favicon.ico')): ?>
@@ -1007,18 +978,6 @@ y: { ticks: { color: '#94a3b8', font: { size: 9 } }, grid: { color: '#0a2d4a' } 
 }
 });
 }
-</script>
-
-<!-- Hamburger Menu Mobile -->
-<div id="mobile_hamburger_panel" class="hidden fixed top-14 left-0 w-full bg-[#0f172a] z-[9999] p-4 flex flex-col gap-4 shadow-2xl">
-    <a href="stock.card.m.php" class="block p-4 text-center bg-[#1e293b] text-white rounded-lg font-bold">STOCK CARD MOBILE</a>
-    <a href="project.progress.m.php" class="block p-4 text-center bg-[#1e293b] text-white rounded-lg font-bold">[M] PROJECT PROGRESS</a>
-    <a href="logout.php" class="block p-4 text-center bg-rose-900 text-white rounded-lg font-bold">LOGOUT</a>
-</div>
-<script>
-document.getElementById("hamburger_btn").addEventListener("click", () => {
-    document.getElementById("mobile_hamburger_panel").classList.toggle("hidden");
-});
 </script>
 </body>
 </html>
