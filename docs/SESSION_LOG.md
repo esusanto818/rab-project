@@ -4,7 +4,18 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - Comprehensive Grid Wrap Audit & Patch
+7	## [2026-11-20] - Custom 5-Color Palette & Global Theme Switcher
+
+- **Tujuan / Permintaan**: Menerapkan palet warna resmi 5 warna (`#0A0D15`, `#05172F`, `#2D3C4C`, `#2F2F2B`, `#38BDF8`) serta tombol Light/Dark Theme Switcher ke seluruh sistem standar dan `views/dashboard.php`.
+- **File yang Diubah**:
+  - `assets/css/app-standard.css` (Stylesheet standar tema 5 warna).
+  - `views/dashboard.php` (Tombol Theme Switcher & script persistensi `localStorage`).
+  - `.claude/agents/theme-styler-auditor.md` (Memori referensi agent).
+- **Status Verifikasi**: PASS (`php -l` bersih).
+
+---
+
+## [2026-11-20] - Comprehensive Grid Wrap Audit & Patch
 
 - **Tujuan / Permintaan**: Audit & perbaikan grid wrap menyeluruh agar seluruh teks panjang tampil penuh tanpa terpotong elipsis (`...`) di ExtJS grids dan tabel laporan.
 - **File yang Diubah**:

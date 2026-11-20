@@ -166,6 +166,23 @@ html, body {
 <header class="bg-[#000000] border-b border-[#0a2d4a] sticky top-0 z-50 shadow-lg">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div class="flex items-center justify-between h-14">
+<button id="theme_toggle" class="p-2 rounded-lg bg-[#0a2d4a] text-white">
+    <span class="dark:hidden">🌙</span>
+    <span class="hidden dark:block">☀️</span>
+</button>
+<script>
+    const toggle = document.getElementById('theme_toggle');
+    const html = document.documentElement;
+    toggle.addEventListener('click', () => {
+        const theme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        html.setAttribute('data-theme', theme);
+        localStorage.setItem('app_theme', theme);
+    });
+    // Load theme on init
+    const saved = localStorage.getItem('app_theme') || 'dark';
+    html.setAttribute('data-theme', saved);
+</script>
+
 <div class="flex items-center space-x-6">
 <a href="dashboard.php" class="flex items-center space-x-3 group">
 <?php if (file_exists(__DIR__ . '/../assets/favicon.ico')): ?>

@@ -1,0 +1,77 @@
+/* ==========================================================================
+   RAB-PROJECT Standard Theme Stylesheet (app-standard.css)
+   Official 5-Color Palette: Dark & Light Mode Theme Variables
+   ========================================================================== */
+
+:root, html[data-theme="dark"] {
+    --bg-main: #0A0D15;
+    --bg-surface: #05172F;
+    --bg-elevated: #2D3C4C;
+    --border-subtle: #2F2F2B;
+    --text-muted: #94A3B8;
+    --text-primary: #F1F5F9;
+    --accent-primary: #38BDF8;
+}
+
+html[data-theme="light"] {
+    --bg-main: #F4F6F9;
+    --bg-surface: #FFFFFF;
+    --bg-elevated: #E2E8F0;
+    --border-subtle: #CBD5E1;
+    --text-muted: #525453;
+    --text-primary: #0A0D15;
+    --accent-primary: #05172F;
+}
+
+body {
+    background-color: var(--bg-main) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Inter', sans-serif;
+}
+
+/* ExtJS 3.4.1 Theme Overrides */
+.x-panel-body, .x-window-mc, .x-toolbar {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
+
+.x-grid3-row {
+    background-color: var(--bg-surface) !important;
+    border-color: var(--border-subtle) !important;
+    color: var(--text-primary) !important;
+}
+
+.x-grid3-row-alt {
+    background-color: rgba(45, 60, 76, 0.25) !important;
+}
+
+.x-grid3-row-over {
+    background-color: var(--bg-elevated) !important;
+}
+
+.x-grid3-row-selected {
+    background-color: var(--accent-primary) !important;
+    color: var(--bg-main) !important;
+}
+
+.x-grid3-hd-row td {
+    background-color: var(--bg-elevated) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+    font-weight: 600;
+}
+
+.x-grid3-cell-inner {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.35 !important;
+    vertical-align: middle !important;
+}
+
+.x-form-text, .x-form-field {
+    background-color: var(--bg-main) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-subtle) !important;
+}
