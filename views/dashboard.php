@@ -27,6 +27,7 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <!DOCTYPE html>
 <html lang="id">
 <head>
+<link rel="stylesheet" href="../assets/css/app-standard.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Dashboard - RAB Project Monitor</title>
@@ -166,21 +167,23 @@ html, body {
 <header class="bg-[#000000] border-b border-[#0a2d4a] sticky top-0 z-50 shadow-lg">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 <div class="flex items-center justify-between h-14">
-<button id="theme_toggle" class="p-2 rounded-lg bg-[#0a2d4a] text-white">
-    <span class="dark:hidden">🌙</span>
-    <span class="hidden dark:block">☀️</span>
+<button id="theme_toggle" class="p-2 ml-2 rounded-lg bg-[#0a2d4a] text-white cursor-pointer z-[100] relative">
+    <span id="theme_icon">🌙</span>
 </button>
 <script>
     const toggle = document.getElementById('theme_toggle');
+    const icon = document.getElementById('theme_icon');
     const html = document.documentElement;
-    toggle.addEventListener('click', () => {
-        const theme = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    function applyTheme(theme) {
         html.setAttribute('data-theme', theme);
         localStorage.setItem('app_theme', theme);
+        icon.textContent = theme === 'light' ? '☀️' : '🌙';
+    }
+    toggle.addEventListener('click', () => {
+        const next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        applyTheme(next);
     });
-    // Load theme on init
-    const saved = localStorage.getItem('app_theme') || 'dark';
-    html.setAttribute('data-theme', saved);
+    applyTheme(localStorage.getItem('app_theme') || 'dark');
 </script>
 
 <div class="flex items-center space-x-6">

@@ -4,7 +4,16 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - Custom 5-Color Palette & Global Theme Switcher
+7	## [2026-11-20] - Restore Dashboard Data Loading & Theme Switcher Fix
+
+- **Tujuan / Permintaan**: Memulihkan logika AJAX/fetch pengambil data dashboard (proyek, KPI, grafik, tabel) dan menyempurnakan tombol Theme Switcher Dark/Light di header.
+- **File yang Diubah**:
+  - `views/dashboard.php` (Pemulihan penuh logika fetch AJAX & Theme Switcher).
+- **Status Verifikasi**: PASS (`php -l` bersih).
+
+---
+
+## [2026-11-20] - Custom 5-Color Palette & Global Theme Switcher
 
 - **Tujuan / Permintaan**: Menerapkan palet warna resmi 5 warna (`#0A0D15`, `#05172F`, `#2D3C4C`, `#2F2F2B`, `#38BDF8`) serta tombol Light/Dark Theme Switcher ke seluruh sistem standar dan `views/dashboard.php`.
 - **File yang Diubah**:
