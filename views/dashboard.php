@@ -45,7 +45,8 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 #profit_table th, #profit_table td,
 #aging_table th, #aging_table td,
 #tax_rate_table th, #tax_rate_table td,
-#material_table th, #material_table td {
+#material_table th, #material_table td .th_fix_mobile { white-space: nowrap !important; word-break: normal !important; }
+{
   white-space: normal !important;
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -146,6 +147,13 @@ html, body {
     max-width: 100vw;
 }
 @media (max-width: 768px) { .grid { grid-template-columns: minmax(0, 1fr) !important; width: 100% !important; } table { width: 100% !important; } .overflow-x-auto { max-width: 100% !important; } }
+
+@media (max-width: 768px) {
+    .grid { grid-template-columns: minmax(0, 1fr) !important; width: 100% !important; }
+    .table-container { overflow-x: auto; max-width: 100%; }
+    table { min-width: 640px !important; width: 100% !important; }
+    th { white-space: nowrap !important; word-break: normal !important; }
+}
 </style>
 </head>
 <?php $favVer = date('YmdHis'); ?>

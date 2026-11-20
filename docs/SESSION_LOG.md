@@ -4,7 +4,17 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - UI/UX Layout & Navigation Fixes
+7	## [2026-11-20] - Root Index Redirect & Mobile Table/Hamburger Polish
+
+- **Tujuan / Permintaan**: Mengarahkan `index.php` (root) ke `views/dashboard.php` / `login.php`, serta menyempurnakan Mega Menu desktop dan layout tabel/hamburger mobile di `views/dashboard.php`.
+- **File yang Diubah**:
+  - `index.php` (Redirect session aktif/non-aktif).
+  - `views/dashboard.php` (Mobile table min-width 640px, th white-space nowrap, hamburger 3 item).
+- **Status Verifikasi**: PASS (`php -l` bersih).
+
+---
+
+## [2026-11-20] - UI/UX Layout & Navigation Fixes
 
 - **Tujuan / Permintaan**: Memperbaiki mega menu desktop, hamburger menu mobile 3-item, dan layout responsif pada `views/dashboard.php` & `index.php`.
 - **File yang Diubah**:
