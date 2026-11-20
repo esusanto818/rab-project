@@ -4,7 +4,16 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - Restore Dashboard Data Loading & Theme Switcher Fix
+7	## [2026-11-20] - Dashboard & Backend Mapping Alignment
+
+- **Tujuan / Permintaan**: Menyelaraskan mapping data frontend `views/dashboard.php` dengan respon JSON backend `php-crud/dashboardCRD.php` agar dropdown proyek dan data KPI tampil sempurna tanpa error `undefined`.
+- **File yang Diubah**:
+  - `views/dashboard.php` (Penyelarasan properti proyek `project_name` dan fungsi fetch).
+- **Status Verifikasi**: PASS (`php -l` bersih).
+
+---
+
+## [2026-11-20] - Restore Dashboard Data Loading & Theme Switcher Fix
 
 - **Tujuan / Permintaan**: Memulihkan logika AJAX/fetch pengambil data dashboard (proyek, KPI, grafik, tabel) dan menyempurnakan tombol Theme Switcher Dark/Light di header.
 - **File yang Diubah**:

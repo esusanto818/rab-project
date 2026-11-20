@@ -575,7 +575,7 @@ if (json.success && json.data && json.data.length > 0) {
 json.data.forEach((p, idx) => {
 const opt = document.createElement('option');
 opt.value = p.id;
-opt.textContent = `${p.code} - ${p.name}`;
+opt.textContent = p.project_name || p.name || ("Proyek #" + p.id);
 if (idx === 0) opt.selected = true;
 sel.appendChild(opt);
 });

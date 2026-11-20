@@ -1,5 +1,6 @@
 | Tanggal & Waktu Sesi | Path File Lengkap | Ringkasan Perubahan & Alasan Perbaikan | Status Git |
 | :--- | :--- | :--- | :--- |
+| 2026-11-21 01:05 | `/home/myadmin/proyekgmn-dev/views/dashboard.php` | Menyelaraskan pemetaan data frontend views/dashboard.php dengan struktur respon JSON backend dashboardCRD.php. | Uncommitted |
 | 2026-11-21 00:45 | `/home/myadmin/proyekgmn-dev/views/dashboard.php` | Memulihkan logika AJAX/fetch data dashboard dan menyempurnakan theme switcher dark/light. | Uncommitted |
 | 2026-11-21 00:30 | `/home/myadmin/proyekgmn-dev/assets/css/app-standard.css`<br>`/home/myadmin/proyekgmn-dev/views/dashboard.php` | Menerapkan palet 5 warna kustom dan tombol theme switcher global. | Uncommitted |
 | 2026-11-21 00:15 | `/home/myadmin/proyekgmn-dev/js/app.core.js`<br>`/home/myadmin/proyekgmn-dev/docs/AUDIT_GRID_WRAP_FULL.md` | Menambahkan injeksi global ExtJS cell word-wrap agar seluruh data teks grid tampil penuh tanpa elipsis (...). | Uncommitted |
