@@ -71,6 +71,8 @@ Setiap kali agen membuat halaman, modul, atau laporan baru (`views/`, `js/`):
 3. **Verifikasi Menu pada Fase Audit:** Pastikan query pengecekan menu masuk ke dalam daftar verifikasi sebelum tugas dinyatakan selesai.
 
 ## 9. ATURAN WAJIB NOTIFIKASI WHATSAPP PASCA-TUGAS
-Setiap kali selesai menyelesaikan 1 Gap, 1 fitur, atau sebelum mengakhiri sesi:
-1. Wajib kirim ringkasan hasil pengerjaan (Nomor Gap, status selesai, dan commit hash) ke WhatsApp `6281231788177` menggunakan gateway Hermes Agent yang terpasang di sistem lokal (periksa konfigurasi di `~/.hermes/` atau skrip notifier di proyek jika perlu).
-2. Jika pengiriman notifikasi gagal, tampilkan pesan error pengiriman WhatsApp secara eksplisit di bagian akhir output terminal.
+Setiap kali selesai menyelesaikan 1 Gap, 1 siklus audit, 1 fitur, atau sebelum mengakhiri sesi:
+1. Wajib eksekusi tool Bash untuk menjalankan perintah asli berikut:
+   `hermes send --to whatsapp:6281231788177 "Ringkasan hasil pengerjaan, status, dan commit hash"`
+2. DILARANG KERAS hanya mencetak teks simulasi di layar tanpa mengeksekusi `hermes send`.
+3. Jika perintah `hermes send` mengembalikan exit code non-zero (gateway mati), jalankan `hermes gateway restart && sleep 3` lalu ulangi perintah `hermes send` tersebut.
