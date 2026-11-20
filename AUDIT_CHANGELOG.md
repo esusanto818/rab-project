@@ -1,5 +1,6 @@
 | Tanggal & Waktu Sesi | Path File Lengkap | Ringkasan Perubahan & Alasan Perbaikan | Status Git |
 | :--- | :--- | :--- | :--- |
+| 2026-11-21 04:30 | `/home/myadmin/proyekgmn-dev/php-crud/dashboardCRD.php`<br>`/home/myadmin/proyekgmn-dev/views/dashboard.php` | Menyelaraskan relasi data dan format JSON antara frontend `views/dashboard.php` dan backend `php-crud/dashboardCRD.php` untuk aksi dashboard (get_projects, get_project_health, get_aging_data, dll), menghilangkan error `undefined` & angka Rp 0. | Uncommitted |
 | 2026-11-21 01:05 | `/home/myadmin/proyekgmn-dev/views/dashboard.php` | Menyelaraskan pemetaan data frontend views/dashboard.php dengan struktur respon JSON backend dashboardCRD.php. | Uncommitted |
 | 2026-11-21 00:45 | `/home/myadmin/proyekgmn-dev/views/dashboard.php` | Memulihkan logika AJAX/fetch data dashboard dan menyempurnakan theme switcher dark/light. | Uncommitted |
 | 2026-11-21 00:30 | `/home/myadmin/proyekgmn-dev/assets/css/app-standard.css`<br>`/home/myadmin/proyekgmn-dev/views/dashboard.php` | Menerapkan palet 5 warna kustom dan tombol theme switcher global. | Uncommitted |
