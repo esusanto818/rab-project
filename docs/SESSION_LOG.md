@@ -4,7 +4,19 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - Implementasi Gap #6, #7, #8
+7	## [2026-11-20] - Update Dashboard Mobile & Hamburger Menu
+
+- **Tujuan / Permintaan**: Memperbarui `views/dashboard.php` sesuai spesifikasi mobile & hamburger menu.
+- **File yang Diubah**:
+  - `views/dashboard.php` (Penghapusan bottom-nav, penambahan hamburger menu di header, deteksi perangkat mobile `is-mobile-hw` via JS/CSS, serta perapian tabel responsif dan kanvas Chart.js).
+- **Ringkasan Teknis**: 
+  - Hapus `.bottom-nav` HTML & CSS serta padding body 70px/80px.
+  - Tambah tombol Hamburger ☰ di pojok kanan `<header>` dan dropdown `#mobile_dropdown` berisi Stock Card Mobile, Project Progress, dan Logout.
+  - Tambah deteksi mobile hardware `is-mobile-hw` dan media query `<= 768px` untuk menyembunyikan mega menu & logout atas serta menampilkan hamburger.
+- **Status Verifikasi**: PASS (`php -l` tanpa error, responsif & interaktif).
+
+---
+
 8	
 9	- **Tujuan / Permintaan**: Eksekusi implementasi komprehensif Gap #6 (PPh Supplier), #7 (GRN Approval Gate), dan #8 (Tutup Periode) sesuai standar proyek.
 10	- **File yang Diubah**:
