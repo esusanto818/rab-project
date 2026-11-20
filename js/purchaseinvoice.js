@@ -32,6 +32,7 @@ Ext.onReady(function () {
         { name: 'total_amount', type: 'float' },
         { name: 'paid_amount', type: 'float' },
         { name: 'dpp_amount', type: 'float' }, { name: 'ppn_rate', type: 'float' }, { name: 'ppn_amount', type: 'float' },   // [PPN]
+        { name: 'pph_rate', type: 'float' }, { name: 'pph_amount', type: 'float' },                                       // [PPH]
         { name: 'faktur_pajak_no' }, { name: 'faktur_pajak_date' }                                                       // [PPN]
     ];
 
@@ -92,9 +93,10 @@ Ext.onReady(function () {
             { header: 'DPP (Rp)', dataIndex: 'dpp_amount', align: 'right', renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             { header: 'PPN (Rp)', dataIndex: 'ppn_amount', align: 'right', renderer: function (v) { return v > 0 ? Ext.util.Format.number(v, '0,000.00') : '-'; } },
             { header: 'No. Faktur Pajak', dataIndex: 'faktur_pajak_no', sortable: true },
-            { 
-                header: 'Total + PPN (Rp)', 
-                dataIndex: 'total_amount', 
+            { header: 'PPh (Rp)', dataIndex: 'pph_amount', align: 'right', renderer: function (v) { return v > 0 ? Ext.util.Format.number(v, '0,000.00') : '-'; } },
+            {
+                header: 'Total + PPN (Rp)',
+                dataIndex: 'total_amount',
                 align: 'right',
                 renderer: function (v) {
                     return Ext.util.Format.number(v || 0, '0,000.00');
@@ -415,9 +417,26 @@ Ext.onReady(function () {
         fieldLabel: 'PPN (sesuai faktur)', id: 'ppn_amount', name: 'ppn_amount', decimalPrecision: 2, width: 140, allowNegative: false,
         listeners: { change: function (f, v) { ppnAmtManual = (v !== '' && v !== null && v !== undefined); recalcInvoicePpn(); } }
     });
+    var fldPphRate = new Ext.form.NumberField({
+        fieldLabel: 'Tarif PPh (%)', id: 'pph_rate', name: 'pph_rate', decimalPrecision: 2, value: 0, width: 90, allowNegative: false,
+        listeners: { change: function (f, v) { recalcInvoicePph(); } }
+    });
+    var fldPphAmt = new Ext.form.NumberField({
+        fieldLabel: 'PPh (potongan)', id: 'pph_amount', name: 'pph_amount', decimalPrecision: 2, width: 140, allowNegative: false
+    });
     var fldFpNo = new myTextField({ fieldLabel: 'No. Faktur Pajak', id: 'faktur_pajak_no', name: 'faktur_pajak_no', allowBlank: true, width: 200 });
     var fldFpDate = new Ext.form.DateField({ fieldLabel: 'Tgl Faktur Pajak', id: 'faktur_pajak_date', name: 'faktur_pajak_date', format: 'Y-m-d', width: 140, allowBlank: true });
     var fldPpnInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
+
+    function recalcInvoicePph() {
+        var dpp = 0;
+        gridEditorInvoiceDs.each(function (r) {
+            dpp += parseFloat(r.get('matched_amount')) || 0;
+        });
+        var rate = parseFloat(fldPphRate.getValue()) || 0;
+        var pph = Math.round(dpp * rate) / 100;
+        fldPphAmt.setValue(pph);
+    }
 
     // Hitung ulang DPP / PPN / total dari grid matched (dipanggil saat grid atau PPN berubah).
     // [CHANGED] PPN per baris menurut mode & tarif PO GRN-nya (nilai GRN sudah berbasis DPP): EXCL / INCL (tarif > 0) -> DPP x tarif; tanpa PPN -> 0
@@ -534,7 +553,7 @@ Ext.onReady(function () {
         defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
         items: [
             { items: [fldId, fldInvNo, fldSuppInvNo, fldInvDate, fldFpNo, fldFpDate] },          // [PPN] + faktur pajak
-            { items: [fldSupplier, fldRemark, fldPpnTax, fldPpnRate, fldPpnAmt, fldPpnInfo] }   // [CHANGED] + checkbox Kena PPN               // [PPN] + tarif, PPN, ringkasan
+            { items: [fldSupplier, fldRemark, fldPpnTax, fldPpnRate, fldPpnAmt, fldPphRate, fldPphAmt, fldPpnInfo] }   // [CHANGED] + field PPh               // [PPN] + tarif, PPN, ringkasan
         ]
     });
 

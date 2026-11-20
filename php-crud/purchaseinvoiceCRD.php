@@ -119,10 +119,11 @@ function PiPpnFromDpp($dpp, $mode, $rate) {
 /**
  * [PPN][RETUR] Info satu GRN untuk validasi & hitung invoice: supplier, mata uang & kurs GRN, mode/tarif PPN PO,
  * nilai GRN, nilai retur (Dikirim / Kredit) dalam mata uang PO, dan total yang sudah di-match di invoice LAIN.
+ * [GAP #7] Juga memeriksa approval_status GRN - hanya APPROVED yang valid untuk invoice.
  */
 function PiGrnInfo($db, $grnId, $excludeInvoiceId) {
     $st = $db->prepare("
-        SELECT g.id, g.ref_no, COALESCE(g.supplier_id, po.supplier_id) AS supplier_id,
+        SELECT g.id, g.ref_no, g.approval_status, COALESCE(g.supplier_id, po.supplier_id) AS supplier_id,
                UPPER(TRIM(COALESCE(cur.init, ''))) AS currency_code,
                COALESCE(NULLIF(g.exch_rate, 0), 1) AS exch_rate,
                COALESCE(po.ppn_mode, 'NONE') AS ppn_mode, COALESCE(po.ppn_rate, 0) AS ppn_rate,
@@ -141,6 +142,10 @@ function PiGrnInfo($db, $grnId, $excludeInvoiceId) {
     $st->execute([':id' => $grnId, ':ex' => (int)$excludeInvoiceId]);
     $r = $st->fetch(PDO::FETCH_ASSOC);
     if (!$r) return null;
+    // [GAP #7] Check approval status
+    if (($r['approval_status'] ?? 'PENDING') !== 'APPROVED') {
+        throw new Exception('GRN ' . $r['ref_no'] . ' belum disetujui (status approval: ' . ($r['approval_status'] ?? 'PENDING') . '). Hanya GRN dengan status APPROVED yang dapat di-match ke invoice.');
+    }
     $r['exch_rate']     = (float)$r['exch_rate'];
     $r['ppn_rate']      = (float)$r['ppn_rate'];
     $r['grn_total']     = (float)$r['grn_total'];
@@ -169,8 +174,8 @@ function PiHasJournal($db, $invoiceId) {
     return (bool)$st->fetchColumn();
 }
 
-/** [JURNAL] posting jurnal invoice supplier: DPP (GRN Clearing -> Hutang) + PPN Masukan (-> Hutang). Panggil di dalam transaksi. */
-function PiPostJournal($db, $invoiceId, $invNo, $supplierInvNo, $invDate, $dpp, $ppn) {
+/** [JURNAL] posting jurnal invoice supplier: DPP (GRN Clearing -> Hutang) + PPN Masukan (-> Hutang) + PPh (Hutang Usaha -> Hutang PPh). Panggil di dalam transaksi. */
+function PiPostJournal($db, $invoiceId, $invNo, $supplierInvNo, $invDate, $dpp, $ppn, $pph = 0.0) {
     $desc = 'Invoice supplier ' . $invNo . ($supplierInvNo !== '' ? ' (' . $supplierInvNo . ')' : '');
     if ($dpp > 0.005) {
         $r = AutoPostJournal($db, [
@@ -185,6 +190,13 @@ function PiPostJournal($db, $invoiceId, $invNo, $supplierInvNo, $invDate, $dpp, 
             'journal_date' => $invDate, 'amount' => $ppn, 'description' => 'PPN Masukan ' . $desc,
         ]);
         if (!$r['success']) throw new Exception('Gagal posting jurnal PPN Masukan: ' . $r['message']);
+    }
+    if ($pph > 0.005) {
+        $r = AutoPostJournal($db, [
+            'rule_code' => 'PPH_SUPPLIER', 'reference_type' => PI_JOURNAL_REF, 'reference_id' => $invoiceId,
+            'journal_date' => $invDate, 'amount' => $pph, 'description' => 'Pemotongan PPh ' . $desc,
+        ]);
+        if (!$r['success']) throw new Exception('Gagal posting jurnal PPh Supplier: ' . $r['message']);
     }
 }
 
@@ -204,7 +216,9 @@ try {
             // [FIX] supplier_id FK sebenarnya mengarah ke m_suppliers(id),
             // bukan clients(id) — sebelumnya JOIN ke clients membuat
             // supplier_name selalu kosong/salah.
-            $sql = "SELECT h.*, s.name AS supplier_name
+            $sql = "SELECT h.*, s.name AS supplier_name,
+                           COALESCE(h.pph_rate, 0) AS pph_rate,
+                           COALESCE(h.pph_amount, 0) AS pph_amount
                     FROM purchase_invoice_hdr h
                     LEFT JOIN m_suppliers s ON s.id = h.supplier_id
                     ORDER BY h.id DESC LIMIT $limit OFFSET $start";
@@ -230,10 +244,12 @@ try {
             // Difilter berdasarkan supplier yang sama dengan invoice, status masih
             // open/partial. Agregasi qty/harga dari grn_dtl (lihat catatan di
             // read_invoice_detail soal grn_hdr_id mengarah ke level dokumen).
+            // [GAP #7] Hanya GRN dengan approval_status = 'APPROVED' yang bisa di-match ke invoice
             $supplier_id = isset($_REQUEST['supplier_id']) ? intval($_REQUEST['supplier_id']) : 0;
 
             // [PPN][RETUR] + mode/tarif PPN PO, mata uang & kurs GRN, nilai retur; sisa = nilai GRN - retur - sudah di-match
             $sql = "SELECT h.id AS grn_hdr_id, h.ref_no AS grn_ref_no, h.grn_date, h.supplier_id,
+                           h.approval_status,  -- [GAP #7] GRN Approval Gate
                            string_agg(DISTINCT gd.item_name, ', ') AS item_name,
                            SUM(gd.qty_received) AS qty_received,
                            CASE WHEN SUM(gd.qty_received) > 0
@@ -264,8 +280,9 @@ try {
                          GROUP BY r.grn_hdr_id
                     ) rt ON rt.grn_hdr_id = h.id
                     WHERE COALESCE(LOWER(h.status), '') NOT IN ('cancelled','canceled','dibatalkan','void','reversed')
+                      AND h.approval_status = 'APPROVED'  -- [GAP #7] Hanya GRN yang sudah disetujui
                       AND ($1 = 0 OR h.supplier_id = $1)
-                    GROUP BY h.id, h.ref_no, h.grn_date, h.supplier_id, h.exch_rate, im.already_matched, rt.returned_base,
+                    GROUP BY h.id, h.ref_no, h.grn_date, h.supplier_id, h.exch_rate, h.approval_status, im.already_matched, rt.returned_base,
                              po.ppn_mode, po.ppn_rate, cur.init
                     -- Invoicing partial dibolehkan: GRN tetap muncul selama masih ada sisa nilai (setelah retur) yang belum di-match.
                     HAVING SUM(gd.qty_received * gd.unit_cost) - COALESCE(im.already_matched, 0)
@@ -284,6 +301,7 @@ try {
                 $row['remaining'] = floatval($row['remaining']);
                 $row['returned_value'] = floatval($row['returned_value']);   // [RETUR]
                 $row['ppn_rate'] = floatval($row['ppn_rate']);               // [PPN]
+                $row['approval_status'] = $row['approval_status'];           // [GAP #7]
                 $data[] = $row;
             }
             echo json_encode(['success' => true, 'data' => $data]);
@@ -508,6 +526,10 @@ $stSeq = $db->prepare("SELECT COALESCE(MAX(CAST(RIGHT(inv_no, 5) AS integer)), 0
             // nilai jurnal dalam mata uang dasar: DPP x kurs GRN; PPN proporsional terhadap DPP
             $ppnBase = ($dpp > 0) ? round($ppn_amount_final * ($dppBase / $dpp), 2) : 0.0;
 
+            // [PPN] PPh supplier
+            $pph_rate = isset($_POST['pph_rate']) ? round(floatval($_POST['pph_rate']), 2) : 0.0;
+            $pph_amount = isset($_POST['pph_amount']) ? round(floatval($_POST['pph_amount']), 2) : 0.0;
+
             // [PPN] no. faktur pajak unik per supplier
             if ($fp_no !== '') {
                 $stFp = $db->prepare("SELECT 1 FROM purchase_invoice_hdr WHERE supplier_id = :s AND faktur_pajak_no = :f AND id <> :id LIMIT 1");
@@ -524,14 +546,16 @@ $stSeq = $db->prepare("SELECT COALESCE(MAX(CAST(RIGHT(inv_no, 5) AS integer)), 0
 
             $stTot = $db->prepare("UPDATE purchase_invoice_hdr
                                       SET total_amount = :t, dpp_amount = :dpp, ppn_rate = :pr, ppn_amount = :pa,
+                                          pph_rate = :pthr, pph_amount = :ptha,
                                           faktur_pajak_no = :fn, faktur_pajak_date = CAST(:fd AS date)
                                     WHERE id = :id");
             $stTot->execute([':t' => $total_with_ppn, ':dpp' => $dpp, ':pr' => $ppn_rate, ':pa' => $ppn_amount_final,
+                             ':pthr' => $pph_rate, ':ptha' => $pph_amount,
                              ':fn' => $fp_no !== '' ? $fp_no : null, ':fd' => $fp_date !== '' ? $fp_date : null, ':id' => $invoice_id]);
 
             // [JURNAL] edit: buang jurnal lama lalu posting ulang sesuai nilai terbaru
             if (PiHasJournal($db, $invoice_id)) ReverseJournalByReference($db, PI_JOURNAL_REF, $invoice_id);
-            PiPostJournal($db, $invoice_id, $inv_no, $supplier_invoice_no, $invoice_date, $dppBase, $ppnBase);   // mata uang dasar
+            PiPostJournal($db, $invoice_id, $inv_no, $supplier_invoice_no, $invoice_date, $dppBase, $ppnBase, $pph_amount);   // mata uang dasar
 
             $db->commit();
 

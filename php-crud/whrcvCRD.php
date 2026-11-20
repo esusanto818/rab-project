@@ -96,6 +96,7 @@ try {
 
         case 'list_grn_receivable':
             $sql = "SELECT g.id, g.ref_no, g.grn_date, g.status,
+                           g.approval_status,  -- [GAP #7] GRN Approval Gate
                            s.name AS supplier_name,
                            UPPER(TRIM(cur.init)) AS currency_code, COALESCE(NULLIF(g.exch_rate,0),1) AS exch_rate
                     FROM grn_hdr g
@@ -109,7 +110,8 @@ try {
                         GROUP BY d.grn_dtl_id
                     ) wd ON wd.grn_dtl_id = gd.id
                     WHERE g.status IN ('open','partial')
-                    GROUP BY g.id, g.ref_no, g.grn_date, g.status, s.name, cur.init, g.exch_rate
+                      AND g.approval_status = 'APPROVED'  -- [GAP #7] Hanya GRN yang sudah disetujui
+                    GROUP BY g.id, g.ref_no, g.grn_date, g.status, g.approval_status, s.name, cur.init, g.exch_rate
                     HAVING SUM(gd.qty_received) - COALESCE(SUM(wd.qty_wh_sum), 0) > 0.0001
                     ORDER BY g.grn_date DESC";
             echo json_encode(['success' => true, 'data' => fetchAll($db, $sql, [], 'list_grn_receivable')]);
@@ -224,6 +226,15 @@ try {
             foreach ($items as $it) { $totalQtyCheck += (float)($it['qty_received'] ?? 0); }
             if ($totalQtyCheck <= 0) {
                 throw new Exception('Total qty diterima harus lebih dari 0');
+            }
+
+            // [GAP #7] Check GRN approval status before allowing WH Receiving
+            $grnApproval = fetchOne($db,
+                "SELECT approval_status, ref_no FROM grn_hdr WHERE id = :id",
+                ['id' => $grn_hdr_id], 'check GRN approval for WH Receiving');
+            if (!$grnApproval) throw new Exception('GRN tidak ditemukan');
+            if ($grnApproval['approval_status'] !== 'APPROVED') {
+                throw new Exception('GRN ' . $grnApproval['ref_no'] . ' belum disetujui (status approval: ' . $grnApproval['approval_status'] . '). Hanya GRN dengan status APPROVED yang dapat diterima ke gudang (WH Receiving).');
             }
 
             // Split bin: satu baris GRN boleh dipecah ke beberapa bin (beberapa baris dengan grn_dtl_id sama).

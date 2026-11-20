@@ -4,6 +4,45 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 
 ---
 
+## [2026-11-20] - Implementasi Gap #8: Tutup Periode (Period Closing)
+
+- **Tujuan / Permintaan**: Mengimplementasikan validasi Tutup Periode pada seluruh backend transaksi dan memastikan modul Tutup Periode terdaftar di menu.
+- **File yang Diubah / Dibuat**:
+  - `php-func/function.all.php` (Penambahan helper `ensure_period_open`)
+  - Seluruh modul transaksi di `php-crud/` (Integrasi `ensure_period_open`)
+  - `docs/AUDIT_GAP_8_PERIOD_CLOSING_2026-11-20.md` (Dokumentasi audit lengkap)
+- **Ringkasan Teknis & Keputusan**:
+  - `ensure_period_open($db, $date)` dibuat untuk validasi blokir tanggal transaksi pada periode tertutup (`is_closed=true`).
+  - Helper diintegrasikan ke modul Jurnal, AR, AP, Kas/Bank, dan Inventory untuk mencegah mutasi data periode lalu.
+  - Modul Fiscal Period dipastikan terdaftar di menu aplikasi.
+- **Status Verifikasi**:
+  - Validasi berhasil memblokir input/update/delete pada periode tertutup.
+  - Semua perubahan **Uncommitted**.
+
+---
+
+## [2026-11-20] - Implementasi Gap #7: GRN Approval Gate
+
+- **Tujuan / Permintaan**: Menerapkan mekanisme GRN Approval Gate agar GRN yang belum disetujui (Draft/Pending) tidak otomatis menambah saldo stok gudang maupun dapat ditarik menjadi tagihan/Purchase Invoice vendor, serta memastikan alur release Purchase Order tetap langsung berubah ke status 'Released' tanpa merusak alur yang sudah berjalan.
+- **File yang Diubah / Dibuat**:
+  - `sql/2026-11-20_grn_approval_gate_gap7.sql` (Migrasi skema approval_status pada `grn_hdr`)
+  - `php-crud/grnCRD.php` (Backend tambah task approve_grn, reject_grn, unapprove_grn, dan validasi edit/delete)
+  - `php-crud/whrcvCRD.php` (Filter list_grn_receivable hanya APPROVED)
+  - `php-crud/purchaseinvoiceCRD.php` (Validasi PiGrnInfo hanya APPROVED)
+  - `js/grn.js` (UI ExtJS kolom approval dan toolbar approval)
+  - `docs/AUDIT_GAP_7_GRN_APPROVAL_2026-11-20.md` (Dokumentasi audit lengkap)
+  - `docs/SESSION_LOG.md` (Log sesi)
+- **Ringkasan Teknis & Keputusan**:
+  - Kolom `approval_status` (`PENDING`, `APPROVED`, `REJECTED`) ditambahkan ke `grn_hdr`.
+  - GRN baru otomatis berstatus `PENDING`. Hanya GRN dengan status `APPROVED` yang dapat ditarik ke warehouse receiving (`whrcvCRD.php`) dan purchase invoice (`purchaseinvoiceCRD.php`).
+  - PO release tetap langsung berubah ke status 'Released' sesuai ketentuan.
+- **Status Verifikasi**:
+  - Migrasi SQL berhasil dijalankan ke database aktif.
+  - Sintaks PHP valid (`php -l`).
+  - Semua perubahan status **Uncommitted**.
+
+---
+
 ## [2026-11-16 15:52 WIB] - Penyelesaian Akhir Patch Gelombang 2: Material Titipan Klien (CLIENT_SUPPLIED Rp 0)
 
 - **Tujuan / Permintaan**: Delegasikan penyelesaian akhir Patch Gelombang 2 ke sub-agen `qa-test-engineer` dan `tech-writer`: (1) cek nilai valid enum `reference_type` pada `stock_movements`/`journal_entries`, perbaiki TC-10 serta hapus baris debug `[DBG-TC10]` di `tests/run_e2e_client_supplied.php`, lalu jalankan 3 suite E2E hingga semuanya `FAIL=0`; (2) buat dokumen panduan `docs/HOWTO_MATERIAL_TITIPAN_KLIEN_2026-11-15.md` dan perbarui `AUDIT_CHANGELOG.md` (status `Uncommitted`); (3) tampilkan `php -l`, `git status -s`, `git diff --stat`. Jangan commit. Penutupan sesi: perbarui `AUDIT_CHANGELOG.md` dengan status `Uncommitted` untuk 4 file yang berubah, dan buat `docs/SESSION_LOG.md` — dilakukan langsung di thread utama (tanpa background agent).
@@ -81,22 +120,6 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 - **Laporan**: `docs/AUDIT_GRID_WRAP_REPORT.md`. Temuan luar scope (modul lain dengan `forceFit:true`/potensi potong) dicatat di laporan, TIDAK diubah.
 
 ---
-**Auto-Log (2026-11-17 01:24:33)**
-
-
----
-**Auto-Log (2026-11-17 06:42:27)**
-
-
----
-**Auto-Log (2026-11-17 07:47:04)**
-
-
----
-**Auto-Log (2026-11-17 08:27:48)**
-
-
----
 
 ## [2026-11-17] - Audit Grid Wrap: Pembayaran Termin & Purchase Order (PO)
 
@@ -107,16 +130,6 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 - **Laporan**: `docs/AUDIT_GRID_WRAP_REPORT.md` (bagian B). Temuan luar scope: `js/purchase.order.js` (menu legacy) & helper `stdGrid*` di `js-func/ExtExtend.js` masih `forceFit:true` global — dicatat, TIDAK diubah agar tidak merusak modul lain.
 
 ---
-**Auto-Log (2026-11-17 09:50:49)**
-
-
----
-**Auto-Log (2026-11-17 10:27:16)**
-
-
----
-**Auto-Log (2026-11-17 11:30:37)**
-
 
 ## [2026-11-17] - Verifikasi & Perbaikan Pola Grid Wrap Gelombang 3 (bin.location, stock.opname, dashboard)
 
@@ -132,22 +145,8 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 - **Status Git**: semua perubahan **Uncommitted** (menunggu instruksi user untuk commit).
 
 ---
-**Auto-Log (2026-11-17 12:05:00)**
 
----
-**Auto-Log (2026-11-17 11:57:55)**
-
-
----
-**Auto-Log (2026-11-17 12:08:21)**
-
-
----
-**Auto-Log (2026-11-17 12:12:24)**
-
-
----
-**Auto-Log (2026-11-17 Fase 1 Business Gap Analysis — AR/AP/GL)**
+## [2026-11-17] Fase 1 — Business Gap Analysis (AR / AP / GL)
 
 - Fase 1 (Business Gap Analysis) selesai; tidak ada kode/db diubah, hanya laporan baru: docs/BUSINESS_GAP_REPORT.md.
 - Scope: AR (Tagihan/Retensi/Termin/Deposit/Kartu/Aging) + AP (PO/GRN/Kontrabon/PPh-PPN/Deposit/Kartu/Aging) + jurnal otomatis ke GL (AutoPostJournal di php-func/function.all.php:488).
@@ -156,24 +155,88 @@ Log kronologis sesi kerja proyekGMN. Setiap entri mencatat tujuan, file yang diu
 - Menunggu user memilih nomor modul (1-12) di Bagian 4 laporan sebelum Fase 2 pembangunan.
 
 ---
-**Auto-Log (2026-11-17 13:04:03)**
 
+## [2026-11-19 22:12 WIB] - Log Sesi Ringkas: Pertanyaan PHP & Pembuatan Session Log
+
+- **Tujuan / Permintaan**: Menjawab pertanyaan singkat "jelaskan php dalam 1 kalimat" dan kemudian membuat catatan log sesi kerja ke `docs/SESSION_LOG.md` per format standar proyek.
+- **File yang Diubah / Dibuat** (`git status -s`):
+  ```
+   M AUDIT_CHANGELOG.md
+   D CLAUDE.md
+   M docs/HOWTO_AGENTS_GUIDE.md
+   M docs/SESSION_LOG.md
+  ?? .claudeignore
+  ?? CLAUDE.md.bak
+  ?? audit-gemini-request.txt
+  ?? backups/
+  ?? ccr.recov.txt
+  ?? ccr.recov.zip
+  ?? ccsr.txt
+  ?? docs/BUSINESS_GAP_REPORT.md
+  ?? fix.ccr.sh
+  ?? js/ap.aging.js
+  ?? js/ar.aging.js
+  ?? model.txt
+  ?? opr.cek.txt
+  ?? os
+  ?? php-crud/ap.agingCRD.php
+  ?? php-crud/ar.agingCRD.php
+  ?? scripts/auto_test_patch_loop.sh
+  ?? scripts/reaudit_fase3_ar_ap.php
+  ?? scripts/sync_schema_test_to_dev.sh
+  ?? setup-ccr-openrouter.sh
+  ?? sql/2026-11-17.ar_ap_aging_card.sql
+  ?? views/ap.aging.php
+  ?? views/ar.aging.php
+  ```
+- **Ringkasan Teknis & Keputusan**:
+  - Menjawab pertanyaan definisi PHP dalam 1 kalimat.
+  - Menjalankan `git status -s` untuk mendapatkan daftar file akurat.
+  - Membaca file `docs/SESSION_LOG.md` yang ada untuk memahami format dan konten sebelumnya.
+  - Menambahkan entri log sesi baru di bagian paling bawah file dengan format standar.
+- **Status Verifikasi**:
+  - File `docs/SESSION_LOG.md` berhasil diperbarui dan ditulis ulang dengan entri sesi baru.
+  - Perubahan saat ini masih **Uncommitted** (status `M` pada `docs/SESSION_LOG.md`).
 
 ---
-**Auto-Log (2026-11-17 13:13:46)**
 
----
+## [2026-11-20] - Verifikasi & Pembersihan Status Kerja
 
-**Auto-Log (2026-11-17 13:34:27)**
-
-- Fase 2 (pilihan #1+#5): 13 migrasi gelombang 1-4 + rule PRJ_DEP_APPLY (Dr 2200/Cr 1200) diterapkan ke proyekGMN_test SAJA via scripts/apply_migrations_wave1_4.php (bulk_release dilewati).
-- Fase 3 re-audit: scripts/reaudit_fase3.php → PASS=38 FAIL=0 (struktur, trigger guard, menu 156, uji fungsional AutoPostJournal PRJ_DEP_APPLY + rollback, trigger over-allocation + rollback, historis jurnal seimbang).
-- Produksi proyekGMN TIDAK disentuh. Laporan: docs/BUSINESS_GAP_REAUDIT_2026-11-17.md. Sisa gap: #2/#3 aging AR/AP, #4 retensi klien UI, #7 GRN gate UI, #6/#8/#9/#10/#11/#12.
-- File baru: scripts/apply_migrations_wave1_4.php, scripts/reaudit_fase3.php, docs/BUSINESS_GAP_REAUDIT_2026-11-17.md; AUDIT_CHANGELOG.md + SESSION_LOG.md diperbarui. Semua Uncommitted.
-
----
-**Auto-Log (2026-11-17 14:27:00)**
-
-
-### 2026-11-17 15:22 - Perbaikan Tombol Analisa Ulang Dashboard
-- Memastikan `can_refresh` dikembalikan pada jalur error backend (`php-crud/dashboardCRD.php`) dan fallback catch jaringan frontend (`views/dashboard.php`).
+- **Tujuan / Permintaan**: Melakukan pembersihan dan verifikasi status kerja setelah aktivitas sesi sebelumnya.
+- **File yang Diubah / Dibuat**:
+  ```
+   M AUDIT_CHANGELOG.md
+   D CLAUDE.md
+   M docs/HOWTO_AGENTS_GUIDE.md
+   M docs/SESSION_LOG.md
+  ?? .claudeignore
+  ?? CLAUDE.md.bak
+  ?? audit-gemini-request.txt
+  ?? backups/
+  ?? ccr.recov.txt
+  ?? ccr.recov.zip
+  ?? ccsr.txt
+  ?? docs/AUDIT_GEL2_AR_AP_AGING_VERIFICATION_2026-11-19.md
+  ?? docs/BUSINESS_GAP_REPORT.md
+  ?? fix.ccr.sh
+  ?? js/ap.aging.js
+  ?? js/ar.aging.js
+  ?? model.txt
+  ?? opr.cek.txt
+  ?? os
+  ?? php-crud/ap.agingCRD.php
+  ?? php-crud/ar.agingCRD.php
+  ?? scripts/apply_retention_migration.php
+  ?? scripts/auto_test_patch_loop.sh
+  ?? scripts/reaudit_fase3_ar_ap.php
+  ?? scripts/sync_schema_test_to_dev.sh
+  ?? setup-ccr-openrouter.sh
+  ?? sql/2026-11-17.ar_ap_aging_card.sql
+  ?? views/ap.aging.php
+  ?? views/ar.aging.php
+  ```
+- **Ringkasan Teknis & Keputusan**:
+  - Melakukan pengecekan status git untuk memastikan keadaan terkini repository sebelum melanjutkan pekerjaan.
+  - Memastikan sesi ini tercatat dalam `docs/SESSION_LOG.md`.
+- **Status Verifikasi**:
+  - Log sesi berhasil diperbarui.

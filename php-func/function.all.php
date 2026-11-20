@@ -591,6 +591,40 @@ LIMIT 1
 }
 
 /*
+Fungsi   : ensure_period_open()
+Tujuan   : Memeriksa apakah suatu tanggal transaksi jatuh pada periode akuntansi
+           yang sudah ditutup (is_closed = true). Mengembalikan array [success => bool, message => string]
+           atau melempar exception/menghentikan eksekusi bila ditutup.
+*/
+function ensure_period_open($db, $transactionDate) {
+    if (empty($transactionDate)) {
+        return ['success' => false, 'message' => 'Tanggal transaksi tidak boleh kosong untuk validasi periode.'];
+    }
+    try {
+        $stmt = $db->prepare("
+            SELECT id, period_name, is_closed
+            FROM accounting_periods
+            WHERE :tdate BETWEEN start_date AND end_date
+            LIMIT 1
+        ");
+        $stmt->execute(['tdate' => $transactionDate]);
+        $period = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$period) {
+            return ['success' => false, 'message' => "Tidak ada periode akuntansi yang mencakup tanggal {$transactionDate}. Buat periode-nya terlebih dahulu di menu Fiscal Period."];
+        }
+
+        if ($period['is_closed'] === true || $period['is_closed'] === 't' || $period['is_closed'] === 1 || $period['is_closed'] === '1') {
+            return ['success' => false, 'message' => "Periode akuntansi '{$period['period_name']}' untuk tanggal {$transactionDate} sudah ditutup (Closed). Transaksi penambahan, perubahan, atau penghapusan diblokir."];
+        }
+
+        return ['success' => true, 'period_id' => $period['id']];
+    } catch (Throwable $e) {
+        return ['success' => false, 'message' => 'Gagal memvalidasi periode akuntansi: ' . $e->getMessage()];
+    }
+}
+
+/*
 Fungsi   : ReverseJournalByReference()
 Tujuan   : Hapus semua jurnal (header + lines) yang tercatat untuk sebuah
            reference_type + reference_id tertentu. Dipakai saat modul

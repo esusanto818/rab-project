@@ -46,6 +46,12 @@ const GRN_PO_STATUS_LIST = ['Disetujui'];     // status PO yang boleh di-GRN
 const GRN_REQUIRE_DO = false;                 // [NEW] true = No. DO Supplier wajib diisi (aktifkan setelah form grn00.js punya field-nya)
 const GRN_REQUIRE_VEHICLE = false;            // [NEW] true = plat no & nama driver wajib diisi saat simpan GRN
 
+// GRN Approval Gate (Gap #7) - valid approval statuses
+const GRN_APPROVAL_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'];
+const GRN_APPROVED_STATUS = 'APPROVED';
+const GRN_PENDING_STATUS = 'PENDING';
+const GRN_REJECTED_STATUS = 'REJECTED';
+
 $task = $_REQUEST['task'] ?? '';
 $db = new crud();
 
@@ -235,8 +241,10 @@ try {
 
         case 'read':
             // [CHG] tambah g.vehicle_plate_no, g.driver_name untuk kolom grid & panel detail
+            // [GAP #7] tambah approval_status untuk GRN Approval Gate
             $sql = "SELECT g.id, g.ref_no, g.grn_date, g.status, g.remark,
                            g.vehicle_plate_no, g.driver_name, g.supplier_do_no,      -- [NEW] No. DO Supplier
+                           g.approval_status, g.approved_by, g.approved_at, g.approved_note,  -- [GAP #7] GRN Approval
                            p.po_number AS po_ref_no, g.po_id, s.id AS supplier_id, s.name AS supplier_name,
                            (SELECT COALESCE(SUM(qty_received),0) FROM grn_dtl d WHERE d.grn_hdr_id = g.id) AS total_qty,
                            (SELECT COALESCE(SUM(qty_received * unit_cost),0) FROM grn_dtl d WHERE d.grn_hdr_id = g.id) AS total_amount,
@@ -359,11 +367,12 @@ try {
             SetPgAppUser();
             $ref_no = CreateRefNo('grn_hdr', 'ref_no', 'GRN');
 
-            // [CHG] INSERT + vehicle_plate_no ($9), driver_name ($10)
+            // [GAP #7] GRN baru selalu status approval PENDING, status GRN tetap 'open' (draft)
+            // [CHG] INSERT + vehicle_plate_no ($9), driver_name ($10), approval_status ($12)
             $hdrResult = pg_query_params(
                 "INSERT INTO grn_hdr (ref_no, grn_date, po_id, supplier_id, status, remark, created_by, created_at, currency_id, exch_rate,
-                                      vehicle_plate_no, driver_name, supplier_do_no)
-                 VALUES ($1,$2,$3,$4,'open',$5,$6,NOW(),$7,$8,$9,$10,$11) RETURNING id",      // [CHG] + supplier_do_no ($11)
+                                      vehicle_plate_no, driver_name, supplier_do_no, approval_status)
+                 VALUES ($1,$2,$3,$4,'open',$5,$6,NOW(),$7,$8,$9,$10,$11,'PENDING') RETURNING id",
                 [$ref_no, $grn_date, $po_id, $supplier_id, $remark, $created_by, $po_currency, $po_rate,
                  $veh['plate'], $veh['driver'], $doNo]
             );
@@ -373,7 +382,7 @@ try {
             InsertGrnItems($grn_hdr_id, $arrItems, 0, $po_rate);
 
             pg_query('COMMIT');
-            echo json_encode(['success' => true, 'message' => "GRN {$ref_no} berhasil disimpan.", 'id' => $grn_hdr_id, 'ref_no' => $ref_no]);
+            echo json_encode(['success' => true, 'message' => "GRN {$ref_no} berhasil disimpan (status approval: PENDING).", 'id' => $grn_hdr_id, 'ref_no' => $ref_no, 'approval_status' => 'PENDING']);
             break;
 
         case 'update':
@@ -398,6 +407,14 @@ try {
 
             if (!$supplier_id) throw new Exception('Supplier belum dipilih');
             if (empty($arrItems)) throw new Exception('Minimal 1 item harus diisi qty diterima');
+
+            // [GAP #7] Check approval status - cannot edit APPROVED GRN
+            $hdrCheck = pg_query_params("SELECT approval_status FROM grn_hdr WHERE id = $1", [$id]);
+            PgOrFail($hdrCheck, 'Gagal cek approval status GRN');
+            $hdrRow = pg_fetch_assoc($hdrCheck);
+            if ($hdrRow && $hdrRow['approval_status'] === GRN_APPROVED_STATUS) {
+                throw new Exception('GRN sudah disetujui (APPROVED), tidak dapat diedit. Batalkan approval terlebih dahulu jika perlu perubahan.');
+            }
 
             $hRes = pg_query_params("SELECT COALESCE(NULLIF(exch_rate,0),1) AS exch_rate FROM grn_hdr WHERE id = $1", [$id]);
             PgOrFail($hRes, 'Gagal load kurs GRN');
@@ -426,6 +443,122 @@ try {
 
             pg_query('COMMIT');
             echo json_encode(['success' => true, 'message' => 'GRN berhasil diupdate.', 'id' => $id]);
+            break;
+
+        // [GAP #7] GRN Approval Gate - Approve GRN
+        case 'approve_grn':
+            $id = (int)($_REQUEST['id'] ?? 0);
+            $note = $_REQUEST['note'] ?? '';
+            $approved_by = $_SESSION['user_id'] ?? null;
+
+            if (!$id) throw new Exception('GRN tidak valid');
+
+            $hdrRes = pg_query_params("SELECT approval_status, ref_no FROM grn_hdr WHERE id = $1", [$id]);
+            PgOrFail($hdrRes, 'Gagal load GRN');
+            $hdr = pg_fetch_assoc($hdrRes);
+            if (!$hdr) throw new Exception('GRN tidak ditemukan');
+            if ($hdr['approval_status'] === GRN_APPROVED_STATUS) {
+                throw new Exception('GRN sudah disetujui sebelumnya.');
+            }
+            if ($hdr['approval_status'] === GRN_REJECTED_STATUS) {
+                throw new Exception('GRN sudah ditolak, tidak dapat disetujui.');
+            }
+
+            pg_query('BEGIN');
+            SetPgAppUser();
+
+            $upd = pg_query_params(
+                "UPDATE grn_hdr SET approval_status = $1, approved_by = $2, approved_at = NOW(), approved_note = $3
+                 WHERE id = $4",
+                [GRN_APPROVED_STATUS, $approved_by, $note, $id]
+            );
+            PgOrFail($upd, 'Gagal approve GRN');
+
+            pg_query('COMMIT');
+            echo json_encode(['success' => true, 'message' => "GRN {$hdr['ref_no']} berhasil disetujui (APPROVED).", 'approval_status' => GRN_APPROVED_STATUS]);
+            break;
+
+        // [GAP #7] GRN Approval Gate - Reject GRN
+        case 'reject_grn':
+            $id = (int)($_REQUEST['id'] ?? 0);
+            $note = $_REQUEST['note'] ?? '';
+            $approved_by = $_SESSION['user_id'] ?? null;
+
+            if (!$id) throw new Exception('GRN tidak valid');
+
+            $hdrRes = pg_query_params("SELECT approval_status, ref_no FROM grn_hdr WHERE id = $1", [$id]);
+            PgOrFail($hdrRes, 'Gagal load GRN');
+            $hdr = pg_fetch_assoc($hdrRes);
+            if (!$hdr) throw new Exception('GRN tidak ditemukan');
+            if ($hdr['approval_status'] === GRN_REJECTED_STATUS) {
+                throw new Exception('GRN sudah ditolak sebelumnya.');
+            }
+            if ($hdr['approval_status'] === GRN_APPROVED_STATUS) {
+                throw new Exception('GRN sudah disetujui, tidak dapat ditolak. Batalkan approval terlebih dahulu jika perlu perubahan.');
+            }
+
+            pg_query('BEGIN');
+            SetPgAppUser();
+
+            $upd = pg_query_params(
+                "UPDATE grn_hdr SET approval_status = $1, approved_by = $2, approved_at = NOW(), approved_note = $3
+                 WHERE id = $4",
+                [GRN_REJECTED_STATUS, $approved_by, $note, $id]
+            );
+            PgOrFail($upd, 'Gagal reject GRN');
+
+            pg_query('COMMIT');
+            echo json_encode(['success' => true, 'message' => "GRN {$hdr['ref_no']} berhasil ditolak (REJECTED).", 'approval_status' => GRN_REJECTED_STATUS]);
+            break;
+
+        // [GAP #7] GRN Approval Gate - Unapprove GRN (back to PENDING)
+        case 'unapprove_grn':
+            $id = (int)($_REQUEST['id'] ?? 0);
+
+            if (!$id) throw new Exception('GRN tidak valid');
+
+            $hdrRes = pg_query_params("SELECT approval_status, ref_no FROM grn_hdr WHERE id = $1", [$id]);
+            PgOrFail($hdrRes, 'Gagal load GRN');
+            $hdr = pg_fetch_assoc($hdrRes);
+            if (!$hdr) throw new Exception('GRN tidak ditemukan');
+            if ($hdr['approval_status'] !== GRN_APPROVED_STATUS) {
+                throw new Exception('GRN belum disetujui, tidak perlu dibatalkan approval-nya.');
+            }
+
+            // Check if GRN has WH Receiving - cannot unapprove if already received
+            $whCheck = pg_query_params(
+                "SELECT COUNT(*) FROM wh_receiving_hdr WHERE grn_hdr_id = $1 AND status = 'posted'",
+                [$id]
+            );
+            PgOrFail($whCheck, 'Gagal cek WH Receiving');
+            $whCount = (int)pg_fetch_result($whCheck, 0, 0);
+            if ($whCount > 0) {
+                throw new Exception('GRN sudah memiliki WH Receiving, tidak dapat membatalkan approval. Reverse WH Receiving terlebih dahulu.');
+            }
+
+            // Check if GRN has Purchase Invoice matched - cannot unapprove if already invoiced
+            $piCheck = pg_query_params(
+                "SELECT COUNT(*) FROM purchase_invoice_dtl WHERE grn_hdr_id = $1",
+                [$id]
+            );
+            PgOrFail($piCheck, 'Gagal cek Purchase Invoice');
+            $piCount = (int)pg_fetch_result($piCheck, 0, 0);
+            if ($piCount > 0) {
+                throw new Exception('GRN sudah di-match ke Purchase Invoice, tidak dapat membatalkan approval. Hapus invoice terlebih dahulu.');
+            }
+
+            pg_query('BEGIN');
+            SetPgAppUser();
+
+            $upd = pg_query_params(
+                "UPDATE grn_hdr SET approval_status = $1, approved_by = NULL, approved_at = NULL, approved_note = NULL
+                 WHERE id = $2",
+                [GRN_PENDING_STATUS, $id]
+            );
+            PgOrFail($upd, 'Gagal unapprove GRN');
+
+            pg_query('COMMIT');
+            echo json_encode(['success' => true, 'message' => "Approval GRN {$hdr['ref_no']} dibatalkan (kembali ke PENDING).", 'approval_status' => GRN_PENDING_STATUS]);
             break;
 
         case 'delete':

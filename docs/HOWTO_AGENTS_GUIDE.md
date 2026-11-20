@@ -94,3 +94,39 @@ Digunakan untuk memeriksa celah keamanan SQL (`pg_query_params`), transaksi `BEG
    ```bash
    ccr stop && ccr start --daemon
    ```
+
+---
+
+### E. Pengubah & Penyeragam Tema Warna (`theme-styler-auditor`)
+Digunakan untuk mengubah tampilan dan tema warna aplikasi (ExtJS 3.4.1, Tailwind CSS, halaman Login, Dashboard, dan Grid) secara terpusat melalui file `css/custom-theme.css` tanpa merusak kode inti ExtJS maupun aturan *grid text-wrap*.
+
+* **Mengubah tema dengan kode HEX spesifik:**
+  ```text
+  /update-theme Primary Burgundy (#7F1D1D), Accent Kuning Emas (#F59E0B), Background Abu Terang (#F8FAFC)
+  ```
+* **Mengubah tema dengan deskripsi gaya warna:**
+  ```text
+  /update-theme Nuansa Corporate Navy Blue (#1E3A8A) dan Teal (#0D9488) dengan kontras teks tinggi untuk modul operasional dan login
+  ```
+* **Menyesuaikan detail warna tertentu setelah cek di browser:**
+  ```text
+  /update-theme Perjelas kontras header grid ExtJS menjadi teks putih dan haluskan warna hover baris tabel
+  ```
+
+---
+
+### E. Pengubah & Penyeragam Tema Warna (`theme-styler-auditor`)
+Digunakan untuk mengubah tampilan dan tema warna aplikasi (ExtJS 3.4.1, Tailwind CSS, halaman Login, Dashboard, dan Grid) secara terpusat melalui file `css/custom-theme.css` tanpa merusak kode inti ExtJS maupun aturan *grid text-wrap*.
+
+* **Mengubah tema dengan kode HEX spesifik:**
+  ```text
+  /update-theme Primary Burgundy (#7F1D1D), Accent Kuning Emas (#F59E0B), Background Abu Terang (#F8FAFC)
+  ```
+* **Mengubah tema dengan deskripsi gaya warna:**
+  ```text
+  /update-theme Nuansa Corporate Navy Blue (#1E3A8A) dan Teal (#0D9488) dengan kontras teks tinggi untuk modul operasional dan login
+  ```
+* **Menyesuaikan detail warna tertentu setelah cek di browser:**
+  ```text
+  /update-theme Perjelas kontras header grid ExtJS menjadi teks putih dan haluskan warna hover baris tabel
+  ```

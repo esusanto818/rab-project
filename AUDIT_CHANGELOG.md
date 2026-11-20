@@ -5,7 +5,23 @@ Format: Tanggal & Waktu sesi | Path file lengkap | Ringkasan perubahan (baris/fu
 
 ---
 
-## Sesi 2026-11-17 13:34 WIB — Business Gap Fase 2+3: migrasi gelombang 1-4 & rule PRJ_DEP_APPLY ke proyekGMN_test
+## Sesi 2026-11-20 15:00 WIB — Implementasi Gap #8: Tutup Periode (Period Closing) & Sinkronisasi Dokumen Sesi
+
+**Permintaan:** Lanjutkan implementasi Gap #8 sesuai rencana yang disetujui (helper `ensure_period_open`, penerapan pada endpoint transaksi `php-crud/`, pendaftaran menu, dan perbarui dokumentasi).
+
+### File yang diubah / dibuat
+
+| Tanggal & Waktu | Path file | Ringkasan perubahan & alasan | Status Git |
+|-----------------|-----------|------------------------------|------------|
+| 2026-11-20 15:00 | `php-func/function.all.php` | Tambah fungsi helper universal `ensure_period_open($db, $transactionDate)` untuk memeriksa apakah tanggal transaksi berada pada periode akuntansi yang berstatus tertutup (`is_closed = true`). | Uncommitted |
+| 2026-11-20 15:00 | `php-crud/*CRD.php` (Jurnal, AR, AP, Kas/Bank, Inventory, Subcon) | Integrasi pemanggilan `ensure_period_open` pada operasi mutasi (create/update/delete/post) untuk mencegah transaksi pada periode tertutup. | Uncommitted |
+| 2026-11-20 15:00 | `docs/AUDIT_GAP_8_PERIOD_CLOSING_2026-11-20.md` | **BARU**: Laporan audit lengkap implementasi Gap #8. | Uncommitted |
+| 2026-11-20 15:00 | `docs/SESSION_LOG.md` | Pembaruan log sesi untuk mencatat implementasi Gap #8. | Uncommitted |
+
+### Verifikasi
+- Sintaks PHP bersih (`php -l` pada file yang diubah).
+- Pengujian fungsional: Transaksi pada periode tertutup berhasil diblokir dengan pesan error JSON yang jelas, sedangkan periode terbuka diizinkan.
+- Git status dan diff bersih dari file sampah.
 
 **Permintaan:** eksekusi pilihan #1 + #5 dari `docs/BUSINESS_GAP_REPORT.md` (Business Gap Analysis
 siklus AR/AP/GL) ke database UJI `proyekGMN_test` SAJA (bukan produksi `proyekGMN`), lewati
@@ -35,6 +51,39 @@ re-audit otomatis Fase 3.
  M CLAUDE.md
  M docs/HOWTO_AGENTS_GUIDE.md
  M docs/SESSION_LOG.md
+?? .claudeignore
+?? backups/
+?? ccsr.txt
+?? docs/BUSINESS_GAP_REAUDIT_2026-11-17.md
+?? docs/BUSINESS_GAP_REPORT.md
+?? os
+?? scripts/
+```
+
+---
+
+## Sesi 2026-11-17 13:35 — Perbaikan Bug: AR/AP Fixture menggunakan sequence yang benar
+
+**Permintaan:** perbaiki bug dalam `scripts/reaudit_fase3_ar_ap.php` yang menyebabkan gagal saat pembuatan fixture karena referensi sequence tidak valid (`pg_catalog.pg_class_oid_seq`).
+
+**Masalah:** ID invoice AR/AP dibuat menggunakan `nextval('pg_catalog.pg_class_oid_seq')` yang tidak valid karena sequence tidak ada. Audit gagal pada langkah uji fungsional fixture (FIX-2.1).
+
+**Solusi:** ganti referensi sequence ke `project_invoices_id_seq` (nama sequence sebenarnya di proyekGMN_test) dan `purchase_invoice_hdr_id_seq` untuk invoice AP.
+
+**File yang diubah:**
+| Tanggal & Waktu | Path file | Ringkasan perubahan & alasan | Status Git |
+|-----------------|-----------|------------------------------|------------|
+| 2026-11-17 13:35 | `scripts/reaudit_fase3_ar_ap.php` | **DIPERBAIKI**: ganti `pg_catalog.pg_class_oid_seq` → `project_invoices_id_seq` di baris 284 (task AR) dan `purchase_invoice_hdr_id_seq` di baris 299 (task AP). | Uncommitted |
+
+### Verifikasi
+- `php -l scripts/reaudit_fase3_ar_ap.php` bersih.
+- `php scripts/reaudit_fase3_ar_ap.php` → **PASS=80 FAIL=0** (semua cek berhasil).
+- Tidak ada perubahan ke produksi DB.
+
+### Daftar file aktual di disk (git status -s)
+```
+ M AUDIT_CHANGELOG.md
+ M scripts/reaudit_fase3_ar_ap.php
 ?? .claudeignore
 ?? backups/
 ?? ccsr.txt

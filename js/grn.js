@@ -57,7 +57,8 @@ Ext.onReady(function () {
         { name: 'status' }, { name: 'remark' },
         { name: 'total_qty', type: 'float' }, { name: 'total_amount', type: 'float' },
         { name: 'currency_code' }, { name: 'exch_rate', type: 'float' }, { name: 'total_base', type: 'float' },
-        { name: 'supplier_do_no' }, { name: 'vehicle_plate_no' }, { name: 'driver_name' }      // [NEW] No. DO Supplier, Plat No., Driver
+        { name: 'supplier_do_no' }, { name: 'vehicle_plate_no' }, { name: 'driver_name' },      // [NEW] No. DO Supplier, Plat No., Driver
+        { name: 'approval_status' }, { name: 'approved_by' }, { name: 'approved_at' }, { name: 'approved_note' }  // [GAP #7] GRN Approval Gate
     ];
 
     var itemField = [
@@ -156,6 +157,14 @@ Ext.onReady(function () {
                     if (v === 'draft') return '<span style="color:#e08e0b;font-weight:bold;">Draft</span>';
                     if (v === 'cancelled') return '<span style="color:#c0392b;font-weight:bold;">Cancelled</span>';
                     return '<span style="color:#2e9e4f;font-weight:bold;">Confirmed</span>';
+                }
+            },
+            {
+                header: 'Approval', dataIndex: 'approval_status', width: 100, align: 'center',  // [GAP #7] GRN Approval Gate
+                renderer: function (v) {
+                    if (v === 'APPROVED') return '<span style="color:#2e9e4f;font-weight:bold;">APPROVED</span>';
+                    if (v === 'REJECTED') return '<span style="color:#c0392b;font-weight:bold;">REJECTED</span>';
+                    return '<span style="color:#e08e0b;font-weight:bold;">PENDING</span>';
                 }
             },
             { header: 'Keterangan', dataIndex: 'remark', width: 160, renderer: CellWrap }
@@ -345,6 +354,62 @@ Ext.onReady(function () {
                '<tr><td>(................................)</td><td>(' + (h.driver_name ? grnEnc(h.driver_name) : '................................') + ')</td>' +
                '<td>(' + (h.created_by_name ? grnEnc(h.created_by_name) : '................................') + ')</td></tr></table>' +
                '<div style="margin-top:14px;font-size:10px;color:#444;">Dicetak: ' + grnNow() + '</div></body></html>';
+    }
+
+    // [GAP #7] Toolbar Approval
+    var toolbarApp = new Ext.Toolbar({
+        renderTo: 'editorFormGrid',
+        style: 'margin-top:10px; padding:5px;',
+        items: [
+            { text: 'Approve GRN', iconCls: 'btn-approve', handler: function() { approveGrn(false); } },
+            { text: 'Reject GRN', iconCls: 'btn-reject', handler: function() { approveGrn(true); } },
+            { text: 'Batalkan Approval', iconCls: 'btn-unapprove', handler: function() { unapproveGrn(); } }
+        ]
+    });
+
+    function approveGrn(isReject) {
+        if (!dataRecord) return;
+        Ext.Msg.prompt(isReject ? 'Reject GRN' : 'Approve GRN', 'Masukkan alasan (opsional):', function(btn, text) {
+            if (btn == 'ok') {
+                Ext.Ajax.request({
+                    url: '../dev/php-crud/grnCRD.php',
+                    method: 'POST',
+                    params: { task: isReject ? 'reject_grn' : 'approve_grn', id: dataRecord.id, note: text },
+                    success: function(resp) {
+                        var res = Ext.util.JSON.decode(resp.responseText);
+                        if (res.success) {
+                            Ext.Msg.alert('Berhasil', res.message);
+                            mainDs.reload();
+                            // Refresh detail if needed
+                        } else {
+                            Ext.Msg.alert('Gagal', res.message);
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    function unapproveGrn() {
+        if (!dataRecord) return;
+        Ext.Msg.confirm('Konfirmasi', 'Batalkan approval GRN ini?', function(btn) {
+            if (btn == 'yes') {
+                Ext.Ajax.request({
+                    url: '../dev/php-crud/grnCRD.php',
+                    method: 'POST',
+                    params: { task: 'unapprove_grn', id: dataRecord.id },
+                    success: function(resp) {
+                        var res = Ext.util.JSON.decode(resp.responseText);
+                        if (res.success) {
+                            Ext.Msg.alert('Berhasil', res.message);
+                            mainDs.reload();
+                        } else {
+                            Ext.Msg.alert('Gagal', res.message);
+                        }
+                    }
+                });
+            }
+        });
     }
 
     // ------------------------------------------------------------
