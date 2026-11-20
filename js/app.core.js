@@ -38,3 +38,7 @@ const UIFormat = {
     return Number(val || 0).toLocaleString('id-ID', { minimumFractionDigits: 2 });
   }
 };
+// Global ExtJS Grid Cell Word-Wrap Injection
+if (typeof Ext !== 'undefined' && Ext.util && Ext.util.CSS) {
+    Ext.util.CSS.createStyleSheet('.x-grid3-cell-inner { white-space: normal !important; word-wrap: break-word !important; overflow-wrap: break-word !important; line-height: 1.35 !important; }', 'grid-wrap-fix');
+}

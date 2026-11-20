@@ -1,5 +1,6 @@
 | Tanggal & Waktu Sesi | Path File Lengkap | Ringkasan Perubahan & Alasan Perbaikan | Status Git |
 | :--- | :--- | :--- | :--- |
+| 2026-11-21 00:15 | `/home/myadmin/proyekgmn-dev/js/app.core.js`<br>`/home/myadmin/proyekgmn-dev/docs/AUDIT_GRID_WRAP_FULL.md` | Menambahkan injeksi global ExtJS cell word-wrap agar seluruh data teks grid tampil penuh tanpa elipsis (...). | Uncommitted |
 | 2026-11-20 23:59 | `/home/myadmin/proyekgmn-dev/index.php`<br>`/home/myadmin/proyekgmn-dev/views/dashboard.php` | Mengarahkan rute root index.php, menyempurnakan responsivitas tabel mobile, dan hamburger menu. | Uncommitted |
 | 2026-11-20 23:59 | `/home/myadmin/proyekgmn-dev/views/dashboard.php`<br>`/home/myadmin/proyekgmn-dev/index.php` | Perbaikan layout responsif mobile, hamburger menu 3 item, dan mega menu hover desktop. | Uncommitted |
 | 2026-11-20 23:55 | `/home/myadmin/proyekgmn-dev/sql/2026-11-20.cross_module_patch.sql`<br>`/home/myadmin/proyekgmn-dev/docs/PRODUCTION_READINESS_AUDIT.md` | Membuat file migrasi SQL cross-module patch beserta rollback dan memperbarui laporan production readiness audit lintas modul. | Uncommitted |

@@ -4,7 +4,17 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - Root Index Redirect & Mobile Table/Hamburger Polish
+7	## [2026-11-20] - Comprehensive Grid Wrap Audit & Patch
+
+- **Tujuan / Permintaan**: Audit & perbaikan grid wrap menyeluruh agar seluruh teks panjang tampil penuh tanpa terpotong elipsis (`...`) di ExtJS grids dan tabel laporan.
+- **File yang Diubah**:
+  - `js/app.core.js` (Injeksi global ExtJS cell word-wrap style).
+  - `docs/AUDIT_GRID_WRAP_FULL.md` (Laporan audit grid wrap).
+- **Status Verifikasi**: PASS (`node --check` & `php -l` bersih).
+
+---
+
+## [2026-11-20] - Root Index Redirect & Mobile Table/Hamburger Polish
 
 - **Tujuan / Permintaan**: Mengarahkan `index.php` (root) ke `views/dashboard.php` / `login.php`, serta menyempurnakan Mega Menu desktop dan layout tabel/hamburger mobile di `views/dashboard.php`.
 - **File yang Diubah**:
