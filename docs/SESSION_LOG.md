@@ -4,7 +4,17 @@
 4	
 5	---
 6	
-7	## [2026-11-20] - Cross-Module Integration Patch & Final Readiness Audit
+7	## [2026-11-20] - UI/UX Layout & Navigation Fixes
+
+- **Tujuan / Permintaan**: Memperbaiki mega menu desktop, hamburger menu mobile 3-item, dan layout responsif pada `views/dashboard.php` & `index.php`.
+- **File yang Diubah**:
+  - `views/dashboard.php` (Mega menu, hamburger menu mobile, CSS grid fix).
+  - `index.php` (Pembersihan elemen menu nyasar).
+- **Status Verifikasi**: PASS (`php -l` bersih).
+
+---
+
+## [2026-11-20] - Cross-Module Integration Patch & Final Readiness Audit
 
 - **Tujuan / Permintaan**: Audit & Tambal Lintas Modul (PO-GRN-Invoice-AP, Retensi, Periode, Dashboard, Akses Menu).
 - **File yang Diubah**:

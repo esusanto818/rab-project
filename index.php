@@ -133,42 +133,6 @@ body { font-family: 'Inter', sans-serif; }
   background: rgba(34, 211, 238, 0.05);
 }
 /* MOBILE RESPONSIVE */
-.hamburger-line { transition: all 0.3s ease-in-out; transform-origin: center; }
-.hamburger-active .hamburger-line:nth-child(1) { transform: translateY(8px) rotate(45deg); }
-.hamburger-active .hamburger-line:nth-child(2) { opacity: 0; }
-.hamburger-active .hamburger-line:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
-.mobile-menu {
-  transform: translateX(100%);
-  transition: transform 0.3s ease-in-out;
-  background: #071d30 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border-left: 2px solid #22d3ee !important;
-  box-shadow: -8px 0 30px rgba(0, 0, 0, 0.8) !important;
-}
-.mobile-menu.open { transform: translateX(0); }
-.mobile-link {
-  color: #e2e8f0 !important;
-  font-size: 15px !important;
-  font-weight: 500 !important;
-  border: 1px solid transparent;
-}
-.mobile-link:hover, .mobile-link:active {
-  background: rgba(34, 211, 238, 0.15) !important;
-  border-color: rgba(34, 211, 238, 0.4) !important;
-  color: #22d3ee !important;
-}
-.mobile-menu-header {
-  background: #0a2d4a !important;
-  border-bottom: 2px solid #22d3ee !important;
-}
-.mobile-login-btn {
-  background: #f39c12 !important;
-  color: #071d30 !important;
-  font-weight: 700 !important;
-  border: 2px solid #f39c12 !important;
-}
-.mobile-login-btn:hover { background: #e67e22 !important; }
 
 @media (max-width: 768px) {
   .hero-bg { padding-top: 80px; }
@@ -196,58 +160,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 </head>
 <body class="bg-brand-darker text-slate-100 overflow-x-hidden">
 
-<!-- NAVBAR -->
-<nav class="fixed top-0 left-0 right-0 z-50 glass">
-  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-    <div class="flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-cyan to-brand-orange flex items-center justify-center font-display font-bold text-brand-dark">R</div>
-      <div>
-        <div class="font-display font-bold text-lg tracking-wider">RAB-PROJECT</div>
-        <div class="text-xs text-slate-400 -mt-1 hidden sm:block">Smart ERP for Contractors: Zero-Manual Accounting, AI-Driven Insights</div>
-      </div>
-    </div>
-    
-    <div class="hidden md:flex items-center gap-8 text-sm font-medium px-6 py-3 rounded-lg shadow-md">
-      <a href="#dashboard" class="hover:text-brand-cyan transition">Dashboard</a>
-      <a href="#features" class="hover:text-brand-cyan transition">Fitur</a>
-      <a href="#ai" class="hover:text-brand-cyan transition">AI Features</a>
-      <a href="#modules" class="hover:text-brand-cyan transition">Modul</a>
-      <a href="#comparison" class="hover:text-brand-cyan transition">Perbandingan</a>
-      <a href="#contact" class="hover:text-brand-cyan transition">Kontak</a>
-    </div>
-    
-    <div class="flex items-center gap-3">
-      <a href="login.php" class="px-5 py-2 bg-brand-orange text-brand-dark font-bold rounded-lg hover:bg-orange-500 transition shadow-lg text-sm">Login</a>
-      <button id="hamburgerBtn" class="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30 hover:bg-brand-cyan/20 transition" aria-label="Menu">
-        <span class="hamburger-line block w-6 h-0.5 bg-brand-cyan mb-1.5"></span>
-        <span class="hamburger-line block w-6 h-0.5 bg-brand-cyan mb-1.5"></span>
-        <span class="hamburger-line block w-6 h-0.5 bg-brand-cyan"></span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Mobile Menu -->
-  <div id="mobileMenu" class="mobile-menu fixed top-0 right-0 w-72 h-full z-50 md:hidden">
-    <div class="mobile-menu-header flex justify-between items-center p-4">
-      <span class="font-display font-bold text-brand-cyan text-lg">MENU</span>
-      <button id="closeMenuBtn" class="text-slate-300 hover:text-brand-cyan transition p-1" aria-label="Tutup menu">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
-      </button>
-    </div>
-    <div class="flex flex-col p-4 gap-1 bg-brand-deep">
-      <a href="#dashboard" class="mobile-link py-3 px-4 rounded-lg transition">📊 Dashboard</a>
-      <a href="#features" class="mobile-link py-3 px-4 rounded-lg transition">⚡ Fitur</a>
-      <a href="#ai" class="mobile-link py-3 px-4 rounded-lg transition">🤖 AI Features</a>
-      <a href="#modules" class="mobile-link py-3 px-4 rounded-lg transition">📦 Modul</a>
-      <a href="#comparison" class="mobile-link py-3 px-4 rounded-lg transition">⚖️ Perbandingan</a>
-      <a href="#contact" class="mobile-link py-3 px-4 rounded-lg transition">📧 Kontak</a>
-      <div class="mt-4 pt-4 border-t border-brand-cyan/30">
-        <a href="login.php" class="mobile-login-btn block w-full text-center py-3 rounded-lg transition">🔐 Login ke Sistem</a>
-      </div>
-    </div>
-  </div>
-  <div id="menuOverlay" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 hidden md:hidden"></div>
-</nav>
 
 <!-- HERO SECTION -->
 <section class="hero-bg grid-pattern min-h-screen flex items-center pt-24 pb-16 relative">
