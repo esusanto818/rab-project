@@ -1,5 +1,11 @@
 <?php
 $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
+// views/dashboard.php
+// [REVISI 2026-11-21]
+//  1) Mobile/HP  : main menu desktop disembunyikan -> hamburger berisi [M] Project Progress, Stock Card Mobile, Logout
+//  2) Hover fix  : dropdown dikontrol via JS (class .open) + closeAll -> tidak bertumpuk lagi
+//  3) Posisi     : .nav-item position:relative -> dropdown tepat di bawah menu terpilih (auto-clamp ke tepi layar)
+//  4) Action     : memakai nama aksi yang benar sesuai dashboardCRD.php (read_*)
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
@@ -34,14 +40,22 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.nav-item { position: static; }
-.nav-item:hover .dropdown-menu, .nav-item:focus-within .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
+
+/* ===== [FIX #3] nav-item harus RELATIVE agar dropdown menempel di bawahnya ===== */
+.nav-item { position: relative; }
+
+/* ===== [FIX #2] dropdown TIDAK lagi pakai :hover/:focus-within CSS.
+   Dibuka lewat JS dengan class .open -> hanya satu yang aktif, tidak bertumpuk ===== */
 .dropdown-menu {
-position: absolute; top: 100%; left: 0;
-width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
-max-height: calc(100vh - 80px); overflow-y: auto;
-opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s ease-in-out;
+  position: absolute; top: 100%; left: 0; z-index: 60;
+  width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
+  max-height: calc(100vh - 90px); overflow-y: auto;
+  opacity: 0; visibility: hidden; transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
+.dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
+
 .dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
 .menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
 .menu-column h3 { font-size: 20px; font-weight: 500; color: #22d3ee; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #008afb; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
@@ -49,19 +63,31 @@ opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2
 .menu-column ul li { margin-bottom: 0.25rem; }
 .menu-column ul li a { display: block; padding: 0.2rem 0.4rem; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 300; transition: all 0.2s; border-radius: 0.25rem; }
 .menu-column ul li a:hover { color: #ee2222; background: rgba(252, 253, 253, 0.61); transform: translateX(2px); }
+
+/* ===== Hamburger (mobile) ===== */
+#hamburger_btn { display: none; }
+#mobile_dropdown { min-width: 220px; }
+
+/* ===== Tabs ===== */
 .tab-btn { background:#1f2d3a; color:#ffffff; font-weight:700; font-size:15px; padding:8px 20px; border:none; border-radius:4px; cursor:pointer; transition:background .15s; }
 .tab-btn:hover { background:#2b3f52; }
 .tab-btn.active { background:#066b78; }
 .tab-btn:focus-visible { outline:2px solid #22d3ee; outline-offset:2px; }
 .tab-panel { display:none; }
 .tab-panel.active { display:block; }
+
+/* ===== [FIX #1] Mobile: layar sempit ATAU perangkat touch ===== */
 @media (max-width: 768px) {
-.desktop-menu { display: none !important; }
-.hamburger-btn { display: flex !important; }
-.user-info-desktop { display: none; }
-.user-info-mobile { display: flex !important; }
-section h2 { font-size: 1.25rem !important; }
+  .desktop-menu { display: none !important; }
+  #header_logout { display: none !important; }
+  #hamburger_btn { display: flex !important; }
+  section h2 { font-size: 1.25rem !important; }
+  .tab-btn { padding: 6px 12px; font-size: 13px; }
 }
+.is-mobile-hw .desktop-menu { display: none !important; }
+.is-mobile-hw #header_logout { display: none !important; }
+.is-mobile-hw #hamburger_btn { display: flex !important; }
+
 html, body { overflow-x: hidden; max-width: 100vw; }
 </style>
 </head>
@@ -83,6 +109,7 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 <span class="text-base px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/50">v1.0</span>
 <?php endif; ?>
 </a>
+<!-- Desktop Menu -->
 <ul class="desktop-menu flex items-center space-x-1 sm:space-x-3 font-rajdhani text-base tracking-wider font-semibold border-l border-[#0a2d4a] pl-4">
 <?php
 $i = 0;
@@ -94,12 +121,12 @@ $cStmt = $db->prepare($csql); $cStmt->execute(['sub_seq' => $mainSeq, 'user_id' 
 $childGroups = $cStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 $hasChildren = count($childGroups) > 0;
 ?>
-<li class="nav-item group h-14 flex items-center">
-<a href="#" class="py-2 px-2.5 font-normal text-xl text-white hover:text-yellow-300 group-hover:text-yellow-300 flex items-center gap-1 transition-all rounded hover:bg-[#071d30]">
+<li class="nav-item h-14 flex items-center">
+<a href="#" class="py-2 px-2.5 font-normal text-xl text-white hover:text-yellow-300 flex items-center gap-1 transition-all rounded hover:bg-[#071d30]">
 <?= $romanNum . '. ' . strtoupper(htmlspecialchars($main['name'])); ?>
 </a>
 <?php if ($hasChildren): ?>
-<div class="dropdown-menu bg-[#0f172a] border border-[#0a2d4a] rounded-b-xl shadow-2xl p-4 text-xl font-normal text-cyan-100 z-50">
+<div class="dropdown-menu bg-[#0f172a] border border-[#0a2d4a] rounded-b-xl shadow-2xl p-4 text-xl font-normal text-cyan-100">
 <div class="menu-wrap">
 <?php foreach ($childGroups as $child):
 $fsql = "SELECT f.id, upper(f.title) as title, f.php_url FROM m_form_name f LEFT JOIN m_user_access_menu u ON u.form_id = f.id WHERE f.active = true AND group_id = :group_id AND u.id IS NOT NULL AND u.user_id = :user_id ORDER BY seq::int";
@@ -121,20 +148,24 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </li>
 <?php endforeach; ?>
 </ul>
-<button id="hamburgerBtn" class="hamburger-btn hidden md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg bg-cyan-900/20 border border-cyan-700/30 hover:bg-cyan-900/40 transition" aria-label="Menu">
-<span class="block w-6 h-0.5 bg-cyan-400 mb-1.5"></span>
-<span class="block w-6 h-0.5 bg-cyan-400 mb-1.5"></span>
-<span class="block w-6 h-0.5 bg-cyan-400"></span>
-</button>
 </div>
+
+<!-- KANAN: user + logout (desktop) / hamburger (mobile) -->
 <div class="flex items-center space-x-3 text-base">
-<div class="user-info-desktop flex items-center space-x-3">
-<span class="text-slate-400">User: <strong class="text-cyan-300"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
-<a href="logout.php" class="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 rounded transition">Logout</a>
+<span class="text-slate-400 hidden sm:inline">User: <strong class="text-cyan-300"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
+<a id="header_logout" href="logout.php" class="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 rounded transition">Logout</a>
+
+<div class="relative">
+<!-- Hamburger Button -->
+<button id="hamburger_btn" class="items-center justify-center w-10 h-10 rounded-lg bg-cyan-900/20 border border-cyan-700/30 hover:bg-cyan-900/40 transition text-slate-200" aria-label="Menu" aria-haspopup="true" aria-expanded="false" onclick="toggleMobileMenu(event)">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+</button>
+<!-- Mobile Dropdown -->
+<div id="mobile_dropdown" class="hidden absolute right-0 top-full mt-2 w-60 bg-[#0f172a] border border-[#0a2d4a] rounded-xl shadow-2xl py-2 z-50 font-rajdhani text-lg">
+<a href="project.progress.m.php" class="block px-4 py-2.5 text-white hover:bg-[#071d30] border-b border-[#0a2d4a]/50">📊 [M] Project Progress</a>
+<a href="stock.card.m.php" class="block px-4 py-2.5 text-white hover:bg-[#071d30] border-b border-[#0a2d4a]/50">📦 Stock Card Mobile</a>
+<a href="logout.php" class="block px-4 py-2.5 text-rose-400 hover:bg-[#071d30]">🚪 Logout</a>
 </div>
-<div class="user-info-mobile hidden items-center space-x-2">
-<span class="text-slate-400 text-sm">👤 <?= htmlspecialchars(substr($_SESSION['username'] ?? 'Admin', 0, 10)); ?></span>
-<a href="logout.php" class="px-2 py-1 bg-rose-950/60 text-rose-300 border border-rose-800/50 rounded text-xs">Logout</a>
 </div>
 </div>
 </div>
@@ -143,7 +174,6 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
 <!-- MAIN -->
 <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
-<!-- HEADER & SELECTOR PROYEK -->
 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-[#04101c] p-4 rounded-xl border border-[#0a2d4a] gap-4">
 <div>
 <h1 class="text-3xl font-medium text-white tracking-wide font-rajdhani uppercase">RAB-PROJECT MONITORING DASHBOARD</h1>
@@ -157,7 +187,6 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </div>
 </div>
 
-<!-- TAB BAR -->
 <div id="tab_bar" class="flex flex-wrap gap-2 bg-[#04101c] p-3 rounded-xl border border-[#0a2d4a]" role="tablist">
 <button type="button" class="tab-btn active" id="tabbtn_ringkasan" data-tab="ringkasan">Ringkasan Proyek</button>
 <button type="button" class="tab-btn" id="tabbtn_keuangan" data-tab="keuangan">Keuangan</button>
@@ -365,7 +394,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <th class="p-3 text-base text-right">Total Realisasi</th>
 <th class="p-3 text-base text-right">Sisa Qty</th>
 <th class="p-3 text-base text-center">% Terpakai</th>
-<th class="p-3 text-center">Status</th>
+<th class="p-3 text-base text-center">Status</th>
 </tr>
 </thead>
 <tbody id="material_tbody" class="divide-y divide-[#0a2d4a] text-slate-300 font-mono">
@@ -386,19 +415,75 @@ let globalTaxRates = [];
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 async function apiFetch(url, opts = {}) {
-    const res = await fetch(url, opts);
-    if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
-    let json;
-    try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
-    if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
-    if (json.success === false) throw new Error(json.message || "Permintaan gagal (server).");
-    return json;
+const res = await fetch(url, opts);
+if (res.status === 401) { alert('Sesi berakhir. Silakan login kembali.'); location.href = 'login.php'; throw new Error('401'); }
+if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
+let json;
+try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
+if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
+return json;
+}
+
+/* ============================================================
+   [FIX #1] MOBILE: hamburger + deteksi perangkat
+   ============================================================ */
+function toggleMobileMenu(ev) {
+if (ev) ev.stopPropagation();
+const m = document.getElementById('mobile_dropdown');
+const b = document.getElementById('hamburger_btn');
+m.classList.toggle('hidden');
+b.setAttribute('aria-expanded', String(!m.classList.contains('hidden')));
+}
+document.addEventListener('click', function (event) {
+const menu = document.getElementById('mobile_dropdown');
+const btn = document.getElementById('hamburger_btn');
+if (!menu || !btn) return;
+if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !btn.contains(event.target)) {
+menu.classList.add('hidden');
+btn.setAttribute('aria-expanded', 'false');
+}
+});
+// Tutup menu mobile saat salah satu item diklik
+document.querySelectorAll('#mobile_dropdown a').forEach(a => a.addEventListener('click', () => document.getElementById('mobile_dropdown').classList.add('hidden')));
+// Deteksi hardware mobile (HP/tablet touch) -> tetap pakai hamburger walau layar lebar
+if (navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+document.body.classList.add('is-mobile-hw');
+}
+
+/* ============================================================
+   [FIX #2 & #3] MEGA MENU: kontrol JS, hanya 1 terbuka,
+   posisi tepat di bawah menu + auto-clamp ke tepi layar
+   ============================================================ */
+function closeAllDropdowns(except) {
+document.querySelectorAll('.dropdown-menu.open').forEach(d => { if (d !== except) d.classList.remove('open'); });
+}
+function positionDropdown(li, dd) {
+dd.style.left = '0px';                       // default: tepat di bawah kiri menu
+const rect = dd.getBoundingClientRect();
+const vw = document.documentElement.clientWidth;
+let shift = 0;
+if (rect.right > vw - 8) shift = (vw - 8) - rect.right;   // geser kiri bila overflow kanan
+if (rect.left + shift < 8) shift = 8 - rect.left;          // jangan keluar tepi kiri
+dd.style.left = shift + 'px';
+}
+function initMegaMenu() {
+document.querySelectorAll('.nav-item').forEach(li => {
+const dd = li.querySelector('.dropdown-menu');
+if (!dd) return;
+li.addEventListener('mouseenter', () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
+li.addEventListener('mouseleave', () => dd.classList.remove('open'));
+li.addEventListener('focusin',  () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
+li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget)) dd.classList.remove('open'); });
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(null); });
 }
 
 document.addEventListener('DOMContentLoaded', () => { initDashboard(); });
 
+/* ===================== TAB ENGINE ===================== */
 const TAB_LOADERS = {
 ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
 keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
@@ -407,7 +492,6 @@ material:  () => { loadMaterialMonitoring(); }
 const TAB_CHARTS = { keuangan: () => [finChart], material: () => [doughnutChart, barMaterialChart] };
 const tabDirty = { ringkasan: true, keuangan: true, material: true };
 let activeTab = 'ringkasan';
-
 function tabFromHash() {
 const h = (location.hash || '').replace('#', '');
 return TAB_LOADERS[h] ? h : 'ringkasan';
@@ -441,40 +525,24 @@ window.addEventListener('hashchange', () => { const t = tabFromHash(); if (t !==
 
 async function initDashboard() {
 await loadProjects();
+initMegaMenu();
 switchTab(tabFromHash(), true);
 }
-
 async function loadProjects() {
-    try {
-    const cachedProjects = localStorage.getItem("rab_dash_projects");
-    let projects = null;
-    if (cachedProjects) {
-    try { projects = JSON.parse(cachedProjects); } catch (e) {}
-    }
-    if (!projects || !projects.length) {
-    const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
-    if (json.success && json.data) {
-    projects = json.data;
-    localStorage.setItem("rab_dash_projects", JSON.stringify(projects));
-    }
-    }
-    const select = document.getElementById("project_select");
-    if (projects && projects.length > 0) {
-    select.innerHTML = "<option value=\"0\">-- Semua Proyek --</option>" + projects.map(p => `<option value="${p.id}">${p.project_name || p.name}</option>`).join("");
-    } else { select.innerHTML = "<option value=\"0\">Tidak ada proyek</option>"; }
-    } catch (err) {
-    console.error("Error load projects:", err);
-    document.getElementById("project_select").innerHTML = "<option value=\"0\">Gagal memuat proyek: " + esc(String(err)) + "</option>";
-    }
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
+const select = document.getElementById('project_select');
+if (json.success && json.data.length > 0) {
+select.innerHTML = '<option value="0">-- Semua Proyek --</option>' + json.data.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
+} else { select.innerHTML = '<option value="0">Tidak ada proyek</option>'; }
+} catch (err) { console.error('Error load projects:', err); }
 }
-
 function onProjectChange(val) {
 currentProjectId = parseInt(val) || 0;
 refreshDashboard();
 }
 
-const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
+/* ===================== LOADERS (action = read_*) ===================== */
 async function loadFinancialAging() {
 const tbody = document.getElementById('aging_tbody');
 const showMsg = (msg, cls) => { tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center ${cls} font-sans">${msg}</td></tr>`; };
@@ -502,7 +570,6 @@ tbody.innerHTML = row('Piutang (AR)', 'text-cyan-400', ar, 'text-emerald-400') +
 <tr><td colspan="6" class="pt-2 text-right text-[9px] text-slate-500 font-sans">Umur dihitung dari tanggal invoice, per ${json.as_of}</td></tr>`;
 } catch (err) { console.error('Error load financial aging:', err); showMsg('Gagal memuat data aging.', 'text-rose-400'); }
 }
-
 async function loadInvoicePipeline() {
 try {
 const json = await apiFetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
@@ -516,15 +583,9 @@ document.getElementById('pip_partial_val').innerText = fmtRp(d.values['Sebagian'
 document.getElementById('pip_partial_cnt').innerText = d.counts['Sebagian'] + ' invoice';
 document.getElementById('pip_paid_cnt').innerText = d.counts['Lunas'] + ' invoice';
 }
-} catch (err) { alert('Gagal memuat invoice pipeline: ' + esc(String(err))); }
+} catch (err) { console.error('Error load invoice pipeline:', err); }
 }
-
-const LEVEL_STYLE = {
-danger: 'border-rose-500 text-rose-200',
-warn:   'border-amber-500 text-amber-200',
-info:   'border-cyan-500 text-cyan-200'
-};
-
+const LEVEL_STYLE = { danger: 'border-rose-500 text-rose-200', warn: 'border-amber-500 text-amber-200', info: 'border-cyan-500 text-cyan-200' };
 async function loadActionCenter() {
 const ul = document.getElementById('action_list');
 try {
@@ -543,7 +604,6 @@ else if (calm > 0) html += `<li class="text-center text-slate-500 text-[11px] pt
 ul.innerHTML = html;
 } catch (err) { console.error('Error load action center:', err); ul.innerHTML = '<li class="text-center text-rose-400 text-xs py-3">Error memuat Action Center</li>'; }
 }
-
 async function loadMilestones() {
 const list = document.getElementById('milestone_list');
 try {
@@ -562,7 +622,6 @@ return `
 } else { list.innerHTML = '<div class="text-center text-slate-500 text-xs py-4">Tidak ada milestone terdekat.</div>'; }
 } catch (err) { list.innerHTML = '<div class="text-center text-rose-400 text-xs py-4">Error memuat milestone</div>'; }
 }
-
 async function loadProfitability() {
 const tbody = document.getElementById('profit_tbody');
 try {
@@ -587,23 +646,21 @@ return `<tr class="hover:bg-[#071d30]/50"><td class="py-2 font-sans text-white t
 } else { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-slate-500 text-xs">Tidak ada data profitabilitas.</td></tr>'; }
 } catch (err) { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-rose-400 text-xs">Error memuat data</td></tr>'; }
 }
-
 const HEALTH_STYLE = {
-KRITIS:  { badge: 'bg-rose-950 text-rose-300 border-rose-800',      icon: '🔴', label: 'KRITIS',  num: 'text-rose-400',    bar: 'bg-rose-500' },
-WASPADA: { badge: 'bg-amber-950 text-amber-300 border-amber-800',   icon: '🟡', label: 'WASPADA', num: 'text-yellow-300',  bar: 'bg-yellow-400' },
+KRITIS:  { badge: 'bg-rose-950 text-rose-300 border-rose-800', icon: '🔴', label: 'KRITIS', num: 'text-rose-400', bar: 'bg-rose-500' },
+WASPADA: { badge: 'bg-amber-950 text-amber-300 border-amber-800', icon: '🟡', label: 'WASPADA', num: 'text-yellow-300', bar: 'bg-yellow-400' },
 NORMAL:  { badge: 'bg-emerald-950 text-emerald-300 border-emerald-800', icon: '🟢', label: 'NORMAL', num: 'text-emerald-400', bar: 'bg-emerald-500' },
-NA:      { badge: 'bg-slate-800 text-slate-300 border-slate-600',   icon: '⚪', label: 'BUDGET KOSONG', num: 'text-slate-400', bar: 'bg-slate-500' }
+NA:      { badge: 'bg-slate-800 text-slate-300 border-slate-600', icon: '⚪', label: 'BUDGET KOSONG', num: 'text-slate-400', bar: 'bg-slate-500' }
 };
 const HEALTH_ICONS = ['🏗️', '🏢', '🏘️', '🏭', '🏠'];
 const RISK_STYLE = {
-HIGH:   { badge: 'bg-rose-950 text-rose-300 border-rose-800',       text: 'text-rose-300' },
-MEDIUM: { badge: 'bg-amber-950 text-amber-300 border-amber-800',    text: 'text-amber-300' },
+HIGH:   { badge: 'bg-rose-950 text-rose-300 border-rose-800', text: 'text-rose-300' },
+MEDIUM: { badge: 'bg-amber-950 text-amber-300 border-amber-800', text: 'text-amber-300' },
 LOW:    { badge: 'bg-emerald-950 text-emerald-300 border-emerald-800', text: 'text-emerald-300' }
 };
 const SEV_STYLE = { high: 'border-rose-600 text-rose-200', medium: 'border-amber-600 text-amber-200', low: 'border-cyan-700 text-cyan-200' };
 let healthSelectedId = 0, aiRequestToken = 0;
 const LEVEL_RANK = { NA: 0, NORMAL: 0, WASPADA: 1, KRITIS: 2 };
-
 function applyAiRiskToCard(id, aiRisk) {
 const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
 if (!card) return;
@@ -616,7 +673,6 @@ badge.innerHTML = `${st.icon} ${st.label} • AI`;
 card.querySelectorAll('.health-num').forEach(el => { el.className = `health-num ${st.num}`; });
 card.setAttribute('data-level', target);
 }
-
 function selectHealthProject(id, refresh) {
 healthSelectedId = id;
 document.querySelectorAll('#health_cards [data-pid]').forEach(el => {
@@ -625,7 +681,6 @@ el.classList.toggle('ring-2', on); el.classList.toggle('ring-cyan-400', on);
 });
 loadProjectAI(id, !!refresh);
 }
-
 async function loadProjectAI(id, refresh) {
 const box = document.getElementById('health_reco');
 const token = ++aiRequestToken;
@@ -661,7 +716,6 @@ box.querySelector('.aiRefresh').onclick = () => loadProjectAI(id, true);
 applyAiRiskToCard(id, d.risk);
 } catch (err) { if (token === aiRequestToken) box.innerHTML = '<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">Error memuat rekomendasi AI</div>'; }
 }
-
 async function loadProjectHealth() {
 const box = document.getElementById('health_cards'), reco = document.getElementById('health_reco');
 try {
@@ -703,7 +757,6 @@ const pick = ids.includes(healthSelectedId) ? healthSelectedId : (ids.includes(p
 selectHealthProject(pick, false);
 } catch (err) { console.error('Error load project health:', err); box.innerHTML = '<div class="text-center text-rose-400 text-xs py-4 col-span-full">Error memuat kesehatan proyek</div>'; }
 }
-
 async function loadExtra() {
 try {
 const json = await apiFetch(`${API_ENDPOINT}?action=read_extra&project_id=${currentProjectId}`);
@@ -723,9 +776,8 @@ card.style.display = '';
 document.getElementById('extra_subcon').innerText = fmtRp(d.subcon.sisa_hutang);
 document.getElementById('extra_subcon_sub').innerText = `${d.subcon.spk_aktif} SPK aktif | Nilai ${fmtRp(d.subcon.nilai_spk)} | Tertagih ${fmtRp(d.subcon.tertagih)} | sisa hutang prestasi`;
 } else { card.style.display = 'none'; }
-} catch (err) { console.error('Error load extra:', err); alert('Gagal memuat data tambahan: ' + esc(String(err))); }
+} catch (err) { console.error('Error load extra:', err); }
 }
-
 async function loadTaxRates() {
 const badge = document.getElementById('kmk_badge');
 const validDateEl = document.getElementById('kmk_valid_date');
@@ -741,13 +793,11 @@ filterTaxRates();
 }
 } catch (err) { document.getElementById('tax_rate_tbody').innerHTML = '<tr><td colspan="3" class="p-3 text-center text-rose-400">Gagal memuat kurs pajak</td></tr>'; }
 }
-
 function filterTaxRates() {
 const query = (document.getElementById('search_tax_currency').value || '').trim().toLowerCase();
 const filtered = globalTaxRates.filter(r => (r.currency_code && r.currency_code.toLowerCase().includes(query)) || (r.currency_name && r.currency_name.toLowerCase().includes(query)));
 renderTaxRates(filtered);
 }
-
 function renderTaxRates(rates) {
 const tbody = document.getElementById('tax_rate_tbody');
 if (!rates || rates.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center text-slate-500">Mata uang tidak ditemukan.</td></tr>'; return; }
@@ -759,18 +809,16 @@ return `<tr class="hover:bg-[#071d30]/50"><td class="p-1.5 font-bold text-white"
 <td class="p-1.5 text-center ${dirColor}">${prefix}${formatNum(r.change_amount)}</td></tr>`;
 }).join('');
 }
-
 async function syncTaxRates() {
 const btn = document.getElementById('btn_sync_tax');
 btn.disabled = true; btn.innerText = 'Syncing...';
 try {
-const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`);
+const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, { method: 'POST' });
 alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
 await loadTaxRates();
 } catch (err) { alert('Gagal menghubungi server sync kurs'); }
 finally { btn.disabled = false; btn.innerText = 'Update Kurs'; }
 }
-
 async function loadFinancialPerformance() {
 const year = document.getElementById('fin_year_select').value;
 try {
@@ -782,20 +830,17 @@ const total = [...json.datasets.pendapatan, ...json.datasets.pengeluaran].reduce
 setFinMessage(total === 0 ? `Belum ada transaksi pendapatan/pengeluaran pada ${json.year}` : '', false);
 } catch (err) { console.error('Error load financial performance:', err); setFinMessage('Gagal terhubung ke server.', true); }
 }
-
 function fillYearSelect(years, selected) {
 const sel = document.getElementById('fin_year_select');
 if (!years || !years.length) return;
 sel.innerHTML = years.map(y => `<option value="${y}" ${String(y) === String(selected) ? 'selected' : ''}>${y}</option>`).join('');
 }
-
 function setFinMessage(msg, isError) {
 const el = document.getElementById('fin_empty');
 if (!msg) { el.classList.add('hidden'); el.innerHTML = ''; return; }
 el.className = 'absolute inset-0 flex items-center justify-center text-center px-6 text-[11px] font-sans pointer-events-none ' + (isError ? 'text-rose-400' : 'text-slate-400');
 el.textContent = msg;
 }
-
 function renderFinChart(labels, incData, expData) {
 const ctx = document.getElementById('finChartCanvas').getContext('2d');
 if (finChart) finChart.destroy();
@@ -806,7 +851,6 @@ data: { labels: labels, datasets: [{ label: 'Pendapatan', data: incData, backgro
 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 9 } } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${formatIDR(c.parsed.y)}` } } }, scales: { x: { ticks: { color: '#94a3b8', font: { size: 8 } }, grid: { color: '#0a2d4a' } }, y: { beginAtZero: true, ticks: { color: '#94a3b8', font: { size: 8 }, callback: compact }, grid: { color: '#0a2d4a' } } } }
 });
 }
-
 async function loadMaterialMonitoring() {
 const tbody = document.getElementById('material_tbody');
 try {
@@ -861,7 +905,6 @@ tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center text-rose-400">${e
 }
 } catch (err) { console.error('Error load material monitoring:', err); tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center text-rose-400">Gagal memuat data monitoring material</td></tr>'; }
 }
-
 function renderDoughnutChart(counts) {
 const ctx = document.getElementById('doughnutChartCanvas').getContext('2d');
 if (doughnutChart) doughnutChart.destroy();
@@ -871,7 +914,6 @@ data: { labels: ['On Track', 'Warning', 'Overbudget'], datasets: [{ data: [count
 options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } }
 });
 }
-
 function renderBarMaterialChart(topItems) {
 const ctx = document.getElementById('barMaterialCanvas').getContext('2d');
 if (barMaterialChart) barMaterialChart.destroy();
