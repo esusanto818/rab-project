@@ -1,3 +1,13 @@
+## [2026-11-22 01:30:00 WIB] - Audit & Patching Khusus Purchase Order Detail Items
+- **Tujuan / Permintaan**: Audit mendalam dan verifikasi pada modul Purchase Order (`js/po.js` & `php-crud/poCRD.php`) untuk memastikan detail item PO tampil sempurna saat baris PO diklik.
+- **File yang Diubah**: `docs/2026-11-22_PO_DETAIL_ITEM_PATCH.md`, `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
+- **Status Verifikasi**: `php -l` lolos (0 syntax error), pengujian CLI `load_po` mengembalikan data item PO secara lengkap dan akurat.
+
+## [2026-11-22 01:00:00 WIB] - Sinkronisasi Migrasi SQL & Patching Grid Master-Detail Menyeluruh
+- **Tujuan / Permintaan**: Sinkronisasi seluruh migrasi SQL ke database `proyekGMN`, audit dan patching endpoint PO dan Purchase Planning, serta verifikasi sapu bersih seluruh endpoint `php-crud/` dan grid ExtJS agar berjalan 100% tanpa error.
+- **File yang Diubah**: `sql/2026-11-20.cross_module_patch.sql`, `docs/2026-11-22_DB_SYNC_AND_GRID_PATCH_AUDIT.md`, `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
+- **Status Verifikasi**: `php -l` lolos (0 syntax error), seluruh migrasi SQL berhasil diterapkan ke database `proyekGMN` (145 tabel), grid detail PO & Purchase Planning terverifikasi akurat.
+
 ## [2026-11-21 23:59:59 WIB] - Perbaikan Presisi Light Theme Dashboard & Perbaikan Navigasi Stok Mobile
 - **Tujuan / Permintaan**: Menyempurnakan kontras Light Theme pada navbar, banner, tab, dan teks kartu di `views/dashboard.php`; memperbaiki error akses ditolak pada tombol Dashboard di `views/stock.card.m.php` dengan mengarahkannya ke `dashboard.php` dan menyinkronkan tema via `app-theme.css`.
 - **File yang Diubah**: `views/dashboard.php`, `views/stock.card.m.php`, `views/project.progress.m.php`, `docs/2026-11-21_DASHBOARD_LIGHT_AND_MOBILE_FIX.md`, `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
