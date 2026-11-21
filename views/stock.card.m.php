@@ -40,7 +40,7 @@ $jsSrc = $cfg['js'];
 
 // Menu bawah: halaman mobile yang sudah ada
 $NAV = array(
-    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => 'dashboard.m.php',        'active' => false),
+    array('icon' => '🏠', 'label' => 'Dashboard', 'href' => 'dashboard.php',        'active' => false),
     array('icon' => '📦', 'label' => 'Stok',      'href' => 'stock.card.m.php',       'active' => true),
     array('icon' => '📊', 'label' => 'Progress',  'href' => 'project.progress.m.php', 'active' => false),
 );
@@ -53,6 +53,7 @@ $NAV = array(
 <meta name="theme-color" content="#020812">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="apple-touch-icon" href="<?php echo htmlspecialchars($appBase); ?>assets/icon-192.png">
+<link rel="stylesheet" href="../css/app-theme.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
 :root{--bg:#020812;--card:#0a1624;--card2:#0d1e30;--line:#16324a;--txt:#e6eef5;--mut:#7f96aa;--acc:#22b8cf;--acc2:#0e7490;--in:#2e9e4f;--out:#e0573f;--warn:#d9822b;color-scheme:dark}
@@ -140,5 +141,10 @@ window.addEventListener('error',function(e){if(e&&e.message)scShowErr('Error JS:
 window.SC_CFG = <?php echo json_encode($cfg, JSON_UNESCAPED_SLASHES); ?>;
 </script>
 <script src="<?php echo htmlspecialchars($jsSrc); ?>" onerror="scShowErr('File JS gagal dimuat: <?php echo htmlspecialchars($jsSrc); ?>')"></script>
+<script>
+// Apply saved theme to mobile pages
+const savedTheme = localStorage.getItem('app_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
 </body>
 </html>

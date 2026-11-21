@@ -21,6 +21,7 @@ $appBase = rtrim(BASE_URL, '/') . '/';
 <title>Lapor Progress</title>
 <link rel="manifest" href="<?= htmlspecialchars($appBase, ENT_QUOTES, "UTF-8") ?>manifest.progress.json">
 <link rel="apple-touch-icon" href="<?= htmlspecialchars($appBase, ENT_QUOTES, "UTF-8") ?>assets/icon-192.png">
+<link rel="stylesheet" href="../css/app-theme.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <style>
@@ -238,5 +239,9 @@ window.formAccess = <?php echo json_encode(intval($_SESSION["FormAccess"] ?? 0))
 window.APP_BASE_URL = <?php echo json_encode($appBase); ?>;
 </script>
 <script type="text/javascript" src="<?= htmlspecialchars($appBase, ENT_QUOTES, "UTF-8") ?>js/project.progress.m.js"></script>
+<script>
+const savedTheme = localStorage.getItem('app_theme') || 'dark';
+document.documentElement.setAttribute('data-theme', savedTheme);
+</script>
 </body>
 </html>

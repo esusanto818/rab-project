@@ -1,8 +1,18 @@
-<?php 
-$B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");  
+<?php
+$B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 $favVer = date('YmdHis');
-
 ?>
+<script type="text/javascript">
+  (function() {
+    var saved = localStorage.getItem('app_theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    window.addEventListener('storage', function(e) {
+      if (e.key === 'app_theme' && e.newValue) {
+        document.documentElement.setAttribute('data-theme', e.newValue);
+      }
+    });
+  })();
+</script>
 <link rel="shortcut icon" href="<?=$B?>/favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="icon" href="<?=$B?>/favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="apple-touch-icon" href="<?=$B?>/favicon.ico?v=<?=$favVer?>">

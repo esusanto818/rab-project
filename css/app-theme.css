@@ -1,54 +1,54 @@
 /* ==========================================================================
    CENTRALIZED APPLICATION THEME STYLES (Light & Dark Theme with CSS Variables)
-   [2026-11-21] Konsolidasi CSS Global untuk ExtJS 3.4.1 dan Tailwind UI / Dashboard
+   [2026-11-21] Industrial Slate & Steel Amber Theme Implementation
    ========================================================================== */
 
-:root {
-  --bg-main: #f8fafc;
-  --bg-panel: #ffffff;
-  --bg-card: #ffffff;
-  --border-color: #cbd5e1;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --primary: #0284c7;
-  --primary-hover: #0369a1;
-  --accent: #0ea5e9;
-  --header-bg: #0f172a;
-  --header-text: #f8fafc;
-  --grid-header-bg: #f1f5f9;
-  --grid-header-text: #334155;
-  --grid-row-bg: #ffffff;
-  --grid-row-alt: #f8fafc;
-  --grid-cell-text: #0f172a;
-  --grid-selected-bg: #e0f2fe;
-  --grid-selected-text: #0369a1;
-  --input-bg: #ffffff;
-  --input-text: #0f172a;
-  --input-border: #cbd5e1;
+:root, html[data-theme="light"] {
+  --bg-main: #F1F5F9;
+  --bg-panel: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --header-bg: #0F172A;
+  --header-text: #F8FAFC;
+  --border-color: #CBD5E1;
+  --text-main: #0F172A;
+  --text-muted: #475569;
+  --primary: #0369A1;
+  --primary-hover: #075985;
+  --accent-strong: #D97706;
+  --grid-header-bg: #E2E8F0;
+  --grid-header-text: #0F172A;
+  --grid-row-bg: #FFFFFF;
+  --grid-row-alt: #F8FAFC;
+  --grid-cell-text: #0F172A;
+  --grid-selected-bg: #DBEAFE;
+  --grid-selected-text: #1E3A8A;
+  --input-bg: #FFFFFF;
+  --input-text: #0F172A;
+  --input-border: #94A3B8;
 }
 
-[data-theme="dark"] {
-  --bg-main: #020b14;
-  --bg-panel: #0d2233;
-  --bg-card: #091824;
-  --border-color: #1e3a5f;
-  --text-main: #e2e8f0;
-  --text-muted: #94a3b8;
-  --primary: #22d3ee;
-  --primary-hover: #06b6d4;
-  --accent: #38bdf8;
-  --header-bg: #000000;
-  --header-text: #ffffff;
-  --grid-header-bg: #212d34;
-  --grid-header-text: #fde047;
-  --grid-row-bg: #0c1021;
-  --grid-row-alt: #0c1021;
-  --grid-cell-text: #ffffff;
-  --grid-selected-bg: #3f5764;
-  --grid-selected-text: #ffffff;
-  --input-bg: #14324a;
-  --input-text: #ffffff;
-  --input-border: #2b5d7a;
+html[data-theme="dark"] {
+  --bg-main: #090D16;
+  --bg-panel: #111827;
+  --bg-card: #111827;
+  --header-bg: #030712;
+  --header-text: #F8FAFC;
+  --border-color: #1E293B;
+  --text-main: #F1F5F9;
+  --text-muted: #94A3B8;
+  --primary: #38BDF8;
+  --primary-hover: #0EA5E9;
+  --accent-strong: #F59E0B;
+  --grid-header-bg: #1E293B;
+  --grid-header-text: #FBBF24;
+  --grid-row-bg: #111827;
+  --grid-row-alt: #0F172A;
+  --grid-cell-text: #F1F5F9;
+  --grid-selected-bg: #1E3A5F;
+  --grid-selected-text: #FFFFFF;
+  --input-bg: #090D16;
+  --input-text: #F1F5F9;
+  --input-border: #334155;
 }
 
 /* Global Transition */
@@ -63,62 +63,103 @@ body {
 }
 
 /* ExtJS Overrides for Dark / Light Themes */
-[data-theme="dark"] .x-panel-body,
-[data-theme="dark"] .x-window-body,
-[data-theme="dark"] .x-panel-fc {
+.x-panel-body,
+.x-window-body,
+.x-panel-fc,
+.x-window-mc {
   background-color: var(--bg-panel) !important;
   color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] .x-grid3-hd-row td,
-[data-theme="dark"] .x-grid3-header-offset,
-[data-theme="dark"] .x-grid3-header,
-[data-theme="dark"] .x-grid3-header-inner {
+.x-window-tc, .x-window-bc, .x-window-ml, .x-window-mr, .x-window-header {
+  background-color: var(--header-bg) !important;
+  color: var(--header-text) !important;
+  border-color: var(--border-color) !important;
+}
+
+.x-window-header-text {
+  color: var(--header-text) !important;
+}
+
+.x-grid3-hd-row td,
+.x-grid3-header-offset,
+.x-grid3-header,
+.x-grid3-header-inner {
   background-color: var(--grid-header-bg) !important;
   color: var(--grid-header-text) !important;
+  border-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] .x-grid3-scroller,
-[data-theme="dark"] .x-grid3-row {
+.x-grid3-scroller,
+.x-grid3-row {
   background-color: var(--grid-row-bg) !important;
   border-color: var(--border-color) !important;
 }
 
-[data-theme="dark"] .x-grid3-cell {
+.x-grid3-row-alt {
+  background-color: var(--grid-row-alt) !important;
+}
+
+.x-grid3-cell {
   color: var(--grid-cell-text) !important;
 }
 
-[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell {
+.x-grid3-row-selected .x-grid3-cell,
+.x-grid3-row-selected {
   background-color: var(--grid-selected-bg) !important;
   color: var(--grid-selected-text) !important;
 }
 
-[data-theme="dark"] .x-form-text,
-[data-theme="dark"] textarea.x-form-field,
-[data-theme="dark"] .x-form-field {
+.x-form-text,
+.x-form-field,
+textarea.x-form-field,
+input.x-form-field {
   background-color: var(--input-bg) !important;
   color: var(--input-text) !important;
   border-color: var(--input-border) !important;
 }
 
-[data-theme="dark"] .x-form-item label {
+.x-form-item label {
   color: var(--text-muted) !important;
 }
 
-[data-theme="dark"] .x-toolbar {
+.x-toolbar, .x-panel-btns {
+  background-color: var(--bg-panel) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+.x-btn button {
+  color: var(--text-main) !important;
+}
+
+.x-combo-list {
+  background-color: var(--bg-panel) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+
+.x-combo-list-item {
+  color: var(--text-main) !important;
+}
+
+.x-combo-list-item:hover, .x-combo-list-selected {
+  background-color: var(--grid-selected-bg) !important;
+  color: var(--grid-selected-text) !important;
+}
+
+.x-tab-panel-header, .x-tab-strip-top {
   background-color: var(--bg-panel) !important;
   border-color: var(--border-color) !important;
 }
 
-/* Light Mode ExtJS Overrides */
-[data-theme="light"] .x-grid3-hd-row td,
-[data-theme="light"] .x-grid3-header {
-  background-color: var(--grid-header-bg) !important;
-  color: var(--grid-header-text) !important;
-}
-[data-theme="light"] .x-grid3-row {
+.x-tab-strip-top .x-tab-strip-active {
   background-color: var(--grid-row-bg) !important;
+  border-color: var(--border-color) !important;
 }
-[data-theme="light"] .x-grid3-cell {
-  color: var(--grid-cell-text) !important;
+
+.x-tab-strip-top .x-tab-strip-active span.x-tab-strip-text {
+  color: var(--primary) !important;
+  font-weight: bold;
 }
