@@ -23,7 +23,7 @@ header('Content-Type: application/json');
 
 $task = $_REQUEST['task'] ?? '';
 
-// Perlindungan mandiri: wajib login dan memiliki hak minimal baca modul proyek.
+/* Perlindungan mandiri: wajib login dan memiliki hak minimal baca modul proyek. */
 if (empty($_SESSION['user_id']) || !is_numeric($_SESSION['user_id']) || (int)$_SESSION['user_id'] <= 0) {
     http_response_code(401);
     mpJson(['success' => false, 'message' => 'Sesi berakhir, silakan login ulang.']);
@@ -34,7 +34,7 @@ if ($access < 1) {
     mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk membaca data proyek.']);
 }
 
-// Operasi yang mengubah data proyek/RAB/tagihan hanya boleh dipanggil melalui POST.
+/* Operasi yang mengubah data proyek/RAB/tagihan hanya boleh dipanggil melalui POST. */
 if (in_array($task, ['auto_invoice', 'save_ai_task_plan', 'create', 'update', 'delete'], true)
     && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
     http_response_code(405);
@@ -93,16 +93,16 @@ function mpExec($db, $sql, array $params = [], $ctx = '') {
  *    Sinkron tanggal tagihan otomatis = reverse jurnal lama lalu posting ulang di tanggal baru.
  * Butuh migrasi: sql/2026-10-28.project_invoices_auto.sql
  * ============================================================ */
-const MP_INV_LEAD_DAYS    = 7;                                    // tgl invoice = mulai task - 7 hari
-const MP_INV_REST_WEIGHTS = [20, 20, 30];                         // bobot Termin 1..3 (DP dihitung terpisah)
+const MP_INV_LEAD_DAYS    = 7;                                    /* tgl invoice = mulai task - 7 hari */
+const MP_INV_REST_WEIGHTS = [20, 20, 30];                         /* bobot Termin 1..3 (DP dihitung terpisah) */
 const MP_INV_NAMES        = ['Down Payment', 'Termin 1', 'Termin 2', 'Pelunasan Proyek'];
 
-const MP_JOURNAL_REF = 'project_invoice';          // sama dengan project_invoiceCRD.php (TI_JOURNAL_REF)
-const MP_PPN_RULE    = 'PROJECT_INVOICE_PPN';      // Dr Piutang Usaha / Cr PPN Keluaran
+const MP_JOURNAL_REF = 'project_invoice';          /* sama dengan project_invoiceCRD.php (TI_JOURNAL_REF) */
+const MP_PPN_RULE    = 'PROJECT_INVOICE_PPN';      /* Dr Piutang Usaha / Cr PPN Keluaran */
 
 function mpBool($v) { return $v === true || $v === 't' || $v === '1' || $v === 1; }
 
-// [AUTO-INV][REFACTOR] panggilan Gemini dipakai bersama oleh breakdown task & analisis tagihan
+/* [AUTO-INV][REFACTOR] panggilan Gemini dipakai bersama oleh breakdown task & analisis tagihan */
 function mpCallGemini($prompt, $timeout = 20) {
     $apiKey = getenv('GOOGLE_API_KEY');
     $candidateModels = ['gemini-3.6-flash','gemini-3.5-flash-lite'];
@@ -116,7 +116,7 @@ function mpCallGemini($prompt, $timeout = 20) {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
                 'contents' => [['parts' => [['text' => $prompt]]]],
-                'generationConfig' => ['responseMimeType' => 'application/json', 'maxOutputTokens' => 16384]   // [AI-BOQ] BoQ + expense panjang
+                'generationConfig' => ['responseMimeType' => 'application/json', 'maxOutputTokens' => 16384]   /* [AI-BOQ] BoQ + expense panjang */
             ]));
             curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'x-goog-api-key: ' . $apiKey]);
             curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
@@ -138,7 +138,7 @@ function mpCallGemini($prompt, $timeout = 20) {
     return trim(str_replace(['```json', '```'], '', $raw));
 }
 
-// [JURNAL] jurnal penagihan: DPP -> pendapatan, PPN -> PPN Keluaran (sama dengan ti_post_journal)
+/* [JURNAL] jurnal penagihan: DPP -> pendapatan, PPN -> PPN Keluaran (sama dengan ti_post_journal) */
 function mpPostInvoiceJournal($db, $invId, $invNo, $date, $dpp, $ppn, $projectName) {
     $jr = AutoPostJournal($db, [
         'rule_code' => 'PROJECT_INVOICE', 'reference_type' => MP_JOURNAL_REF, 'reference_id' => $invId,
@@ -158,7 +158,7 @@ function mpHasJournal($db, $invId) {
                             ['t' => MP_JOURNAL_REF, 'id' => $invId], 'cek jurnal');
 }
 
-// Persentase per slot: DP = dp_min_pct (default 30), sisanya proporsional 20:20:30 -> default 30-20-20-30
+/* Persentase per slot: DP = dp_min_pct (default 30), sisanya proporsional 20:20:30 -> default 30-20-20-30 */
 function mpSlotPcts($dpPct) {
     $dp   = ($dpPct > 0 && $dpPct < 100) ? (float)$dpPct : 30.0;
     $rest = 100 - $dp;
@@ -168,7 +168,7 @@ function mpSlotPcts($dpPct) {
     return $p;
 }
 
-// Titik pemicu default (index task): DP = task 1; Termin 1-3 = task pertama yang dimulai setelah 25% / 50% / 75% total durasi
+/* Titik pemicu default (index task): DP = task 1; Termin 1-3 = task pertama yang dimulai setelah 25% / 50% / 75% total durasi */
 function mpDefaultAnchors(array $tasks) {
     $n = count($tasks); $cumBefore = []; $cum = 0;
     foreach ($tasks as $i => $t) {
@@ -186,7 +186,7 @@ function mpDefaultAnchors(array $tasks) {
     return $idx;
 }
 
-// Nomor invoice berurutan dari satu nomor awal (CreateRefNo membaca data ter-commit, jadi tidak aman dipanggil berulang dalam 1 transaksi)
+/* Nomor invoice berurutan dari satu nomor awal (CreateRefNo membaca data ter-commit, jadi tidak aman dipanggil berulang dalam 1 transaksi) */
 function mpRefPlus($ref, $n) {
     if ($n === 0) return $ref;
     if (preg_match('/^(.*?)(\d+)$/', $ref, $m)) {
@@ -197,14 +197,14 @@ function mpRefPlus($ref, $n) {
 
 function mpMinusDays($ymd, $days) { return date('Y-m-d', strtotime($ymd . " -{$days} days")); }
 
-// Analisis data proyek + tagihan + pembayaran klien -> rencana tagihan (belum menyimpan apa pun)
+/* Analisis data proyek + tagihan + pembayaran klien -> rencana tagihan (belum menyimpan apa pun) */
 function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
     $proj = mpFetchOne($db, "SELECT id, name, client_id, contract_value, dp_min_pct, ppn_rate, ppn_inclusive FROM projects WHERE id = :id", ['id' => $projectId], 'plan_proj');
     if (!$proj) throw new Exception('Proyek tidak ditemukan.');
     $cv = round((float)$proj['contract_value'], 2);
     if ($cv <= 0) throw new Exception('Nilai Kontrak (Plafon) proyek belum diisi, tagihan tidak dapat dihitung.');
 
-    // [PPN] basis DPP: nilai kontrak sudah termasuk PPN -> DPP = kontrak / (1 + tarif)
+    /* [PPN] basis DPP: nilai kontrak sudah termasuk PPN -> DPP = kontrak / (1 + tarif) */
     $ppnRate = round((float)$proj['ppn_rate'], 2);
     $base    = (mpBool($proj['ppn_inclusive']) && $ppnRate > 0) ? round($cv / (1 + $ppnRate / 100), 2) : $cv;
 
@@ -219,7 +219,7 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
     $invoiced = 0.0; $invoicedDpp = 0.0; $paid = 0.0;
     foreach ($existing as $e) { $invoiced += (float)$e['amount']; $invoicedDpp += (float)$e['dpp']; $paid += (float)$e['paid_amount']; }
 
-    // riwayat pembayaran klien (seluruh proyek klien yang sama) sebagai bahan analisis AI
+    /* riwayat pembayaran klien (seluruh proyek klien yang sama) sebagai bahan analisis AI */
     $cli = ['inv_count' => 0, 'invoiced' => 0, 'paid' => 0];
     if ($proj['client_id']) {
         $cli = mpFetchOne($db,
@@ -228,7 +228,7 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
             ['c' => (int)$proj['client_id']], 'plan_client') ?: $cli;
     }
 
-    // slot yang bisa disinkronkan = tagihan otomatis yang belum ada pembayaran
+    /* slot yang bisa disinkronkan = tagihan otomatis yang belum ada pembayaran */
     $syncable = [];
     for ($j = 0; $j < min($k, 4); $j++) {
         if (mpBool($existing[$j]['auto_generated']) && (float)$existing[$j]['paid_amount'] <= 0) $syncable[] = $j;
@@ -238,7 +238,7 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
     $pcts = mpSlotPcts((float)$proj['dp_min_pct']);
 
     if ($k < 4 || count($syncable)) {
-        // --- titik pemicu: default deterministik, lalu coba disempurnakan AI ---
+        /* --- titik pemicu: default deterministik, lalu coba disempurnakan AI --- */
         $anchors = mpDefaultAnchors($tasks);
         $n = count($tasks);
         if ($useAi && $n >= 4) {
@@ -261,14 +261,14 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
                     $ids = [(int)($ai['termin1_task_id'] ?? 0), (int)($ai['termin2_task_id'] ?? 0), (int)($ai['termin3_task_id'] ?? 0)];
                     $ok = true; $prev = 0; $cand = [0];
                     foreach ($ids as $tid) {
-                        if (!isset($byId[$tid]) || $byId[$tid] <= $prev) { $ok = false; break; }   // wajib ada, berbeda, berurutan, bukan task pertama
+                        if (!isset($byId[$tid]) || $byId[$tid] <= $prev) { $ok = false; break; }   /* wajib ada, berbeda, berurutan, bukan task pertama */
                         $prev = $byId[$tid]; $cand[] = $prev;
                     }
                     if ($ok) { $anchors = $cand; $aiUsed = true; }
                     $analysis = trim((string)($ai['analysis'] ?? ''));
                 }
             } catch (Throwable $e) {
-                error_log('[m.proyekCRD][auto_invoice AI] ' . $e->getMessage());   // AI gagal -> tetap jalan dengan titik default
+                error_log('[m.proyekCRD][auto_invoice AI] ' . $e->getMessage());   /* AI gagal -> tetap jalan dengan titik default */
             }
         }
         if ($analysis === '') {
@@ -276,12 +276,12 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
                         " dari nilai kontrak " . number_format($cv, 2) . ". Titik penagihan dihitung dari porsi durasi task.";
         }
 
-        // --- susun baris per slot ---
-        $remaining = round($base - $invoicedDpp, 2);     // [PPN] sisa dihitung atas DPP
+        /* --- susun baris per slot --- */
+        $remaining = round($base - $invoicedDpp, 2);     /* [PPN] sisa dihitung atas DPP */
         for ($j = 0; $j < 4; $j++) {
             $t = $tasks[min($anchors[$j], $n - 1)];
-            $invDate = mpMinusDays($t['start_date'], MP_INV_LEAD_DAYS);        // [FIX] persis mulai task - 7 hari (tanpa dibatasi hari ini)
-            $dueDate = mpMinusDays($t['start_date'], 1);                       // jatuh tempo = mulai task - 1 hari
+            $invDate = mpMinusDays($t['start_date'], MP_INV_LEAD_DAYS);        /* [FIX] persis mulai task - 7 hari (tanpa dibatasi hari ini) */
+            $dueDate = mpMinusDays($t['start_date'], 1);                       /* jatuh tempo = mulai task - 1 hari */
             $row = ['slot' => $j, 'termin_name' => MP_INV_NAMES[$j], 'pct' => $pcts[$j], 'task_id' => (int)$t['id'],
                     'task_name' => $t['task_name'], 'task_start' => $t['start_date'],
                     'invoice_date' => $invDate, 'due_date' => $dueDate];
@@ -295,11 +295,11 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
                 if ($row['action'] === 'exists') { $row['invoice_date'] = $e['invoice_date']; $row['due_date'] = $e['due_date']; }
             } else {
                 $planned = round($base * $pcts[$j] / 100, 2);
-                $amt = ($j === 3) ? $remaining : min($planned, $remaining);   // slot terakhir menyerap sisa
+                $amt = ($j === 3) ? $remaining : min($planned, $remaining);   /* slot terakhir menyerap sisa */
                 if ($amt <= 0) { $row['amount'] = 0; $row['dpp'] = 0; $row['ppn'] = 0; $row['action'] = 'skip'; }
                 else {
-                    $amt = round($amt, 2); $ppnAmt = ($ppnRate > 0) ? round($amt * $ppnRate / 100, 2) : 0.0;     // [PPN]
-                    $row['dpp'] = $amt; $row['ppn'] = $ppnAmt; $row['amount'] = round($amt + $ppnAmt, 2);       // amount = total tagihan
+                    $amt = round($amt, 2); $ppnAmt = ($ppnRate > 0) ? round($amt * $ppnRate / 100, 2) : 0.0;     /* [PPN] */
+                    $row['dpp'] = $amt; $row['ppn'] = $ppnAmt; $row['amount'] = round($amt + $ppnAmt, 2);       /* amount = total tagihan */
                     $row['pct'] = round($amt / $base * 100, 2); $row['action'] = 'new'; $remaining = round($remaining - $amt, 2);
                 }
             }
@@ -322,12 +322,12 @@ function mpBuildInvoicePlan($db, $projectId, $useAi = true) {
                           'client_invoiced' => (float)$cli['invoiced'], 'client_paid' => (float)$cli['paid']]];
 }
 
-// Simpan rencana: INSERT tagihan baru + jurnal, dan sinkron tanggal tagihan otomatis yang belum dibayar (satu transaksi)
+/* Simpan rencana: INSERT tagihan baru + jurnal, dan sinkron tanggal tagihan otomatis yang belum dibayar (satu transaksi) */
 function mpApplyInvoicePlan($db, array $plan) {
     $pid = (int)$plan['project']['id'];
     $db->beginTransaction();
     try {
-        mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $pid], 'lock proyek');      // cegah klik ganda / proses paralel
+        mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $pid], 'lock proyek');      /* cegah klik ganda / proses paralel */
         $cnt = (int)mpFetchOne($db, "SELECT COUNT(*) AS n FROM project_invoices WHERE project_id = :p", ['p' => $pid], 'recount')['n'];
         if ($cnt !== (int)$plan['k']) throw new Exception('Data tagihan proyek berubah saat diproses, silakan ulangi.');
         $pName = (string)$plan['project']['name'];
@@ -342,7 +342,7 @@ function mpApplyInvoicePlan($db, array $plan) {
                 $invNo  = mpRefPlus($firstRef, $seq++);
                 $remark = "Tagihan otomatis {$r['termin_name']} ({$r['pct']}%): terbit " . MP_INV_LEAD_DAYS .
                           " hari sebelum task '{$r['task_name']}' dimulai ({$r['task_start']}).";
-                // [PPN] kolom sama dengan project_invoiceCRD.php: amount = DPP + PPN
+                /* [PPN] kolom sama dengan project_invoiceCRD.php: amount = DPP + PPN */
                 $newId = (int)mpFetchOne($db,
                     "INSERT INTO project_invoices
                         (inv_no, project_id, termin_name, invoice_date, due_date, percentage, amount, paid_amount,
@@ -354,24 +354,24 @@ function mpApplyInvoicePlan($db, array $plan) {
                      'pct' => $r['pct'], 'amt' => $r['amount'], 'dpp' => $r['dpp'], 'pr' => $plan['ppn_rate'], 'ppn' => $r['ppn'],
                      'rm' => $remark, 'tid' => $r['task_id'], 'ai' => $plan['analysis']],
                     'insert invoice otomatis')['id'];
-                // [RELEASE-LAYER] jurnal penagihan TIDAK diposting di sini (tagihan otomatis = DRAFT);
-                // diposting saat release dari menu Tagihan ke Klien (project.invoiceCRD.php).
-                // mpPostInvoiceJournal($db, $newId, $invNo, $r['invoice_date'], (float)$r['dpp'], (float)$r['ppn'], $pName);
+                /* [RELEASE-LAYER] jurnal penagihan TIDAK diposting di sini (tagihan otomatis = DRAFT); */
+                /* diposting saat release dari menu Tagihan ke Klien (project.invoiceCRD.php). */
+                /* mpPostInvoiceJournal($db, $newId, $invNo, $r['invoice_date'], (float)$r['dpp'], (float)$r['ppn'], $pName); */
                 $made++;
             } elseif ($r['action'] === 'sync') {
                 $cur = mpFetchOne($db,
                     "SELECT inv_no, paid_amount, dpp_amount, ppn_amount, amount, release_status FROM project_invoices
-                      WHERE id = :id AND auto_generated = true FOR UPDATE", ['id' => $r['invoice_id']], 'lock invoice sync');   // [RELEASE-LAYER]
+                      WHERE id = :id AND auto_generated = true FOR UPDATE", ['id' => $r['invoice_id']], 'lock invoice sync');   /* [RELEASE-LAYER] */
                 if (!$cur || (float)$cur['paid_amount'] > 0) continue;
                 $pay = mpFetchOne($db, "SELECT COUNT(*) AS n FROM public.project_payment_items WHERE invoice_id = :id", ['id' => $r['invoice_id']], 'cek bayar');
-                if ((int)$pay['n'] > 0) continue;                                   // sudah ada alokasi pembayaran -> jangan diubah
+                if ((int)$pay['n'] > 0) continue;                                   /* sudah ada alokasi pembayaran -> jangan diubah */
                 mpExec($db,
                     "UPDATE project_invoices SET invoice_date = CAST(:idt AS date), due_date = CAST(:ddt AS date), task_id = :tid, ai_note = :ai
                       WHERE id = :id",
                     ['idt' => $r['invoice_date'], 'ddt' => $r['due_date'], 'tid' => $r['task_id'], 'ai' => $plan['analysis'], 'id' => $r['invoice_id']],
                     'sync invoice otomatis');
-                // [JURNAL] tanggal berubah -> reverse jurnal lama, posting ulang di tanggal baru (sama dengan edit invoice manual).
-                // [RELEASE-LAYER] hanya untuk yang sudah diterbitkan; DRAFT belum punya jurnal.
+                /* [JURNAL] tanggal berubah -> reverse jurnal lama, posting ulang di tanggal baru (sama dengan edit invoice manual). */
+                /* [RELEASE-LAYER] hanya untuk yang sudah diterbitkan; DRAFT belum punya jurnal. */
                 if ((string)$cur['release_status'] === 'released') {
                     if (mpHasJournal($db, (int)$r['invoice_id'])) ReverseJournalByReference($db, MP_JOURNAL_REF, (int)$r['invoice_id']);
                     $dpp = (float)$cur['dpp_amount'] > 0 ? (float)$cur['dpp_amount'] : (float)$cur['amount'];
@@ -401,9 +401,9 @@ function mpApplyInvoicePlan($db, array $plan) {
  *  - Butuh migrasi: sql/2026-11-06.budget_items_price_range.sql
  * ============================================================ */
 const MP_EPS = 0.00005;
-const MP_EXPENSE_CATEGORIES = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];   // [AI-BOQ] = RAB_CATEGORIES (rabCRD.php) selain Material
-// [PATCH 2026-11-15 F-5.3] normalisasi CASE-INSENSITIVE; kategori kosong/tak dikenal -> Exception
-// (dulu demote diam-diam ke 'Lain-lain'). Daftar kini sama dengan CHECK DB budget_items_category_check.
+const MP_EXPENSE_CATEGORIES = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];   /* [AI-BOQ] = RAB_CATEGORIES (rabCRD.php) selain Material */
+/* [PATCH 2026-11-15 F-5.3] normalisasi CASE-INSENSITIVE; kategori kosong/tak dikenal -> Exception */
+/* (dulu demote diam-diam ke 'Lain-lain'). Daftar kini sama dengan CHECK DB budget_items_category_check. */
 function mpExpCategory($c) {
     $c = trim((string)$c);
     $lc = strtolower($c);
@@ -413,17 +413,17 @@ function mpExpCategory($c) {
     throw new Exception('Kategori biaya RAB tidak valid: "' . $c . '". Kategori yang diterima: ' . implode(', ', MP_EXPENSE_CATEGORIES) . '.');
 }
 
-function mpNorm($s) {                                   // kunci pencocokan nama
+function mpNorm($s) {                                   /* kunci pencocokan nama */
     $s = strtolower(trim((string)$s));
     return trim(preg_replace('/[^a-z0-9]+/', ' ', $s));
 }
-function mpNum($v) {                                    // angka dari AI / klien (toleran terhadap string)
+function mpNum($v) {                                    /* angka dari AI / klien (toleran terhadap string) */
     if (is_numeric($v)) return (float)$v;
     return (float)preg_replace('/[^0-9.\-]/', '', str_replace(',', '', (string)$v));
 }
 function mpIdr($v) { return number_format((float)$v, 0, ',', '.'); }
 
-// Normalisasi pasangan harga: tidak negatif, min <= max, salah satu kosong -> samakan
+/* Normalisasi pasangan harga: tidak negatif, min <= max, salah satu kosong -> samakan */
 function mpNormPrice($pMin, $pMax) {
     $pMin = max(0, round((float)$pMin, 2)); $pMax = max(0, round((float)$pMax, 2));
     if ($pMax <= 0 && $pMin > 0) $pMax = $pMin;
@@ -432,7 +432,7 @@ function mpNormPrice($pMin, $pMax) {
     return [$pMin, $pMax];
 }
 
-// Kolom harga min master (materials.estimated_price_min, expense_master.default_price_min) sudah dimigrasi? Bila belum, halaman tetap terbaca; hanya SIMPAN yang ditolak.
+/* Kolom harga min master (materials.estimated_price_min, expense_master.default_price_min) sudah dimigrasi? Bila belum, halaman tetap terbaca; hanya SIMPAN yang ditolak. */
 function mpHasPriceRange($db) {
     static $has = null;
     if ($has === null) {
@@ -443,8 +443,8 @@ function mpHasPriceRange($db) {
     return $has;
 }
 
-// Peta RAB proyek: material (category Material) & expense (MP_EXPENSE_CATEGORY) + master material (untuk cocokkan nama)
-// [AI-BOQ] Task lama yang AMAN diganti saat analisis ulang: status 'Belum Mulai' dan tidak punya tagihan yang sudah dibayar
+/* Peta RAB proyek: material (category Material) & expense (MP_EXPENSE_CATEGORY) + master material (untuk cocokkan nama) */
+/* [AI-BOQ] Task lama yang AMAN diganti saat analisis ulang: status 'Belum Mulai' dan tidak punya tagihan yang sudah dibayar */
 function mpTaskReplaceInfo($db, $projectId) {
     $rows = mpFetchAll($db, "SELECT t.id, t.status, COALESCE((SELECT SUM(i.paid_amount) FROM project_invoices i WHERE i.task_id = t.id), 0) AS paid
                                FROM public.project_tasks t WHERE t.project_id = :p", ['p' => $projectId], 'task_replace_info');
@@ -452,7 +452,7 @@ function mpTaskReplaceInfo($db, $projectId) {
     foreach ($rows as $r) { if ($r['status'] === 'Belum Mulai' && (float)$r['paid'] <= 0) $ids[] = (int)$r['id']; }
     return ['total' => count($rows), 'replaceable_ids' => $ids];
 }
-function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }   // [DEDUP] tidak dipakai lagi (simpan selalu cek 'hampir sama'); dibiarkan agar pemanggil lama aman
+function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }   /* [DEDUP] tidak dipakai lagi (simpan selalu cek 'hampir sama'); dibiarkan agar pemanggil lama aman */
 
 /* ============================================================
  * [DEDUP][NEW] Cek 'HAMPIR SAMA' sebelum simpan (task, material, biaya)
@@ -461,8 +461,8 @@ function mpMode($v) { return ((string)$v === 'append') ? 'append' : 'replace'; }
  *  - skor = max(Dice token, similar_text) ; item (material/biaya) >= MP_SIM_ITEM, task >= MP_SIM_TASK
  *  - mirip dengan data lama -> data lama DITIMPA/dipakai ulang ; tidak ada yang mirip -> simpan baru
  * ============================================================ */
-const MP_SIM_ITEM = 0.85;     // ambang kemiripan material / biaya (0-1)
-const MP_SIM_TASK = 0.75;     // ambang kemiripan nama task (kalimat lebih longgar)
+const MP_SIM_ITEM = 0.85;     /* ambang kemiripan material / biaya (0-1) */
+const MP_SIM_TASK = 0.75;     /* ambang kemiripan nama task (kalimat lebih longgar) */
 function mpTokens($s) {
     static $cache = [];
     $k = (string)$s;
@@ -479,12 +479,12 @@ function mpSimilarity($a, $b) {
     preg_match_all('/\d+/', implode(' ', $ta), $ma);
     preg_match_all('/\d+/', implode(' ', $tb), $mb);
     $na = $ma[0]; $nb = $mb[0]; sort($na); sort($nb);
-    if ($na !== $nb) return 0.0;                                  // angka berbeda = barang / mutu berbeda
+    if ($na !== $nb) return 0.0;                                  /* angka berbeda = barang / mutu berbeda */
     $dice = 2 * count(array_intersect($ta, $tb)) / (count($ta) + count($tb));
-    similar_text(implode(' ', $ta), implode(' ', $tb), $pct);     // toleran salah ketik
+    similar_text(implode(' ', $ta), implode(' ', $tb), $pct);     /* toleran salah ketik */
     return max($dice, $pct / 100);
 }
-// Cari baris paling mirip pada peta ctx (nilai: array baris); $field = kolom nama pada baris
+/* Cari baris paling mirip pada peta ctx (nilai: array baris); $field = kolom nama pada baris */
 function mpFuzzy($name, array $map, $field, $th = MP_SIM_ITEM) {
     $best = null; $bs = 0.0;
     foreach ($map as $row) {
@@ -493,14 +493,14 @@ function mpFuzzy($name, array $map, $field, $th = MP_SIM_ITEM) {
     }
     return $best;
 }
-// Nama baris baru yang hampir sama dalam SATU rencana disatukan (agar tidak membuat 2 material / biaya baru yang kembar)
+/* Nama baris baru yang hampir sama dalam SATU rencana disatukan (agar tidak membuat 2 material / biaya baru yang kembar) */
 function mpCanonName(array &$seen, $kind, $name) {
     if (!isset($seen[$kind])) $seen[$kind] = [];
     foreach ($seen[$kind] as $n) { if (mpSimilarity($name, $n) >= MP_SIM_ITEM) return $n; }
     $seen[$kind][] = $name;
     return $name;
 }
-// Pasangkan task hasil analisis (indeks => ['id','name']) dengan task lama proyek yang namanya hampir sama (satu-satu)
+/* Pasangkan task hasil analisis (indeks => ['id','name']) dengan task lama proyek yang namanya hampir sama (satu-satu) */
 function mpMatchTasks($db, $projectId, array $planTasks) {
     $existing = mpFetchAll($db, "SELECT id, task_name FROM public.project_tasks WHERE project_id = :p ORDER BY id", ['p' => $projectId], 'match_tasks');
     $pairs = [];
@@ -542,7 +542,7 @@ function mpCount($db, $sql, array $params, $tag) {
     $r = mpFetchOne($db, $sql, $params, $tag);
     return is_array($r) ? (int)$r['n'] : 0;
 }
-// Alasan alokasi (task_materials.id) tidak boleh dilepas; '' = boleh
+/* Alasan alokasi (task_materials.id) tidak boleh dilepas; '' = boleh */
 function mpAllocLock($db, $tmId, $taskId, $bid) {
     if (mpTableExists($db, 'spk_task_materials') &&
         mpCount($db, "SELECT COUNT(*) AS n FROM public.spk_task_materials WHERE task_material_id = :id", ['id' => $tmId], 'lk_spk_mat') > 0) return 'sudah dipakai SPK';
@@ -551,7 +551,7 @@ function mpAllocLock($db, $tmId, $taskId, $bid) {
                        WHERE te.task_id = :t AND te.budget_item_id = :b", ['t' => $taskId, 'b' => $bid], 'lk_spk_exp') > 0) return 'sudah dipakai SPK (biaya)';
     return '';
 }
-// Alasan item RAB tidak boleh dihapus; '' = boleh
+/* Alasan item RAB tidak boleh dihapus; '' = boleh */
 function mpItemBlock($db, $projectId, $bid) {
     $r = mpFetchOne($db, "SELECT po.po_number FROM public.po_items i JOIN public.purchase_orders po ON po.id = i.po_id
                            WHERE i.budget_item_id = :b ORDER BY po.id LIMIT 1", ['b' => $bid], 'lk_po');
@@ -572,7 +572,7 @@ function mpItemBlock($db, $projectId, $bid) {
     }
     return '';
 }
-// Alasan task tidak boleh dihapus; '' = boleh
+/* Alasan task tidak boleh dihapus; '' = boleh */
 function mpTaskBlock($db, $taskId) {
     if (mpTableExists($db, 'spk_tasks') &&
         mpCount($db, "SELECT COUNT(*) AS n FROM public.spk_tasks WHERE task_id = :t", ['t' => $taskId], 'lk_spk_task') > 0) return 'sudah dipakai SPK';
@@ -587,8 +587,8 @@ function mpItemName($db, $bid) {
     $r = mpFetchOne($db, "SELECT item_name FROM public.budget_items WHERE id = :b", ['b' => $bid], 'item_name');
     return is_array($r) ? (string)$r['item_name'] : ('#' . $bid);
 }
-// [FORM-LIVE][NEW] Nilai yang sedang diisi di FORM proyek (belum disimpan) menimpa data proyek di database
-// untuk analisis AI, hitung ulang, cek plafon dan simpan rencana -> user tidak perlu Simpan proyek dulu / keluar-masuk form.
+/* [FORM-LIVE][NEW] Nilai yang sedang diisi di FORM proyek (belum disimpan) menimpa data proyek di database */
+/* untuk analisis AI, hitung ulang, cek plafon dan simpan rencana -> user tidak perlu Simpan proyek dulu / keluar-masuk form. */
 function mpApplyFormOverrides(array $proj) {
     $r = $_REQUEST;
     if (isset($r['ovr_name']) && trim((string)$r['ovr_name']) !== '') $proj['name'] = trim((string)$r['ovr_name']);
@@ -605,7 +605,7 @@ function mpApplyFormOverrides(array $proj) {
     }
     return $proj;
 }
-// id task yang dimuat saat jendela edit dibuka (dikirim balik oleh UI)
+/* id task yang dimuat saat jendela edit dibuka (dikirim balik oleh UI) */
 function mpLoadedIds() {
     $ids = [];
     $raw = json_decode((string)($_REQUEST['loaded_ids'] ?? '[]'), true);
@@ -613,14 +613,14 @@ function mpLoadedIds() {
     return array_keys($ids);
 }
 
-// Ringkasan untuk UI: daftar task yang akan menimpa task lama
+/* Ringkasan untuk UI: daftar task yang akan menimpa task lama */
 function mpMatchInfo(array $m, array $planTasks) {
     $pt = array_values($planTasks); $rows = [];
     foreach ($m as $i => $x) $rows[] = ['index' => $i, 'task_name' => (string)($pt[$i]['task_name'] ?? ''), 'match_task_id' => $x['id'], 'match_task_name' => $x['name'], 'score' => $x['score']];
     return ['task_matches' => $rows, 'overwrite_task_count' => count($m), 'new_task_count' => max(0, count($pt) - count($m))];
 }
 
-// $ignoreTaskIds: task yang akan diganti -> alokasinya tidak dihitung (agar analisis ulang tidak menggandakan qty RAB)
+/* $ignoreTaskIds: task yang akan diganti -> alokasinya tidak dihitung (agar analisis ulang tidak menggandakan qty RAB) */
 function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
     $ign = $ignoreTaskIds ? ' AND tm.task_id NOT IN (' . implode(',', array_map('intval', $ignoreTaskIds)) . ')' : '';
     $has = mpHasPriceRange($db);
@@ -652,9 +652,9 @@ function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
         $r['material_id'] = $r['material_id'] !== null ? (int)$r['material_id'] : 0;
         $r['expense_id'] = $r['expense_id'] !== null ? (int)$r['expense_id'] : 0;
         foreach (['qty_plan','qty_allocated','unit_price_plan','master_min','master_max'] as $f) $r[$f] = (float)$r[$f];
-        $ctx['total_plan'] += $r['qty_plan'] * $r['unit_price_plan'];                 // total RAB proyek saat ini (mata uang anggaran)
+        $ctx['total_plan'] += $r['qty_plan'] * $r['unit_price_plan'];                 /* total RAB proyek saat ini (mata uang anggaran) */
         $k = mpNorm($r['material_name']);
-        if ($r['category'] !== 'Material') {                                   // semua kategori non-material = biaya (Upah, Peralatan, ...)
+        if ($r['category'] !== 'Material') {                                   /* semua kategori non-material = biaya (Upah, Peralatan, ...) */
             $ctx['exp'][] = $r; $ctx['expById'][$r['budget_item_id']] = $r;
             if ($k !== '' && !isset($ctx['expByName'][$k])) $ctx['expByName'][$k] = $r;
             if ($r['expense_id'] > 0 && !isset($ctx['expByEid'][$r['expense_id']])) $ctx['expByEid'][$r['expense_id']] = $r;
@@ -675,8 +675,8 @@ function mpLoadMaterialContext($db, $projectId, array $ignoreTaskIds = []) {
     return $ctx;
 }
 
-// type: rab (sudah di RAB proyek) | master (material ada di master, belum di RAB) | new (belum ada)
-// [DEDUP] urutan: id RAB -> nama sama persis (RAB, master) -> nama HAMPIR SAMA (RAB, master) -> baru
+/* type: rab (sudah di RAB proyek) | master (material ada di master, belum di RAB) | new (belum ada) */
+/* [DEDUP] urutan: id RAB -> nama sama persis (RAB, master) -> nama HAMPIR SAMA (RAB, master) -> baru */
 function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
     $k = mpNorm($name);
     if ($kind === 'expenses') {
@@ -684,9 +684,9 @@ function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
         if ($k !== '' && isset($ctx['expByName'][$k])) return ['type' => 'rab', 'rab' => $ctx['expByName'][$k], 'master' => null];
         $e = ($k !== '' && isset($ctx['expMasterByName'][$k])) ? $ctx['expMasterByName'][$k] : null;
         if (!$e) {
-            $f = mpFuzzy($name, $ctx['expByName'], 'material_name');                         // [DEDUP] hampir sama dgn biaya di RAB
+            $f = mpFuzzy($name, $ctx['expByName'], 'material_name');                         /* [DEDUP] hampir sama dgn biaya di RAB */
             if ($f) return ['type' => 'rab', 'rab' => $f, 'master' => null];
-            $e = mpFuzzy($name, $ctx['expMasterByName'], 'expense_name');                    // [DEDUP] hampir sama dgn expense_master
+            $e = mpFuzzy($name, $ctx['expMasterByName'], 'expense_name');                    /* [DEDUP] hampir sama dgn expense_master */
         }
         if ($e) {
             if (isset($ctx['expByEid'][(int)$e['id']])) return ['type' => 'rab', 'rab' => $ctx['expByEid'][(int)$e['id']], 'master' => null];
@@ -698,9 +698,9 @@ function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
     if ($k !== '' && isset($ctx['rabByName'][$k])) return ['type' => 'rab', 'rab' => $ctx['rabByName'][$k], 'master' => null];
     $m = ($k !== '' && isset($ctx['masterByName'][$k])) ? $ctx['masterByName'][$k] : null;
     if (!$m) {
-        $f = mpFuzzy($name, $ctx['rabByName'], 'material_name');                             // [DEDUP] hampir sama dgn material di RAB
+        $f = mpFuzzy($name, $ctx['rabByName'], 'material_name');                             /* [DEDUP] hampir sama dgn material di RAB */
         if ($f) return ['type' => 'rab', 'rab' => $f, 'master' => null];
-        $m = mpFuzzy($name, $ctx['masterByName'], 'material_name');                          // [DEDUP] hampir sama dgn master material
+        $m = mpFuzzy($name, $ctx['masterByName'], 'material_name');                          /* [DEDUP] hampir sama dgn master material */
     }
     if ($m) {
         if (isset($ctx['rabByMid'][(int)$m['id']])) return ['type' => 'rab', 'rab' => $ctx['rabByMid'][(int)$m['id']], 'master' => null];
@@ -710,17 +710,17 @@ function mpResolveLine($ctx, $bid, $name, $kind = 'materials') {
 }
 function mpLineKey($res, $name, $kind = 'materials') {
     if ($res['type'] === 'rab') return 'b' . $res['rab']['budget_item_id'];
-    if ($res['type'] === 'master') return ($kind === 'expenses' ? 'xm' : 'nm') . (int)$res['master']['id'];   // [DEDUP] nama berbeda tapi master sama -> satu baris RAB
+    if ($res['type'] === 'master') return ($kind === 'expenses' ? 'xm' : 'nm') . (int)$res['master']['id'];   /* [DEDUP] nama berbeda tapi master sama -> satu baris RAB */
     return ($kind === 'expenses' ? 'x' : 'n') . mpNorm($name);
 }
 
-// Kode biaya otomatis EXP-00001 dst (expense_master)
+/* Kode biaya otomatis EXP-00001 dst (expense_master) */
 function mpNextExpenseCode($db) {
     $r = mpFetchOne($db, "SELECT COALESCE(MAX(CAST(substring(expense_code from '^EXP-([0-9]+)$') AS integer)),0) + 1 AS n FROM expense_master", [], 'next_exp_code');
     return 'EXP-' . str_pad((string)$r['n'], 5, '0', STR_PAD_LEFT);
 }
 
-// Kode material otomatis MAT-00001 dst (dipanggil di dalam transaksi yang sudah mengunci)
+/* Kode material otomatis MAT-00001 dst (dipanggil di dalam transaksi yang sudah mengunci) */
 function mpNextMaterialCode($db) {
     $r = mpFetchOne($db, "SELECT COALESCE(MAX(CAST(substring(material_code from '^MAT-([0-9]+)$') AS integer)),0) + 1 AS n FROM public.materials", [], 'next_mat_code');
     return 'MAT-' . str_pad((string)$r['n'], 5, '0', STR_PAD_LEFT);
@@ -730,7 +730,7 @@ function mpNextMaterialCode($db) {
  * $tasks diubah in-place. Mengembalikan total (mata uang Rupiah):
  *   max/min = total BoQ, mat/exp = pecahan max, add = tambahan nilai RAB bila disimpan, newNames = material baru unik. */
 function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
-    $running = []; $seenNew = [];                                              // [DEDUP] $seenNew: nama baris baru dalam rencana ini
+    $running = []; $seenNew = [];                                              /* [DEDUP] $seenNew: nama baris baru dalam rencana ini */
     $tot = ['max' => 0.0, 'min' => 0.0, 'mat' => 0.0, 'exp' => 0.0, 'add' => 0.0, 'newNames' => []];
     foreach ($tasks as &$t) {
         foreach (['materials', 'expenses'] as $kind) {
@@ -747,13 +747,13 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
                     mpNum($m['price_min'] ?? ($m['unit_price_min'] ?? 0)),
                     mpNum($m['price_max'] ?? ($m['unit_price_max'] ?? ($m['unit_price'] ?? ($m['unit_price_estimate'] ?? 0))))
                 );
-                list($aiMin, $aiMax) = mpNormPrice(                                          // harga asli AI (dipakai mengisi rentang master yang masih kosong)
+                list($aiMin, $aiMax) = mpNormPrice(                                          /* harga asli AI (dipakai mengisi rentang master yang masih kosong) */
                     mpNum($m['ai_min'] ?? ($m['price_min'] ?? ($m['unit_price_min'] ?? 0))),
                     mpNum($m['ai_max'] ?? ($m['price_max'] ?? ($m['unit_price_max'] ?? ($m['unit_price'] ?? ($m['unit_price_estimate'] ?? 0)))))
                 );
                 $unit = trim((string)($m['unit'] ?? ''));
                 $res = mpResolveLine($ctx, $bidIn, $name, $kind);
-                $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   // [DEDUP]
+                $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   /* [DEDUP] */
                 $before = $running[$key] ?? 0.0;
                 $running[$key] = $before + $qty;
 
@@ -763,26 +763,26 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
                     $bid = (int)$r['budget_item_id']; $mid = $r['material_id'] > 0 ? (int)$r['material_id'] : null;
                     $name = $r['material_name']; if ($r['unit'] !== '') $unit = $r['unit'];
                     if ($kind === 'expenses') $cat = mpExpCategory($r['category']);
-                    $pMaxR = $r['unit_price_plan'] * $rate;                                  // harga satuan RAB (Rupiah) = harga yang dipakai
-                    $mnR = (float)$r['master_min'];                                           // batas bawah dari master
+                    $pMaxR = $r['unit_price_plan'] * $rate;                                  /* harga satuan RAB (Rupiah) = harga yang dipakai */
+                    $mnR = (float)$r['master_min'];                                           /* batas bawah dari master */
                     list($pMin, $pMax) = mpNormPrice(($mnR > 0 && $mnR < $pMaxR) ? $mnR : $pMaxR, $pMaxR);
                     $over = $r['qty_allocated'] + $running[$key];
                     $status = ($over <= $r['qty_plan'] + MP_EPS) ? 'rab' : 'rab_topup';
                     $shortBefore = max(0, $r['qty_allocated'] + $before - $r['qty_plan']);
-                    $tot['add'] += (max(0, $over - $r['qty_plan']) - $shortBefore) * $pMax;                 // hanya selisih yang menambah RAB
+                    $tot['add'] += (max(0, $over - $r['qty_plan']) - $shortBefore) * $pMax;                 /* hanya selisih yang menambah RAB */
                 } else {
                     if ($res['type'] === 'master' && $kind === 'materials') {
                         $mid = (int)$res['master']['id']; $name = $res['master']['material_name'];
                         if ($unit === '') $unit = $res['master']['unit'];
-                        if ((float)$res['master']['estimated_price'] > 0) list($pMin, $pMax) = mpNormPrice((float)$res['master']['estimated_price_min'] ?: (float)$res['master']['estimated_price'], (float)$res['master']['estimated_price']);   // rentang = milik master
-                    } elseif ($res['type'] === 'master') {                                   // biaya yang sudah ada di expense_master
+                        if ((float)$res['master']['estimated_price'] > 0) list($pMin, $pMax) = mpNormPrice((float)$res['master']['estimated_price_min'] ?: (float)$res['master']['estimated_price'], (float)$res['master']['estimated_price']);   /* rentang = milik master */
+                    } elseif ($res['type'] === 'master') {                                   /* biaya yang sudah ada di expense_master */
                         $name = $res['master']['expense_name']; $cat = mpExpCategory($res['master']['category']);
                         if ($unit === '') $unit = $res['master']['unit'];
-                        if ((float)$res['master']['default_price'] > 0) list($pMin, $pMax) = mpNormPrice((float)$res['master']['default_price_min'] ?: (float)$res['master']['default_price'], (float)$res['master']['default_price']);   // rentang = milik master
+                        if ((float)$res['master']['default_price'] > 0) list($pMin, $pMax) = mpNormPrice((float)$res['master']['default_price_min'] ?: (float)$res['master']['default_price'], (float)$res['master']['default_price']);   /* rentang = milik master */
                     } elseif ($kind === 'materials') {
                         $tot['newNames'][$key] = true;
                     } else {
-                        $cat = mpExpCategory($m['category'] ?? '');                          // biaya baru -> dibuat di expense_master
+                        $cat = mpExpCategory($m['category'] ?? '');                          /* biaya baru -> dibuat di expense_master */
                     }
                     $tot['add'] += $qty * $pMax;
                 }
@@ -794,7 +794,7 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
                     'spec' => trim((string)($m['spec'] ?? '')), 'unit' => $unit, 'qty_estimate' => $qty,
                     'price_min' => $pMin, 'price_max' => $pMax, 'unit_price' => $pMax, 'status' => $status,
                     'reason' => trim((string)($m['reason'] ?? '')), 'category' => $cat, 'ai_min' => $aiMin, 'ai_max' => $aiMax,
-                    'task_material_id' => (int)($m['task_material_id'] ?? 0), 'lock_reason' => trim((string)($m['lock_reason'] ?? ''))   // [EDIT-SAVED]
+                    'task_material_id' => (int)($m['task_material_id'] ?? 0), 'lock_reason' => trim((string)($m['lock_reason'] ?? ''))   /* [EDIT-SAVED] */
                 ];
             }
             $t[$kind] = $out;
@@ -804,10 +804,10 @@ function mpAnnotateTasks(array &$tasks, $ctx, $rate, $dropEmptyQty = false) {
     return $tot;
 }
 
-// Penilaian plafon (Rupiah) - MENIRU aturan modul RAB (rabCRD.php plafonCheck):
-//   total RAB > nilai kontrak            -> DITOLAK (blokir)
-//   proyek 'Belum Mulai' & total > budget -> RAB menolak simpan ulang (tandai MERAH, simpan di sini tetap boleh)
-//   proyek berjalan & total > budget      -> memakai cadangan (tandai KUNING; item ditandai addendum)
+/* Penilaian plafon (Rupiah) - MENIRU aturan modul RAB (rabCRD.php plafonCheck): */
+/* total RAB > nilai kontrak            -> DITOLAK (blokir) */
+/* proyek 'Belum Mulai' & total > budget -> RAB menolak simpan ulang (tandai MERAH, simpan di sini tetap boleh) */
+/* proyek berjalan & total > budget      -> memakai cadangan (tandai KUNING; item ditandai addendum) */
 function mpPlafonFlags($proj, $rate, $existingIdr, $addIdr) {
     $after = $existingIdr + $addIdr;
     $budgetIdr = (float)($proj['budget'] ?? 0) * $rate;
@@ -843,10 +843,10 @@ function mpPlafonFlags($proj, $rate, $existingIdr, $addIdr) {
     ];
 }
 
-// Ringkasan angka + peringatan untuk UI review (semua dalam Rupiah)
+/* Ringkasan angka + peringatan untuk UI review (semua dalam Rupiah) */
 function mpPlanMeta($proj, $ctx, $rate, $tot, array $tasks) {
     $m = mpPlafonFlags($proj, $rate, $ctx['total_plan'] * $rate, $tot['add']);
-    $m['form_live'] = isset($_REQUEST['ovr_budget']) || isset($_REQUEST['ovr_contract_value']);   // [FORM-LIVE] true = angka budget / kontrak dari form dipakai
+    $m['form_live'] = isset($_REQUEST['ovr_budget']) || isset($_REQUEST['ovr_contract_value']);   /* [FORM-LIVE] true = angka budget / kontrak dari form dipakai */
     foreach ($tasks as $t) {
         if (empty($t['materials']) && empty($t['expenses'])) {
             $m['warnings'][] = ['level' => 'warning', 'text' => "Task '" . ($t['task_name'] ?? '') . "' belum punya material maupun biaya."];
@@ -905,11 +905,11 @@ try {
 
         case 'read_tasks':
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
-            // [AI-BOQ] material & biaya (expense) dipisah; items = rincian JSON utk panel detail (harga min/max); total_* memakai harga MAX
+            /* [AI-BOQ] material & biaya (expense) dipisah; items = rincian JSON utk panel detail (harga min/max); total_* memakai harga MAX */
             $hasRange = mpHasPriceRange($db);
             $pj0 = mpFetchOne($db, "SELECT COALESCE(NULLIF(budget_exch_rate, 0), 1) AS r FROM projects WHERE id = :id", ['id' => $projectId], 'read_tasks_rate');
             $rateLit = sprintf('%.6F', ($pj0 && (float)$pj0['r'] > 0) ? (float)$pj0['r'] : 1.0);
-            // harga satuan = unit_price_plan (= MAX); batas bawah dari master (mata uang dasar -> mata uang anggaran)
+            /* harga satuan = unit_price_plan (= MAX); batas bawah dari master (mata uang dasar -> mata uang anggaran) */
             $mnRaw = $hasRange ? "CASE WHEN COALESCE(bi.category,'Material') = 'Material' THEN m.estimated_price_min ELSE em.default_price_min END" : 'NULL';
             $pMaxSql = 'COALESCE(bi.unit_price_plan, 0)';
             $pMinSql = "LEAST(COALESCE(NULLIF({$mnRaw}, 0) / {$rateLit}, COALESCE(bi.unit_price_plan, 0)), COALESCE(bi.unit_price_plan, 0))";
@@ -954,7 +954,7 @@ try {
                 $tk['total_max'] = (float)$tk['total_max']; $tk['total_min'] = (float)$tk['total_min'];
             }
             unset($tk);
-            // [AI-BOQ] penanda plafon: total RAB proyek vs budget / nilai kontrak (aturan sama dengan modul RAB)
+            /* [AI-BOQ] penanda plafon: total RAB proyek vs budget / nilai kontrak (aturan sama dengan modul RAB) */
             $summary = null;
             $pj = mpFetchOne($db, "SELECT status, budget, contract_value, budget_exch_rate FROM projects WHERE id = :id", ['id' => $projectId], 'read_tasks_proj');
             if ($pj) {
@@ -967,7 +967,7 @@ try {
             mpJson(['success' => true, 'data' => $tasks, 'summary' => $summary]);
             break;
 
-        // [AUTO-INV][NEW] daftar tagihan proyek untuk panel detail
+        /* [AUTO-INV][NEW] daftar tagihan proyek untuk panel detail */
         case 'read_invoices':
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
             $inv = mpFetchAll($db,
@@ -980,7 +980,7 @@ try {
             mpJson(['success' => true, 'data' => $inv]);
             break;
 
-        // [AUTO-INV][NEW] mode=preview: hanya analisis & rencana ; mode=issue: simpan tagihan
+        /* [AUTO-INV][NEW] mode=preview: hanya analisis & rencana ; mode=issue: simpan tagihan */
         case 'auto_invoice':
             if ($access < 3) {
                 mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk menerbitkan tagihan.']);
@@ -1003,21 +1003,21 @@ try {
                     'message' => "{$res['made']} tagihan diterbitkan, {$res['synced']} tagihan disesuaikan tanggalnya."]);
             break;
 
-        // [AI-BOQ][REWORK] Analisis & pecah task + material + expense. Hanya DRAFT: belum ada yang ditulis ke database.
+        /* [AI-BOQ][REWORK] Analisis & pecah task + material + expense. Hanya DRAFT: belum ada yang ditulis ke database. */
         case 'ai_generate_tasks':
             if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
-            set_time_limit(200);                                           // [AI-BOQ] output BoQ panjang -> panggilan AI lebih lama
+            set_time_limit(200);                                           /* [AI-BOQ] output BoQ panjang -> panggilan AI lebih lama */
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
             if ($projectId <= 0) throw new Exception('ID Proyek tidak valid.');
 
             $proj = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $projectId], 'ai_fetch_proj');
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            $proj = mpApplyFormOverrides($proj);                           // [FORM-LIVE] pakai isian form terbaru (budget, kontrak, tanggal, lingkup) walau belum disimpan
-            $rate = (float)($proj['budget_exch_rate'] ?? 1);               // kurs mata uang RAB ke Rupiah
+            $proj = mpApplyFormOverrides($proj);                           /* [FORM-LIVE] pakai isian form terbaru (budget, kontrak, tanggal, lingkup) walau belum disimpan */
+            $rate = (float)($proj['budget_exch_rate'] ?? 1);               /* kurs mata uang RAB ke Rupiah */
             if ($rate <= 0) $rate = 1;
 
-            // RAB yang sudah ada: dikirim ke AI agar nama yang sama dipakai ulang; sisa kuota dipakai untuk "tambah dari RAB"
-            $tri = mpTaskReplaceInfo($db, $projectId);                       // [AI-BOQ] task lama yang akan diganti tidak dihitung sebagai alokasi
+            /* RAB yang sudah ada: dikirim ke AI agar nama yang sama dipakai ulang; sisa kuota dipakai untuk "tambah dari RAB" */
+            $tri = mpTaskReplaceInfo($db, $projectId);                       /* [AI-BOQ] task lama yang akan diganti tidak dihitung sebagai alokasi */
             $ctx = mpLoadMaterialContext($db, $projectId, $tri['replaceable_ids']);
             $existingForAi = []; $candMat = []; $candExp = [];
             foreach (['materials' => $ctx['rab'], 'expenses' => $ctx['exp']] as $kind => $list) {
@@ -1026,7 +1026,7 @@ try {
                     $remaining = max(0, $r['qty_plan'] - $r['qty_allocated']);
                     if ($remaining <= MP_EPS) continue;
                     $cMaxR = $r['unit_price_plan'] * $rate; $cMn = (float)$r['master_min'];
-                    list($cMin, $cMax) = mpNormPrice(($cMn > 0 && $cMn < $cMaxR) ? $cMn : $cMaxR, $cMaxR);   // harga satuan RAB = max; min dari master
+                    list($cMin, $cMax) = mpNormPrice(($cMn > 0 && $cMn < $cMaxR) ? $cMn : $cMaxR, $cMaxR);   /* harga satuan RAB = max; min dari master */
                     $cand = [
                         'budget_item_id' => $r['budget_item_id'], 'material_id' => $r['material_id'],
                         'material_name' => $r['material_name'], 'unit' => $r['unit'], 'qty_plan' => $r['qty_plan'],
@@ -1097,7 +1097,7 @@ PROMPT;
 
             $aiRawText = mpCallGemini($prompt, 120) ?: '{}';
             $plan = json_decode($aiRawText, true);
-            if (is_array($plan) && isset($plan[0]['task_name'])) $plan = ['tasks' => $plan];   // toleransi: AI mengembalikan array saja
+            if (is_array($plan) && isset($plan[0]['task_name'])) $plan = ['tasks' => $plan];   /* toleransi: AI mengembalikan array saja */
             if (!is_array($plan) || empty($plan['tasks']) || !is_array($plan['tasks'])) {
                 throw new Exception('AI gagal menghasilkan rencana Task dan material yang valid.');
             }
@@ -1126,11 +1126,11 @@ PROMPT;
                     'expenses'  => is_array($t['expenses'] ?? null) ? $t['expenses'] : []
                 ];
             }
-            // [DEDUP] task hasil analisis yang namanya hampir sama dengan task lama akan MENIMPA task lama saat disimpan
-            // -> alokasi task lama itu tidak dihitung (qty RAB tidak dobel); konteks dimuat ulang dengan pengecualian tsb
+            /* [DEDUP] task hasil analisis yang namanya hampir sama dengan task lama akan MENIMPA task lama saat disimpan */
+            /* -> alokasi task lama itu tidak dihitung (qty RAB tidak dobel); konteks dimuat ulang dengan pengecualian tsb */
             $taskMatch = mpMatchTasks($db, $projectId, $normalizedTasks);
             $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));
-            $tot = mpAnnotateTasks($normalizedTasks, $ctx, $rate, true);            // cocokkan RAB/master, harga min/max, total
+            $tot = mpAnnotateTasks($normalizedTasks, $ctx, $rate, true);            /* cocokkan RAB/master, harga min/max, total */
             $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $normalizedTasks);
             $meta = array_merge($meta, mpMatchInfo($taskMatch, $normalizedTasks));
             $cnt = ['m' => 0, 'e' => 0];
@@ -1152,14 +1152,14 @@ PROMPT;
             ], $meta));
             break;
 
-        // [EDIT-SAVED][NEW] Muat task + alokasi (material & biaya) yang SUDAH TERSIMPAN ke format draft agar bisa diedit tanpa AI
+        /* [EDIT-SAVED][NEW] Muat task + alokasi (material & biaya) yang SUDAH TERSIMPAN ke format draft agar bisa diedit tanpa AI */
         case 'load_task_plan':
             if ($access < 3) mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk mengedit task tersimpan.']);
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
             if ($projectId <= 0) throw new Exception('Proyek tidak valid.');
             $proj = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $projectId], 'load_plan_proj');
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            $proj = mpApplyFormOverrides($proj);                           // [FORM-LIVE]
+            $proj = mpApplyFormOverrides($proj);                           /* [FORM-LIVE] */
             $rate = (float)($proj['budget_exch_rate'] ?? 1);
             if ($rate <= 0) $rate = 1;
             $trows = mpFetchAll($db, "SELECT id, task_name, COALESCE(description,'') AS description, start_date, end_date, status
@@ -1167,7 +1167,7 @@ PROMPT;
             if (!$trows) mpJson(['success' => false, 'message' => 'Proyek ini belum punya task tersimpan. Gunakan ANALISIS & BAGI TASK (AI) terlebih dahulu.']);
             $ids = [];
             foreach ($trows as $tr) $ids[] = (int)$tr['id'];
-            $ctx = mpLoadMaterialContext($db, $projectId, $ids);                    // semua task dimuat = diganti draft -> alokasinya tidak dihitung
+            $ctx = mpLoadMaterialContext($db, $projectId, $ids);                    /* semua task dimuat = diganti draft -> alokasinya tidak dihitung */
             $allocs = mpFetchAll($db, "SELECT id, task_id, budget_item_id, qty_budget FROM public.task_materials
                                          WHERE task_id IN (" . implode(',', $ids) . ") ORDER BY id", [], 'load_plan_alloc');
             $tasks = []; $byId = [];
@@ -1186,7 +1186,7 @@ PROMPT;
                 else { $unmanaged[] = mpItemName($db, $bid); continue; }
                 $lock = mpAllocLock($db, (int)$al['id'], (int)$al['task_id'], $bid);
                 if ($lock === '' && mpCount($db, "SELECT COUNT(*) AS n FROM public.task_materials WHERE budget_item_id = :b AND id <> :i", ['b' => $bid, 'i' => (int)$al['id']], 'load_plan_others') === 0) {
-                    $lock = mpItemBlock($db, $projectId, $bid);                     // item hanya dipakai task ini -> menghapus baris = menghapus item RAB
+                    $lock = mpItemBlock($db, $projectId, $bid);                     /* item hanya dipakai task ini -> menghapus baris = menghapus item RAB */
                 }
                 $tasks[$ti0][$kind][] = ['budget_item_id' => $bid, 'material_name' => $nm, 'qty_estimate' => (float)$al['qty_budget'],
                                          'task_material_id' => (int)$al['id'], 'lock_reason' => $lock];
@@ -1196,7 +1196,7 @@ PROMPT;
                 mpJson(['success' => false, 'message' => count($unmanaged) . ' alokasi memakai item RAB yang tidak terhubung ke master (' . implode(', ', array_slice($unmanaged, 0, 3)) .
                         '). Item seperti ini harus diubah lewat modul RAB.']);
             }
-            foreach ($tasks as &$tk) {                                              // task terkunci juga bila salah satu barisnya terkunci
+            foreach ($tasks as &$tk) {                                              /* task terkunci juga bila salah satu barisnya terkunci */
                 if ($tk['lock_reason'] === '') {
                     foreach (['materials', 'expenses'] as $kd) foreach ($tk[$kd] as $ln) { if ($ln['lock_reason'] !== '' && $tk['lock_reason'] === '') $tk['lock_reason'] = '"' . $ln['material_name'] . '" ' . $ln['lock_reason']; }
                 }
@@ -1204,7 +1204,7 @@ PROMPT;
             unset($tk);
             $tot = mpAnnotateTasks($tasks, $ctx, $rate, false);
             $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $tasks);
-            $candMat = []; $candExp = [];                                           // pilihan "Tambah dari RAB": seluruh item RAB proyek (draft menggantikan alokasi lama)
+            $candMat = []; $candExp = [];                                           /* pilihan "Tambah dari RAB": seluruh item RAB proyek (draft menggantikan alokasi lama) */
             foreach (['materials' => $ctx['rab'], 'expenses' => $ctx['exp']] as $kind => $list) {
                 foreach ($list as $r) {
                     $cMaxR = $r['unit_price_plan'] * $rate; $cMn = (float)$r['master_min'];
@@ -1227,7 +1227,7 @@ PROMPT;
             ], $meta));
             break;
 
-        // [AI-BOQ][NEW] Hitung ulang draft yang diedit user (tanpa AI, tanpa tulis DB): status RAB/master/baru, total, plafon
+        /* [AI-BOQ][NEW] Hitung ulang draft yang diedit user (tanpa AI, tanpa tulis DB): status RAB/master/baru, total, plafon */
         case 'resolve_plan':
             if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
@@ -1235,19 +1235,19 @@ PROMPT;
             if ($projectId <= 0 || !is_array($plan) || !isset($plan['tasks']) || !is_array($plan['tasks'])) throw new Exception('Data draft tidak valid.');
             $proj = mpFetchOne($db, "SELECT * FROM projects WHERE id = :id", ['id' => $projectId], 'resolve_proj');
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            $proj = mpApplyFormOverrides($proj);                           // [FORM-LIVE]
+            $proj = mpApplyFormOverrides($proj);                           /* [FORM-LIVE] */
             $rate = (float)($proj['budget_exch_rate'] ?? 1);
             if ($rate <= 0) $rate = 1;
             $tasksIn = $plan['tasks'];
-            $editMode = !empty($_REQUEST['edit_mode']);                       // [EDIT-SAVED] mode edit data tersimpan: semua task yang dimuat dianggap diganti oleh draft
+            $editMode = !empty($_REQUEST['edit_mode']);                       /* [EDIT-SAVED] mode edit data tersimpan: semua task yang dimuat dianggap diganti oleh draft */
             if ($editMode) {
                 $taskMatch = [];
                 $ctx = mpLoadMaterialContext($db, $projectId, mpLoadedIds());
             } else {
-                $taskMatch = mpMatchTasks($db, $projectId, $tasksIn);         // [DEDUP] task hampir sama dgn task lama -> akan ditimpa saat simpan
+                $taskMatch = mpMatchTasks($db, $projectId, $tasksIn);         /* [DEDUP] task hampir sama dgn task lama -> akan ditimpa saat simpan */
                 $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));
             }
-            $tot = mpAnnotateTasks($tasksIn, $ctx, $rate, false);                   // qty 0 dipertahankan agar baris yang sedang diedit tidak hilang
+            $tot = mpAnnotateTasks($tasksIn, $ctx, $rate, false);                   /* qty 0 dipertahankan agar baris yang sedang diedit tidak hilang */
             $meta = mpPlanMeta($proj, $ctx, $rate, $tot, $tasksIn);
             if (!$editMode) $meta = array_merge($meta, mpMatchInfo($taskMatch, $tasksIn));
             mpJson(array_merge([
@@ -1259,7 +1259,7 @@ PROMPT;
             ], $meta));
             break;
 
-        // [AI-BOQ][REWORK] Simpan: (1) buat material master yang belum ada -> (2) material & expense masuk RAB -> (3) task + alokasi.
+        /* [AI-BOQ][REWORK] Simpan: (1) buat material master yang belum ada -> (2) material & expense masuk RAB -> (3) task + alokasi. */
         case 'save_ai_task_plan':
             if ($access < 2) mpJson(['success' => false, 'message' => 'Akses ditolak.']);
             $projectId = (int)($_REQUEST['project_id'] ?? 0);
@@ -1272,54 +1272,54 @@ PROMPT;
             if (!mpHasPriceRange($db)) throw new Exception('Kolom harga min master (materials.estimated_price_min / expense_master.default_price_min) belum ada. Jalankan migrasi sql/2026-11-06.budget_items_price_range.sql terlebih dahulu.');
             $proj = mpFetchOne($db, "SELECT id, status, start_date, end_date, budget, budget_exch_rate, contract_value FROM projects WHERE id = :id", ['id' => $projectId], 'save_ai_plan_project');
             if (!$proj) throw new Exception('Proyek tidak ditemukan.');
-            // [FORM-LIVE] plafon dicek terhadap isian form terbaru; bila budget / nilai kontrak di form berbeda dari database,
-            // keduanya ikut disimpan pada transaksi yang sama agar RAB yang disimpan tidak melanggar plafon di database.
+            /* [FORM-LIVE] plafon dicek terhadap isian form terbaru; bila budget / nilai kontrak di form berbeda dari database, */
+            /* keduanya ikut disimpan pada transaksi yang sama agar RAB yang disimpan tidak melanggar plafon di database. */
             $projDb = $proj;
             $proj = mpApplyFormOverrides($proj);
             $persistBC = ($access >= 3) && (abs((float)$proj['budget'] - (float)$projDb['budget']) > 0.004 || abs((float)$proj['contract_value'] - (float)$projDb['contract_value']) > 0.004);
             $rate = (float)($proj['budget_exch_rate'] ?? 1);
             if ($rate <= 0) $rate = 1;
-            $editMode = !empty($_REQUEST['edit_mode']);                       // [EDIT-SAVED] simpan perubahan task tersimpan (tanpa AI)
+            $editMode = !empty($_REQUEST['edit_mode']);                       /* [EDIT-SAVED] simpan perubahan task tersimpan (tanpa AI) */
             $loadedIds = $editMode ? mpLoadedIds() : [];
             if ($editMode && $access < 3) mpJson(['success' => false, 'message' => 'Anda tidak memiliki hak akses untuk mengubah / menghapus task tersimpan.']);
             if ($editMode && !$loadedIds) throw new Exception('Data edit tidak lengkap (daftar task asal kosong). Tutup jendela lalu buka ulang EDIT TASK & MATERIAL.');
 
             $db->beginTransaction();
             try {
-                mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $projectId], 'lock_proyek');   // cegah simpan ganda paralel
-                $db->query("SELECT pg_advisory_xact_lock(771001)");                                                       // serialisasi kode material otomatis
-                if ($persistBC) {                                                                                         // [FORM-LIVE] budget & nilai kontrak dari form ikut tersimpan
+                mpExec($db, "SELECT id FROM projects WHERE id = :id FOR UPDATE", ['id' => $projectId], 'lock_proyek');   /* cegah simpan ganda paralel */
+                $db->query("SELECT pg_advisory_xact_lock(771001)");                                                       /* serialisasi kode material otomatis */
+                if ($persistBC) {                                                                                         /* [FORM-LIVE] budget & nilai kontrak dari form ikut tersimpan */
                     mpExec($db, "UPDATE public.projects SET budget = :b, contract_value = :c, updated_at = NOW() WHERE id = :id",
                            ['b' => $proj['budget'], 'c' => $proj['contract_value'], 'id' => $projectId], 'persist_budget_contract');
                 }
-                // [DEDUP] Tidak ada lagi hapus massal task lama. Setiap task hasil analisis dicek: nama HAMPIR SAMA dengan task lama
-                // -> task lama ditimpa (id tetap, tagihan & SPK yang terkait tidak putus); belum ada -> task baru.
-                // Pengecekan ada di dalam transaksi setelah proyek di-lock, jadi klik / simpan berulang tidak lagi menggandakan data.
+                /* [DEDUP] Tidak ada lagi hapus massal task lama. Setiap task hasil analisis dicek: nama HAMPIR SAMA dengan task lama */
+                /* -> task lama ditimpa (id tetap, tagihan & SPK yang terkait tidak putus); belum ada -> task baru. */
+                /* Pengecekan ada di dalam transaksi setelah proyek di-lock, jadi klik / simpan berulang tidak lagi menggandakan data. */
                 if ($editMode) {
-                    // [EDIT-SAVED] task dikenali lewat task_id (bukan kemiripan nama): ganti nama aman, tidak menggandakan data
+                    /* [EDIT-SAVED] task dikenali lewat task_id (bukan kemiripan nama): ganti nama aman, tidak menggandakan data */
                     $taskMatch = []; $own = [];
                     foreach (mpFetchAll($db, "SELECT id, task_name FROM public.project_tasks WHERE project_id = :p", ['p' => $projectId], 'edit_own') as $o) $own[(int)$o['id']] = $o['task_name'];
                     $usedTid = [];
                     foreach (array_values($plan['tasks']) as $i0 => $pt0) {
                         $tid0 = (int)($pt0['task_id'] ?? 0);
-                        if ($tid0 <= 0) continue;                                            // task baru yang ditambah user
+                        if ($tid0 <= 0) continue;                                            /* task baru yang ditambah user */
                         if (!isset($own[$tid0])) throw new Exception('Task ID ' . $tid0 . ' sudah tidak ada / bukan milik proyek ini. Tutup jendela lalu buka ulang EDIT TASK & MATERIAL.');
                         if (isset($usedTid[$tid0])) throw new Exception('Task yang sama muncul dua kali pada draft.');
                         $usedTid[$tid0] = true;
                         $taskMatch[$i0] = ['id' => $tid0, 'name' => $own[$tid0], 'score' => 1];
                     }
-                    $ctx = mpLoadMaterialContext($db, $projectId, $loadedIds);               // semua task asal diganti draft -> alokasinya tidak dihitung
+                    $ctx = mpLoadMaterialContext($db, $projectId, $loadedIds);               /* semua task asal diganti draft -> alokasinya tidak dihitung */
                 } else {
                     $taskMatch = mpMatchTasks($db, $projectId, array_values($plan['tasks']));
-                    $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));   // alokasi task yang akan ditimpa tidak dihitung (qty RAB tidak dobel)
+                    $ctx = mpLoadMaterialContext($db, $projectId, mpMatchIds($taskMatch));   /* alokasi task yang akan ditimpa tidak dihitung (qty RAB tidak dobel) */
                 }
                 $seenNew = [];
 
-                // ---- Pass 1: validasi baris, kelompokkan per item lintas task ----
+                /* ---- Pass 1: validasi baris, kelompokkan per item lintas task ---- */
                 $tasksClean = []; $agg = [];
                 $ti = -1;
                 foreach (array_values($plan['tasks']) as $t) {
-                    $ti++;                                                           // [DEDUP] indeks task = kunci $taskMatch
+                    $ti++;                                                           /* [DEDUP] indeks task = kunci $taskMatch */
                     $tName  = trim((string)($t['task_name'] ?? ''));
                     $tDesc  = trim((string)($t['description'] ?? ''));
                     $tStart = (string)($t['start_date'] ?? '');
@@ -1341,15 +1341,15 @@ PROMPT;
                             if (strlen($name) > 255) $name = substr($name, 0, 255);
                             list($pMin, $pMax) = mpNormPrice(mpNum($m['price_min'] ?? 0), mpNum($m['price_max'] ?? ($m['unit_price'] ?? 0)));
                             list($aiMin, $aiMax) = mpNormPrice(mpNum($m['ai_min'] ?? 0), mpNum($m['ai_max'] ?? 0));
-                            $res = mpResolveLine($ctx, $bid, $name, $kind);          // server menentukan sendiri: rab / master / new
+                            $res = mpResolveLine($ctx, $bid, $name, $kind);          /* server menentukan sendiri: rab / master / new */
                             if ($res['type'] !== 'rab' && $pMax <= 0 && !($res['type'] === 'master' && (float)($kind === 'expenses' ? $res['master']['default_price'] : $res['master']['estimated_price']) > 0)) {
                                 throw new Exception("Harga {$label} \"{$name}\" belum diisi (Task \"{$tName}\").");
                             }
-                            $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   // [DEDUP] nama hampir sama dlm satu rencana = satu item
+                            $key = mpLineKey($res, ($res['type'] === 'rab') ? $name : mpCanonName($seenNew, $kind, $name), $kind);   /* [DEDUP] nama hampir sama dlm satu rencana = satu item */
                             if (!isset($agg[$key])) {
                                 $agg[$key] = ['kind' => $kind, 'res' => $res, 'name' => $name, 'unit' => $unit, 'pmin' => $pMin, 'pmax' => $pMax,
                                               'qty' => 0.0, 'spec' => trim((string)($m['spec'] ?? '')), 'category' => mb_substr($tName, 0, 100), 'aimin' => $aiMin, 'aimax' => $aiMax,
-                                              'cat' => mpExpCategory($m['category'] ?? '')];     // kategori RAB utk biaya baru
+                                              'cat' => mpExpCategory($m['category'] ?? '')];     /* kategori RAB utk biaya baru */
                             }
                             if ($agg[$key]['spec'] === '') $agg[$key]['spec'] = trim((string)($m['spec'] ?? ''));
                             $agg[$key]['pmax'] = max($agg[$key]['pmax'], $pMax);
@@ -1359,13 +1359,13 @@ PROMPT;
                         }
                     }
                     $tasksClean[] = ['name' => $tName, 'desc' => $tDesc, 'start' => $tStart, 'end' => $tEnd, 'lines' => $lines,
-                                     'match_id' => isset($taskMatch[$ti]) ? (int)$taskMatch[$ti]['id'] : 0,   // [DEDUP] >0 = timpa task lama
-                                     'loaded_alloc' => array_map('intval', is_array($t['loaded_alloc_ids'] ?? null) ? $t['loaded_alloc_ids'] : [])];   // [EDIT-SAVED] alokasi asal
+                                     'match_id' => isset($taskMatch[$ti]) ? (int)$taskMatch[$ti]['id'] : 0,   /* [DEDUP] >0 = timpa task lama */
+                                     'loaded_alloc' => array_map('intval', is_array($t['loaded_alloc_ids'] ?? null) ? $t['loaded_alloc_ids'] : [])];   /* [EDIT-SAVED] alokasi asal */
                 }
 
-                // Level 2 hanya boleh menambahkan data baru. Simpan AI dapat menimpa task lama,
-                // menambah qty item RAB yang sudah ada, atau melengkapi rentang harga master.
-                // Perubahan terhadap data yang sudah ada wajib level 3.
+                /* Level 2 hanya boleh menambahkan data baru. Simpan AI dapat menimpa task lama, */
+                /* menambah qty item RAB yang sudah ada, atau melengkapi rentang harga master. */
+                /* Perubahan terhadap data yang sudah ada wajib level 3. */
                 if ($access < 3) {
                     foreach ($tasksClean as $tc) {
                         if ((int)$tc['match_id'] > 0) {
@@ -1396,7 +1396,7 @@ PROMPT;
                     }
                 }
 
-                // ---- Pass 2: master (material / expense_master) bila belum ada -> RAB proyek ----
+                /* ---- Pass 2: master (material / expense_master) bila belum ada -> RAB proyek ---- */
                 $stMatIns = $db->prepare("
                     INSERT INTO public.materials (material_code, material_name, unit, category, active, estimated_price, estimated_price_min)
                     VALUES (:code, :name, :unit, :cat, true, :pmax, :pmin) RETURNING id");
@@ -1406,11 +1406,11 @@ PROMPT;
                 $stRabIns = $db->prepare("
                     INSERT INTO public.budget_items (project_id, category, material_id, expense_id, item_name, unit, qty_plan,
                                                      unit_price_plan, tolerance_pct, notes)
-                    VALUES (:pid, :cat, :mid, :eid, :iname, :unit, :qty, :pplan, 0, :notes) RETURNING id");   // harga satuan RAB = MAX; rentang min-max ada di master
+                    VALUES (:pid, :cat, :mid, :eid, :iname, :unit, :qty, :pplan, 0, :notes) RETURNING id");   /* harga satuan RAB = MAX; rentang min-max ada di master */
                 $newMaterials = 0; $newExpMaster = 0; $newRabMat = 0; $newRabExp = 0; $topups = 0; $touched = []; $filledRange = 0;
                 foreach ($agg as $key => &$a) {
                     $res = $a['res'];
-                    // [AI-BOQ] Master yang rentang harganya masih kosong diisi dari estimasi AI (hanya mengisi yang kosong, tidak menimpa nilai yang sudah ada)
+                    /* [AI-BOQ] Master yang rentang harganya masih kosong diisi dari estimasi AI (hanya mengisi yang kosong, tidak menimpa nilai yang sudah ada) */
                     $mtype = null; $mid0 = 0; $curMax = 0.0; $curMin = 0.0;
                     if ($res['type'] === 'rab') {
                         $r0 = $res['rab'];
@@ -1433,7 +1433,7 @@ PROMPT;
                     if ($res['type'] === 'rab') {
                         $r = $res['rab'];
                         $a['bid'] = (int)$r['budget_item_id'];
-                        $need = round($r['qty_allocated'] + $a['qty'], 3);          // RAB harus menampung seluruh alokasi task
+                        $need = round($r['qty_allocated'] + $a['qty'], 3);          /* RAB harus menampung seluruh alokasi task */
                         if ($need > $r['qty_plan'] + MP_EPS) {
                             mpExec($db, "UPDATE public.budget_items SET qty_plan = :q WHERE id = :id", ['q' => $need, 'id' => $a['bid']], 'topup_rab');
                             $topups++; $touched[$a['bid']] = true;
@@ -1445,9 +1445,9 @@ PROMPT;
                         if ($res['type'] === 'master') {
                             $mid = (int)$res['master']['id'];
                             if ($a['unit'] === '') $a['unit'] = $res['master']['unit'];
-                            if ((float)$res['master']['estimated_price'] > 0) list($a['pmin'], $a['pmax']) = mpNormPrice((float)$res['master']['estimated_price_min'] ?: (float)$res['master']['estimated_price'], (float)$res['master']['estimated_price']);   // pakai rentang master
+                            if ((float)$res['master']['estimated_price'] > 0) list($a['pmin'], $a['pmax']) = mpNormPrice((float)$res['master']['estimated_price_min'] ?: (float)$res['master']['estimated_price'], (float)$res['master']['estimated_price']);   /* pakai rentang master */
                             $a['name'] = $res['master']['material_name'];
-                        } else {                                                      // material baru -> buat dulu di master
+                        } else {                                                      /* material baru -> buat dulu di master */
                             if ($a['unit'] === '') $a['unit'] = 'unit';
                             $stMatIns->execute([':code' => mpNextMaterialCode($db), ':name' => $a['name'], ':unit' => mb_substr($a['unit'], 0, 30),
                                                 ':cat' => $a['category'], ':pmax' => $a['pmax'], ':pmin' => $a['pmin']]);
@@ -1456,12 +1456,12 @@ PROMPT;
                             $newMaterials++;
                         }
                     } else {
-                        if ($res['type'] === 'master') {                              // biaya sudah ada di expense_master, belum di RAB
+                        if ($res['type'] === 'master') {                              /* biaya sudah ada di expense_master, belum di RAB */
                             $eid = (int)$res['master']['id']; $cat = mpExpCategory($res['master']['category']);
                             if ($a['unit'] === '') $a['unit'] = $res['master']['unit'];
-                            if ((float)$res['master']['default_price'] > 0) list($a['pmin'], $a['pmax']) = mpNormPrice((float)$res['master']['default_price_min'] ?: (float)$res['master']['default_price'], (float)$res['master']['default_price']);   // pakai rentang master
+                            if ((float)$res['master']['default_price'] > 0) list($a['pmin'], $a['pmax']) = mpNormPrice((float)$res['master']['default_price_min'] ?: (float)$res['master']['default_price'], (float)$res['master']['default_price']);   /* pakai rentang master */
                             $a['name'] = $res['master']['expense_name'];
-                        } else {                                                      // biaya baru -> buat dulu di expense_master
+                        } else {                                                      /* biaya baru -> buat dulu di expense_master */
                             if ($a['unit'] === '') $a['unit'] = 'ls';
                             $cat = mpExpCategory($a['cat']);
                             $stExpIns->execute([':code' => mpNextExpenseCode($db), ':name' => mb_substr($a['name'], 0, 150), ':cat' => $cat,
@@ -1476,7 +1476,7 @@ PROMPT;
                     $stRabIns->execute([
                         ':pid' => $projectId, ':cat' => $cat, ':mid' => $mid, ':eid' => $eid,
                         ':iname' => $a['name'], ':unit' => mb_substr($a['unit'], 0, 30), ':qty' => $a['qty'],
-                        ':pplan' => round($a['pmax'] / $rate, 2),                    // harga satuan RAB = MAX (mata uang anggaran)
+                        ':pplan' => round($a['pmax'] / $rate, 2),                    /* harga satuan RAB = MAX (mata uang anggaran) */
                         ':notes' => $notes
                     ]);
                     $a['bid'] = (int)$stRabIns->fetchColumn();
@@ -1486,15 +1486,15 @@ PROMPT;
                 }
                 unset($a);
 
-                // Plafon: total RAB (qty x harga RAB, mata uang anggaran) tidak boleh melebihi nilai kontrak; budget hanya diperingatkan
+                /* Plafon: total RAB (qty x harga RAB, mata uang anggaran) tidak boleh melebihi nilai kontrak; budget hanya diperingatkan */
                 $rt = mpFetchOne($db, "SELECT COALESCE(SUM(qty_plan * unit_price_plan),0) AS s FROM public.budget_items WHERE project_id = :p", ['p' => $projectId], 'rab_total_after');
                 $rabAfter = (float)$rt['s'];
                 $contract = (float)($proj['contract_value'] ?? 0); $budget = (float)($proj['budget'] ?? 0);
-                if ($contract > 0 && $rabAfter > $contract + 0.01 && (!$editMode || $rabAfter > $ctx['total_plan'] + 0.01)) {   // [EDIT-SAVED] mode edit: hanya ditolak bila edit MENAMBAH total RAB
+                if ($contract > 0 && $rabAfter > $contract + 0.01 && (!$editMode || $rabAfter > $ctx['total_plan'] + 0.01)) {   /* [EDIT-SAVED] mode edit: hanya ditolak bila edit MENAMBAH total RAB */
                     throw new Exception('Total RAB Rp ' . mpIdr($rabAfter * $rate) . ' melebihi nilai kontrak (plafon) Rp ' . mpIdr($contract * $rate) .
                                         '. Kurangi qty / harga / item lalu simpan lagi. Tidak ada data yang tersimpan.');
                 }
-                // Proyek berjalan & total > budget = memakai cadangan: item yang ditambah ditandai addendum (sama seperti RAB)
+                /* Proyek berjalan & total > budget = memakai cadangan: item yang ditambah ditandai addendum (sama seperti RAB) */
                 $usesReserve = (($proj['status'] ?? '') !== 'Belum Mulai') && $budget > 0 && $rabAfter > $budget + 0.01;
                 if ($usesReserve && $touched) {
                     $uid = (int)($_SESSION['user_id'] ?? 0);
@@ -1504,7 +1504,7 @@ PROMPT;
                     }
                 }
 
-                // ---- Pass 3: task + alokasi (material & expense memakai task_materials -> budget_items) ----
+                /* ---- Pass 3: task + alokasi (material & expense memakai task_materials -> budget_items) ---- */
                 $stTask = $db->prepare("
                     INSERT INTO public.project_tasks (project_id, task_name, description, start_date, end_date, status)
                     VALUES (:pid, :tname, :tdesc, :tsd, :ted, 'Belum Mulai')
@@ -1513,13 +1513,13 @@ PROMPT;
                     INSERT INTO public.task_materials (task_id, budget_item_id, qty_budget)
                     VALUES (:tid, :bid, :qty)");
                 $taskCount = 0; $allocCount = 0; $taskNew = 0; $taskOver = 0; $allocRemoved = 0;
-                $taskDeleted = 0; $itemDeleted = 0; $orphan = [];                      // [EDIT-SAVED]
+                $taskDeleted = 0; $itemDeleted = 0; $orphan = [];                      /* [EDIT-SAVED] */
                 $stTaskUpdEdit = $db->prepare("
                     UPDATE public.project_tasks SET task_name = :tname, description = :tdesc,
                            start_date = CAST(:tsd AS date), end_date = CAST(:ted AS date)
-                     WHERE id = :id AND project_id = :pid");                             // mode edit: nama / tanggal / deskripsi selalu ditimpa
+                     WHERE id = :id AND project_id = :pid");                             /* mode edit: nama / tanggal / deskripsi selalu ditimpa */
                 $stAllocDelEdit = $db->prepare("DELETE FROM public.task_materials WHERE id = :id");
-                // [DEDUP] task lama yang hampir sama: nama/tanggal hanya ditimpa bila masih 'Belum Mulai' (task berjalan hanya diperbarui deskripsinya)
+                /* [DEDUP] task lama yang hampir sama: nama/tanggal hanya ditimpa bila masih 'Belum Mulai' (task berjalan hanya diperbarui deskripsinya) */
                 $stTaskUpd = $db->prepare("
                     UPDATE public.project_tasks SET
                         task_name   = CASE WHEN status = 'Belum Mulai' THEN :tname ELSE task_name END,
@@ -1528,30 +1528,30 @@ PROMPT;
                         end_date    = CASE WHEN status = 'Belum Mulai' THEN CAST(:ted AS date) ELSE end_date END
                      WHERE id = :id AND project_id = :pid");
                 $stAllocSel = $db->prepare("SELECT id, budget_item_id FROM public.task_materials WHERE task_id = :tid");
-                $stAllocUpd = $db->prepare("UPDATE public.task_materials SET qty_budget = :qty WHERE id = :id");     // id baris tetap -> FK spk_task_materials aman
+                $stAllocUpd = $db->prepare("UPDATE public.task_materials SET qty_budget = :qty WHERE id = :id");     /* id baris tetap -> FK spk_task_materials aman */
                 $stAllocDel = $db->prepare("DELETE FROM public.task_materials tm WHERE tm.id = :id
-                                               AND NOT EXISTS (SELECT 1 FROM public.spk_task_materials s WHERE s.task_material_id = tm.id)");   // yang sudah dipakai SPK dipertahankan
+                                               AND NOT EXISTS (SELECT 1 FROM public.spk_task_materials s WHERE s.task_material_id = tm.id)");   /* yang sudah dipakai SPK dipertahankan */
                 foreach ($tasksClean as $tc) {
                     $existingAlloc = [];
-                    if ($tc['match_id'] > 0) {                                        // [DEDUP] TIMPA task lama
+                    if ($tc['match_id'] > 0) {                                        /* [DEDUP] TIMPA task lama */
                         $taskId = (int)$tc['match_id'];
                         ($editMode ? $stTaskUpdEdit : $stTaskUpd)->execute([':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end'], ':id' => $taskId, ':pid' => $projectId]);
                         $stAllocSel->execute([':tid' => $taskId]);
                         foreach ($stAllocSel->fetchAll(PDO::FETCH_ASSOC) as $ar) $existingAlloc[(int)$ar['budget_item_id']] = (int)$ar['id'];
                         $taskOver++;
-                    } else {                                                          // [DEDUP] belum ada -> SIMPAN BARU
+                    } else {                                                          /* [DEDUP] belum ada -> SIMPAN BARU */
                         $stTask->execute([':pid' => $projectId, ':tname' => $tc['name'], ':tdesc' => $tc['desc'], ':tsd' => $tc['start'], ':ted' => $tc['end']]);
                         $taskId = (int)$stTask->fetchColumn();
                         if ($taskId <= 0) throw new Exception('Gagal mendapatkan ID Task baru.');
                         $taskNew++;
                     }
-                    $perTask = [];                                                    // item sama di satu task digabung
+                    $perTask = [];                                                    /* item sama di satu task digabung */
                     foreach ($tc['lines'] as $ln) {
                         $bid = $agg[$ln['key']]['bid'];
                         $perTask[$bid] = round(($perTask[$bid] ?? 0) + $ln['qty'], 3);
                     }
                     foreach ($perTask as $bid => $qty) {
-                        if (isset($existingAlloc[$bid])) {                            // [DEDUP] item sudah dialokasikan ke task ini -> qty ditimpa
+                        if (isset($existingAlloc[$bid])) {                            /* [DEDUP] item sudah dialokasikan ke task ini -> qty ditimpa */
                             $stAllocUpd->execute([':qty' => $qty, ':id' => $existingAlloc[$bid]]);
                             unset($existingAlloc[$bid]);
                         } else {
@@ -1559,14 +1559,14 @@ PROMPT;
                         }
                         $allocCount++;
                     }
-                    foreach ($existingAlloc as $xbid => $aid) {                       // alokasi lama yang tidak ada di hasil baru
+                    foreach ($existingAlloc as $xbid => $aid) {                       /* alokasi lama yang tidak ada di hasil baru */
                         if ($editMode) {
-                            if (!in_array($aid, $tc['loaded_alloc'], true)) continue;      // ditambah pihak lain setelah jendela dibuka -> jangan disentuh
-                            $why = mpAllocLock($db, $aid, $taskId, (int)$xbid);            // [EDIT-SAVED] ditolak bila dipakai SPK
+                            if (!in_array($aid, $tc['loaded_alloc'], true)) continue;      /* ditambah pihak lain setelah jendela dibuka -> jangan disentuh */
+                            $why = mpAllocLock($db, $aid, $taskId, (int)$xbid);            /* [EDIT-SAVED] ditolak bila dipakai SPK */
                             if ($why !== '') throw new Exception('"' . mpItemName($db, (int)$xbid) . '" tidak dapat dihapus dari Task "' . $tc['name'] . '": ' . $why . '. Tidak ada data yang tersimpan.');
                             $stAllocDelEdit->execute([':id' => $aid]);
-                            $allocRemoved++; $orphan[(int)$xbid] = true;                   // kandidat hapus item RAB bila tak dipakai task lain
-                        } else {                                                           // mode AI: dilepas bila belum dipakai SPK
+                            $allocRemoved++; $orphan[(int)$xbid] = true;                   /* kandidat hapus item RAB bila tak dipakai task lain */
+                        } else {                                                           /* mode AI: dilepas bila belum dipakai SPK */
                             $stAllocDel->execute([':id' => $aid]);
                             $allocRemoved += $stAllocDel->rowCount();
                         }
@@ -1574,13 +1574,13 @@ PROMPT;
                     $taskCount++;
                 }
                 if ($editMode) {
-                    // [EDIT-SAVED] 1) task yang dimuat tetapi sudah dihapus dari draft -> hapus, DITOLAK bila dipakai
+                    /* [EDIT-SAVED] 1) task yang dimuat tetapi sudah dihapus dari draft -> hapus, DITOLAK bila dipakai */
                     $keepIds = [];
                     foreach ($tasksClean as $tc) { if ($tc['match_id'] > 0) $keepIds[(int)$tc['match_id']] = true; }
                     foreach ($loadedIds as $lid) {
                         if (isset($keepIds[$lid])) continue;
                         $tr = mpFetchOne($db, "SELECT id, task_name FROM public.project_tasks WHERE id = :id AND project_id = :p", ['id' => $lid, 'p' => $projectId], 'edit_del_task');
-                        if (!is_array($tr)) continue;                                       // sudah dihapus pihak lain
+                        if (!is_array($tr)) continue;                                       /* sudah dihapus pihak lain */
                         $why = mpTaskBlock($db, $lid);
                         $als = mpFetchAll($db, "SELECT id, budget_item_id FROM public.task_materials WHERE task_id = :t", ['t' => $lid], 'edit_del_allocs');
                         if ($why === '') {
@@ -1592,11 +1592,11 @@ PROMPT;
                         if ($why !== '') throw new Exception('Task "' . $tr['task_name'] . '" tidak dapat dihapus: ' . $why . '. Tidak ada data yang tersimpan.');
                         foreach ($als as $al) $orphan[(int)$al['budget_item_id']] = true;
                         mpExec($db, "DELETE FROM public.task_materials WHERE task_id = :t", ['t' => $lid], 'edit_del_alloc_rows');
-                        mpExec($db, "UPDATE public.project_invoices SET task_id = NULL WHERE task_id = :t", ['t' => $lid], 'edit_del_inv_unlink');   // tagihan belum dibayar dilepas dari task
+                        mpExec($db, "UPDATE public.project_invoices SET task_id = NULL WHERE task_id = :t", ['t' => $lid], 'edit_del_inv_unlink');   /* tagihan belum dibayar dilepas dari task */
                         mpExec($db, "DELETE FROM public.project_tasks WHERE id = :id AND project_id = :p", ['id' => $lid, 'p' => $projectId], 'edit_del_task_row');
                         $taskDeleted++;
                     }
-                    // 2) item RAB yatim (tidak lagi dialokasikan ke task mana pun) -> hapus, DITOLAK bila dipakai PO / SPK / subkon / issue gudang
+                    /* 2) item RAB yatim (tidak lagi dialokasikan ke task mana pun) -> hapus, DITOLAK bila dipakai PO / SPK / subkon / issue gudang */
                     foreach (array_keys($orphan) as $obid) {
                         if (mpCount($db, "SELECT COUNT(*) AS n FROM public.task_materials WHERE budget_item_id = :b", ['b' => $obid], 'edit_orphan_left') > 0) continue;
                         $bi = mpFetchOne($db, "SELECT item_name FROM public.budget_items WHERE id = :b AND project_id = :p", ['b' => $obid, 'p' => $projectId], 'edit_orphan_item');
@@ -1658,14 +1658,14 @@ PROMPT;
             $notes          = $_REQUEST['notes'] ?? '';
             $project_scope  = $_REQUEST['project_scope'] ?? '';
 
-            // [PPN][NEW] pengaturan penagihan: tarif PPN, nilai kontrak termasuk PPN, retensi, DP minimum.
-            // Tidak dikirim (UI lama) -> null: saat update nilai lama dipertahankan, saat tambah memakai default kolom.
+            /* [PPN][NEW] pengaturan penagihan: tarif PPN, nilai kontrak termasuk PPN, retensi, DP minimum. */
+            /* Tidak dikirim (UI lama) -> null: saat update nilai lama dipertahankan, saat tambah memakai default kolom. */
             $numOrNull = function ($k) { return (isset($_REQUEST[$k]) && $_REQUEST[$k] !== '') ? (float)str_replace(',', '', $_REQUEST[$k]) : null; };
             $ppn_rate      = $numOrNull('ppn_rate');
             $retention_pct = $numOrNull('retention_pct');
             $dp_min_pct    = $numOrNull('dp_min_pct');
             $ppn_inclusive = isset($_REQUEST['ppn_inclusive']) && $_REQUEST['ppn_inclusive'] !== ''
-                             ? (in_array((string)$_REQUEST['ppn_inclusive'], ['1', 'true', 't'], true) ? 't' : 'f') : null;   // boolean PDO pgsql: 't' / 'f'
+                             ? (in_array((string)$_REQUEST['ppn_inclusive'], ['1', 'true', 't'], true) ? 't' : 'f') : null;   /* boolean PDO pgsql: 't' / 'f' */
             foreach (['Tarif PPN' => $ppn_rate, 'Retensi' => $retention_pct, 'DP Minimum' => $dp_min_pct] as $lbl => $v) {
                 if ($v !== null && ($v < 0 || $v > 100)) throw new Exception("{$lbl} harus antara 0 - 100%.");
             }
@@ -1682,9 +1682,9 @@ PROMPT;
                 throw new Exception('Status proyek tidak valid.');
             }
             if ($progress !== null && ($progress < 0 || $progress > 100)) throw new Exception('Progress harus antara 0-100.');
-            // [F-1.1 2026-11-16] Progress hanya boleh BERUBAH oleh admin (FormAccess >= 4); non-admin harus
-            // lewat modul Project Progress (klaim -> verifikasi). Nilai yang TIDAK berubah tetap boleh dikirim
-            // (UI lama mengirim ulang nilai yang sama); yang ditolak hanyalah nilai yang menyimpang dari DB.
+            /* [F-1.1 2026-11-16] Progress hanya boleh BERUBAH oleh admin (FormAccess >= 4); non-admin harus */
+            /* lewat modul Project Progress (klaim -> verifikasi). Nilai yang TIDAK berubah tetap boleh dikirim */
+            /* (UI lama mengirim ulang nilai yang sama); yang ditolak hanyalah nilai yang menyimpang dari DB. */
             if ($progress !== null && $access < 4 && $task === 'update' && $id > 0) {
                 $curProg = mpFetchOne($db, "SELECT COALESCE(progress, 0) AS progress FROM projects WHERE id = :id",
                     ['id' => $id], 'cek progress proyek');
@@ -1693,7 +1693,7 @@ PROMPT;
                 }
             }
             if ($progress !== null && $progress > 0 && $task === 'create' && $access < 4) {
-                // Proyek baru non-admin selalu mulai dari 0%; progress diisi lewat klaim terverifikasi.
+                /* Proyek baru non-admin selalu mulai dari 0%; progress diisi lewat klaim terverifikasi. */
                 $progress = 0;
             }
             if ($end_date && $start_date && $end_date < $start_date) {

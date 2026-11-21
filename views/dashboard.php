@@ -365,7 +365,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <th class="p-3 text-base text-right">Total Realisasi</th>
 <th class="p-3 text-base text-right">Sisa Qty</th>
 <th class="p-3 text-base text-center">% Terpakai</th>
-<th class="p-3 text-base text-center">Status</th>
+<th class="p-3 text-center">Status</th>
 </tr>
 </thead>
 <tbody id="material_tbody" class="divide-y divide-[#0a2d4a] text-slate-300 font-mono">
@@ -386,9 +386,19 @@ let globalTaxRates = [];
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+async function apiFetch(url, opts = {}) {
+    const res = await fetch(url, opts);
+    if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
+    let json;
+    try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
+    if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
+    if (json.success === false) throw new Error(json.message || "Permintaan gagal (server).");
+    return json;
+}
+
 document.addEventListener('DOMContentLoaded', () => { initDashboard(); });
 
-// Tab engine
 const TAB_LOADERS = {
 ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
 keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
@@ -397,6 +407,7 @@ material:  () => { loadMaterialMonitoring(); }
 const TAB_CHARTS = { keuangan: () => [finChart], material: () => [doughnutChart, barMaterialChart] };
 const tabDirty = { ringkasan: true, keuangan: true, material: true };
 let activeTab = 'ringkasan';
+
 function tabFromHash() {
 const h = (location.hash || '').replace('#', '');
 return TAB_LOADERS[h] ? h : 'ringkasan';
@@ -434,14 +445,27 @@ switchTab(tabFromHash(), true);
 }
 
 async function loadProjects() {
-try {
-const res = await fetch(`${API_ENDPOINT}?action=get_projects`);
-const json = await res.json();
-const select = document.getElementById('project_select');
-if (json.success && json.data.length > 0) {
-select.innerHTML = '<option value="0">-- Semua Proyek --</option>' + json.data.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
-} else { select.innerHTML = '<option value="0">Tidak ada proyek</option>'; }
-} catch (err) { console.error('Error load projects:', err); }
+    try {
+    const cachedProjects = localStorage.getItem("rab_dash_projects");
+    let projects = null;
+    if (cachedProjects) {
+    try { projects = JSON.parse(cachedProjects); } catch (e) {}
+    }
+    if (!projects || !projects.length) {
+    const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
+    if (json.success && json.data) {
+    projects = json.data;
+    localStorage.setItem("rab_dash_projects", JSON.stringify(projects));
+    }
+    }
+    const select = document.getElementById("project_select");
+    if (projects && projects.length > 0) {
+    select.innerHTML = "<option value=\"0\">-- Semua Proyek --</option>" + projects.map(p => `<option value="${p.id}">${p.project_name || p.name}</option>`).join("");
+    } else { select.innerHTML = "<option value=\"0\">Tidak ada proyek</option>"; }
+    } catch (err) {
+    console.error("Error load projects:", err);
+    document.getElementById("project_select").innerHTML = "<option value=\"0\">Gagal memuat proyek: " + esc(String(err)) + "</option>";
+    }
 }
 
 function onProjectChange(val) {
@@ -451,13 +475,11 @@ refreshDashboard();
 
 const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// [FIX] Action name disesuaikan dengan dashboardCRD.php
 async function loadFinancialAging() {
 const tbody = document.getElementById('aging_tbody');
 const showMsg = (msg, cls) => { tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center ${cls} font-sans">${msg}</td></tr>`; };
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_financial_aging&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_aging&project_id=${currentProjectId}`);
 if (!json.success) { showMsg(json.message || 'Gagal memuat data aging.', 'text-rose-400'); return; }
 const ar = json.ar, ap = json.ap;
 const row = (label, labelCls, d, c) => `
@@ -483,8 +505,7 @@ tbody.innerHTML = row('Piutang (AR)', 'text-cyan-400', ar, 'text-emerald-400') +
 
 async function loadInvoicePipeline() {
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
 if (json.success) {
 const d = json.data;
 document.getElementById('pip_overdue_val').innerText = fmtRp(d.values['Jatuh Tempo (Overdue)']);
@@ -495,7 +516,7 @@ document.getElementById('pip_partial_val').innerText = fmtRp(d.values['Sebagian'
 document.getElementById('pip_partial_cnt').innerText = d.counts['Sebagian'] + ' invoice';
 document.getElementById('pip_paid_cnt').innerText = d.counts['Lunas'] + ' invoice';
 }
-} catch (err) { console.error('Error load invoice pipeline:', err); }
+} catch (err) { alert('Gagal memuat invoice pipeline: ' + esc(String(err))); }
 }
 
 const LEVEL_STYLE = {
@@ -507,8 +528,7 @@ info:   'border-cyan-500 text-cyan-200'
 async function loadActionCenter() {
 const ul = document.getElementById('action_list');
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_action_center&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_action_center&project_id=${currentProjectId}`);
 if (!json.success) { ul.innerHTML = `<li class="text-center text-rose-400 text-xs py-3">${esc(json.message || 'Gagal memuat Action Center')}</li>`; return; }
 const order = { danger: 0, warn: 1, info: 2 };
 const active = json.items.filter(i => i.count > 0).sort((a, b) => (order[a.level] - order[b.level]) || (b.count - a.count));
@@ -527,8 +547,7 @@ ul.innerHTML = html;
 async function loadMilestones() {
 const list = document.getElementById('milestone_list');
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_upcoming_milestones&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_upcoming_milestones&project_id=${currentProjectId}`);
 if (!json.success) { list.innerHTML = `<div class="text-center text-rose-400 text-xs py-4">${esc(json.message || 'Error memuat milestone')}</div>`; return; }
 if (json.data.length > 0) {
 list.innerHTML = json.data.map(t => {
@@ -547,8 +566,7 @@ return `
 async function loadProfitability() {
 const tbody = document.getElementById('profit_tbody');
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_project_profitability&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_project_profitability&project_id=${currentProjectId}`);
 if (!json.success) { tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-rose-400 text-xs">${esc(json.message || 'Error memuat data')}</td></tr>`; return; }
 if (json.data.length > 0) {
 tbody.innerHTML = json.data.map(p => {
@@ -615,8 +633,7 @@ const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
 const pname = card ? card.getAttribute('data-name') : '';
 box.innerHTML = `<div class="bg-purple-950/30 border border-purple-700/40 rounded-lg p-4 text-sm text-purple-200 animate-pulse">🧠 AI sedang menganalisis <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
 if (token !== aiRequestToken) return;
 if (!json.success) { box.innerHTML = `<div class="bg-rose-950/30 border border-rose-800 rounded-lg p-3 text-sm text-rose-300">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
 const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
@@ -648,8 +665,7 @@ applyAiRiskToCard(id, d.risk);
 async function loadProjectHealth() {
 const box = document.getElementById('health_cards'), reco = document.getElementById('health_reco');
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
 if (!json.success) { box.innerHTML = `<div class="text-center text-rose-400 text-xs py-4 col-span-full">${esc(json.message || 'Gagal memuat kesehatan proyek')}</div>`; reco.innerHTML = ''; return; }
 if (!json.data.length) { box.innerHTML = '<div class="text-center text-slate-500 text-xs py-4 col-span-full">Tidak ada proyek berstatus Berjalan.</div>'; reco.innerHTML = ''; return; }
 const t = json.thresholds || { warn: 10, crit: 25 };
@@ -690,8 +706,7 @@ selectHealthProject(pick, false);
 
 async function loadExtra() {
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_extra&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_extra&project_id=${currentProjectId}`);
 if (!json.success) return;
 const d = json.data;
 document.getElementById('extra_cash').innerText = d.cash === null ? '-' : fmtRp(d.cash);
@@ -708,15 +723,14 @@ card.style.display = '';
 document.getElementById('extra_subcon').innerText = fmtRp(d.subcon.sisa_hutang);
 document.getElementById('extra_subcon_sub').innerText = `${d.subcon.spk_aktif} SPK aktif | Nilai ${fmtRp(d.subcon.nilai_spk)} | Tertagih ${fmtRp(d.subcon.tertagih)} | sisa hutang prestasi`;
 } else { card.style.display = 'none'; }
-} catch (err) { console.error('Error load extra:', err); }
+} catch (err) { console.error('Error load extra:', err); alert('Gagal memuat data tambahan: ' + esc(String(err))); }
 }
 
 async function loadTaxRates() {
 const badge = document.getElementById('kmk_badge');
 const validDateEl = document.getElementById('kmk_valid_date');
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_tax_rates`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_tax_rates`);
 if (json.success) {
 badge.innerText = json.kmk_number !== '-' ? `KMK: ${json.kmk_number}` : 'Kosong';
 if (json.start_date && json.end_date) validDateEl.innerText = `(${json.start_date} s/d ${json.end_date})`;
@@ -750,8 +764,7 @@ async function syncTaxRates() {
 const btn = document.getElementById('btn_sync_tax');
 btn.disabled = true; btn.innerText = 'Syncing...';
 try {
-const res = await fetch(`${API_ENDPOINT}?action=sync_tax_rates`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`);
 alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
 await loadTaxRates();
 } catch (err) { alert('Gagal menghubungi server sync kurs'); }
@@ -761,8 +774,7 @@ finally { btn.disabled = false; btn.innerText = 'Update Kurs'; }
 async function loadFinancialPerformance() {
 const year = document.getElementById('fin_year_select').value;
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
 if (!json.success) { renderFinChart(['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'], [], []); setFinMessage(json.message || 'Gagal memuat performa keuangan.', true); return; }
 if (json.available_years) fillYearSelect(json.available_years, json.year);
 renderFinChart(json.labels, json.datasets.pendapatan, json.datasets.pengeluaran);
@@ -798,8 +810,7 @@ options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { la
 async function loadMaterialMonitoring() {
 const tbody = document.getElementById('material_tbody');
 try {
-const res = await fetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
-const json = await res.json();
+const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
 if (json.success) {
 document.getElementById('kpi_total_budget').innerText = formatIDR(json.kpi.budget_rab);
 document.getElementById('kpi_material_out').innerText = formatIDR(json.kpi.material_out);

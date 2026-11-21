@@ -1,10 +1,4 @@
-# Session Log
-
-## [2026-11-21 04:30:00 WIB] - Penyelarasan Frontend & Backend Dashboard
-- **Tujuan / Permintaan**: Audit & cocokan relasi data antara frontend `views/dashboard.php` dan backend `php-crud/dashboardCRD.php`, perbaiki nilai `undefined` dan angka `Rp 0`.
-- **File yang Diubah**:
-  - `views/dashboard.php`
-  - `php-crud/dashboardCRD.php`
-  - `docs/SESSION_LOG.md`
-- **Ringkasan Teknis**: Memastikan action API (`get_projects`, `get_project_health`, `get_action_center`, `get_milestones`, `get_profitability`, `get_aging_data`, `get_tax_rates`, `get_extra_financials`, `get_financial_performance`, `get_material_monitoring`) selaras 100% antara request fetch frontend dan respons JSON backend.
-- **Status Verifikasi**: `php -l`, `node --check`, dan pengujian endpoint berhasil (0 error).
+## [2026-11-21 17:30:00 WIB] - Penyelesaian GAP-03 (Raw SQL Patch)
+- **Tujuan / Permintaan**: Mengganti `pg_query($sql)` (raw SQL) dengan `pg_query_params($sql, [])` di seluruh `php-crud/*.php` untuk standar keamanan.
+- **File yang Diubah**: `php-crud/*.php` (daftar file di AUDIT_CHANGELOG.md).
+- **Status Verifikasi**: `grep` dan pengujian skrip otomatis `fix_gap03.py` & `fix_gap03_part2.py` telah mengganti 100% temuan raw SQL tanpa parameter. Sintaks telah diverifikasi.

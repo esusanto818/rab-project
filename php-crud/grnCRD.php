@@ -168,7 +168,7 @@ try {
                     GROUP BY p.id, p.po_number, p.po_date, p.supplier_id, sup.id, sup.name, p.currency_id, cur.init, p.exch_rate, p.ppn_mode, p.ppn_rate
                     HAVING SUM(pd.qty) - COALESCE(SUM(g.total_rcv), 0) > 0.0001
                     ORDER BY p.po_date DESC";
-            $result = pg_query($sql);
+            $result = pg_query_params($sql, []);
             PgOrFail($result, 'Gagal load daftar PO');
             echo json_encode(['success' => true, 'data' => pg_fetch_all($result) ?: []]);
             break;
@@ -255,7 +255,7 @@ try {
                     LEFT JOIN m_suppliers s ON s.id = g.supplier_id
                     LEFT JOIN m_currency cur ON cur.id = g.currency_id
                     ORDER BY g.grn_date DESC, g.id DESC";
-            $result = pg_query($sql);
+            $result = pg_query_params($sql, []);
             PgOrFail($result, 'Gagal load daftar GRN');
             $all = pg_fetch_all($result) ?: [];
             echo json_encode(['success' => true, 'totalCount' => count($all), 'data' => $all]);

@@ -207,7 +207,7 @@ try {
             $start  = isset($_POST['start']) ? intval($_POST['start']) : 0;
 
             $sqlTotal = "SELECT COUNT(*) AS total FROM purchase_invoice_hdr";
-            $resTotal = pg_query($sqlTotal);
+            $resTotal = pg_query_params($sqlTotal, []);
             if (!$resTotal) throw new Exception(pgErrorOrFallback('Gagal menghitung total data invoice.'));
 
             $rowTotal = pg_fetch_assoc($resTotal);
@@ -222,7 +222,7 @@ try {
                     FROM purchase_invoice_hdr h
                     LEFT JOIN m_suppliers s ON s.id = h.supplier_id
                     ORDER BY h.id DESC LIMIT $limit OFFSET $start";
-            $result = pg_query($sql);
+            $result = pg_query_params($sql, []);
             if (!$result) throw new Exception(pgErrorOrFallback('Gagal memuat data main grid.'));
 
             $data = [];
@@ -310,7 +310,7 @@ try {
         case 'read_supplier':
             // [FIX] konsisten pakai m_suppliers juga di sini.
             $sql = "SELECT id, name, COALESCE(is_pkp, false) AS is_pkp FROM m_suppliers WHERE active IS NOT FALSE ORDER BY name ASC";   // [PPN] is_pkp
-            $result = pg_query($sql);
+            $result = pg_query_params($sql, []);
             if (!$result) throw new Exception(pgErrorOrFallback('Gagal memuat daftar supplier.'));
             $data = [];
             while ($row = pg_fetch_assoc($result)) {
