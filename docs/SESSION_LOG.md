@@ -1,3 +1,8 @@
+## [2026-11-21 23:59:00 WIB] - Audit & Patching ExtJS Grid serta Penerapan Theme CSS
+- **Tujuan / Permintaan**: Audit ExtJS Grid dan penerapan `css/app-theme.css` di form ExtJS (tanpa menyentuh `views/dashboard.php`).
+- **File yang Diubah**: `includes/many-template-icn.php`, `docs/2026-11-21_EXTJS_GRID_AUDIT.md`.
+- **Status Verifikasi**: `php -l` lolos, tema global terpasang di template ExtJS, laporan dibuat di `docs/2026-11-21_EXTJS_GRID_AUDIT.md`.
+
 ## [2026-11-21 17:30:00 WIB] - Penyelesaian GAP-03 (Raw SQL Patch)
 - **Tujuan / Permintaan**: Mengganti `pg_query($sql)` (raw SQL) dengan `pg_query_params($sql, [])` di seluruh `php-crud/*.php` untuk standar keamanan.
 - **File yang Diubah**: `php-crud/*.php` (daftar file di AUDIT_CHANGELOG.md).

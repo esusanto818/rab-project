@@ -1,0 +1,124 @@
+/* ==========================================================================
+   CENTRALIZED APPLICATION THEME STYLES (Light & Dark Theme with CSS Variables)
+   [2026-11-21] Konsolidasi CSS Global untuk ExtJS 3.4.1 dan Tailwind UI / Dashboard
+   ========================================================================== */
+
+:root {
+  --bg-main: #f8fafc;
+  --bg-panel: #ffffff;
+  --bg-card: #ffffff;
+  --border-color: #cbd5e1;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --primary: #0284c7;
+  --primary-hover: #0369a1;
+  --accent: #0ea5e9;
+  --header-bg: #0f172a;
+  --header-text: #f8fafc;
+  --grid-header-bg: #f1f5f9;
+  --grid-header-text: #334155;
+  --grid-row-bg: #ffffff;
+  --grid-row-alt: #f8fafc;
+  --grid-cell-text: #0f172a;
+  --grid-selected-bg: #e0f2fe;
+  --grid-selected-text: #0369a1;
+  --input-bg: #ffffff;
+  --input-text: #0f172a;
+  --input-border: #cbd5e1;
+}
+
+[data-theme="dark"] {
+  --bg-main: #020b14;
+  --bg-panel: #0d2233;
+  --bg-card: #091824;
+  --border-color: #1e3a5f;
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --primary: #22d3ee;
+  --primary-hover: #06b6d4;
+  --accent: #38bdf8;
+  --header-bg: #000000;
+  --header-text: #ffffff;
+  --grid-header-bg: #212d34;
+  --grid-header-text: #fde047;
+  --grid-row-bg: #0c1021;
+  --grid-row-alt: #0c1021;
+  --grid-cell-text: #ffffff;
+  --grid-selected-bg: #3f5764;
+  --grid-selected-text: #ffffff;
+  --input-bg: #14324a;
+  --input-text: #ffffff;
+  --input-border: #2b5d7a;
+}
+
+/* Global Transition */
+body, .x-panel, .x-window, .x-toolbar, .x-grid3-row, .x-form-field {
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Base Body Styling using variables */
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main) !important;
+}
+
+/* ExtJS Overrides for Dark / Light Themes */
+[data-theme="dark"] .x-panel-body,
+[data-theme="dark"] .x-window-body,
+[data-theme="dark"] .x-panel-fc {
+  background-color: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+}
+
+[data-theme="dark"] .x-grid3-hd-row td,
+[data-theme="dark"] .x-grid3-header-offset,
+[data-theme="dark"] .x-grid3-header,
+[data-theme="dark"] .x-grid3-header-inner {
+  background-color: var(--grid-header-bg) !important;
+  color: var(--grid-header-text) !important;
+}
+
+[data-theme="dark"] .x-grid3-scroller,
+[data-theme="dark"] .x-grid3-row {
+  background-color: var(--grid-row-bg) !important;
+  border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .x-grid3-cell {
+  color: var(--grid-cell-text) !important;
+}
+
+[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell {
+  background-color: var(--grid-selected-bg) !important;
+  color: var(--grid-selected-text) !important;
+}
+
+[data-theme="dark"] .x-form-text,
+[data-theme="dark"] textarea.x-form-field,
+[data-theme="dark"] .x-form-field {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--input-border) !important;
+}
+
+[data-theme="dark"] .x-form-item label {
+  color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .x-toolbar {
+  background-color: var(--bg-panel) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Light Mode ExtJS Overrides */
+[data-theme="light"] .x-grid3-hd-row td,
+[data-theme="light"] .x-grid3-header {
+  background-color: var(--grid-header-bg) !important;
+  color: var(--grid-header-text) !important;
+}
+[data-theme="light"] .x-grid3-row {
+  background-color: var(--grid-row-bg) !important;
+}
+[data-theme="light"] .x-grid3-cell {
+  color: var(--grid-cell-text) !important;
+}
