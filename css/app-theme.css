@@ -1,9 +1,17 @@
 /* ==========================================================================
    CENTRALIZED APPLICATION THEME STYLES (Light & Dark Theme with CSS Variables)
-   [2026-11-21] Industrial Slate & Steel Amber Theme Implementation
+   [2026-11-22] TAHAP 0 - Audit & Konsolidasi CSS Terpusat
+   Single Source of Truth untuk seluruh warna dan aturan tema:
+     - Dashboard (views/dashboard.php)
+     - Menu / Navbar (views/nav_wrapper.php, views/dashboard.php)
+     - Form & Grid ExtJS 3.4.1 (php-crud, includes/many-template-icn.php)
    ========================================================================== */
 
+/* ------------------------------------------------------------------------
+   BAGIAN A — DESIGN TOKENS (Palet Industrial Slate & Steel Amber)
+   ------------------------------------------------------------------------ */
 :root, html[data-theme="light"] {
+  /* Architectural Daylight */
   --bg-main: #F1F5F9;
   --bg-panel: #FFFFFF;
   --bg-card: #FFFFFF;
@@ -28,6 +36,7 @@
 }
 
 html[data-theme="dark"] {
+  /* Obsidian Blueprint */
   --bg-main: #090D16;
   --bg-panel: #111827;
   --bg-card: #111827;
@@ -51,18 +60,147 @@ html[data-theme="dark"] {
   --input-border: #334155;
 }
 
-/* Global Transition */
+/* ------------------------------------------------------------------------
+   Global Transition (tipa tema tidak merusak layout/positioning ExtJS)
+   ------------------------------------------------------------------------ */
 body, .x-panel, .x-window, .x-toolbar, .x-grid3-row, .x-form-field {
   transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
-/* Base Body Styling using variables */
+/* Base body */
 body {
   background-color: var(--bg-main) !important;
   color: var(--text-main) !important;
 }
 
-/* ExtJS Overrides for Dark / Light Themes */
+/* ------------------------------------------------------------------------
+   BAGIAN B — SCOPE DASHBOARD (.dashboard-scope / views/dashboard.php)
+   Aturan tema berbasis variabel untuk kartu, tab, dan tabel dashboard.
+   Tidak mengubah layout HTML atau <script> di views/dashboard.php.
+   ------------------------------------------------------------------------ */
+.dashboard-scope {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
+
+/* Kartu dashboard */
+.dashboard-scope .dashboard-card,
+.dashboard-scope .bg-card,
+.dashboard-scope .card {
+  background-color: var(--bg-card) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Tab dashboard */
+.dashboard-scope .tab-btn {
+  background-color: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+.dashboard-scope .tab-btn:hover {
+  background-color: var(--primary-hover) !important;
+  color: var(--header-text) !important;
+}
+.dashboard-scope .tab-btn.active {
+  background-color: var(--primary) !important;
+  color: var(--header-text) !important;
+}
+
+/* Tabel dashboard */
+.dashboard-scope table {
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+.dashboard-scope table thead {
+  background-color: var(--grid-header-bg) !important;
+  color: var(--grid-header-text) !important;
+}
+.dashboard-scope table tbody tr {
+  background-color: var(--grid-row-bg) !important;
+  color: var(--grid-cell-text) !important;
+}
+.dashboard-scope table tbody tr:nth-child(even) {
+  background-color: var(--grid-row-alt) !important;
+}
+
+/* ------------------------------------------------------------------------
+   BAGIAN C — SCOPE NAVBAR & DROPDOWN MENU
+   Aturan tema berbasis variabel untuk bilah navigasi utama dan dropdown
+   menu desktop/mobile.
+   ------------------------------------------------------------------------ */
+.navbar-scope,
+nav,
+.header {
+  background-color: var(--header-bg) !important;
+  color: var(--header-text) !important;
+  border-color: var(--border-color) !important;
+}
+
+.navbar-scope .nav-item > a,
+.navbar-scope .nav-item a,
+.navbar-scope a.nav-link,
+.navbar-scope .desktop-menu > li > a {
+  color: var(--header-text) !important;
+}
+.navbar-scope .nav-item > a:hover,
+.navbar-scope .nav-item a:hover,
+.navbar-scope .desktop-menu > li > a:hover {
+  color: var(--accent-strong) !important;
+  background-color: var(--primary-hover) !important;
+}
+
+.navbar-scope .dropdown-menu {
+  background-color: var(--bg-panel) !important;
+  color: var(--text-main) !important;
+  border-color: var(--border-color) !important;
+}
+.navbar-scope .dropdown-menu a,
+.navbar-scope .dropdown-menu li a {
+  color: var(--text-main) !important;
+}
+.navbar-scope .dropdown-menu a:hover,
+.navbar-scope .dropdown-menu li a:hover {
+  background-color: var(--grid-row-alt) !important;
+  color: var(--primary) !important;
+}
+.navbar-scope .dropdown-menu h3,
+.navbar-scope .dropdown-menu .menu-column h3 {
+  color: var(--primary) !important;
+  border-bottom-color: var(--border-color) !important;
+}
+
+/* Hamburger & mobile menu */
+.navbar-scope #hamburger_btn,
+.navbar-scope .hamburger-btn {
+  background-color: var(--input-bg) !important;
+  color: var(--input-text) !important;
+  border-color: var(--input-border) !important;
+}
+.navbar-scope #mobile_dropdown,
+.navbar-scope .mobile-dropdown {
+  background-color: var(--bg-panel) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-main) !important;
+}
+.navbar-scope #mobile_dropdown a,
+.navbar-scope .mobile-dropdown a {
+  color: var(--text-main) !important;
+}
+.navbar-scope #mobile_dropdown a:hover,
+.navbar-scope .mobile-dropdown a:hover {
+  background-color: var(--grid-row-alt) !important;
+  color: var(--primary) !important;
+}
+
+/* ------------------------------------------------------------------------
+   BAGIAN D — SCOPE FORM & GRID EXTJS 3.4.1
+   Aturan tema berbasis variabel untuk .x-panel, .x-grid3, .x-window,
+   .x-toolbar, .x-tab-panel, dan .x-form-field tanpa mengubah ukuran
+   atau positioning ExtJS.
+   ------------------------------------------------------------------------ */
+
+/* Panel & Window */
 .x-panel-body,
 .x-window-body,
 .x-panel-fc,
@@ -82,6 +220,7 @@ body {
   color: var(--header-text) !important;
 }
 
+/* Grid */
 .x-grid3-hd-row td,
 .x-grid3-header-offset,
 .x-grid3-header,
@@ -111,6 +250,7 @@ body {
   color: var(--grid-selected-text) !important;
 }
 
+/* Form fields */
 .x-form-text,
 .x-form-field,
 textarea.x-form-field,
@@ -124,6 +264,7 @@ input.x-form-field {
   color: var(--text-muted) !important;
 }
 
+/* Toolbar & button area */
 .x-toolbar, .x-panel-btns {
   background-color: var(--bg-panel) !important;
   border-color: var(--border-color) !important;
@@ -134,6 +275,7 @@ input.x-form-field {
   color: var(--text-main) !important;
 }
 
+/* Combo list */
 .x-combo-list {
   background-color: var(--bg-panel) !important;
   border-color: var(--border-color) !important;
@@ -144,12 +286,15 @@ input.x-form-field {
   color: var(--text-main) !important;
 }
 
-.x-combo-list-item:hover, .x-combo-list-selected {
+.x-combo-list-item:hover,
+.x-combo-list-selected {
   background-color: var(--grid-selected-bg) !important;
   color: var(--grid-selected-text) !important;
 }
 
-.x-tab-panel-header, .x-tab-strip-top {
+/* Tab panel */
+.x-tab-panel-header,
+.x-tab-strip-top {
   background-color: var(--bg-panel) !important;
   border-color: var(--border-color) !important;
 }
@@ -163,3 +308,5 @@ input.x-form-field {
   color: var(--primary) !important;
   font-weight: bold;
 }
+
+/* Akhir file css/app-theme.css */

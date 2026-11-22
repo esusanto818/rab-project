@@ -1,3 +1,9 @@
+## [2026-11-22 07:21:15 WIB] - Tahap 0: Audit & Konsolidasi CSS Terpusat
+- **Tujuan / Permintaan**: Audit menyeluruh CSS dan konsolidasi seluruh warna tema aplikasi (Dashboard, Menu, dan Form ExtJS 3.4.1) ke satu file terpusat `css/app-theme.css` sebagai Single Source of Truth.
+- **File yang Diubah**: `css/app-theme.css` (ditulis ulang: Section A Design Tokens, Section B Dashboard scope, Section C Navbar & Dropdown Menu scope, Section D Form & Grid ExtJS 3.4.1 scope), `docs/2026-11-22_TAHAP0_CSS_CONSOLIDATION_AUDIT.md` (baru), `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
+- **File yang Dihapus**: 17 file CSS duplikat yang tidak direferensi (`darkB.css`, `darkTheme.css`, `dark_thm.css`, `frm_err1.css`, `frm_err2.css`, `frm_err.css`, `grddetail00.css`, `header.blue.css`, `header.bluegrey.css`, `header.green.css`, `header.grey.css`, `header.orange.css`, `header.red.css`, `header.teal.css`, `header.white.css`, `linkMenu.css`, `mainCSS_err.css`, `mobileCSS.css`).
+- **Status Verifikasi**: 17 file divalidasi dengan `grep` (0 referensi di seluruh proyek) lalu dihapus. Tidak ada perubahan layout HTML atau `<script>` pada `views/dashboard.php`, dan tidak ada perubahan fungsi PHP/JS (selaras aturan Tahap 0).
+
 ## [2026-11-22 01:30:00 WIB] - Audit & Patching Khusus Purchase Order Detail Items
 - **Tujuan / Permintaan**: Audit mendalam dan verifikasi pada modul Purchase Order (`js/po.js` & `php-crud/poCRD.php`) untuk memastikan detail item PO tampil sempurna saat baris PO diklik.
 - **File yang Diubah**: `docs/2026-11-22_PO_DETAIL_ITEM_PATCH.md`, `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
