@@ -336,3 +336,14 @@ html[data-theme="light"] body .x-grid3-row {
 html[data-theme="dark"] body .x-grid3-row {
   border-bottom: 1px solid #1E293B !important;
 }
+
+/* Cabut border-bottom pada .x-grid3-cell & .x-grid3-cell-inner saat hover maupun selected */
+html body .x-grid3-row-over td,
+html body .x-grid3-row-over .x-grid3-cell,
+html body .x-grid3-row-over .x-grid3-cell-inner,
+html body .x-grid3-row-selected td,
+html body .x-grid3-row-selected .x-grid3-cell,
+html body .x-grid3-row-selected .x-grid3-cell-inner {
+  border-top: none !important;
+  border-bottom: none !important;
+}
