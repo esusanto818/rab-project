@@ -1218,3 +1218,16 @@ html[data-theme="light"] #editorFormMain b {
   color: #0F172A !important;
   font-weight: 700 !important;
 }
+
+/* Jadikan latar header modal (#editorFormHeader & #addFormHeader) terang selaras Light Theme */
+html[data-theme="light"] #editorFormHeader,
+html[data-theme="light"] #addFormHeader {
+  background-color: #CBD5E1 !important;
+  background-image: none !important;
+  border-bottom: 2px solid #94A3B8 !important;
+}
+html[data-theme="light"] #editorFormHeaderText,
+html[data-theme="light"] #addFormHeaderText {
+  color: #0F172A !important;
+  font-weight: 700 !important;
+}
