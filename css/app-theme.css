@@ -978,3 +978,36 @@ html[data-theme="light"] #content table th {
   color: #0F172A !important;
   border-color: #94A3B8 !important;
 }
+
+/* Hover ID-Level Specificity & Konsistensi Vertical-Align Middle (Tidak Naik-Turun) */
+html[data-theme="light"] #content .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="light"] #content .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-row-table,
+html[data-theme="light"] #content .x-grid3-row-over:not(.x-grid3-row-selected) td,
+html[data-theme="light"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="light"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-row-table,
+html[data-theme="light"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected) td {
+  background: #BAE6FD !important;
+  background-color: #BAE6FD !important;
+  vertical-align: middle !important;
+}
+html[data-theme="light"] #content .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner,
+html[data-theme="light"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: transparent !important;
+  color: #0369A1 !important;
+}
+
+html[data-theme="dark"] #content .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="dark"] #content .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-row-table,
+html[data-theme="dark"] #content .x-grid3-row-over:not(.x-grid3-row-selected) td,
+html[data-theme="dark"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="dark"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-row-table,
+html[data-theme="dark"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected) td {
+  background: #16324A !important;
+  background-color: #16324A !important;
+  vertical-align: middle !important;
+}
+html[data-theme="dark"] #content .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner,
+html[data-theme="dark"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: transparent !important;
+  color: #38BDF8 !important;
+}
