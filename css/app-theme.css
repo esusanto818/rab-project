@@ -1041,3 +1041,32 @@ html[data-theme="light"] .x-date-inner .x-date-selected a {
   background-color: #0369A1 !important;
   color: #FFFFFF !important;
 }
+
+/* Override spesifisitas tinggi (html body .x-date-picker) untuk semua angka tanggal bulan berjalan */
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-active a,
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-active a span,
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-active em,
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-today a,
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-today a span {
+  color: #0F172A !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-active a:hover,
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-active a:hover span {
+  background-color: #BAE6FD !important;
+  color: #0369A1 !important;
+}
+
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-selected a,
+html[data-theme="light"] body .x-date-picker table.x-date-inner td.x-date-selected a span {
+  background-color: #0369A1 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="light"] body .x-date-picker .x-date-bottom .x-btn button,
+html[data-theme="light"] body .x-date-picker .x-date-bottom button {
+  background-color: #0369A1 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+}
