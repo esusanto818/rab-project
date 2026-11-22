@@ -883,3 +883,37 @@ html[data-theme="light"] body:not(.dashboard-scope) .x-window-mc .x-btn button {
   color: #0F172A !important;
   border-radius: 4px !important;
 }
+
+/* Maximum Specificity Override untuk baris ganjil & header ExtJS Grid */
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-header,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-header-offset,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 td.x-grid3-hd,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-hd-inner {
+  background: #CBD5E1 !important;
+  background-color: #CBD5E1 !important;
+  background-image: none !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row table.x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row td.x-grid3-col {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  background-image: none !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row-alt,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row-alt table.x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row-alt td.x-grid3-col {
+  background: #EDF2F7 !important;
+  background-color: #EDF2F7 !important;
+}
+
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row-selected,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row-selected table.x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body div.x-grid3-row-selected td.x-grid3-col {
+  background: #DBEAFE !important;
+  background-color: #DBEAFE !important;
+}
