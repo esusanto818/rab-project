@@ -364,3 +364,28 @@ html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-gri
   background-color: #16324A !important;
   color: #38BDF8 !important;
 }
+
+/* Pastikan warna latar hover & selected penuh 100% tinggi baris (tidak naik-turun mengikuti tinggi teks cell-inner) */
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) table.x-grid3-row-table,
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) td.x-grid3-col {
+  background-color: #BAE6FD !important;
+  vertical-align: middle !important;
+}
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell,
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: transparent !important;
+  color: #0369A1 !important;
+}
+
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) table.x-grid3-row-table,
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) td.x-grid3-col {
+  background-color: #16324A !important;
+  vertical-align: middle !important;
+}
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell,
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: transparent !important;
+  color: #38BDF8 !important;
+}
