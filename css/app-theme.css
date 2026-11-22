@@ -1070,3 +1070,68 @@ html[data-theme="light"] body .x-date-picker .x-date-bottom button {
   color: #FFFFFF !important;
   font-weight: 700 !important;
 }
+
+/* ==========================================================================
+   MODAL HEADER, SAVE/DISCARD BUTTONS, ACTION BUTTONS, & CADANGAN (LIGHT THEME)
+   ========================================================================== */
+
+/* 1. Header Window Modal & Judul */
+html[data-theme="light"] body .x-window-tl,
+html[data-theme="light"] body .x-window-tr,
+html[data-theme="light"] body .x-window-tc,
+html[data-theme="light"] body .x-window-header,
+html[data-theme="light"] body .x-window-mc > div:first-child {
+  background-color: #0F172A !important;
+  background-image: none !important;
+  color: #F8FAFC !important;
+}
+html[data-theme="light"] body .x-window-header-text,
+html[data-theme="light"] body .x-window-mc > div:first-child * {
+  color: #F8FAFC !important;
+}
+
+/* 2. Tombol SAVE & DISCARD di Header Modal (Tegas & Kontras Tinggi) */
+html[data-theme="light"] body .x-window .btn-save,
+html[data-theme="light"] body .x-window button[id*="save" i],
+html[data-theme="light"] body .x-window .x-btn:first-of-type button {
+  background-color: #047857 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #065F46 !important;
+  font-weight: 700 !important;
+}
+html[data-theme="light"] body .x-window .btn-discard,
+html[data-theme="light"] body .x-window button[id*="discard" i],
+html[data-theme="light"] body .x-window button[id*="cancel" i],
+html[data-theme="light"] body .x-window .x-btn:last-of-type button {
+  background-color: #B91C1C !important;
+  color: #FFFFFF !important;
+  border: 1px solid #991B1B !important;
+  font-weight: 700 !important;
+}
+
+/* 3. Tombol Aksi di dalam Form Modal (ANALISIS AI, EDIT TASK, TERBITKAN TAGIHAN) */
+html[data-theme="light"] body .x-window-mc .x-panel-body .x-btn button,
+html[data-theme="light"] body .x-window-mc fieldset .x-btn button,
+html[data-theme="light"] body .x-window-mc .x-form-item ~ .x-btn button,
+html[data-theme="light"] body .x-window-mc .x-toolbar .x-btn button {
+  background-color: #0369A1 !important;
+  background-image: none !important;
+  color: #FFFFFF !important;
+  border: 1px solid #075985 !important;
+  border-radius: 5px !important;
+  font-weight: 700 !important;
+  padding: 4px 12px !important;
+}
+html[data-theme="light"] body .x-window-mc .x-panel-body .x-btn-over button,
+html[data-theme="light"] body .x-window-mc .x-toolbar .x-btn-over button {
+  background-color: #0284C7 !important;
+  color: #FFFFFF !important;
+}
+
+/* 4. Angka Cadangan & seluruh teks display di dalam Form Modal */
+html[data-theme="light"] body .x-window-mc .x-form-display-field,
+html[data-theme="light"] body .x-window-mc div[id*="cadangan" i],
+html[data-theme="light"] body .x-window-mc span[style*="color"] {
+  color: #0F172A !important;
+  font-weight: 600 !important;
+}
