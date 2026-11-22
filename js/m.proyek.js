@@ -317,33 +317,33 @@ Ext.onReady(function () {
                    '<div style="color:#ffffff; font-size:15px; margin-top:4px; line-height:18px;">' + Ext.util.Format.htmlEncode(scopeTxt) + '</div>' +
                    '</div>' +
                    plafonBanner() +
-                   '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:15px;">' +
-                   '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
-                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Nama Sub-Task (WBS)</th>' +
-                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Deskripsi Pekerjaan</th>' +
-                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Material Task</th>' +
-                   '<th style="border-bottom:1px solid #2a485d; padding:8px;">Biaya / Jasa Task</th>' +
-                   '<th align="right" style="border-bottom:1px solid #2a485d; padding:8px;">Estimasi (Max)</th>' +
-                   '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Tgl Mulai</th>' +
-                   '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Tgl Selesai</th>' +
-                   '<th align="center" style="border-bottom:1px solid #2a485d; padding:8px;">Status</th>' +
+                   '<table class="proyek-dtl-table" width="100%" cellSpacing="0" cellPadding="8" style="border-collapse:collapse; font-size:13.5px; table-layout:fixed;">' +
+                   '<thead><tr>' +
+                   '<th style="width:16%; text-align:left;">Nama Sub-Task (WBS)</th>' +
+                   '<th style="width:24%; text-align:left;">Deskripsi Pekerjaan</th>' +
+                   '<th style="width:14%; text-align:left;">Material Task</th>' +
+                   '<th style="width:11%; text-align:left;">Biaya / Jasa</th>' +
+                   '<th style="width:11%; text-align:right;">Estimasi (Max)</th>' +
+                   '<th style="width:8%; text-align:center; white-space:nowrap;">Tgl Mulai</th>' +
+                   '<th style="width:8%; text-align:center; white-space:nowrap;">Tgl Selesai</th>' +
+                   '<th style="width:8%; text-align:center; white-space:nowrap;">Status</th>' +
                    '</tr></thead><tbody>';
 
         if (!records || !records.length) {
-            html += '<tr><td colspan="8" style="padding:15px; text-align:center; color:#688998;">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
+            html += '<tr><td colspan="8" style="padding:15px; text-align:center; opacity:0.7;">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
         } else {
             Ext.each(records, function (r) {
                 var d = r.data;
-                html += '<tr style="border-bottom:1px solid #182e3e;">' +
-                        '<td style="font-weight:bold; color:#e0f7fa;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
-                        '<td style="color:#b0bec5;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
-                        '<td style="color:#80deea;padding:12px 8px;font-size:14px;">' + fmtTaskItems(d.items, 'M') + '</td>' +
-                        '<td style="color:#ffcc80;padding:12px 8px;font-size:14px;">' + fmtTaskItems(d.items, 'E') + '</td>' +
-                        '<td align="right" style="color:#e0f7fa;padding:12px 8px;white-space:nowrap;">' + Ext.util.Format.number(d.total_max || 0, '0,000') +
-                        '<div style="color:#8fb3c0;font-size:13px;">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
-                        '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
-                        '<td align="center" style="color:#80deea;padding:12px 8px;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
-                        '<td align="center"><span style="background:#004d40; color:#80cbc4; padding:2px 8px; border-radius:3px; font-size:13px;">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
+                html += '<tr>' +
+                        '<td style="font-weight:600; vertical-align:top; word-wrap:break-word;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
+                        '<td style="vertical-align:top; word-wrap:break-word; line-height:1.45;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
+                        '<td style="vertical-align:top; word-wrap:break-word; font-size:13px;">' + fmtTaskItems(d.items, 'M') + '</td>' +
+                        '<td style="vertical-align:top; word-wrap:break-word; font-size:13px;">' + fmtTaskItems(d.items, 'E') + '</td>' +
+                        '<td align="right" style="vertical-align:top; white-space:nowrap; font-weight:600;">' + Ext.util.Format.number(d.total_max || 0, '0,000') +
+                        '<div style="opacity:0.75; font-size:12px; font-weight:normal;">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
+                        '<td align="center" style="vertical-align:top; white-space:nowrap;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
+                        '<td align="center" style="vertical-align:top; white-space:nowrap;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
+                        '<td align="center" style="vertical-align:top; white-space:nowrap;"><span class="proyek-status-badge">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
                         '</tr>';
             });
         }

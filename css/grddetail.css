@@ -248,3 +248,48 @@ html[data-theme="light"] .detail-panel-container table td span[style*="backgroun
   display: inline-block !important;
   white-space: nowrap !important;
 }
+
+/* Styling tabel detail proyek yang rapi & selaras Light/Dark Theme */
+.proyek-dtl-table th {
+  padding: 9px 8px !important;
+  font-weight: 700 !important;
+  border-bottom: 1px solid #2a485d !important;
+}
+.proyek-dtl-table td {
+  padding: 10px 8px !important;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.25) !important;
+  vertical-align: top !important;
+}
+html[data-theme="dark"] .proyek-dtl-table th {
+  background-color: #1E293B !important;
+  color: #38BDF8 !important;
+}
+html[data-theme="dark"] .proyek-dtl-table td {
+  color: #F1F5F9 !important;
+}
+html[data-theme="light"] .proyek-dtl-table th {
+  background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+  border-bottom-color: #94A3B8 !important;
+}
+html[data-theme="light"] .proyek-dtl-table td {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+.proyek-status-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+html[data-theme="dark"] .proyek-status-badge {
+  background-color: #064E3B !important;
+  color: #6EE7B7 !important;
+}
+html[data-theme="light"] .proyek-status-badge {
+  background-color: #D1FAE5 !important;
+  color: #065F46 !important;
+  border: 1px solid #6EE7B7 !important;
+}
