@@ -347,3 +347,20 @@ html body .x-grid3-row-selected .x-grid3-cell-inner {
   border-top: none !important;
   border-bottom: none !important;
 }
+
+/* Warna Hover yang jelas & kontras pada Light Theme dan Dark Theme */
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) td,
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell,
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: #BAE6FD !important;
+  color: #0369A1 !important;
+}
+
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) td,
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell,
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: #16324A !important;
+  color: #38BDF8 !important;
+}
