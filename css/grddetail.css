@@ -221,61 +221,88 @@ html[data-theme="light"] body .x-grid3-row-selected .x-grid3-cell-inner {
   color: #1E3A8A !important;
 }
 
-/* Merapikan tata letak vertikal & teks multi-line vs single-line di Grid Detail bawah */
-#content table td,
-#content table th,
-.detail-panel-container table td,
-.detail-panel-container table th {
-  vertical-align: middle !important;
-  line-height: 1.4 !important;
-  padding: 8px 10px !important;
+
+/* ==========================================================================
+   GLOBAL GRID & DETAIL TABLE POLISH (BERLAKU UNTUK SELURUH FORM APLIKASI)
+   ========================================================================== */
+
+/* 1. Rapikan Garis Antar-Row Grid Utama ExtJS (Tanpa garis putus di dalam sel) */
+html[data-theme="light"] .x-grid3-row {
+  border-bottom: 1px solid #CBD5E1 !important;
+}
+html[data-theme="light"] .x-grid3-row-table,
+html[data-theme="light"] .x-grid3-row td.x-grid3-col {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+html[data-theme="light"] .x-grid3-cell-inner {
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
 }
 
-/* Cegah kolom tanggal, angka, & badge status terpotong ke 2 baris */
-#content table td:nth-last-child(-n+4),
-#content table th:nth-last-child(-n+4),
-.detail-panel-container table td:nth-last-child(-n+4) {
-  white-space: nowrap !important;
-}
-
-/* Pastikan teks di dalam badge status berwarna gelap/putih kontras (tidak hitam di atas hijau tua) */
-html[data-theme="light"] #content table td span[style*="background"],
-html[data-theme="light"] .detail-panel-container table td span[style*="background"] {
-  color: #FFFFFF !important;
-  padding: 3px 8px !important;
-  border-radius: 4px !important;
-  font-weight: 600 !important;
-  display: inline-block !important;
-  white-space: nowrap !important;
-}
-
-/* Styling tabel detail proyek yang rapi & selaras Light/Dark Theme */
-.proyek-dtl-table th {
-  padding: 9px 8px !important;
+/* 2. Pembeda Antar-Row (Zebra Striping) & Garis Tegas di Semua Grid Detail Form */
+.proyek-dtl-table th,
+.detail-panel-container table th,
+#poDtlContainer table th {
+  padding: 9px 10px !important;
   font-weight: 700 !important;
-  border-bottom: 1px solid #2a485d !important;
+  vertical-align: middle !important;
 }
-.proyek-dtl-table td {
-  padding: 10px 8px !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.25) !important;
+.proyek-dtl-table td,
+.detail-panel-container table td,
+#poDtlContainer table td {
+  padding: 9px 10px !important;
   vertical-align: top !important;
+  line-height: 1.45 !important;
 }
-html[data-theme="dark"] .proyek-dtl-table th {
-  background-color: #1E293B !important;
-  color: #38BDF8 !important;
-}
-html[data-theme="dark"] .proyek-dtl-table td {
-  color: #F1F5F9 !important;
-}
-html[data-theme="light"] .proyek-dtl-table th {
+
+/* Light Theme: Zebra striping & garis batas tegas antar-baris detail */
+html[data-theme="light"] .proyek-dtl-table th,
+html[data-theme="light"] .detail-panel-container table th,
+html[data-theme="light"] #poDtlContainer table th {
   background-color: #CBD5E1 !important;
   color: #0F172A !important;
-  border-bottom-color: #94A3B8 !important;
+  border-bottom: 2px solid #94A3B8 !important;
 }
-html[data-theme="light"] .proyek-dtl-table td {
+html[data-theme="light"] .proyek-dtl-table tbody tr:nth-child(odd) td,
+html[data-theme="light"] .detail-panel-container table tbody tr:nth-child(odd) td,
+html[data-theme="light"] #poDtlContainer table tbody tr:nth-child(odd) td {
   background-color: #F8FAFC !important;
   color: #0F172A !important;
+  border-bottom: 1px solid #CBD5E1 !important;
 }
+html[data-theme="light"] .proyek-dtl-table tbody tr:nth-child(even) td,
+html[data-theme="light"] .detail-panel-container table tbody tr:nth-child(even) td,
+html[data-theme="light"] #poDtlContainer table tbody tr:nth-child(even) td {
+  background-color: #E8EEF5 !important;
+  color: #0F172A !important;
+  border-bottom: 1px solid #CBD5E1 !important;
+}
+
+/* Dark Theme: Zebra striping & garis batas tegas antar-baris detail */
+html[data-theme="dark"] .proyek-dtl-table th,
+html[data-theme="dark"] .detail-panel-container table th,
+html[data-theme="dark"] #poDtlContainer table th {
+  background-color: #1E293B !important;
+  color: #38BDF8 !important;
+  border-bottom: 2px solid #334155 !important;
+}
+html[data-theme="dark"] .proyek-dtl-table tbody tr:nth-child(odd) td,
+html[data-theme="dark"] .detail-panel-container table tbody tr:nth-child(odd) td,
+html[data-theme="dark"] #poDtlContainer table tbody tr:nth-child(odd) td {
+  background-color: #111827 !important;
+  color: #F1F5F9 !important;
+  border-bottom: 1px solid #1E293B !important;
+}
+html[data-theme="dark"] .proyek-dtl-table tbody tr:nth-child(even) td,
+html[data-theme="dark"] .detail-panel-container table tbody tr:nth-child(even) td,
+html[data-theme="dark"] #poDtlContainer table tbody tr:nth-child(even) td {
+  background-color: #0F172A !important;
+  color: #F1F5F9 !important;
+  border-bottom: 1px solid #1E293B !important;
+}
+
+/* Badge Status Kontras Tinggi di Semua Grid Detail */
 .proyek-status-badge {
   display: inline-block;
   padding: 3px 9px;
