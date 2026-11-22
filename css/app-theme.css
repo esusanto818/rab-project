@@ -1248,3 +1248,27 @@ html[data-theme="light"] #editorFormHeaderText *,
 html[data-theme="light"] #addFormHeaderText * {
   color: #0F172A !important;
 }
+
+/* Pastikan sub-header informasi di SEMUA panel detail bawah (PO, Pembayaran, GRN, Invoice, dll.) terbaca jelas */
+html[data-theme="light"] #content div[style*="background"],
+html[data-theme="light"] #content div[style*="linear-gradient"],
+html[data-theme="light"] #divDetailGrid div[style*="background"],
+html[data-theme="light"] .detail-panel-container > div {
+  background: #E2E8F0 !important;
+  background-color: #E2E8F0 !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] #content div[style*="background"] *,
+html[data-theme="light"] #divDetailGrid div[style*="background"] *,
+html[data-theme="light"] .detail-panel-container > div * {
+  color: #0F172A !important;
+}
+
+/* Pertahankan tombol cetak/analisis di dalam panel detail tetap berteks putih */
+html[data-theme="light"] #content button[style*="background"],
+html[data-theme="light"] .detail-panel-container button {
+  background-color: #0369A1 !important;
+  color: #FFFFFF !important;
+}
