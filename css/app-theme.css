@@ -12,9 +12,9 @@
    ------------------------------------------------------------------------ */
 :root, html[data-theme="light"] {
   /* Architectural Daylight */
-  --bg-main: #F1F5F9;
-  --bg-panel: #FFFFFF;
-  --bg-card: #FFFFFF;
+  --bg-main: #DCE3EC;
+  --bg-panel: #F4F7FA;
+  --bg-card: #F4F7FA;
   --header-bg: #0F172A;
   --header-text: #F8FAFC;
   --border-color: #CBD5E1;
@@ -23,14 +23,14 @@
   --primary: #0369A1;
   --primary-hover: #075985;
   --accent-strong: #D97706;
-  --grid-header-bg: #E2E8F0;
+  --grid-header-bg: #CBD5E1;
   --grid-header-text: #0F172A;
-  --grid-row-bg: #FFFFFF;
-  --grid-row-alt: #F8FAFC;
+  --grid-row-bg: #F8FAFC;
+  --grid-row-alt: #EDF2F7;
   --grid-cell-text: #0F172A;
   --grid-selected-bg: #DBEAFE;
   --grid-selected-text: #1E3A8A;
-  --input-bg: #FFFFFF;
+  --input-bg: #F8FAFC;
   --input-text: #0F172A;
   --input-border: #94A3B8;
 }
@@ -310,3 +310,236 @@ input.x-form-field {
 }
 
 /* Akhir file css/app-theme.css */
+
+
+
+/* ==========================================================================
+   TAHAP 2 & 3: DASHBOARD CONTENT & MENU OVERRIDES (POLISHED LIGHT THEME)
+   ========================================================================== */
+
+/* 1. Latar Belakang Utama */
+html[data-theme="light"] body.dashboard-scope {
+  background-color: #DCE3EC !important;
+  color: #0F172A !important;
+}
+
+/* 2. Semua Banner, Kotak Tab, Panel Section, Kartu KPI (termasuk yang memakai gradient/opacity), & Box AI */
+html[data-theme="light"] body.dashboard-scope div[class*="bg-[#0"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-[#1"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-slate-9"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-slate-8"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-gray-9"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-cyan-9"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-rose-9"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-amber-9"],
+html[data-theme="light"] body.dashboard-scope div[class*="bg-emerald-9"],
+html[data-theme="light"] body.dashboard-scope div[class*="from-"],
+html[data-theme="light"] body.dashboard-scope .bg-black {
+  background-color: #F4F7FA !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Sub-box Analisis AI di dalam Kesehatan Proyek agar lembut & sangat terbaca */
+html[data-theme="light"] body.dashboard-scope #ai_analysis_box,
+html[data-theme="light"] body.dashboard-scope [id*="ai_"][class*="rounded"] {
+  background-color: #E8EEF5 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+/* 3. Navbar Atas Tetap Gelap Kokoh (z-50) */
+html[data-theme="light"] body.dashboard-scope .sticky.top-0.z-50 {
+  background-color: #0F172A !important;
+  border-bottom: 2px solid #D97706 !important;
+}
+html[data-theme="light"] body.dashboard-scope .sticky.top-0.z-50 .desktop-menu > .nav-item > a,
+html[data-theme="light"] body.dashboard-scope .sticky.top-0.z-50 .text-white-400 {
+  color: #F8FAFC !important;
+}
+html[data-theme="light"] body.dashboard-scope .sticky.top-0.z-50 .desktop-menu > .nav-item > a:hover {
+  background-color: #1E293B !important;
+  color: #38BDF8 !important;
+}
+html[data-theme="light"] body.dashboard-scope .sticky.top-0.z-50 #theme_toggle_btn {
+  background-color: #1E293B !important;
+  color: #FBBF24 !important;
+  border-color: #475569 !important;
+}
+
+/* 4. Dropdown Sub-Menu (.dropdown-menu & #mobile_dropdown): Latar Putih, Teks Gelap */
+html[data-theme="light"] body.dashboard-scope .dropdown-menu,
+html[data-theme="light"] body.dashboard-scope #mobile_dropdown {
+  background-color: #F4F7FA !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #0F172A !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16) !important;
+}
+html[data-theme="light"] body.dashboard-scope .dropdown-menu a,
+html[data-theme="light"] body.dashboard-scope #mobile_dropdown a {
+  color: #0F172A !important;
+}
+html[data-theme="light"] body.dashboard-scope .dropdown-menu a:hover,
+html[data-theme="light"] body.dashboard-scope #mobile_dropdown a:hover {
+  background-color: #DBEAFE !important;
+  color: #0369A1 !important;
+}
+html[data-theme="light"] body.dashboard-scope .dropdown-menu h4,
+html[data-theme="light"] body.dashboard-scope .dropdown-menu .menu-title {
+  color: #0369A1 !important;
+  border-bottom-color: #E2E8F0 !important;
+}
+
+/* 5. Tab Navigasi (.tab-btn) */
+html[data-theme="light"] body.dashboard-scope .tab-btn {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+html[data-theme="light"] body.dashboard-scope .tab-btn.active {
+  background-color: #0369A1 !important;
+  color: #FFFFFF !important;
+  border-color: #0369A1 !important;
+}
+
+/* 6. Kontras Teks & Angka di Semua Tab Dashboard */
+html[data-theme="light"] body.dashboard-scope .text-white,
+html[data-theme="light"] body.dashboard-scope .text-slate-100,
+html[data-theme="light"] body.dashboard-scope .text-slate-200,
+html[data-theme="light"] body.dashboard-scope .text-slate-300,
+html[data-theme="light"] body.dashboard-scope .text-cyan-100,
+html[data-theme="light"] body.dashboard-scope .text-cyan-200 {
+  color: #0F172A !important;
+}
+html[data-theme="light"] body.dashboard-scope .text-slate-400,
+html[data-theme="light"] body.dashboard-scope .text-slate-500 {
+  color: #475569 !important;
+}
+html[data-theme="light"] body.dashboard-scope .text-cyan-300,
+html[data-theme="light"] body.dashboard-scope .text-cyan-400 {
+  color: #0369A1 !important;
+}
+html[data-theme="light"] body.dashboard-scope .sticky.top-0.z-50 .text-cyan-300 {
+  color: #38BDF8 !important;
+}
+html[data-theme="light"] body.dashboard-scope [class*="text-amber-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-yellow-"] {
+  color: #B45309 !important;
+}
+html[data-theme="light"] body.dashboard-scope [class*="text-emerald-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-green-"] {
+  color: #047857 !important;
+}
+html[data-theme="light"] body.dashboard-scope [class*="text-rose-3"],
+html[data-theme="light"] body.dashboard-scope [class*="text-rose-4"],
+html[data-theme="light"] body.dashboard-scope [class*="text-red-3"],
+html[data-theme="light"] body.dashboard-scope [class*="text-red-4"] {
+  color: #B91C1C !important;
+}
+
+/* Pertahankan teks putih pada badge status & tombol aktif */
+html[data-theme="light"] body.dashboard-scope span[class*="bg-rose-6"],
+html[data-theme="light"] body.dashboard-scope span[class*="bg-red-6"],
+html[data-theme="light"] body.dashboard-scope span[class*="bg-emerald-6"],
+html[data-theme="light"] body.dashboard-scope span[class*="bg-amber-6"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-cyan-6"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-sky-6"] {
+  color: #FFFFFF !important;
+}
+
+html[data-theme="light"] body.dashboard-scope [class*="border-"] {
+  border-color: #CBD5E1 !important;
+}
+html[data-theme="light"] body.dashboard-scope select,
+html[data-theme="light"] body.dashboard-scope input {
+  background-color: #F4F7FA !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+
+/* Penyesuaian Action Center Items, AI Recommendation Header, & Tombol Analisis Ulang */
+html[data-theme="light"] body.dashboard-scope [class*="bg-slate-7"],
+html[data-theme="light"] body.dashboard-scope [class*="bg-gray-8"],
+html[data-theme="light"] body.dashboard-scope [class*="bg-zinc-"],
+html[data-theme="light"] body.dashboard-scope [class*="bg-neutral-"],
+html[data-theme="light"] body.dashboard-scope #action_center_list > div,
+html[data-theme="light"] body.dashboard-scope #action_center_list > a,
+html[data-theme="light"] body.dashboard-scope [id*="action"] > div[class*="rounded"] {
+  background-color: #E8EEF5 !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+/* Judul AI Recommendation & teks ungu/pink muda agar tajam di latar terang */
+html[data-theme="light"] body.dashboard-scope [class*="text-fuchsia-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-purple-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-pink-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-indigo-3"],
+html[data-theme="light"] body.dashboard-scope [class*="text-indigo-4"] {
+  color: #6D28D9 !important;
+}
+
+/* Tombol Analisis Ulang & tombol aksi berwarna tua tetap berteks putih */
+html[data-theme="light"] body.dashboard-scope button[class*="bg-cyan-7"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-cyan-8"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-teal-"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-blue-"] {
+  background-color: #0369A1 !important;
+  color: #FFFFFF !important;
+}
+
+
+/* Penyesuaian Lembut Action Center, AI Header, & Tombol Aksi */
+html[data-theme="light"] body.dashboard-scope [class*="bg-slate-7"],
+html[data-theme="light"] body.dashboard-scope [class*="bg-gray-8"],
+html[data-theme="light"] body.dashboard-scope #action_center_list > div,
+html[data-theme="light"] body.dashboard-scope #action_center_list > a,
+html[data-theme="light"] body.dashboard-scope [id*="action"] > div {
+  background-color: #E8EEF5 !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+html[data-theme="light"] body.dashboard-scope [class*="text-fuchsia-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-purple-"],
+html[data-theme="light"] body.dashboard-scope [class*="text-pink-"] {
+  color: #6D28D9 !important;
+}
+html[data-theme="light"] body.dashboard-scope button[class*="bg-cyan-"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-teal-"],
+html[data-theme="light"] body.dashboard-scope button[class*="bg-blue-"] {
+  background-color: #0369A1 !important;
+  color: #F8FAFC !important;
+}
+
+/* Override khusus item Action Center yang memakai inline style / kelas dinamis JS */
+html[data-theme="light"] body.dashboard-scope #actionCenterList > *,
+html[data-theme="light"] body.dashboard-scope #action_center > *,
+html[data-theme="light"] body.dashboard-scope [id*="action" i] a,
+html[data-theme="light"] body.dashboard-scope [id*="action" i] div[style*="background"] {
+  background: #E8EEF5 !important;
+  background-color: #E8EEF5 !important;
+  border: 1px solid #CBD5E1 !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] body.dashboard-scope [id*="action" i] a:hover,
+html[data-theme="light"] body.dashboard-scope [id*="action" i] div[style*="background"]:hover {
+  background: #DBEAFE !important;
+  background-color: #DBEAFE !important;
+}
+
+/* Exact Selector untuk item <li> di dalam #action_list (Action Center) */
+html[data-theme="light"] body.dashboard-scope #action_list li.bg-\[\#071d30\],
+html[data-theme="light"] body.dashboard-scope #action_list > li[class*="bg-"] {
+  background-color: #E8EEF5 !important;
+  color: #0F172A !important;
+  border-top: 1px solid #CBD5E1 !important;
+  border-right: 1px solid #CBD5E1 !important;
+  border-bottom: 1px solid #CBD5E1 !important;
+}
+html[data-theme="light"] body.dashboard-scope #action_list > li span.opacity-60 {
+  opacity: 0.85 !important;
+  color: #475569 !important;
+}
