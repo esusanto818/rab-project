@@ -1231,3 +1231,20 @@ html[data-theme="light"] #addFormHeaderText {
   color: #0F172A !important;
   font-weight: 700 !important;
 }
+
+/* Jadikan seluruh bagian header modal (kiri & kanan) terang seragam di Light Theme */
+html[data-theme="light"] #editorFormHeader,
+html[data-theme="light"] #editorFormHeaderText,
+html[data-theme="light"] #editorFormHeaderMenu,
+html[data-theme="light"] #addFormHeader,
+html[data-theme="light"] #addFormHeaderText,
+html[data-theme="light"] #addFormHeaderMenu {
+  background: #CBD5E1 !important;
+  background-color: #CBD5E1 !important;
+  background-image: none !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] #editorFormHeaderText *,
+html[data-theme="light"] #addFormHeaderText * {
+  color: #0F172A !important;
+}
