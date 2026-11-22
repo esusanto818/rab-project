@@ -543,3 +543,182 @@ html[data-theme="light"] body.dashboard-scope #action_list > li span.opacity-60 
   opacity: 0.85 !important;
   color: #475569 !important;
 }
+
+/* ==========================================================================
+   TAHAP 4: EXTJS 3.4.1 FORMS, WINDOWS, TOOLBARS, & GRIDS (LIGHT & DARK SYNC)
+   Hanya mengubah warna & border — TIDAK mengubah ukuran, padding, atau layout
+   ========================================================================== */
+
+/* Latar Halaman Form & Header Form */
+html[data-theme="light"] body:not(.dashboard-scope),
+html[data-theme="light"] #container,
+html[data-theme="light"] .layerBackGround,
+html[data-theme="light"] #content {
+  background-color: #DCE3EC !important;
+  background-image: none !important;
+  color: #0F172A !important;
+}
+
+/* Header Judul Form di atas Grid */
+html[data-theme="light"] #divHeader,
+html[data-theme="light"] .headerForm,
+html[data-theme="light"] .top-header {
+  background-color: #0F172A !important;
+  color: #F8FAFC !important;
+  border-bottom: 2px solid #D97706 !important;
+}
+
+/* Panel & Body ExtJS */
+html[data-theme="light"] .x-panel-body,
+html[data-theme="light"] .x-panel-bwrap,
+html[data-theme="light"] .x-plain-body,
+html[data-theme="light"] .x-tab-panel-body {
+  background-color: #F4F7FA !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+html[data-theme="light"] .x-panel-header,
+html[data-theme="light"] .x-panel-tl,
+html[data-theme="light"] .x-panel-tr,
+html[data-theme="light"] .x-panel-tc {
+  background-color: #CBD5E1 !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] .x-panel-header-text {
+  color: #0F172A !important;
+}
+
+/* Toolbar & Pagination ExtJS */
+html[data-theme="light"] .x-toolbar {
+  background-color: #E2E8F0 !important;
+  background-image: none !important;
+  border-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-toolbar .xtb-text,
+html[data-theme="light"] .x-toolbar label,
+html[data-theme="light"] .x-btn button {
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-btn-over button {
+  color: #0369A1 !important;
+}
+
+/* Grid Header, Rows, Alternating Rows, Hover, & Selected Row */
+html[data-theme="light"] .x-grid3,
+html[data-theme="light"] .x-grid3-viewport,
+html[data-theme="light"] .x-grid3-scroller {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-grid3-header,
+html[data-theme="light"] .x-grid3-header-offset,
+html[data-theme="light"] td.x-grid3-hd {
+  background-color: #CBD5E1 !important;
+  background-image: none !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] .x-grid3-hd-inner {
+  color: #0F172A !important;
+  font-weight: 700 !important;
+}
+html[data-theme="light"] .x-grid3-row {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+}
+html[data-theme="light"] .x-grid3-row-alt {
+  background-color: #EDF2F7 !important;
+}
+html[data-theme="light"] .x-grid3-row-over {
+  background-color: #E0F2FE !important;
+}
+html[data-theme="light"] .x-grid3-row-selected {
+  background-color: #DBEAFE !important;
+  border-color: #93C5FD !important;
+}
+html[data-theme="light"] .x-grid3-cell-inner {
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  color: #1E3A8A !important;
+  font-weight: 600 !important;
+}
+
+/* Window Popup / Modal Form ExtJS */
+html[data-theme="light"] .x-window-mc,
+html[data-theme="light"] .x-window-ml,
+html[data-theme="light"] .x-window-mr,
+html[data-theme="light"] .x-window-bl,
+html[data-theme="light"] .x-window-br,
+html[data-theme="light"] .x-window-bc {
+  background-color: #F4F7FA !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] .x-window-tl,
+html[data-theme="light"] .x-window-tr,
+html[data-theme="light"] .x-window-tc {
+  background-color: #0F172A !important;
+  background-image: none !important;
+}
+html[data-theme="light"] .x-window-header-text {
+  color: #F8FAFC !important;
+}
+
+/* Input Fields, Textarea, Label, & Dropdown ComboBox */
+html[data-theme="light"] .x-form-item-label,
+html[data-theme="light"] .x-fieldset legend {
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-form-text,
+html[data-theme="light"] textarea.x-form-field,
+html[data-theme="light"] .x-tbar-page-number {
+  background-color: #FFFFFF !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] .x-item-disabled .x-form-text,
+html[data-theme="light"] .x-form-readonly {
+  background-color: #E2E8F0 !important;
+  color: #475569 !important;
+}
+html[data-theme="light"] .x-combo-list,
+html[data-theme="light"] .x-combo-list-inner {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] .x-combo-list-item {
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-combo-selected {
+  background-color: #DBEAFE !important;
+  color: #0369A1 !important;
+}
+
+/* Panel Detail Bawah (PO, GRN, Invoice, dll.) */
+html[data-theme="light"] .detail-panel-container,
+html[data-theme="light"] #poDtlContainer {
+  background-color: #F4F7FA !important;
+  color: #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
+}
+html[data-theme="light"] .detail-panel-container table,
+html[data-theme="light"] #poDtlContainer table {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .detail-panel-container th,
+html[data-theme="light"] #poDtlContainer th {
+  background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .detail-panel-container td,
+html[data-theme="light"] #poDtlContainer td {
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
