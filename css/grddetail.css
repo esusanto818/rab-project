@@ -389,3 +389,28 @@ html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-gri
   background-color: transparent !important;
   color: #38BDF8 !important;
 }
+
+/* Pastikan warna hover muncul penuh di seluruh <td> dan posisi teks tidak bergeser (tetap top) */
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) table.x-grid3-row-table,
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) td,
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell {
+  background-color: #BAE6FD !important;
+  vertical-align: top !important;
+}
+html[data-theme="light"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: transparent !important;
+  color: #0369A1 !important;
+}
+
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected),
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) table.x-grid3-row-table,
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) td,
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell {
+  background-color: #16324A !important;
+  vertical-align: top !important;
+}
+html[data-theme="dark"] body .x-grid3-row-over:not(.x-grid3-row-selected) .x-grid3-cell-inner {
+  background-color: transparent !important;
+  color: #38BDF8 !important;
+}
