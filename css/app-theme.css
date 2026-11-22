@@ -1272,3 +1272,24 @@ html[data-theme="light"] .detail-panel-container button {
   background-color: #0369A1 !important;
   color: #FFFFFF !important;
 }
+
+/* Pastikan bingkai luar & judul kontainer detail bawah terang selaras Light Theme di SEMUA form */
+html[data-theme="light"] #divDetailGrid,
+html[data-theme="light"] #poDtlContainer,
+html[data-theme="light"] .detail-panel-container,
+html[data-theme="light"] #content > div:last-of-type {
+  background: #F4F7FA !important;
+  background-color: #F4F7FA !important;
+  background-image: none !important;
+  color: #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
+}
+
+html[data-theme="light"] #divDetailGrid h2,
+html[data-theme="light"] #divDetailGrid h3,
+html[data-theme="light"] #poDtlContainer h2,
+html[data-theme="light"] #poDtlContainer h3,
+html[data-theme="light"] .detail-panel-container h2,
+html[data-theme="light"] .detail-panel-container h3 {
+  color: #0369A1 !important;
+}
