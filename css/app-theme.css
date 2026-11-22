@@ -1011,3 +1011,33 @@ html[data-theme="dark"] #divMainGrid .x-grid3-row-over:not(.x-grid3-row-selected
   background-color: transparent !important;
   color: #38BDF8 !important;
 }
+
+/* Sinkronisasi DatePicker Kalender Popup di Light Theme */
+html[data-theme="light"] .x-date-picker,
+html[data-theme="light"] .x-date-inner,
+html[data-theme="light"] .x-date-inner td,
+html[data-theme="light"] .x-date-bottom {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #CBD5E1 !important;
+}
+html[data-theme="light"] .x-date-middle,
+html[data-theme="light"] .x-date-left,
+html[data-theme="light"] .x-date-right {
+  background-color: #0F172A !important;
+  background-image: none !important;
+}
+html[data-theme="light"] .x-date-middle .x-btn button {
+  color: #F8FAFC !important;
+}
+html[data-theme="light"] .x-date-inner th {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-date-inner a {
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-date-inner .x-date-selected a {
+  background-color: #0369A1 !important;
+  color: #FFFFFF !important;
+}
