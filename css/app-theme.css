@@ -1135,3 +1135,86 @@ html[data-theme="light"] body .x-window-mc span[style*="color"] {
   color: #0F172A !important;
   font-weight: 600 !important;
 }
+
+/* ==========================================================================
+   EXACT OVERRIDE UNTUK #editorWdw / #addWdw (BERLAKU DI SELURUH FORM MODAL)
+   ========================================================================== */
+
+/* 1. Header Modal (#editorFormHeader & #addFormHeader) */
+html[data-theme="light"] #editorFormHeader,
+html[data-theme="light"] #addFormHeader {
+  background-color: #0F172A !important;
+  background-image: none !important;
+  border-bottom: 2px solid #D97706 !important;
+}
+html[data-theme="light"] #editorFormHeaderText,
+html[data-theme="light"] #addFormHeaderText {
+  color: #F8FAFC !important;
+}
+
+/* 2. Tombol Save / Update (Hijau Tegas) & Discard / Cancel (Merah Tegas) */
+html[data-theme="light"] a.green-form-button,
+html[data-theme="light"] #saveEdit,
+html[data-theme="light"] #formEditorTabSave {
+  background-color: #047857 !important;
+  border: 1px solid #065F46 !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] a.green-form-button:hover,
+html[data-theme="light"] #saveEdit:hover {
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="light"] a.red-form-button,
+html[data-theme="light"] #discardEdit,
+html[data-theme="light"] #formEditorTabCancel {
+  background-color: #B91C1C !important;
+  border: 1px solid #991B1B !important;
+  color: #FFFFFF !important;
+  font-weight: 700 !important;
+  opacity: 1 !important;
+}
+html[data-theme="light"] a.red-form-button:hover,
+html[data-theme="light"] #discardEdit:hover {
+  background-color: #DC2626 !important;
+  color: #FFFFFF !important;
+}
+
+/* 3. Tombol Aksi di dalam Form Modal (ANALISIS AI, EDIT TASK, TERBITKAN TAGIHAN) */
+html[data-theme="light"] #customAiBtn {
+  background-color: #0369A1 !important;
+  border: 1px solid #075985 !important;
+  color: #FFFFFF !important;
+}
+html[data-theme="light"] #customAiBtn:hover {
+  background-color: #0284C7 !important;
+}
+
+html[data-theme="light"] #customEditBtn {
+  background-color: #047857 !important;
+  border: 1px solid #065F46 !important;
+  color: #FFFFFF !important;
+}
+html[data-theme="light"] #customEditBtn:hover {
+  background-color: #059669 !important;
+}
+
+html[data-theme="light"] #customInvBtn {
+  background-color: #B45309 !important;
+  border: 1px solid #92400E !important;
+  color: #FFFFFF !important;
+}
+html[data-theme="light"] #customInvBtn:hover {
+  background-color: #D97706 !important;
+}
+
+/* 4. Perjelas angka Cadangan & teks display di dalam #editorFormMain */
+html[data-theme="light"] #editorFormMain div[style*="color"],
+html[data-theme="light"] #editorFormMain span[style*="color"],
+html[data-theme="light"] #editorFormMain b {
+  color: #0F172A !important;
+  font-weight: 700 !important;
+}
