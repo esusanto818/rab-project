@@ -197,3 +197,26 @@ body .x-grid3-row-selected .x-grid3-cell-inner a {
     border-top: 1px dashed #1a3a52 !important;
 }
 
+
+/* Sinkronisasi Light Theme (Soft Cool Slate) untuk baris ganjil & header grid */
+html[data-theme="light"] body .x-grid3-row,
+html[data-theme="light"] body .x-grid3-row td,
+html[data-theme="light"] body .x-grid3-row .x-grid3-cell-inner {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] body .x-grid3-row-alt,
+html[data-theme="light"] body .x-grid3-row-alt td,
+html[data-theme="light"] body .x-grid3-row-alt .x-grid3-cell-inner {
+  background: #EDF2F7 !important;
+  background-color: #EDF2F7 !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] body .x-grid3-row-selected,
+html[data-theme="light"] body .x-grid3-row-selected td,
+html[data-theme="light"] body .x-grid3-row-selected .x-grid3-cell-inner {
+  background: #DBEAFE !important;
+  background-color: #DBEAFE !important;
+  color: #1E3A8A !important;
+}
