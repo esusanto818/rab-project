@@ -178,7 +178,7 @@ dtlDiv.style.overflowY = 'auto';
     }
 
     function renderDetailPanel(d) {
-        var h = d.header, items = d.items || [], grand = 0;
+        var h = d.header || {}, items = d.items || [], actions = d.allowed_actions || [], grand = 0;
         var cur = h.currency_code || 'IDR';
         var bud = h.budget_code || cur;
         var sameCur = (!h.budget_currency_id) || (h.budget_currency_id === h.currency_id) || (bud === cur);

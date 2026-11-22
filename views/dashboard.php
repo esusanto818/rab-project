@@ -90,12 +90,14 @@ body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8
 
 html, body { overflow-x: hidden; max-width: 100vw; }
 </style>
+<link rel="stylesheet" href="../css/app-theme.css">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'dark');</script>
 </head>
 <?php $favVer = date('YmdHis'); ?>
 <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="apple-touch-icon" href="../favicon.ico?v=<?=$favVer?>">
-<body class="min-h-screen flex flex-col bg-[#020b14]">
+<body class="dashboard-scope min-h-screen flex flex-col bg-[#020b14]">
 <!-- HEADER -->
 <header class="bg-[#000000] border-b border-[#0a2d4a] sticky top-0 z-50 shadow-lg">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -152,6 +154,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
 <!-- KANAN: user + logout (desktop) / hamburger (mobile) -->
 <div class="flex items-center space-x-3 text-base">
+<button id="theme_toggle_btn" type="button" onclick="(function(){var c=document.documentElement.getAttribute('data-theme')||'dark';var n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('app_theme',n);var l=document.getElementById('theme_lbl');if(l)l.textContent=n==='light'?'Dark':'Light';})()" class="px-2.5 py-1 rounded border border-slate-600 bg-slate-800 hover:bg-slate-700 text-amber-300 text-sm font-semibold transition">🌓 <span id="theme_lbl">Theme</span></button>
 <span class="text-slate-400 hidden sm:inline">User: <strong class="text-cyan-300"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800/50 rounded transition">Logout</a>
 
