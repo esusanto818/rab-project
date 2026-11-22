@@ -220,3 +220,31 @@ html[data-theme="light"] body .x-grid3-row-selected .x-grid3-cell-inner {
   background-color: #DBEAFE !important;
   color: #1E3A8A !important;
 }
+
+/* Merapikan tata letak vertikal & teks multi-line vs single-line di Grid Detail bawah */
+#content table td,
+#content table th,
+.detail-panel-container table td,
+.detail-panel-container table th {
+  vertical-align: middle !important;
+  line-height: 1.4 !important;
+  padding: 8px 10px !important;
+}
+
+/* Cegah kolom tanggal, angka, & badge status terpotong ke 2 baris */
+#content table td:nth-last-child(-n+4),
+#content table th:nth-last-child(-n+4),
+.detail-panel-container table td:nth-last-child(-n+4) {
+  white-space: nowrap !important;
+}
+
+/* Pastikan teks di dalam badge status berwarna gelap/putih kontras (tidak hitam di atas hijau tua) */
+html[data-theme="light"] #content table td span[style*="background"],
+html[data-theme="light"] .detail-panel-container table td span[style*="background"] {
+  color: #FFFFFF !important;
+  padding: 3px 8px !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+  display: inline-block !important;
+  white-space: nowrap !important;
+}
