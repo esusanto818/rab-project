@@ -320,3 +320,19 @@ html[data-theme="light"] .proyek-status-badge {
   color: #065F46 !important;
   border: 1px solid #6EE7B7 !important;
 }
+
+/* Cabut border-bottom di dalam sel (.x-grid3-cell & .x-grid3-cell-inner) dengan spesifisitas lebih tinggi dari baris 57 */
+html body .x-grid3-row td,
+html body .x-grid3-cell,
+html body .x-grid3-cell-inner {
+  border-top: none !important;
+  border-bottom: none !important;
+}
+
+/* Garis pembatas baris penuh 100% hanya pada kontainer baris (.x-grid3-row) */
+html[data-theme="light"] body .x-grid3-row {
+  border-bottom: 1px solid #CBD5E1 !important;
+}
+html[data-theme="dark"] body .x-grid3-row {
+  border-bottom: 1px solid #1E293B !important;
+}
