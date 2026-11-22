@@ -917,3 +917,64 @@ html[data-theme="light"] body:not(.dashboard-scope) div.x-grid3 div.x-grid3-body
   background: #DBEAFE !important;
   background-color: #DBEAFE !important;
 }
+
+/* ==========================================================================
+   ID-LEVEL SPECIFICITY OVERRIDE UNTUK BARIS GANJIL & DETAIL TABLE (LIGHT THEME)
+   ========================================================================== */
+
+/* 1. Baris ganjil & genap pada #divMainGrid, #editorFormGrid, #content, dan .x-window */
+html[data-theme="light"] #content .x-grid3-row,
+html[data-theme="light"] #content .x-grid3-row-table,
+html[data-theme="light"] #content .x-grid3-row td,
+html[data-theme="light"] #divMainGrid .x-grid3-row,
+html[data-theme="light"] #divMainGrid .x-grid3-row-table,
+html[data-theme="light"] #divMainGrid .x-grid3-row td,
+html[data-theme="light"] #editorFormGrid .x-grid3-row,
+html[data-theme="light"] #editorFormGrid .x-grid3-row-table,
+html[data-theme="light"] #editorFormGrid .x-grid3-row td,
+html[data-theme="light"] .x-window .x-grid3-row,
+html[data-theme="light"] .x-window .x-grid3-row-table,
+html[data-theme="light"] .x-window .x-grid3-row td {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  background-image: none !important;
+  color: #0F172A !important;
+}
+
+html[data-theme="light"] #content .x-grid3-row-alt,
+html[data-theme="light"] #content .x-grid3-row-alt .x-grid3-row-table,
+html[data-theme="light"] #content .x-grid3-row-alt td,
+html[data-theme="light"] #divMainGrid .x-grid3-row-alt,
+html[data-theme="light"] #divMainGrid .x-grid3-row-alt .x-grid3-row-table,
+html[data-theme="light"] #divMainGrid .x-grid3-row-alt td,
+html[data-theme="light"] #editorFormGrid .x-grid3-row-alt,
+html[data-theme="light"] #editorFormGrid .x-grid3-row-alt .x-grid3-row-table,
+html[data-theme="light"] #editorFormGrid .x-grid3-row-alt td,
+html[data-theme="light"] .x-window .x-grid3-row-alt,
+html[data-theme="light"] .x-window .x-grid3-row-alt .x-grid3-row-table,
+html[data-theme="light"] .x-window .x-grid3-row-alt td {
+  background: #EDF2F7 !important;
+  background-color: #EDF2F7 !important;
+}
+
+html[data-theme="light"] #content .x-grid3-row-selected,
+html[data-theme="light"] #content .x-grid3-row-selected .x-grid3-row-table,
+html[data-theme="light"] #content .x-grid3-row-selected td,
+html[data-theme="light"] #divMainGrid .x-grid3-row-selected,
+html[data-theme="light"] #divMainGrid .x-grid3-row-selected .x-grid3-row-table,
+html[data-theme="light"] #divMainGrid .x-grid3-row-selected td,
+html[data-theme="light"] .x-window .x-grid3-row-selected,
+html[data-theme="light"] .x-window .x-grid3-row-selected td {
+  background: #DBEAFE !important;
+  background-color: #DBEAFE !important;
+}
+
+/* 2. Header Tabel HTML di Panel Detail Bawah (Nama Sub-Task WBS, PO Detail, dll.) */
+html[data-theme="light"] #content table thead,
+html[data-theme="light"] #content table thead tr,
+html[data-theme="light"] #content table th {
+  background: #CBD5E1 !important;
+  background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
