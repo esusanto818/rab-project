@@ -798,3 +798,88 @@ html[data-theme="light"] body:not(.dashboard-scope) .detail-panel-container div[
   color: #0F172A !important;
   border-color: #94A3B8 !important;
 }
+
+/* ==========================================================================
+   FINAL POLISH EXTJS 3.4.1 LIGHT THEME (GRID ROWS, COMBO DROPDOWN, & DETAIL BOX)
+   ========================================================================== */
+
+/* 1. Seluruh Grid ExtJS (baik #divMainGrid, #editorFormGrid, maupun grid di dalam modal) */
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-header,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-header-offset,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-hd-row td,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-hd {
+  background: #CBD5E1 !important;
+  background-color: #CBD5E1 !important;
+  background-image: none !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-hd-inner {
+  color: #0F172A !important;
+  font-weight: 700 !important;
+}
+
+/* Paksa semua baris (ganjil & genap) berlatar terang & teks gelap */
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-row td {
+  background: #F8FAFC !important;
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-alt,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-alt .x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-alt td {
+  background: #EDF2F7 !important;
+  background-color: #EDF2F7 !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-over,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-over .x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-over td {
+  background: #E0F2FE !important;
+  background-color: #E0F2FE !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-selected,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-selected .x-grid3-row-table,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-row-selected td {
+  background: #DBEAFE !important;
+  background-color: #DBEAFE !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-cell-inner,
+html[data-theme="light"] body:not(.dashboard-scope) .x-grid3-body .x-grid3-cell-inner * {
+  color: #0F172A !important;
+}
+
+/* 2. Daftar Pilihan ComboBox (.x-combo-list) yang Muncul Saat Dropdown Diklik */
+html[data-theme="light"] .x-combo-list,
+html[data-theme="light"] .x-combo-list-inner,
+html[data-theme="light"] .x-layer.x-combo-list {
+  background: #FFFFFF !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #94A3B8 !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-combo-list .x-combo-list-item {
+  background: #FFFFFF !important;
+  color: #0F172A !important;
+}
+html[data-theme="light"] .x-combo-list .x-combo-selected {
+  background: #DBEAFE !important;
+  color: #0369A1 !important;
+  font-weight: 600 !important;
+}
+
+/* 3. Panel Detail Bawah di Semua Form (Proyek, PO, GRN, Invoice) & Tombol SAVE/DISCARD */
+html[data-theme="light"] body:not(.dashboard-scope) #content div[style*="background"] {
+  background: #E8EEF5 !important;
+  background-color: #E8EEF5 !important;
+  color: #0F172A !important;
+  border-color: #94A3B8 !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) #content div[style*="background"] * {
+  color: #0F172A !important;
+}
+html[data-theme="light"] body:not(.dashboard-scope) .x-window-mc .x-btn button {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+  border-radius: 4px !important;
+}
