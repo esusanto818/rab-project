@@ -27,7 +27,7 @@ include __DIR__ . "/../includes/many-template-icn.php";
     </head>
     <body>
       <script type="text/javascript" src="/rab-project/dev/js-ext/ux/CheckColumn.js"></script>
-      <script type="text/javascript" src="/rab-project/dev/js/m.user.role.js"></script>
+      <script type="text/javascript" src="/rab-project/dev/js/m.user.role.js?v=20261122"></script>
       <script type="text/javascript">
         document.getElementById('menu').innerHTML='<?php echo $_SESSION["linkMenu"] ?>';
         var formAccess = '<?php echo $_SESSION["FormAccess"] ?>';

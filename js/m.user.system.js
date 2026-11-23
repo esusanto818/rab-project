@@ -156,6 +156,8 @@ Ext.onReady(function() {
             params: {
                 task: task,
                 u_active: Ext.getCmp('AddActive').getValue(),
+                apply_role: (roleAppliedId > 0 && !roleGridDirty
+                             && roleAppliedId === parseInt(Ext.getCmp('role_id_combo').getValue(), 10)) ? 1 : 0,
                 form_access: DsArray2Json(arrForm)
             },
             waitTitle: 'Connecting',
@@ -250,8 +252,10 @@ Ext.onReady(function() {
         { name: 'confirm_password' }
     ];
 
+    var ROLE_CRD = main_url + '/php-crud/m.user.roleCRD.php';
+
     var roleDs = new Ext.data.Store({
-        url: main_url + '/php-crud/roleCRD.php',
+        url: ROLE_CRD,
         baseParams: { task: 'read_roles' },
         reader: new Ext.data.JsonReader({ root: 'data', fields: [{name:'id', type:'int'}, {name:'role_name'}] })
     });
@@ -320,6 +324,71 @@ Ext.onReady(function() {
     });
 
     var addRow = Ext.data.Record.create(formField);
+
+    // ---- Form Access otomatis dari matriks role --------------------------------
+    var roleAppliedId = 0;      // role yang matriksnya sedang tampil di grid
+    var roleGridDirty = false;  // true bila grid diubah manual setelah role diterapkan
+    var applyingRole  = false;
+
+    function markRoleGridDirty() { if (!applyingRole) { roleGridDirty = true; } }
+    gridEditorDs.on('beforeload', function() { roleAppliedId = 0; roleGridDirty = false; });
+    gridEditorDs.on('update', markRoleGridDirty);
+    gridEditorDs.on('add', markRoleGridDirty);
+    gridEditorDs.on('remove', markRoleGridDirty);
+
+    function applyRoleToGrid(rid, askConfirm) {
+        rid = parseInt(rid, 10);
+        if (!rid) { return; }
+
+        var doApply = function() {
+            // pertahankan id baris akses yang sudah dimiliki user (untuk Edit), supaya jadi update, bukan insert ganda
+            var existing = {};
+            gridEditorDs.each(function(r) {
+                var rowId = parseInt(r.get('id'), 10);
+                if (rowId > 0) { existing[r.get('form_id')] = rowId; }
+            });
+
+            Ext.Ajax.request({
+                url: ROLE_CRD,
+                method: 'POST',
+                params: { task: 'read_role_matrix', role_id: rid },
+                success: function(response) {
+                    var obj = null;
+                    try { obj = Ext.util.JSON.decode(response.responseText); } catch (e) {}
+                    if (!obj || obj.success === false || !obj.data) {
+                        Ext.Msg.alert('User Role', (obj && obj.message) || 'Gagal memuat form dari role.');
+                        return;
+                    }
+                    var rows = [];
+                    for (var i = 0; i < obj.data.length; i++) {
+                        var d = obj.data[i];
+                        if (parseInt(d.access_level, 10) > 0) {      // hanya form yang benar-benar diberi akses oleh role
+                            d.id = existing[d.form_id] || 0;
+                            rows.push(d);
+                        }
+                    }
+                    applyingRole = true;
+                    gridEditorDs.loadData({ data: rows, totalRecord: rows.length });
+                    applyingRole = false;
+                    roleAppliedId = rid;
+                    roleGridDirty = false;
+                },
+                failure: function(response) {
+                    var msg = 'Gagal memuat form dari role.';
+                    try { msg = Ext.util.JSON.decode(response.responseText).message || msg; } catch (e) {}
+                    Ext.Msg.alert('User Role', msg);
+                }
+            });
+        };
+
+        if (askConfirm && gridEditorDs.getCount() > 0) {
+            Ext.Msg.confirm('Confirm', 'Ganti Form Access dengan hak akses dari role terpilih?', function(btn) {
+                if (btn === 'yes') { doApply(); }
+            });
+        } else {
+            doApply();
+        }
+    }
     var editorDeleter = new Extensive.grid.ItemDeleter();
     var editorCheckColumn = new Ext.grid.CheckColumn({ id: 'editorCheckColumn', header: 'Active', dataIndex: 'active', width: 60, fixed: true, align: 'center' });
 
@@ -409,7 +478,10 @@ Ext.onReady(function() {
                                 valueField: 'id',
                                 displayField: 'role_name',
                                 allowBlank: true,
-                                emptyText: '-- No Role assigned --'
+                                emptyText: '-- No Role assigned --',
+                                listeners: {
+                                    select: function(combo) { applyRoleToGrid(combo.getValue(), true); }
+                                }
                             })
                         ]
                     }
@@ -538,14 +610,7 @@ Ext.onReady(function() {
                                             Ext.Msg.alert('Warning', 'Please select a role first.');
                                             return;
                                         }
-                                        Ext.Msg.confirm('Confirm', 'Apply permissions from selected role? This will overwrite existing unsaved changes in the grid.', function(btn) {
-                                            if (btn === 'yes') {
-                                                gridEditorDs.load({
-                                                    url: main_url + '/php-crud/roleCRD.php',
-                                                    params: { task: 'read_role_matrix', role_id: rid }
-                                                });
-                                            }
-                                        });
+                                        applyRoleToGrid(rid, true);
                                     }
                                 }
                             }
