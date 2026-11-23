@@ -237,6 +237,8 @@ Ext.onReady(function() {
         { name: 'id', type: 'numeric' },
         { name: 'login_name' },
         { name: 'employee_id' },
+        { name: 'role_id', type: 'int' },
+        { name: 'role_name', type: 'string' },
         { name: 'active', type: 'bool' },
         { name: 'name', type: 'string', convert: function(v, rec) { return rec.employee_name; } },
         { name: 'employee_name' },
@@ -247,6 +249,13 @@ Ext.onReady(function() {
         { name: 'password' },
         { name: 'confirm_password' }
     ];
+
+    var roleDs = new Ext.data.Store({
+        url: main_url + '/php-crud/roleCRD.php',
+        baseParams: { task: 'read_roles' },
+        reader: new Ext.data.JsonReader({ root: 'data', fields: [{name:'id', type:'int'}, {name:'role_name'}] })
+    });
+    roleDs.load();
 
     var employeeDs = new Ext.data.Store({
         url: '../dev/php-crud/m.employeeCRD.php',
@@ -365,7 +374,7 @@ Ext.onReady(function() {
                         ]
                     },
                     {
-                        columnWidth: 0.8,
+                        columnWidth: 0.4,
                         layout: 'form',
                         baseCls: 'x-plain',
                         items: [
@@ -383,6 +392,24 @@ Ext.onReady(function() {
                                         Ext.getCmp('department_name').setValue(record.get('department_name'));
                                     }
                                 }
+                            })
+                        ]
+                    },
+                    {
+                        columnWidth: 0.4,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [
+                            new myComboField({
+                                fieldLabel: 'User Role',
+                                id: 'role_id_combo',
+                                name: 'role_id',
+                                hiddenName: 'role_id',
+                                store: roleDs,
+                                valueField: 'id',
+                                displayField: 'role_name',
+                                allowBlank: true,
+                                emptyText: '-- No Role assigned --'
                             })
                         ]
                     }
@@ -491,6 +518,38 @@ Ext.onReady(function() {
                         layout: 'form',
                         baseCls: 'x-plain',
                         items: [ButtonSpace]
+                    },
+                    {
+                        columnWidth: 0.1,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        style: 'text-align: right;',
+                        items: [
+                            {
+                                xtype: 'button',
+                                text: 'Apply Role',
+                                cls: 'field-button grey-field-button',
+                                id: 'btnApplyRole',
+                                style: 'background: #10B981; color: #fff;',
+                                listeners: {
+                                    click: function() {
+                                        var rid = Ext.getCmp('role_id_combo').getValue();
+                                        if (!rid) {
+                                            Ext.Msg.alert('Warning', 'Please select a role first.');
+                                            return;
+                                        }
+                                        Ext.Msg.confirm('Confirm', 'Apply permissions from selected role? This will overwrite existing unsaved changes in the grid.', function(btn) {
+                                            if (btn === 'yes') {
+                                                gridEditorDs.load({
+                                                    url: main_url + '/php-crud/roleCRD.php',
+                                                    params: { task: 'read_role_matrix', role_id: rid }
+                                                });
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        ]
                     },
                     {
                         columnWidth: 0.1,
@@ -611,6 +670,7 @@ Ext.onReady(function() {
             },
             { header: "#ID", dataIndex: 'login_name', width: 100, renderer: CellWrap },
             { header: "Name ", dataIndex: 'name', width: 200, renderer: CellWrap },
+            { header: "Role", dataIndex: 'role_name', width: 150, renderer: CellWrap },
             { header: "Department", dataIndex: 'department_name', width: 200, renderer: CellWrap },
             { header: "Hire Date", dataIndex: 'from_date', width: 150, renderer: Ext.util.Format.dateRenderer('d M Y') },
             { header: "Status", dataIndex: 'status_name', width: 100, renderer: CellWrap },

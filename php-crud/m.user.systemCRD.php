@@ -61,22 +61,24 @@ switch ($task) {
     // 1. READ MAIN GRID (Daftar Master User System)
     // ==========================================
     case ('read'):
-        $sResult   = searchData($searchField, array("s.login_name", "e.employee_name"), 250);
+        $sResult   = searchData($searchField, array("s.login_name", "e.employee_name", "r.role_name"), 250);
         $limit     = $sResult["limit"];
         $searchSQL = $sResult["searchSQL"];
 
         $fields = "
-            s.id, s.login_name, s.employee_id, s.active,
+            s.id, s.login_name, s.employee_id, s.active, s.role_id,
             '' as password, '' as confirm_password,
-            e.employee_name, e.gender, e.from_date, 
-            d.location_init||' ~ '||d.department_name as department_name, 
-            d.status_name
+            e.employee_name, e.gender, e.from_date,
+            d.location_init||' ~ '||d.department_name as department_name,
+            d.status_name,
+            COALESCE(r.role_name, '-') as role_name
         ";
 
         $table = "
             m_user_system s
             left join m_employee e on e.id = s.employee_id
             left join view_employee_depart_status d on coalesce(d.id, 0) = coalesce(e.id, 0)
+            left join m_role r on r.id = s.role_id
         ";
 
         $where = "1=1 " . $searchSQL;
@@ -133,9 +135,9 @@ switch ($task) {
         $id = intval($_POST['id'] ?? $_REQUEST['id'] ?? 0);
 
         $fields = "
-            s.id, s.login_name, s.employee_id, s.employee_id as name, s.active,
+            s.id, s.login_name, s.employee_id, s.employee_id as name, s.active, s.role_id,
             '' as password, '' as confirm_password,
-            e.employee_name, e.gender, e.from_date, 
+            e.employee_name, e.gender, e.from_date,
             d.department_name, d.status_name
         ";
 
@@ -202,11 +204,12 @@ switch ($task) {
     case ('create'):
     case ('add'):
         $employeeId = intval($_POST["employee_id"] ?? $_POST["name"] ?? 0);
+        $roleId = intval($_POST["role_id"] ?? 0);
 
         if ($employeeId <= 0) {
             echo json_encode([
-                "success" => "false", 
-                "status"  => "Error", 
+                "success" => "false",
+                "status"  => "Error",
                 "message" => "Gagal: Pilih Karyawan (Name) yang valid terlebih dahulu!"
             ]);
             exit;
@@ -221,7 +224,8 @@ switch ($task) {
             "login_name"  => checksinglequote($_POST["login_name"] ?? ''),
             "employee_id" => $employeeId,
             "password"    => $hashedPassword,
-            "active"      => ($_POST["u_active"] === 'true' || $_POST["active"] === 'true') ? 'true' : 'false'
+            "active"      => ($_POST["u_active"] === 'true' || $_POST["active"] === 'true') ? 'true' : 'false',
+            "role_id"     => $roleId > 0 ? $roleId : null
         );
         $queryC .= insertQ($table, $data) . ";";
 
@@ -230,8 +234,16 @@ switch ($task) {
         $queryC .= insertQ($table, $data) . ";";
 
         $formAccessPayload = $_POST['form_access'] ?? $_POST['arrForm'] ?? null;
+        $applyRole = intval($_POST['apply_role'] ?? 0);
 
-        if (!empty($formAccessPayload)) {
+        if ($applyRole === 1 && $roleId > 0) {
+            // Copy permissions from role
+            $tableD = "m_user_access_menu";
+            $queryC .= "INSERT INTO {$tableD} (user_id, form_id, access_level)
+                        SELECT currval('m_user_system_id_seq'::regclass), form_id, access_level
+                        FROM m_role_access_menu
+                        WHERE role_id = {$roleId} AND access_level > 0;";
+        } else if (!empty($formAccessPayload)) {
             $cleanJson = stripslashes($formAccessPayload);
             $dataForm  = json_decode($cleanJson, true);
 
@@ -270,6 +282,7 @@ switch ($task) {
         $queryC = '';
         $userId = intval($_POST['user_id'] ?? $_POST['id'] ?? 0);
         $employeeId = intval($_POST["employee_id"] ?? $_POST["name"] ?? 0);
+        $roleId = intval($_POST["role_id"] ?? 0);
 
         if ($userId > 0) {
             if ($employeeId <= 0) {
@@ -283,8 +296,8 @@ switch ($task) {
 
             if ($employeeId <= 0) {
                 echo json_encode([
-                    "success" => "false", 
-                    "status"  => "Error", 
+                    "success" => "false",
+                    "status"  => "Error",
                     "message" => "Gagal Simpan: ID Karyawan tidak terdeteksi (Foreign Key Violation)."
                 ]);
                 exit;
@@ -294,9 +307,10 @@ switch ($task) {
             $data  = array(
                 "login_name"  => checksinglequote($_POST["login_name"] ?? ''),
                 "employee_id" => $employeeId,
-                "active"      => ($_POST["u_active"] === 'true' || $_POST["u_active"] === true || $_POST["active"] === 'true') ? 'true' : 'false'
+                "active"      => ($_POST["u_active"] === 'true' || $_POST["u_active"] === true || $_POST["active"] === 'true') ? 'true' : 'false',
+                "role_id"     => $roleId > 0 ? $roleId : null
             );
-            
+
             if (!empty($_POST["password"])) {
                 $data["password"] = password_hash(trim($_POST["password"]), PASSWORD_DEFAULT, ['cost' => 12]);
             }
@@ -305,8 +319,16 @@ switch ($task) {
             $queryC .= updateQ($table, $data, $where) . ";";
 
             $formAccessPayload = $_POST['form_access'] ?? $_POST['arrForm'] ?? null;
+            $applyRole = intval($_POST['apply_role'] ?? 0);
 
-            if (!empty($formAccessPayload)) {
+            if ($applyRole === 1 && $roleId > 0) {
+                // Clear and Copy permissions from role
+                $queryC .= "DELETE FROM m_user_access_menu WHERE user_id = {$userId};";
+                $queryC .= "INSERT INTO m_user_access_menu (user_id, form_id, access_level)
+                            SELECT {$userId}, form_id, access_level
+                            FROM m_role_access_menu
+                            WHERE role_id = {$roleId} AND access_level > 0;";
+            } else if (!empty($formAccessPayload)) {
                 $cleanJson = stripslashes($formAccessPayload);
                 $dataForm  = json_decode($cleanJson, true);
 
@@ -364,11 +386,33 @@ switch ($task) {
             echo $db->getResult();
         } else {
             echo json_encode([
-                "success" => "false", 
-                "status"  => "Error", 
+                "success" => "false",
+                "status"  => "Error",
                 "message" => "ID User tidak valid untuk proses update."
             ]);
         }
+        break;
+
+    // ==========================================
+    // 8. APPLY ROLE (Sama seperti sync tapi dari sisi User System)
+    // ==========================================
+    case ('apply_role'):
+        $userId = intval($_POST['user_id'] ?? 0);
+        $roleId = intval($_POST['role_id'] ?? 0);
+
+        if ($userId <= 0 || $roleId <= 0) {
+            echo json_encode(["success" => false, "message" => "ID User dan ID Role harus valid."]);
+            exit;
+        }
+
+        $queryC = "DELETE FROM m_user_access_menu WHERE user_id = {$userId};";
+        $queryC .= "INSERT INTO m_user_access_menu (user_id, form_id, access_level)
+                    SELECT {$userId}, form_id, access_level
+                    FROM m_role_access_menu
+                    WHERE role_id = {$roleId} AND access_level > 0;";
+
+        $db->cmdQ($queryC);
+        echo $db->getResult();
         break;
 
     // ==========================================

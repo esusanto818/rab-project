@@ -1,3 +1,13 @@
+## [2026-11-22 09:15:00 WIB] - Audit & Perbaikan Menyeluruh Dynamic User Role & User System
+- **Tujuan / Permintaan**: Audit & perbaikan fitur Dynamic User Role & Access Matrix serta integrasi dropdown role dinamis ke form User System sesuai kontrak JSON frontend ↔ backend.
+- **File yang Diubah**: `php-crud/roleCRD.php`, `js/m.user.role.js`, `php-crud/m.user.systemCRD.php`, `js/m.user.system.js`, `docs/2026-11-22_USER_ROLE_AUDIT_FIX.md` (baru), `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
+- **Status Verifikasi**: `php -l` lolos (0 syntax error), integrasi "Apply Role" dan dropdown role dinamis berhasil diimplementasikan di User System. Kontrak JSON terverifikasi 100% cocok.
+
+## [2026-11-22 08:30:00 WIB] - Implementasi Modul Dynamic User Role & Access Matrix
+- **Tujuan / Permintaan**: Mengimplementasikan modul **Dynamic User Role & Access Matrix** secara 100% dinamis (tanpa hardcode nama/kode role di PHP maupun JS), terintegrasi dengan alur `Employee -> User System -> m_user_access_menu`.
+- **File yang Diubah**: `sql/2026-11-22_dynamic_user_role.sql` (baru), `php-crud/roleCRD.php` (baru), `views/m.user.role.php` (baru), `js/m.user.role.js` (baru), `docs/2026-11-22_DYNAMIC_USER_ROLE_IMPLEMENTATION.md` (baru), `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
+- **Status Verifikasi**: `php -l` lolos (0 syntax error), migrasi SQL berhasil dieksekusi ke PostgreSQL `proyekGMN`, pengujian CRUD role & matriks akses berhasil.
+
 ## [2026-11-22 07:21:15 WIB] - Tahap 0: Audit & Konsolidasi CSS Terpusat
 - **Tujuan / Permintaan**: Audit menyeluruh CSS dan konsolidasi seluruh warna tema aplikasi (Dashboard, Menu, dan Form ExtJS 3.4.1) ke satu file terpusat `css/app-theme.css` sebagai Single Source of Truth.
 - **File yang Diubah**: `css/app-theme.css` (ditulis ulang: Section A Design Tokens, Section B Dashboard scope, Section C Navbar & Dropdown Menu scope, Section D Form & Grid ExtJS 3.4.1 scope), `docs/2026-11-22_TAHAP0_CSS_CONSOLIDATION_AUDIT.md` (baru), `docs/SESSION_LOG.md`, `AUDIT_CHANGELOG.md`.
