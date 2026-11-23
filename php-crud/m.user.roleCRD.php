@@ -387,6 +387,14 @@ try {
                 }
 
                 if ($formId > 0) {
+                    // GAP-USR-03: Validasi eksistensi form_id di tabel m_form_name
+                    $chkForm = pg_query_params($conn, "SELECT 1 FROM m_form_name WHERE id = $1 AND active = true", [$formId]);
+                    if (!$chkForm || pg_num_rows($chkForm) === 0) {
+                        pg_query($conn, "ROLLBACK");
+                        echo json_encode(["success" => false, "message" => "Form ID {$formId} tidak valid atau tidak terdaftar di sistem."]);
+                        exit;
+                    }
+
                     if ($accessLevel > 0) {
                         // Upsert
                         $upd = pg_query_params(

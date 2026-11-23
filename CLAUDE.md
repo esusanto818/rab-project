@@ -1,89 +1,244 @@
-# DEVELOPMENT GUIDELINE & INSTRUCTIONS
+# CLAUDE.md
+# RAB-PROJECT — MASTER DEVELOPMENT GUIDELINE & AGENT INSTRUCTIONS
+Version: 3.0 (Merged Master Edition)
+Project: RAB-Project (`proyekgmn-dev`)
+Purpose: Development, Full System Audit, Quality Assurance & Production Readiness
 
-## 0. PETA INSTANCE (baca dulu)
-- URL dev yang dibuka developer: `http://127.0.0.1/rab-project/dev/`. Server E2E: env `RAB_BASE_URL` (default `http://127.0.0.1:8098`).
-- DB uji: `proyekGMN_test`. DB produksi: `proyekGMN`. DB yang benar-benar dipakai aplikasi dibaca dari `php-func/function.all.php`; jangan menebak.
-- Folder kerja = hasil `pwd`. Sebelum mengedit pastikan file itu memang yang disajikan URL di atas (cek symlink/docroot). TODO developer: konfirmasi hubungan `/home/myadmin/proyekgmn-dev` dengan `/rab-project/dev`.
+---
 
-## 1. ATURAN UMUM PENGEMBANGAN
-- **Cara menulis perubahan:** file BARU ditulis utuh. File EKSISTING diubah dengan edit terarah (diff minimal) dan komentar jelas pada baris yang berubah atau ditambah. Menulis ulang seluruh file eksisting hanya bila file ≤ 300 baris atau diminta eksplisit. Alasannya: tulis-ulang-penuh dari bacaan parsial pernah mengembalikan bagian lama (regresi).
-- **Tingkat tugas:** *Kecil* = bugfix/UI, maksimal 3 file, tanpa SQL. *Besar* = audit, fitur/modul baru, migrasi SQL, atau patch lebih dari 3 file. Tingkat ini menentukan beban administrasi (lihat §5).
-- **Pemisahan logika:** pisahkan UI (`/js/` atau `/views/`) dari pemrosesan data (`/php-crud/`); modul PO adalah acuan.
-- **Kontrak API:** bila mengubah nama `action`, parameter, atau bentuk JSON sebuah endpoint, ubah SEMUA pemanggilnya dalam perubahan yang sama: `rg -n "<nama_action>" views/ js/ js-func/ php-crud/` (JS halaman bisa inline di `views/*.php`). Tugas selesai hanya bila kedua sisi cocok.
-- **Halaman kosong / angka 0 / data tidak tampil:** gunakan `/perbaiki-ui` (agent `contract-debugger`). Reproduksi dulu (curl atau DevTools, tab Network), baru baca kode.
+# 0. PETA INSTANCE & KESELAMATAN — WAJIB DIBACA SEBELUM BEKERJA
 
-## 2. STANDAR BACKEND (PHP & POSTGRESQL)
-- **Helper & koneksi tunggal:** di setiap endpoint backend panggil
-  `require_once __DIR__ . '/../php-func/function.all.php';` dan
-  `require_once __DIR__ . '/../php-class/crudClass.php';`
-  (path relatif ke file, bukan ke direktori kerja).
-- **PHP 7.4:** dilarang sintaks/fungsi PHP 8+ (`str_starts_with`, `str_contains`, `str_ends_with`, `match`, dll.).
-- **Keamanan query:** selalu `pg_query_params` atau PDO `prepare/execute`.
-- **Format respons JSON (`/php-crud/*.php`):**
-  - Read (CRUD/grid): `{"success": true, "totalCount": 100, "data": [...]}`
-  - Mutasi: `{"success": true, "message": "Data berhasil disimpan."}`
-  - Gagal: `{"success": false, "message": "Pesan kesalahan spesifik."}`
-  - Endpoint agregat read-only (mis. `dashboardCRD.php`) boleh memakai key khusus (`items`, `kpi`, `datasets`, ...) asalkan selalu ada `success`, `message` saat gagal, dan bentuk tiap action dicatat di komentar header file.
-- **Error handling:** tangkap `Throwable` (bukan hanya `Exception`) di endpoint. Fatal error harus menghasilkan JSON `{"success": false, "message": ...}` (HTTP 500) plus `error_log`, bukan body kosong.
-- **Transaksi ACID:** `BEGIN ... COMMIT / ROLLBACK` untuk data bertingkat (header & detail), `FOR UPDATE` untuk perubahan status dokumen. Dilarang `echo`/`var_dump`/`print_r` untuk debugging; satu-satunya output adalah JSON final. Format tanggal `YYYY-MM-DD`, desimal memakai titik.
+- **URL development:** `http://127.0.0.1/rab-project/dev/`
+- **E2E server:** `RAB_BASE_URL` (default `http://127.0.0.1:8098`)
+- **Database testing:** `proyekGMN_test`
+- **Database production:** `proyekGMN`
+- **Database aktual aplikasi:** Wajib diperiksa dari `php-func/function.all.php`. Jangan menebak.
+- **Folder kerja:** Ditentukan berdasarkan hasil `pwd` (`/home/myadmin/proyekgmn-dev`).
+- **Verifikasi docroot:** Sebelum mengedit file, pastikan file tersebut benar-benar disajikan oleh URL development melalui pemeriksaan docroot, symlink (`/var/www/html/rab-project/dev`), dan konfigurasi Apache.
+- **LARANGAN HARDCODE PATH:** Dilarang keras memakai path hardcoded seperti `../dev/`, `/rab-project/`, atau path absolut OS:
+  - JS ExtJS wajib memakai global `main_url`.
+  - JS vanilla/mobile wajib memakai `window.APP_BASE_URL` (di-set dari PHP `$APP_BASE`).
+  - PHP endpoint wajib memakai `__DIR__ . '/../'`.
 
-## 3. STANDAR FRONTEND
-### 3a. Halaman ExtJS 3.4.1 (`js/*.js` dan view yang memuat `Ext.*`)
-- Setiap `Ext.data.Store` wajib punya listener `exception` yang menampilkan error eksplisit.
-- Null-check `dataRecord` sebelum Edit/Delete; pastikan form ter-render sebelum `.getForm().load()` atau `.setValue()`.
-- Payload bertingkat: `Ext.util.JSON.encode` via POST.
-### 3b. Halaman non-ExtJS (Tailwind + JS biasa + Chart.js, mis. `views/dashboard.php`)
-- Ikuti pola file itu sendiri; jangan dikonversi ke ExtJS.
-- Semua `fetch` lewat satu helper yang melempar error bila respons bukan JSON atau `success:false`, dan errornya ditampilkan di layar. Dilarang `if (!json.success) return;` yang diam-diam.
-- Escape teks dari DB sebelum dimasukkan ke `innerHTML`.
-- CSS Tailwind dikompilasi (`assets/css/dashboard.tailwind.css`, CDN dinonaktifkan): pakai class yang sudah ada, atau build ulang CSS-nya.
+**Aturan keselamatan:**
+Jika identitas instance atau database belum dapat dipastikan, dilarang melakukan operasi mutasi. Lanjutkan pemeriksaan read-only dan dokumentasikan hambatan.
 
-## 4. STRUKTUR DIREKTORI PROYEK
-- `ext-3.4.1/` framework ExtJS · `js/` & `js-func/` UI dan fungsi global ExtJS · `views/` halaman utama (JS non-ExtJS bisa inline di sini)
-- `php-crud/` handler backend (acuan: `purchaseinvoiceCRD.php`) · `php-func/` & `php-class/` helper dan class global
-- `sql/` migrasi · `tests/` uji E2E · `docs/` dokumentasi · `cron/` · `assets/` CSS/JS lokal
+---
 
-## 5. VERIFIKASI & PELAPORAN (BERJENJANG)
-**Tugas Kecil:**
-1. `php -l` (PHP) atau `node --check` (JS) pada file yang diubah; bila memungkinkan `curl` endpoint yang diubah dan periksa key JSON.
-2. `git status -s` untuk daftar file aktual (jangan mengandalkan ingatan).
-3. Satu entri ringkas (maksimal 5 baris) di `docs/SESSION_LOG.md`. Tidak perlu dokumen baru, unit-test baru, atau laporan panjang.
+# 1. ATURAN UMUM PENGEMBANGAN
 
-**Tugas Besar:** semua di atas, ditambah:
-4. `git diff --stat` dan pembaruan `AUDIT_CHANGELOG.md` (satu-satunya file laporan yang memang berada di root proyek) berupa tabel: tanggal/waktu, path file, ringkasan perubahan dan alasan, status Git (`Committed`/`Uncommitted`).
-5. Uji E2E (skill `e2e-test-template`) bila logika transaksi/DB berubah, dijalankan hingga `FAIL=0` terhadap instance yang sama dengan yang dipakai developer.
-6. Dokumen `docs/YYYY-MM-DD_<NAMA_AGENT>_<MODUL>.md`: ringkasan, file diubah, SQL/migrasi, langkah verifikasi.
+## 1.1 Cara mengubah & backup file
+- **Backup wajib:** Sebelum mengubah file kritis (`> 300` baris atau aktif di produksi), jalankan `cp file file.bak-$(date +%Y%m%d%H%M)`. Jangan hanya mengandalkan Git.
+- **File baru:** Ditulis secara utuh.
+- **File existing:** Diubah dengan edit terarah dan diff minimal serta komentar jelas pada baris yang berubah/ditambah.
+- **Larangan tulis ulang penuh:** Jangan menulis ulang seluruh file existing jika `> 300` baris, kecuali diminta eksplisit. Jangan menggunakan hasil pembacaan file parsial sebagai dasar penulisan ulang lengkap.
+- **Konteks:** Sebelum mengubah file, baca konteks fungsi, seluruh pemanggil, dan dependency terkait.
 
-Selalu: tampilkan daftar file yang diubah di akhir respons; jangan `git commit` tanpa instruksi eksplisit; jawaban akhir padat dan langsung ke poin.
+## 1.2 Klasifikasi tugas
+- **KECIL:** Bugfix/UI, maksimal 3 file, tanpa SQL.
+- **BESAR:** Audit, fitur/modul baru, migrasi SQL, atau perubahan lebih dari 3 file.
 
-## 6. STANDAR AUDIT MENDALAM (hanya sesi audit/regresi, bukan bugfix kecil)
-1. **Cakupan lintas lapisan:** periksa `php-crud/`, `php-func/`, `views/`, `pdf/`, `js/`, `js-func/`, dan file berekstensi huruf besar (`*.PHP`, mis. `db_connection.PHP`). Jangan hanya `php-crud` dan `js`.
-2. **Logika bisnis, regex PostgreSQL & SQL dinamis:**
-   - Cari komentar `//` di dalam string SQL multi-baris (memicu error PostgreSQL).
-   - Verifikasi penomoran otomatis (`CreateRefNo`, `ti_next_release_no`, urutan `TAG-`/`INV-`/`PPAY-`) bebas bug regex titik (`.`) dan transisi bulan.
-   - Urutan validasi bisnis (status `released`, sisa tagihan, kepemilikan client) selaras dengan validasi input dasar.
-3. **Kesiapan data & master rule:** periksa `fiscal_config` (termasuk `PRJ_DEP_APPLY`), `accounting_periods`, distribusi `m_user_access_menu`, dan data pra-migrasi yang sudah berjurnal (cegah double-posting).
-4. Setiap temuan baru pada sesi audit dibuatkan kasus uji di `tests/` dan dijalankan ke DB uji `proyekGMN_test`.
+## 1.3 Pemisahan logika
+- **UI:** `/js/` (ExtJS) atau `/views/` (PHP + Tailwind/JS vanilla).
+- **Pemrosesan data:** `/php-crud/` (acuan backend: `poCRD.php` dan `purchaseinvoiceCRD.php`).
+- **Helper & Class:** `/php-func/` dan `/php-class/`.
+- Jangan mencampur pemrosesan bisnis berat ke dalam JavaScript atau tampilan.
 
-## 7. MIGRASI SQL
-- File baru: `sql/YYYY-MM-DD.nama_fitur.sql`, wajib diakhiri blok komentar `-- ROLLBACK / DOWN MIGRATION` (perintah `DROP`/`ALTER` kebalikan yang aman).
-- Agent TIDAK mengeksekusi migrasi/DDL. Developer mengeksekusinya manual setelah review (alur `/bangun-fitur` dan `/audit-dan-tambal` berhenti untuk itu).
+## 1.4 Kontrak API & Diagnosis UI
+- **Kontrak API:** Bila mengubah nama `action`/`task`, parameter, atau struktur JSON, periksa dan perbarui SEMUA pemanggil dalam perubahan yang sama:
+  `rg -n "<nama_action>" views/ js/ js-func/ php-crud/`
+- **Halaman kosong / angka 0 / data tidak tampil:** Gunakan `/perbaiki-ui` (`contract-debugger`). Reproduksi terlebih dahulu via `curl` atau DevTools Network (periksa status HTTP, response JSON, console, dan SQL) sebelum menyentuh kode tampilan.
 
-## 8. PENDAFTARAN MENU & HAK AKSES (hanya halaman/modul/laporan BARU)
-1. Periksa struktur tabel menu dan hak akses yang berlaku, lalu tulis pendaftaran menu (parent, ikon, urutan, URL/handler JS, hak akses role) di file migrasi `.sql` modul tersebut sebagai `INSERT ... ON CONFLICT DO NOTHING` atau `WHERE NOT EXISTS`, agar ikut terpasang saat deploy ke produksi (`proyekGMN`).
-2. Eksekusi ke DB tetap oleh developer (lihat §7). Masukkan pengecekan menu ke daftar verifikasi sebelum tugas dinyatakan selesai.
-3. Tidak berlaku untuk perbaikan bug atau perubahan pada layar yang sudah ada.
+---
 
-## 9. DOKUMENTASI
-- Semua dokumen di `docs/` pada root proyek (bukan path absolut lain). Jangan menaruh laporan, panduan, atau changelog baru di root; satu-satunya pengecualian adalah `AUDIT_CHANGELOG.md`.
-- Tugas Kecil cukup `docs/SESSION_LOG.md`; laporan panjang hanya untuk Tugas Besar atau bila diminta.
-- Pencarian terarah: `Grep`/`rg` pada modul target (termasuk `views/`), jangan memindai seluruh proyek berulang, kecuali pada sesi audit (§6).
+# 2. STANDAR BACKEND — PHP & POSTGRESQL
 
-## 10. NOTIFIKASI WHATSAPP PASCA-TUGAS
-Dikirim sekali setiap Tugas Besar selesai (1 Gap, 1 siklus audit, 1 fitur) atau saat sesi berakhir setelah ada perubahan kode. Tidak dikirim untuk sesi tanya-jawab/baca saja.
-1. Nomor tujuan dari env `HERMES_WA_TO` (jangan menulis nomor di file proyek). Jalankan lewat Bash:
-   `hermes send --to "whatsapp:$HERMES_WA_TO" "<1-3 baris: apa yang dikerjakan, status, commit hash bila ada>"`
-   Bila env kosong: lewati dan sebutkan itu di ringkasan akhir.
-2. Dilarang hanya mencetak teks simulasi tanpa menjalankan perintah.
-3. Bila exit code non-zero: jalankan `hermes gateway restart && sleep 3` lalu ulangi `hermes send` SEKALI. Bila masih gagal, laporkan di ringkasan akhir; jangan mengulang terus.
-4. Jangan menyertakan kredensial atau data sensitif dalam pesan.
+## 2.1 Helper, koneksi & kompatibilitas PHP 7.4
+- Di setiap endpoint backend panggil:
+  ```php
+  require_once __DIR__ . '/../php-func/function.all.php';
+  require_once __DIR__ . '/../php-class/crudClass.php';
+  ```
+- Jangan membuat koneksi database kedua jika koneksi global (`$conn` / `$db`) sudah tersedia.
+- **Target PHP 7.4:** Dilarang keras menggunakan sintaks/fungsi PHP 8+ (`str_contains`, `str_starts_with`, `str_ends_with`, `match`, dll.).
+
+## 2.2 Keamanan query & dual sistem query
+- Selalu gunakan `pg_query_params` atau PDO `prepare/execute`. Hindari SQL concatenation dari input pengguna.
+- Validasi seluruh parameter (tipe data, batas nilai, kepemilikan record). SQL dinamis wajib memakai whitelist untuk identifier.
+- **Konsistensi sistem query per file:**
+  - Endpoint lama (`ar.agingCRD`, `ap.agingCRD`, `m.user.roleCRD`) memakai `pg_query_params` (`$1, $2`).
+  - Endpoint baru (`poCRD`, `dashboardCRD`) memakai PDO via `$db = new crud()`.
+  - Endpoint baru wajib mengikuti pola PDO; jangan mencampur gaya query dalam satu file.
+- **Tabel baru/opsional:** Bungkus query dengan `tbl_exists($db, 'nama_tabel')` (pola `dashboardCRD.php`).
+
+## 2.3 Kontrak JSON (Dua Bentuk Standar)
+1. **Flat List ExtJS** (dipakai `ar.agingCRD`, `ap.agingCRD`, `m.user.roleCRD`, `m.user.systemCRD`, `stock.cardCRD`):
+   `{"success": true, "totalCount": 100, "data": [...]}`
+2. **Nested `poCRD`** (dipakai modul PO & transaksi kompleks):
+   `{"success": true, "message": "...", "data": {"data": [...], "totalCount": 100}}` atau `{"success": true, "message": "...", "data": {"header": {...}, "items": [...], "allowed_actions": [...]}}`
+- **Mutasi:** `{"success": true, "message": "Data berhasil disimpan."}`
+- **Gagal:** `{"success": false, "message": "Pesan kesalahan spesifik."}`
+- Reader JS wajib cocok dengan bentuk respons server. Dokumentasikan struktur setiap action pada komentar header endpoint.
+
+## 2.4 Error handling, transaksi ACID & hak akses
+- **Error handling:** Tangkap `Throwable` (bukan hanya `Exception`). Fatal error wajib menghasilkan JSON `{"success": false, "message": ...}` (HTTP 500) + `error_log`, tanpa membocorkan credential/SQL/stack trace. Dilarang `echo`/`var_dump`/`print_r` untuk debugging.
+- **Transaksi ACID:** Gunakan `BEGIN ... COMMIT / ROLLBACK` untuk transaksi header-detail dan `FOR UPDATE` pada perubahan status dokumen. Pastikan perubahan saldo, stok, pembayaran, dan jurnal berlangsung atomik dan idempoten. Tanggal `YYYY-MM-DD`, desimal memakai titik (`.`).
+- **Hak akses:** Read-only agregat (dashboard, aging, stock card) boleh cek hak langsung dari `m_user_access_menu` via `php_url`; operasi CRUD (`save`/`update`/`delete`) WAJIB memvalidasi `$_SESSION['FormAccess']` yang di-set oleh `user.valid.php`. Jangan meminjam `FormAccess` menu lain.
+
+---
+
+# 3. STANDAR FRONTEND
+
+## 3.1 Halaman ExtJS 3.4.1 (`js/*.js` dan view yang memuat `Ext.*`)
+- **Deklarasi variabel:** Semua `var` wajib dideklarasikan di awal fungsi sebelum dipakai (jangan mengandalkan hoisting).
+- **Store & Form:** Setiap `Ext.data.Store` wajib memiliki listener `exception`. Null-check `dataRecord` sebelum Edit/Delete. Pastikan form ter-render sebelum `.getForm().load()` atau `.setValue()`. Payload bertingkat dikirim menggunakan `Ext.util.JSON.encode` via POST.
+- **API ExtJS 3.4.1 yang valid:**
+  - Gunakan `Ext.grid.EditorGridPanel` (BUKAN `EditorGridModel` — class tidak ada dan mematikan seluruh `Ext.onReady`).
+  - `Ext.grid.CheckColumn` tidak memiliki event `click`; tangani toggle melalui event `cellclick` pada grid.
+  - `Extensive.grid.ItemDeleter` tersedia di proyek ini dan mendukung properti `header` untuk ikon SVG.
+- **Grid teks panjang & CSS wrap:** Gunakan `viewConfig: { forceFit: false, scrollOffset: 0 }`. Targetkan CSS wrap secara scoped ke ID/class NYATA dari `renderTo` (misal `#gridEditor .x-grid3-hd-inner, .x-grid3-gridEditor .x-grid3-hd-inner`). Dilarang menargetkan ID fiktif seperti `#editorFormGrid`.
+
+## 3.2 Halaman non-ExtJS (Tailwind + JS biasa + Chart.js, mis. `views/dashboard.php`)
+- Ikuti pola masing-masing file; jangan konversi ke ExtJS.
+- Semua `fetch` lewat helper terpusat yang melempar error jika respons bukan JSON atau `success: false`, dan tampilkan error ke user (dilarang `if (!json.success) return;` diam-diam).
+- Escape teks database sebelum dimasukkan ke `innerHTML`.
+- **Tema & warna:** Gunakan token dari `css/app-theme.css` (SSOT); hindari hex acak di inline style. Gunakan class Tailwind yang sudah terkompilasi (`assets/css/dashboard.tailwind.css`, CDN dinonaktifkan). Jangan memakai class global ber-gradient besar (seperti `my-label-GroupLbl`) untuk label toolbar kecil.
+- **Halaman mobile (`.m.php`):** Header/hamburger/bottom-nav harus seragam dengan `dashboard.php`. Link "Dashboard" di bottom-nav wajib mengarah ke `dashboard.php` (bukan `router?id=X`). Halaman mobile tidak meng-include `user.valid.php`; cukup cek `$_SESSION['user_id']`.
+
+---
+
+# 4. ATURAN KHUSUS MODUL YANG SERING BUG
+
+- **Purchase Order (`po.js` / `poCRD.php`):** Deklarasikan `var actions` dan `var csBanner` di awal fungsi `renderDetailPanel()` sebelum dipakai. Panel detail PO dibuat dinamis via `document.createElement('div')` + `insertBefore`; jangan asumsikan `#poDtlContainer` sudah ada di template. Status PO langsung berubah ke `Released` pada proses release tanpa intermediate approval.
+- **User Role (`m.user.role.js` / `m.user.roleCRD.php`):** Gunakan `Ext.grid.EditorGridPanel`. Toggle CheckColumn via `cellclick` di grid dan sinkronkan `access_level` (0 <-> 1). Sembunyikan `editorWdw` dan `popWdw` di akhir `Ext.onReady`. Pastikan endpoint terdaftar di `$endpointAliases` pada `user.valid.php`.
+- **User System (`m.user.system.js` / `m.user.systemCRD.php`):** CSS wrap grid menargetkan `#gridEditor` + `.x-grid3-gridEditor`. Filter hasil `Apply Role` agar hanya memuat `access_level > 0`. Pastikan `UPDATE` header dan detail `m_user_access_menu` berada dalam satu transaksi atomik.
+- **Stock Card Mobile (`stock.card.m.js`):** Set `window.APP_BASE_URL` dari PHP sebelum load JS. `lookup_warehouses` hanya mengembalikan gudang yang memiliki mutasi stok (`stock_movements`); `lookup_items` wajib memvalidasi `warehouse_id > 0`.
+- **Dashboard (`dashboard.php` / `dashboardCRD.php`):** Nama action di JS harus identik dengan `case` di CRD (`read_*`, bukan `get_*`). Menu dropdown dikontrol via class `.open` + `closeAll()` (jangan `:hover`/`:focus-within`). `.nav-item` wajib `position: relative`.
+
+---
+
+# 5. STRUKTUR DIREKTORI & ATURAN FILE MARKDOWN
+
+- `ext-3.4.1/` : framework ExtJS 3.4.1
+- `js/` & `js-func/` : UI dan fungsi global ExtJS
+- `views/` : halaman utama & UI non-ExtJS
+- `php-crud/` : handler backend (acuan: `purchaseinvoiceCRD.php`)
+- `php-func/` & `php-class/` : helper dan class global
+- `sql/` : migrasi SQL
+- `tests/` : testing dan E2E
+- `docs/` : seluruh dokumentasi, laporan audit, dan panduan
+- `cron/`, `assets/`, `pdf/` : background jobs, aset lokal, dan cetak PDF
+
+**Aturan file `.md`:** Seluruh laporan sesi, skema DB, dan dokumentasi wajib disimpan di `docs/`. File `.md` yang diizinkan di root proyek hanyalah: `CLAUDE.md`, `AUDIT_CHANGELOG.md`, `README.md`, `BUSINESS_GAP_REPORT.md`, dan `MEMORY.md`.
+
+---
+
+# 6. VERIFIKASI & PELAPORAN BERJENJANG
+
+## 6.1 Tugas Kecil
+1. Jalankan `php -l` (PHP) atau `node --check` (JS); uji endpoint via `curl` jika memungkinkan.
+2. Periksa DevTools > Console (`0` error merah) dan Network tab (`HTTP 200`).
+3. Jalankan `git status -s` untuk daftar file aktual.
+4. Catat maksimal 5 baris di `docs/SESSION_LOG.md`.
+
+## 6.2 Tugas Besar
+Semua verifikasi Tugas Kecil ditambah:
+1. `git diff --stat` dan pembaruan `AUDIT_CHANGELOG.md` (tabel: tanggal/waktu, path file, ringkasan perubahan & alasan, status Git).
+2. Jalankan E2E (skill `e2e-test-template`) pada `proyekGMN_test` hingga `FAIL=0` bila logika transaksi/DB berubah.
+3. Buat laporan lengkap di `docs/YYYY-MM-DD_<NAMA_AGENT>_<MODUL>.md` (ringkasan, file diperiksa/diubah, temuan, SQL/migrasi, langkah verifikasi, hasil testing).
+4. Tampilkan daftar file yang berubah di akhir respons. Jangan `git commit` tanpa instruksi eksplisit.
+
+---
+
+# 7. STANDAR AUDIT MENDALAM
+
+- **Cakupan lintas lapisan:** Periksa `php-crud/`, `php-func/`, `php-class/`, `views/`, `pdf/`, `js/`, `js-func/`, `sql/`, `tests/`, dan file berekstensi huruf besar (`*.PHP`, mis. `db_connection.PHP`).
+- **Business logic & SQL:** Cari komentar `//` di dalam string SQL multi-baris (memicu error PostgreSQL). Verifikasi penomoran otomatis (`CreateRefNo`, `ti_next_release_no`, urutan `TAG-`, `INV-`, `PPAY-`) bebas bug regex titik (`.`) literal dan transisi bulan/tahun. Periksa validasi status dokumen, sisa tagihan, kepemilikan client, dan material `CLIENT_SUPPLIED` (Rp 0).
+- **Master data & konfigurasi:** Periksa `fiscal_config` (`PRJ_DEP_APPLY`), `accounting_periods`, distribusi `m_user_access_menu`, master material/satuan, serta potensi double-posting.
+- **Pengujian temuan:** Setiap temuan baru wajib memiliki bukti, test case di `tests/`, dan diuji pada `proyekGMN_test` dengan status `PASS`, `FAIL`, atau `NOT TESTED`.
+
+---
+
+# 8. MIGRASI SQL & PENDAFTARAN MENU
+
+- **Migrasi SQL:** Simpan di `sql/YYYY-MM-DD.<nama_fitur>.sql` dan wajib diakhiri blok `-- ROLLBACK / DOWN MIGRATION` yang aman. **Agent DILARANG mengeksekusi migrasi atau DDL.** Developer mengeksekusi manual setelah review.
+- **Pendaftaran Menu & Hak Akses (hanya modul/halaman BARU):**
+  1. Periksa struktur aktual tabel menu (`m_form_name`, `m_form_group`, `m_form_links`) dan `m_user_access_menu`.
+  2. Sertakan SQL pendaftaran pada file migrasi modul menggunakan `INSERT ... ON CONFLICT DO NOTHING` atau `WHERE NOT EXISTS`.
+  3. Untuk halaman baru tanpa menu sidebar (dashboard, mobile `.m.php`), daftarkan di `m_form_name` dengan `php_url` yang cocok dan beri hak akses default ke user aktif agar tidak terkena blokir HTTP 403 dari `user.valid.php`.
+
+---
+
+# 9. NOTIFIKASI WHATSAPP PASCA-TUGAS
+
+Dikirim sekali setelah Tugas Besar selesai atau saat sesi berakhir setelah ada perubahan kode (tidak dikirim untuk tanya-jawab atau audit read-only tanpa perubahan kode).
+- Nomor tujuan diambil dari env `HERMES_WA_TO`:
+  `hermes send --to "whatsapp:$HERMES_WA_TO" "<1-3 baris: pekerjaan, status, commit hash bila ada>"`
+- Jika env kosong: lewati pengiriman dan sebutkan di ringkasan akhir.
+- Jika exit code non-zero: jalankan `hermes gateway restart && sleep 3`, ulangi `hermes send` satu kali, lalu laporkan jika masih gagal. Jangan sertakan credential/data sensitif.
+
+---
+
+# 10. MASTER AUDIT PROTOCOL — AUDIT FIRST, NO PATCH
+
+Bagian ini adalah aturan tertinggi selama sesi audit berlangsung.
+
+## 10.1 Fase 1 — Audit tanpa perubahan aplikasi
+Selama audit belum selesai:
+- DILARANG mengubah source code aplikasi, konfigurasi, atau schema database.
+- DILARANG mengeksekusi DDL/migrasi atau mengubah data database aktif (`proyekGMN`).
+- DILARANG melakukan `git commit`, `merge`, `push`, atau menyentuh branch `main`/`live`.
+- Pembuatan test case di `tests/` dan mutasi data pengujian hanya boleh dilakukan pada database terisolasi `proyekGMN_test`.
+
+## 10.2 Fase 2 s/d Fase 4 — Inventarisasi & Audit Lintas Modul
+1. Inventarisasi seluruh modul, submodul, endpoint, tabel, database objects, dan dependency.
+2. Audit seluruh 30 area wajib: Arsitektur, Authentication, Authorization/RBAC, Business Logic, Backend PHP, Frontend JS, API/AJAX, PostgreSQL/SQL, Database Integrity, Transaction Safety, Master Data, Inventory, Purchasing, RAB, Project/Task, SPK Internal, SPK Subcon, Subcontract Management, Progress/Inspection, Payment Certificate, Invoice/Payment, Finance/Accounting, Dashboard, Reports/PDF, AI Integration, File Upload/Download, Security, Performance, Error Handling/Logging, dan UI/UX.
+3. Telusuri aliran integrasi end-to-end:
+   `RAB -> Project -> Task -> Material/Expense -> PO -> GRN -> SPK/Subcon -> Progress -> Inspection -> Payment Certificate -> Invoice -> Payment -> Jurnal/AR/AP/PPN`.
+
+## 10.3 Fase 5 s/d Fase 8 — Testing, Findings Register & Rencana Patch
+- **Testing:** Jalankan syntax check (`php -l`, `node --check`), validasi SQL, integritas DB, security/negative/boundary test, dan E2E test. Catat `Test ID`, `Modul`, `Skenario`, `Expected`, `Actual`, `PASS/FAIL/NOT TESTED`, dan bukti.
+- **Findings Register:** Setiap temuan wajib memuat `Finding ID`, `Modul`, `Severity` (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`, `INFO`), `File & Baris`, `Bukti Aktual`, `Akar Masalah`, `Dampak User/Data/Bisnis`, `Rekomendasi`, `Test Case`, dan `Status Verifikasi`.
+- **Audit Completion Gate:** Audit hanya selesai jika seluruh modul/area telah diperiksa, semua pengujian yang memungkinkan sudah dijalankan, dan seluruh laporan tersimpan di `docs/`. Jika belum, statusnya `AUDIT INCOMPLETE`.
+- **Rencana Patch:** Susun daftar patch terprioritas (`CRITICAL` -> `LOW`), dependency, risiko regresi, dan kebutuhan migrasi SQL, lalu **BERHENTI untuk menunggu persetujuan developer**.
+
+---
+
+# 11. PATCH & REGRESSION PROTOCOL (SETELAH PERSETUJUAN DEVELOPER)
+
+1. Pastikan branch aktif adalah `dev` dan branch `main`/`live` tidak berubah.
+2. Backup file kritis (`> 300` baris) sebelum diedit.
+3. Terapkan patch minimal berdasarkan Findings Register; buat file migrasi SQL tanpa mengeksekusi DDL.
+4. Jalankan syntax check, regression test, dan E2E pada `proyekGMN_test`.
+5. Ubah status temuan menjadi `VERIFIED` hanya setelah pengujian ulang terbukti lulus (`PASS`).
+6. Perbarui `AUDIT_CHANGELOG.md` dan dokumentasi di `docs/`.
+
+---
+
+# 12. RELEASE READINESS GATE & FORMAT RINGKASAN AKHIR
+
+**Keputusan Release:**
+- `READY FOR RELEASE` : Seluruh persyaratan utama terpenuhi dan 0 temuan CRITICAL/HIGH terbuka.
+- `READY AFTER FIXES` : Masih ada temuan yang wajib diperbaiki sebelum rilis.
+- `NOT READY FOR RELEASE` : Terdapat risiko besar terhadap fungsi, keamanan, data, atau transaksi.
+- `AUDIT INCOMPLETE` : Audit belum mencakup seluruh area wajib.
+
+**Format Ringkasan Akhir Tugas:**
+1. Pekerjaan yang dilakukan · 2. Modul yang diperiksa · 3. Temuan penting · 4. Hasil testing · 5. Status pekerjaan · 6. File yang dibuat/diubah · 7. Database yang digunakan · 8. Status Git dan branch · 9. Hambatan yang belum terselesaikan · 10. Langkah berikutnya.
+
+---
+
+# FINAL DIRECTIVE
+
+**PRIORITAS UTAMA PROYEK RAB-PROJECT:**
+`DATA INTEGRITY > BUSINESS LOGIC > SECURITY > FUNCTIONALITY > PERFORMANCE > UI/UX`
+
+Jangan mengorbankan integritas data demi membuat fitur terlihat berfungsi. Jangan melakukan patch sebelum audit lengkap. Jangan mengubah production. Jangan menganggap pengujian berhasil tanpa bukti.
+
+---
+
+## 13. ATURAN MUTLAK SURGICAL EDIT ONLY (ANTI-FULL-REWRITE)
+Untuk mencegah kerusakan tata letak UI, hilangnya event listener lama, dan bug regresi seperti yang pernah terjadi pada modul User Role:
+1. **Dilarang Full Rewrite File > 150 Baris:** Agent DILARANG menggunakan tool `Write` untuk menimpa seluruh isi file lama yang panjangnya lebih dari 150 baris. Wajib gunakan penyuntingan presisi (`Edit` / patch baris tertentu) hanya pada bagian yang bermasalah.
+2. **Wajib Backup & Cek Diff:** Sebelum menyunting file apa pun, wajib salin ke `<nama_file>.bak`. Setelah menyunting, wajib jalankan `git diff --stat` dan pastikan jumlah baris yang dihapus/ditambah proporsional dengan ruang lingkup perbaikan (tidak menghapus blok fungsi atau CSS tema yang tidak terkait).
+3. **Rollback Otomatis jika Melenceng:** Jika `git diff` menunjukkan perubahan yang merusak struktur ExtJS/CSS yang sudah jalan, wajib segera kembalikan file dari `.bak` dan ulangi dengan perubahan yang lebih kecil.

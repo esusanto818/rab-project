@@ -257,7 +257,7 @@ switch ($task) {
                         exit;
                     }
 
-                    if ($formId > 0) {
+                    if ($formId > 0 && $accessLvl > 0) {
                         $tableD = "m_user_access_menu";
                         $dataD  = array(
                             "user_id"      => "currval('m_user_system_id_seq'::regclass)",
@@ -270,8 +270,15 @@ switch ($task) {
             }
         }
 
-        $db->cmdQ($queryC);
-        echo $db->getResult();
+        try {
+            $db->beginTransaction();
+            $db->cmdQ($queryC);
+            $db->commit();
+            echo $db->getResult();
+        } catch (Exception $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            echo json_encode(["success" => false, "status" => "Error", "message" => "Gagal menyimpan data user: " . $e->getMessage()]);
+        }
         break;
 
     // ==========================================

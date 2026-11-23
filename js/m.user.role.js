@@ -13,6 +13,8 @@ Ext.onReady(function() {
     var task = '';
     var activeRoleId = 0;
     var activeRoleName = '';
+    var pendingNewRoleEdit = true;
+    var pendingNewRoleId = 0;     // role yang baru dibuat -> otomatis dipilih & matriksnya dibuka dalam mode edit
     var matrixEditMode = false;   // matriks hanya bisa diubah setelah tombol Edit ditekan
     var deleteRow = 0;
     var deleteRecord = null;
@@ -28,6 +30,7 @@ Ext.onReady(function() {
             document.getElementById('editorWdw').style.display = 'block';
             document.getElementById("editorFormHeaderText").innerHTML = "&nbsp;&nbsp;New User Role";
             Ext.getCmp('frmEditor').getForm().reset();
+            showRoleFormAccess(true);
             Ext.getCmp('role_code').focus('', 10);
         } else {
             document.getElementById("popWdwTxt").innerHTML = 'not enough permission to access this window';
@@ -61,6 +64,7 @@ Ext.onReady(function() {
             description: dataRecord.description
         });
         Ext.getCmp('AddActive').setValue(!!dataRecord.is_active);
+        showRoleFormAccess(false);          // Edit Info hanya data induk; matriks diedit di panel bawah
         document.getElementById('editorWdw').style.display = 'block';
         document.getElementById("editorFormHeaderText").innerHTML = "&nbsp;&nbsp;Edit User Role: " + dataRecord.role_name;
     }
@@ -100,12 +104,55 @@ Ext.onReady(function() {
             waitMsg: 'Saving role data...',
             success: function(form, action) {
                 var objResponse = Ext.util.JSON.decode(action.response.responseText);
-                document.getElementById("popWdwTxt").innerHTML = objResponse.message || 'Saved successfully.';
-                document.getElementById('popWdw').style.display = 'block';
+                var okMsg = objResponse.message || 'Saved successfully.';
+                var finishSave = function(extraMsg) {
+                    document.getElementById("popWdwTxt").innerHTML = okMsg + (extraMsg || '');
+                    document.getElementById('popWdw').style.display = 'block';
+                    mainDs.load();
+                    frmEditor.getForm().reset();
+                    roleAccessStore.removeAll();
+                    document.getElementById('editorWdw').style.display = 'none';
+                };
 
-                mainDs.load();
-                frmEditor.getForm().reset();
-                document.getElementById('editorWdw').style.display = 'none';
+                if (task === 'save_role' && objResponse.id) {
+                    var newId = parseInt(objResponse.id, 10);
+                    var arr = [];
+                    roleAccessStore.each(function(rec) {
+                        if (parseInt(rec.get('access_level'), 10) > 0) {
+                            arr.push({ form_id: rec.get('form_id'), access_level: parseInt(rec.get('access_level'), 10) });
+                        }
+                    });
+                    pendingNewRoleId = newId;
+                    if (arr.length === 0) {
+                        pendingNewRoleEdit = true;      // belum ada form: langsung buka matriks dalam mode edit
+                        finishSave('<br><br>Atur form &amp; level akses role ini pada <b>Access Matrix</b> di bawah (bisa pakai <b>Copy From...</b>), lalu klik <b>Save Matrix</b>.');
+                    } else {
+                        pendingNewRoleEdit = false;
+                        Ext.Ajax.request({
+                            url: CRD,
+                            method: 'POST',
+                            params: { task: 'save_role_matrix', role_id: newId, matrix_data: Ext.util.JSON.encode(arr) },
+                            success: function(resp) {
+                                var o = null;
+                                try { o = Ext.util.JSON.decode(resp.responseText); } catch (e) {}
+                                if (o && o.success === false) {
+                                    pendingNewRoleEdit = true;
+                                    finishSave('<br><br>Namun form access gagal disimpan: ' + (o.message || '') + '<br>Atur ulang pada Access Matrix di bawah.');
+                                } else {
+                                    finishSave('<br>' + arr.length + ' form access ikut tersimpan.');
+                                }
+                            },
+                            failure: function(resp) {
+                                var msg = '';
+                                try { msg = Ext.util.JSON.decode(resp.responseText).message || ''; } catch (e) {}
+                                pendingNewRoleEdit = true;
+                                finishSave('<br><br>Namun form access gagal disimpan: ' + msg + '<br>Atur ulang pada Access Matrix di bawah.');
+                            }
+                        });
+                    }
+                } else {
+                    finishSave('');
+                }
             },
             failure: function(form, action) {
                 var objResponse = Ext.util.JSON.decode(action.response.responseText);
@@ -238,6 +285,19 @@ Ext.onReady(function() {
 
     // Setelah daftar role dimuat ulang (mis. setelah Save/Sync), pilih lagi role yang aktif.
     mainDs.on('load', function() {
+        if (pendingNewRoleId) {
+            var newId = pendingNewRoleId;
+            pendingNewRoleId = 0;
+            var ni = mainDs.findBy(function(r) { return parseInt(r.get('id'), 10) === newId; });
+            if (ni >= 0) {
+                gridMain.getSelectionModel().selectRow(ni);
+                gridMain.getView().focusRow(ni);
+                dataRecord = mainDs.getAt(ni).data;
+                loadRoleMatrix(dataRecord.id, dataRecord.role_name, dataRecord.role_code);
+                setMatrixEditMode(pendingNewRoleEdit);
+                return;
+            }
+        }
         if (!activeRoleId) return;
         var idx = mainDs.findBy(function(r) { return r.get('id') === activeRoleId; });
         if (idx >= 0) {
@@ -247,6 +307,249 @@ Ext.onReady(function() {
         }
     });
 
+
+    // ==========================================
+    // 3b. FORM ACCESS DI DALAM FORM "NEW USER ROLE" (Add / Copy From / grid form + level)
+    // ==========================================
+    var accessFields = [
+        { name: 'form_id', type: 'int' },
+        { name: 'group_id', type: 'int' },
+        { name: 'group_name', type: 'string' },
+        { name: 'form_seq', type: 'string' },
+        { name: 'form_name', type: 'string' },
+        { name: 'php_url', type: 'string' },
+        { name: 'remark', type: 'string' },
+        { name: 'access_level', type: 'int' },
+        { name: 'active', type: 'bool' }
+    ];
+
+    var TRASH_SVG = 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#8FA7BF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>');
+
+    function makeLevelCombo(cmpId) {
+        return new Ext.form.ComboBox({
+            id: cmpId,
+            typeAhead: true,
+            triggerAction: 'all',
+            lazyRender: true,
+            mode: 'local',
+            store: new Ext.data.ArrayStore({
+                id: 0,
+                fields: ['myId', 'displayText'],
+                data: [[1, 'Read'], [2, 'Read/Create'], [3, 'Read/Create/Update'], [4, 'Full (Read/Create/Update/Delete)']]
+            }),
+            valueField: 'myId',
+            displayField: 'displayText'
+        });
+    }
+
+    // daftar form + level untuk role yang sedang dibuat (belum tersimpan sampai tombol Save form)
+    var roleAccessStore = new Ext.data.Store({
+        reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalRecord', idProperty: 'form_id', fields: accessFields })
+    });
+
+    var roleAccessGrid = new stdGridEditor({
+        store: roleAccessStore,
+        height: 240,
+        anchor: '100%',
+        clicksToEdit: 1,
+        loadMask: true,
+        autoExpandColumn: 'colRoleAccRemark',
+        columns: [
+            new Ext.grid.RowNumberer(),
+            { header: "Menu Group", dataIndex: 'group_name', width: 170, sortable: true, renderer: CellWrap },
+            { header: "Form Title", dataIndex: 'form_name', width: 200, sortable: true, renderer: CellWrap },
+            { header: "URL / Path", dataIndex: 'php_url', width: 190, sortable: true },
+            { id: 'colRoleAccRemark', header: "Remark", dataIndex: 'remark', width: 200, renderer: CellWrap },
+            {
+                header: "Access Level",
+                dataIndex: 'access_level',
+                width: 190,
+                renderer: renderLevelName,
+                editor: makeLevelCombo('RoleFormLevelCombo'),
+                css: cssGridEditColumn
+            },
+            {
+                header: '<img src="' + TRASH_SVG + '" style="vertical-align:middle;width:16px;height:16px;" title="Hapus baris"/>',
+                dataIndex: 'form_id',
+                width: 40,
+                fixed: true,
+                sortable: false,
+                menuDisabled: true,
+                align: 'center',
+                renderer: function() {
+                    return '<img class="role-row-del" src="' + TRASH_SVG + '" style="cursor:pointer;width:16px;height:16px;vertical-align:middle;" title="Hapus baris"/>';
+                }
+            }
+        ],
+        listeners: {
+            cellclick: function(grid, rowIndex, colIndex, e) {
+                if (e.getTarget('.role-row-del')) {
+                    roleAccessStore.removeAt(rowIndex);
+                    grid.getView().refresh();
+                }
+            }
+        }
+    });
+
+    function sizeRoleAccessGrid() {
+        var el = roleAccessGrid.getEl();
+        if (!el) { return; }
+        var top = el.dom.getBoundingClientRect().top;
+        var bottom = document.getElementById('editorWdw').getBoundingClientRect().bottom;
+        roleAccessGrid.setHeight(Math.max(160, bottom - top - 12));
+        roleAccessGrid.getView().refresh();
+    }
+
+    function showRoleFormAccess(show) {
+        Ext.getCmp('roleFormAccessBox').setVisible(show);
+        if (show) {
+            roleAccessStore.removeAll();
+            sizeRoleAccessGrid();
+        }
+    }
+
+    // ---- Copy From: salin form + level dari role lain ----
+    function copyIntoNewRole(srcId, srcName) {
+        Ext.Ajax.request({
+            url: CRD,
+            method: 'POST',
+            params: { task: 'read_role_matrix', role_id: srcId },
+            success: function(response) {
+                try {
+                    var obj = null;
+                    try { obj = Ext.util.JSON.decode(response.responseText); } catch (e) {}
+                    if (!obj || obj.success === false || !obj.data) {
+                        Ext.Msg.alert('Copy From', (obj && obj.message) || 'Gagal memuat matriks role sumber.');
+                        return;
+                    }
+                    var added = 0;
+                    roleAccessStore.removeAll();
+                    for (var i = 0; i < obj.data.length; i++) {
+                        var d = obj.data[i];
+                        if (parseInt(d.access_level, 10) > 0) {
+                            d.access_level = parseInt(d.access_level, 10);
+                            d.form_id = parseInt(d.form_id, 10);
+                            d.active = true;
+                            roleAccessStore.add(new roleAccessStore.recordType(d, d.form_id));
+                            added++;
+                        }
+                    }
+                    roleAccessGrid.getView().refresh();
+                    sizeRoleAccessGrid();
+                    if (added === 0) {
+                        Ext.Msg.alert('Copy From', 'Role "' + srcName + '" belum memiliki form access (kolom Forms = 0), jadi tidak ada yang disalin.');
+                    }
+                } catch (err) {
+                    Ext.Msg.alert('Copy From', 'Error saat mengisi grid: ' + err.message);
+                }
+            },
+            failure: function(response) {
+                var msg = 'Gagal memuat matriks role sumber (HTTP ' + response.status + ').';
+                try { msg = Ext.util.JSON.decode(response.responseText).message || msg; } catch (e) {}
+                Ext.Msg.alert('Copy From', msg);
+            }
+        });
+    }
+
+    function openCopyMenu(btn) {
+        var items = [];
+        mainDs.each(function(r) {
+            items.push({
+                text: r.get('role_name') + ' (' + r.get('role_code') + ')',
+                roleId: r.get('id'),
+                roleName: r.get('role_name'),
+                handler: function(item) {
+                    if (roleAccessStore.getCount() > 0) {
+                        Ext.Msg.confirm('Copy From', 'Ganti daftar form yang sudah ada dengan milik role ini?', function(b) {
+                            if (b === 'yes') { copyIntoNewRole(item.roleId, item.roleName); }
+                        });
+                    } else {
+                        copyIntoNewRole(item.roleId, item.roleName);
+                    }
+                }
+            });
+        });
+        if (!items.length) { Ext.Msg.alert('Copy From', 'Belum ada role lain untuk disalin.'); return; }
+        new Ext.menu.Menu({ items: items }).show(btn.getEl());
+    }
+
+    // ---- Add: pilih form dari daftar semua form aktif ----
+    var catalogStore = new Ext.data.Store({
+        url: CRD,
+        baseParams: { task: 'read_role_matrix', role_id: 0 },
+        reader: new Ext.data.JsonReader({ root: 'data', totalProperty: 'totalRecord', idProperty: 'form_id', fields: accessFields })
+    });
+    var pickSm = new Ext.grid.CheckboxSelectionModel();
+    var pickGrid = null;
+
+    function applyPickFilter() {
+        var q = (document.getElementById('roleAddFormSearch').value || '').toLowerCase();
+        catalogStore.filterBy(function(r) {
+            if (roleAccessStore.findExact('form_id', r.get('form_id')) >= 0) { return false; }   // sudah ada di daftar role
+            if (!q) { return true; }
+            return (r.get('form_name') + ' ' + r.get('group_name') + ' ' + r.get('php_url')).toLowerCase().indexOf(q) >= 0;
+        });
+    }
+
+    function closeRoleFormPicker() {
+        document.getElementById('roleAddFormWdw').style.display = 'none';
+    }
+
+    function openRoleFormPicker() {
+        var w = document.getElementById('roleAddFormWdw');
+        if (!w) {
+            w = document.createElement('div');
+            w.id = 'roleAddFormWdw';
+            w.style.cssText = 'display:none;position:fixed;top:70px;left:8%;width:84%;height:calc(100% - 140px);z-index:5000;'
+                + 'background:#0b1623;border:1px solid #1e3a52;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6);overflow:hidden;';
+            w.innerHTML =
+                '<div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #1e3a52;">' +
+                    '<div style="font-weight:bold;font-size:18px;color:#38BDF8;">Add Form to Role</div>' +
+                    '<div>' +
+                        '<input id="roleAddFormSearch" type="text" placeholder="Search form..." autocomplete="off" style="margin-right:12px;padding:6px 10px;width:220px;background:#0f1f2e;color:#cbd5e1;border:1px solid #1e3a52;border-radius:4px;"/>' +
+                        '<button id="roleAddFormOk" class="field-button grey-field-button" style="margin-right:8px;background:#1f6fa8;color:#fff;padding:6px 16px;cursor:pointer;font-weight:bold;">Add Selected</button>' +
+                        '<button id="roleAddFormClose" class="field-button grey-field-button" style="background:#64748B;color:#fff;padding:6px 14px;cursor:pointer;">Close</button>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="roleAddFormGrid"></div>';
+            document.body.appendChild(w);
+
+            pickGrid = new Ext.grid.GridPanel({
+                store: catalogStore,
+                sm: pickSm,
+                stripeRows: true,
+                loadMask: true,
+                height: w.clientHeight - 54,
+                renderTo: 'roleAddFormGrid',
+                autoExpandColumn: 'colPickForm',
+                columns: [
+                    pickSm,
+                    { header: "Menu Group", dataIndex: 'group_name', width: 180, sortable: true },
+                    { id: 'colPickForm', header: "Form Title", dataIndex: 'form_name', width: 240, sortable: true },
+                    { header: "URL / Path", dataIndex: 'php_url', width: 220, sortable: true }
+                ]
+            });
+
+            document.getElementById('roleAddFormSearch').onkeyup = applyPickFilter;
+            document.getElementById('roleAddFormClose').onclick = closeRoleFormPicker;
+            document.getElementById('roleAddFormOk').onclick = function() {
+                var sel = pickSm.getSelections();
+                for (var i = 0; i < sel.length; i++) {
+                    var d = Ext.apply({}, sel[i].data);
+                    d.access_level = 1;       // default Read, bisa diubah di grid
+                    d.active = true;
+                    roleAccessStore.add(new roleAccessStore.recordType(d, d.form_id));
+                }
+                roleAccessGrid.getView().refresh();
+                closeRoleFormPicker();
+            };
+        }
+        document.getElementById('roleAddFormSearch').value = '';
+        w.style.display = 'block';
+        catalogStore.load({
+            callback: function() { applyPickFilter(); pickSm.clearSelections(); }
+        });
+    }
 
     // ==========================================
     // 4. FORM EDITOR WINDOW (Tambah/Edit Role)
@@ -331,6 +634,69 @@ Ext.onReady(function() {
                                 anchor: '100%'
                             }
                         ]
+                    }
+                ]
+            },
+            {
+                id: 'roleFormAccessBox',
+                columnWidth: 1.0,
+                layout: 'column',
+                baseCls: 'x-plain',
+                style: 'margin-top: 10px;',
+                items: [
+                    {
+                        columnWidth: 1.0,
+                        layout: 'column',
+                        baseCls: 'x-plain',
+                        style: 'margin-bottom: 5px;',
+                        items: [
+                            {
+                                columnWidth: 0.2,
+                                layout: 'form',
+                                baseCls: 'x-plain',
+                                items: [{ xtype: 'label', text: 'Form Access', cls: 'x-form-item my-label-GroupLbl' }]
+                            },
+                            {
+                                columnWidth: 0.52,
+                                layout: 'form',
+                                baseCls: 'x-plain',
+                                items: [{ xtype: 'box', html: '&nbsp;' }]
+                            },
+                            {
+                                columnWidth: 0.14,
+                                layout: 'form',
+                                baseCls: 'x-plain',
+                                style: 'text-align: right;',
+                                items: [{
+                                    xtype: 'button',
+                                    text: 'Copy From',
+                                    minWidth: 110,
+                                    cls: 'field-button grey-field-button',
+                                    id: 'btnRoleCopyFrom',
+                                    listeners: { click: function(btn) { openCopyMenu(btn); } }
+                                }]
+                            },
+                            {
+                                columnWidth: 0.14,
+                                layout: 'form',
+                                baseCls: 'x-plain',
+                                style: 'text-align: right;',
+                                items: [{
+                                    xtype: 'button',
+                                    text: 'Add',
+                                    minWidth: 110,
+                                    cls: 'field-button grey-field-button',
+                                    id: 'btnRoleAddForm',
+                                    listeners: { click: function() { openRoleFormPicker(); } }
+                                }]
+                            }
+                        ]
+                    },
+                    {
+                        columnWidth: 1.0,
+                        layout: 'form',
+                        baseCls: 'x-plain',
+                        items: [roleAccessGrid]
                     }
                 ]
             }
@@ -448,7 +814,8 @@ Ext.onReady(function() {
             '<div id="matrixTitle" style="font-weight:bold;font-size:18px;color:#38BDF8;"></div>' +
             '<div id="matrixButtons" style="display:none;">' +
                 '<button id="matrixEditInfo" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Edit Info</button>' +
-                '<button id="matrixSelectAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Select All (Full)</button>' +
+                '<button id="matrixCopy" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Copy From...</button>' +
+                '<button id="matrixSelectAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Select All &#9662;</button>' +
                 '<button id="matrixClearAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Clear All</button>' +
                 '<button id="matrixSave" class="field-button grey-field-button" style="margin-right:8px;background:#1f6fa8;color:#fff;padding:6px 16px;cursor:pointer;font-weight:bold;">Save Matrix</button>' +
                 '<button id="matrixSync" class="field-button grey-field-button" style="margin-right:8px;background:#0f9d74;color:#fff;padding:6px 16px;cursor:pointer;font-weight:bold;" title="Sync this role matrix to all assigned users">Sync to Users</button>' +
@@ -553,13 +920,85 @@ Ext.onReady(function() {
         }
     };
 
-    document.getElementById('matrixSelectAll').onclick = function() {
+    // Salin level akses dari role lain ke matriks yang sedang diedit (belum tersimpan sampai Save Matrix)
+    function copyMatrixFromRole(srcId, srcName) {
+        Ext.Ajax.request({
+            url: CRD,
+            method: 'POST',
+            params: { task: 'read_role_matrix', role_id: srcId },
+            success: function(response) {
+                var obj = null;
+                try { obj = Ext.util.JSON.decode(response.responseText); } catch (e) {}
+                if (!obj || obj.success === false || !obj.data) {
+                    document.getElementById("popWdwTxt").innerHTML = (obj && obj.message) || 'Gagal memuat matriks role sumber.';
+                    document.getElementById('popWdw').style.display = 'block';
+                    return;
+                }
+                var levelByForm = {};
+                for (var i = 0; i < obj.data.length; i++) {
+                    levelByForm[obj.data[i].form_id] = parseInt(obj.data[i].access_level, 10) || 0;
+                }
+                matrixStore.each(function(rec) {
+                    var lvl = levelByForm[rec.get('form_id')] || 0;
+                    if (parseInt(rec.get('access_level'), 10) !== lvl || !!rec.get('active') !== (lvl > 0)) {
+                        rec.set('access_level', lvl);
+                        rec.set('active', lvl > 0);
+                    }
+                });
+                matrixGrid.getView().refresh();
+            },
+            failure: function(response) {
+                var msg = 'Gagal memuat matriks role sumber.';
+                try { msg = Ext.util.JSON.decode(response.responseText).message || msg; } catch (e) {}
+                document.getElementById("popWdwTxt").innerHTML = msg;
+                document.getElementById('popWdw').style.display = 'block';
+            }
+        });
+    }
+
+    document.getElementById('matrixCopy').onclick = function() {
         if (!requireActiveRole()) return;
+        var items = [];
+        mainDs.each(function(r) {
+            if (parseInt(r.get('id'), 10) === activeRoleId) { return; }
+            items.push({
+                text: r.get('role_name') + ' (' + r.get('role_code') + ')',
+                roleId: r.get('id'),
+                roleName: r.get('role_name'),
+                handler: function(item) {
+                    Ext.MessageBox.confirm('Copy From', 'Ganti level akses matriks ini dengan milik role "' + item.roleName + '"? (belum tersimpan sampai Save Matrix)', function(btn) {
+                        if (btn === 'yes') { copyMatrixFromRole(item.roleId, item.roleName); }
+                    });
+                }
+            });
+        });
+        if (!items.length) {
+            document.getElementById("popWdwTxt").innerHTML = 'Belum ada role lain untuk disalin.';
+            document.getElementById('popWdw').style.display = 'block';
+            return;
+        }
+        new Ext.menu.Menu({ items: items }).show(document.getElementById('matrixCopy'));
+    };
+
+    // Select All dengan pilihan level: semua form dicentang dan diberi level yang dipilih
+    function setAllMatrixLevel(level) {
         matrixStore.each(function(rec) {
             rec.set('active', true);
-            rec.set('access_level', 4);
+            rec.set('access_level', level);
         });
         matrixGrid.getView().refresh();
+    }
+
+    document.getElementById('matrixSelectAll').onclick = function() {
+        if (!requireActiveRole()) return;
+        new Ext.menu.Menu({
+            items: [
+                { text: 'All Read',                          handler: function() { setAllMatrixLevel(1); } },
+                { text: 'All Read/Create',                   handler: function() { setAllMatrixLevel(2); } },
+                { text: 'All Read/Create/Update (no Delete)', handler: function() { setAllMatrixLevel(3); } },
+                { text: 'All Full Access (incl. Delete)',    handler: function() { setAllMatrixLevel(4); } }
+            ]
+        }).show(document.getElementById('matrixSelectAll'));
     };
 
     document.getElementById('matrixClearAll').onclick = function() {

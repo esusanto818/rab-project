@@ -144,6 +144,8 @@ if ($formAccess === null) {
         'supplier.payment.list.print.php' => array('supplier.payment.php'),
         'supplier.payment.print.php'      => array('supplier.payment.php'),
         'dashboardQ.php'                    => array('dashboard.php'),
+        'm.user.roleCRD.php'     => array('m.user.role.php'),
+        'm.user.systemCRD.php'   => array('m.user.system.php'),
     );
     $endpointCandidates = array_values(array_unique(array_merge(
         array($urlFile, $cleanUrlFile),
