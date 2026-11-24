@@ -1,7 +1,7 @@
 <?php
 $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php
-// [REVISI 2026-11-24] THEME SELECTOR: Dark & Light (Warm Cream)
+// [REVISI 2026-11-24b] FIX: button theme (label tidak terbalik) + LIGHT theme aktif (warm, tanpa putih silau). Dark theme TIDAK diubah.
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
@@ -28,226 +28,192 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Dashboard - RAB Project Monitor</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { corePlugins: { preflight: false } };
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- [FIX] Terapkan theme tersimpan SEBELUM render (cegah flash putih) -->
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'dark');</script>
 <style>
-/* ===== THEME VARIABLES ===== */
+/* ===== PALETTE DEFINITION (DARK - TIDAK DIUBAH) ===== */
 :root {
-  /* DARK THEME (default) */
-  --bg-deep: #373647;
-  --bg-card: #3f3e52;
-  --bg-inner: #4a4960;
-  --bg-deeper: #2e2d3d;
-  --accent: #728E7E;
-  --accent-2: #949C8B;
-  --text-main: #C2B8AD;
-  --text-sub: #B1A8A8;
-  --border-soft: rgba(114, 142, 126, 0.25);
-  --border-strong: rgba(114, 142, 126, 0.5);
-  --hover-bg: rgba(74, 73, 96, 0.5);
+--bg-deep: #373647;
+--bg-card: #3f3e52;
+--bg-inner: #4a4960;
+--bg-deeper: #2e2d3d;
+--accent: #728E7E;
+--accent-2: #949C8B;
+--text-main: #C2B8AD;
+--text-sub: #B1A8A8;
+--border-soft: rgba(114, 142, 126, 0.25);
+--border-strong: rgba(114, 142, 126, 0.5);
+--hover-bg: #4a4960;
+--hover-bg-strong: #5a5970;
+--hover-text: #ffffff;
 }
-
-/* LIGHT THEME - Warm Cream (nyaman untuk mata) */
+/* ===== [FIX] LIGHT THEME - Warm Cream, hindari #ffffff silau ===== */
 [data-theme="light"] {
-  --bg-deep: #f5f0e8;
-  --bg-card: #ede8df;
-  --bg-inner: #e5dfd6;
-  --bg-deeper: #ddd7ce;
-  --accent: #728E7E;
-  --accent-2: #949C8B;
-  --text-main: #3a3632;
-  --text-sub: #5a5650;
-  --border-soft: rgba(114, 142, 126, 0.3);
-  --border-strong: rgba(114, 142, 126, 0.6);
-  --hover-bg: rgba(229, 223, 214, 0.7);
+--bg-deep: #f4f1ea;
+--bg-card: #fbf8f1;
+--bg-inner: #ece7dc;
+--bg-deeper: #e6e0d3;
+--accent: #5f7d6b;
+--accent-2: #8a9482;
+--text-main: #2d2b26;
+--text-sub: #5c564c;
+--border-soft: rgba(95, 125, 107, 0.28);
+--border-strong: rgba(95, 125, 107, 0.55);
+--hover-bg: #e5dfd6;
+--hover-bg-strong: #ddd6c9;
+--hover-text: #2d2b26;
 }
-
-body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg-deep);
-  color: var(--text-main);
-  transition: background-color 0.3s ease, color 0.3s ease;
+/* ===== OVERRIDE app-theme.css ===== */
+html, body {
+background-color: var(--bg-deep) !important;
+color: var(--text-main) !important;
+font-family: 'Inter', sans-serif !important;
+overflow-x: hidden !important;
+max-width: 100vw !important;
+transition: background-color .3s ease, color .3s ease;
 }
+body.dashboard-scope { background-color: var(--bg-deep) !important; }
+/* ===== BASE ===== */
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
 /* ===== HEADER ===== */
 .dash-header {
-  background-color: var(--bg-deeper);
-  border-bottom: 1px solid var(--border-strong);
-  transition: all 0.3s ease;
+background-color: var(--bg-deeper) !important;
+border-bottom: 1px solid var(--border-strong) !important;
+transition: background-color .3s ease, border-color .3s ease;
 }
-
 /* ===== NAV ===== */
 .nav-item { position: relative; }
 .nav-link {
-  color: var(--text-main);
-  transition: all 0.2s;
+color: var(--text-main) !important;
+transition: all 0.2s;
 }
 .nav-link:hover {
-  color: #ffffff;
-  background-color: var(--bg-inner);
+color: var(--hover-text) !important;
+background-color: var(--hover-bg) !important;
 }
-
 /* ===== DROPDOWN MEGA MENU ===== */
 .dropdown-menu {
-  position: absolute; top: 100%; left: 0; z-index: 60;
-  width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
-  max-height: calc(100vh - 90px); overflow-y: auto;
-  opacity: 0; visibility: hidden; transform: translateY(-6px);
-  pointer-events: none;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-strong);
-  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+position: absolute; top: 100%; left: 0; z-index: 60;
+width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
+max-height: calc(100vh - 90px); overflow-y: auto;
+opacity: 0; visibility: hidden; transform: translateY(-6px);
+pointer-events: none;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-strong) !important;
+transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
 .dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
 .dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
 .menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
 .menu-column h3 {
-  font-size: 20px; font-weight: 500;
-  color: var(--accent);
-  text-transform: uppercase; letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--accent);
-  padding-bottom: 0.5rem; margin-bottom: 0.5rem;
+font-size: 20px; font-weight: 500;
+color: var(--accent) !important;
+text-transform: uppercase; letter-spacing: 0.05em;
+border-bottom: 1px solid var(--accent);
+padding-bottom: 0.5rem; margin-bottom: 0.5rem;
 }
 .menu-column ul { list-style: none; padding: 0; margin: 0; }
 .menu-column ul li { margin-bottom: 0.25rem; }
 .menu-column ul li a {
-  display: block; padding: 0.2rem 0.4rem;
-  color: var(--text-main);
-  text-decoration: none; font-size: 16px; font-weight: 300;
-  transition: all 0.2s; border-radius: 0.25rem;
+display: block; padding: 0.2rem 0.4rem;
+color: var(--text-main) !important;
+text-decoration: none; font-size: 16px; font-weight: 300;
+transition: all 0.2s; border-radius: 0.25rem;
 }
 .menu-column ul li a:hover {
-  color: #ffffff;
-  background: rgba(194,184,173,0.15);
-  transform: translateX(2px);
+color: var(--hover-text) !important;
+background: var(--hover-bg) !important;
+transform: translateX(2px);
 }
-
 /* ===== MOBILE ===== */
 #hamburger_btn { display: none; }
 #mobile_dropdown {
-  min-width: 220px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-strong);
+min-width: 220px;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-strong) !important;
 }
 #mobile_dropdown a {
-  color: var(--text-main);
-  border-bottom: 1px solid var(--border-soft);
+color: var(--text-main) !important;
+border-bottom: 1px solid var(--border-soft);
 }
 #mobile_dropdown a:hover {
-  background-color: var(--bg-inner);
-  color: #ffffff;
+background-color: var(--hover-bg) !important;
+color: var(--hover-text) !important;
 }
-
 /* ===== CARDS / PANELS ===== */
 .dash-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 0.75rem;
-  transition: all 0.3s ease;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-soft) !important;
+border-radius: 0.75rem;
+transition: background-color .3s ease, border-color .3s ease;
 }
-.dash-card-inner {
-  background-color: var(--bg-inner);
-}
-
+.dash-card-inner { background-color: var(--bg-inner) !important; }
 /* ===== TABS ===== */
 .tab-btn {
-  background-color: var(--bg-inner);
-  color: var(--text-main);
-  font-weight: 700; font-size: 15px;
-  padding: 8px 20px; border: none; border-radius: 4px;
-  cursor: pointer; transition: all 0.15s;
+background-color: var(--bg-inner) !important;
+color: var(--text-main) !important;
+font-weight: 700; font-size: 15px;
+padding: 8px 20px; border: none; border-radius: 4px;
+cursor: pointer; transition: all 0.15s;
 }
 .tab-btn:hover {
-  background-color: #5a5970;
-  color: #ffffff;
+background-color: var(--hover-bg-strong) !important;
+color: var(--hover-text) !important;
 }
 .tab-btn.active {
-  background-color: var(--accent);
-  color: #ffffff;
+background-color: var(--accent) !important;
+color: #ffffff !important;
 }
 .tab-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
-
 /* ===== SELECT / INPUT ===== */
 .dash-select, .dash-input {
-  background-color: var(--bg-inner);
-  border: 1px solid var(--border-strong);
-  color: var(--text-main);
-  transition: all 0.2s;
+background-color: var(--bg-inner) !important;
+border: 1px solid var(--border-strong) !important;
+color: var(--text-main) !important;
 }
-.dash-select:focus, .dash-input:focus {
-  border-color: var(--accent);
-  outline: none;
-}
-
+.dash-select:focus, .dash-input:focus { border-color: var(--accent) !important; outline: none; }
 /* ===== BUTTONS ===== */
-.btn-accent {
-  background-color: var(--accent);
-  color: #ffffff;
-}
-.btn-accent:hover { background-color: #5a7264; }
+.btn-accent { background-color: var(--accent) !important; color: #ffffff !important; }
+.btn-accent:hover { background-color: #5a7264 !important; }
 .btn-ghost {
-  background-color: var(--bg-inner);
-  color: var(--text-main);
-  border: 1px solid var(--accent-2);
-  transition: all 0.2s;
+background-color: var(--bg-inner) !important;
+color: var(--text-main) !important;
+border: 1px solid var(--accent-2) !important;
 }
 .btn-ghost:hover {
-  background-color: #5a5970;
-  color: #ffffff;
+background-color: var(--hover-bg-strong) !important;
+color: var(--hover-text) !important;
 }
-
 /* ===== KPI CARDS ===== */
-.kpi-card {
-  background-color: var(--bg-inner);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  transition: all 0.3s ease;
-}
-
+.kpi-card { background-color: var(--bg-inner) !important; border-radius: 0.75rem; padding: 1rem; transition: background-color .3s ease; }
 /* ===== TABLE ===== */
-.dash-table thead {
-  background-color: var(--bg-inner);
-  color: var(--text-main);
-}
-.dash-table tbody tr:hover {
-  background-color: var(--hover-bg);
-}
-
-/* ===== BADGES ===== */
-.badge-kritis {
-  background-color: rgba(177, 168, 168, 0.15);
-  color: var(--text-sub);
-  border: 1px solid rgba(177, 168, 168, 0.5);
-}
-.badge-waspada {
-  background-color: rgba(194, 184, 173, 0.15);
-  color: var(--text-main);
-  border: 1px solid rgba(194, 184, 173, 0.5);
-}
-.badge-normal {
-  background-color: rgba(114, 142, 126, 0.15);
-  color: var(--accent);
-  border: 1px solid rgba(114, 142, 126, 0.5);
-}
-
+.dash-table thead { background-color: var(--bg-inner) !important; color: var(--text-main) !important; }
+.dash-table tbody tr:hover { background-color: var(--hover-bg) !important; }
+/* ===== BADGES (pakai var -> otomatis ikut theme) ===== */
+.badge-kritis { background-color: rgba(177, 168, 168, 0.15) !important; color: var(--text-sub) !important; border: 1px solid rgba(177, 168, 168, 0.5) !important; }
+.badge-waspada { background-color: rgba(194, 184, 173, 0.15) !important; color: var(--text-main) !important; border: 1px solid rgba(194, 184, 173, 0.5) !important; }
+.badge-normal { background-color: rgba(114, 142, 126, 0.15) !important; color: var(--accent) !important; border: 1px solid rgba(114, 142, 126, 0.5) !important; }
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .desktop-menu { display: none !important; }
-  #header_logout { display: none !important; }
-  #hamburger_btn { display: flex !important; }
-  section h2 { font-size: 1.25rem !important; }
-  .tab-btn { padding: 6px 12px; font-size: 13px; }
+.desktop-menu { display: none !important; }
+#header_logout { display: none !important; }
+#hamburger_btn { display: flex !important; }
+section h2 { font-size: 1.25rem !important; }
+.tab-btn { padding: 6px 12px; font-size: 13px; }
 }
 .is-mobile-hw .desktop-menu { display: none !important; }
 .is-mobile-hw #header_logout { display: none !important; }
 .is-mobile-hw #hamburger_btn { display: flex !important; }
-
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
@@ -315,8 +281,9 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </div>
 <!-- KANAN -->
 <div class="flex items-center space-x-3 text-base">
-<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition">
-<span id="theme_icon">🌓</span> <span id="theme_lbl">Theme</span>
+<!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
+<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition" title="Ganti tema">
+<span id="theme_icon">🌙</span> <span id="theme_lbl">Dark</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="btn-ghost px-2.5 py-1 rounded transition">Logout</a>
@@ -572,33 +539,53 @@ let currentProjectId = 0;
 let finChart = null, doughnutChart = null, barMaterialChart = null;
 let globalTaxRates = [];
 
-// ===== THEME TOGGLE =====
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = current === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('app_theme', next);
-  updateThemeUI(next);
+/* ===== [FIX] THEME ENGINE (label tidak terbalik) ===== */
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
-
 function updateThemeUI(theme) {
   const icon = document.getElementById('theme_icon');
   const lbl = document.getElementById('theme_lbl');
-  if (theme === 'light') {
-    icon.textContent = '☀️';
-    lbl.textContent = 'Light';
-  } else {
-    icon.textContent = '🌙';
-    lbl.textContent = 'Dark';
+  if (!icon || !lbl) return;
+  // Tampilkan theme yang SEDANG AKTIF
+  if (theme === 'light') { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
+  else { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('app_theme', next);
+  updateThemeUI(next);
+  rethemeCharts(); // chart ikut berubah warna
+}
+function rethemeCharts() {
+  const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
+  const acc = cssVar('--accent'), acc2 = cssVar('--accent-2'), sub = cssVar('--text-sub'), main = cssVar('--text-main');
+  if (finChart) {
+    finChart.data.datasets[0].backgroundColor = acc;
+    finChart.data.datasets[1].backgroundColor = sub;
+    finChart.options.plugins.legend.labels.color = tick;
+    finChart.options.scales.x.ticks.color = tick; finChart.options.scales.x.grid.color = grid;
+    finChart.options.scales.y.ticks.color = tick; finChart.options.scales.y.grid.color = grid;
+    finChart.update();
+  }
+  if (doughnutChart) {
+    doughnutChart.data.datasets[0].backgroundColor = [acc, main, sub];
+    doughnutChart.options.plugins.legend.labels.color = tick;
+    doughnutChart.update();
+  }
+  if (barMaterialChart) {
+    barMaterialChart.data.datasets[0].backgroundColor = acc;
+    barMaterialChart.data.datasets[1].backgroundColor = acc2;
+    barMaterialChart.options.plugins.legend.labels.color = tick;
+    barMaterialChart.options.scales.x.ticks.color = tick; barMaterialChart.options.scales.x.grid.color = grid;
+    barMaterialChart.options.scales.y.ticks.color = tick; barMaterialChart.options.scales.y.grid.color = grid;
+    barMaterialChart.update();
   }
 }
-
-// Init theme from localStorage
-(function() {
-  const saved = localStorage.getItem('app_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  updateThemeUI(saved);
-})();
+// Sinkronkan label button dengan theme yang sudah di-set di <head>
+updateThemeUI(document.documentElement.getAttribute('data-theme') || 'dark');
 
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -879,7 +866,7 @@ if (!json.success) { box.innerHTML = `<div class="border rounded-lg p-3 text-sm"
 const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
 const li = (arr) => arr.map(t => `<li>${esc(t)}</li>`).join('');
 const findings = (d.findings || []).map(f => `
-<div class="border-l-4 bg-[#4a4960] rounded px-2 py-1 mb-1" style="border-left-color: var(--accent);">
+<div class="border-l-4 rounded px-2 py-1 mb-1" style="background-color: var(--bg-inner); border-left-color: var(--accent);">
 <div class="text-xs font-bold" style="color: var(--text-main);">${esc(f.title)}</div><div class="text-[11px] opacity-80" style="color: var(--text-sub);">${esc(f.evidence)}</div></div>`).join('');
 box.innerHTML = `
 <div class="border rounded-lg p-4 max-h-96 overflow-y-auto no-scrollbar" style="background-color: var(--bg-inner); border-color: var(--border-strong);">
@@ -1032,10 +1019,11 @@ function renderFinChart(labels, incData, expData) {
 const ctx = document.getElementById('finChartCanvas').getContext('2d');
 if (finChart) finChart.destroy();
 const compact = (v) => Number(v).toLocaleString('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
+const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
 finChart = new Chart(ctx, {
 type: 'bar',
-data: { labels: labels, datasets: [{ label: 'Pendapatan', data: incData, backgroundColor: '#728E7E' }, { label: 'Pengeluaran', data: expData, backgroundColor: '#B1A8A8' }] },
-options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#B1A8A8', font: { size: 9 } } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${formatIDR(c.parsed.y)}` } } }, scales: { x: { ticks: { color: '#B1A8A8', font: { size: 8 } }, grid: { color: 'rgba(114,142,126,0.25)' } }, y: { beginAtZero: true, ticks: { color: '#B1A8A8', font: { size: 8 }, callback: compact }, grid: { color: 'rgba(114,142,126,0.25)' } } } }
+data: { labels: labels, datasets: [{ label: 'Pendapatan', data: incData, backgroundColor: cssVar('--accent') }, { label: 'Pengeluaran', data: expData, backgroundColor: cssVar('--text-sub') }] },
+options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tick, font: { size: 9 } } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${formatIDR(c.parsed.y)}` } } }, scales: { x: { ticks: { color: tick, font: { size: 8 } }, grid: { color: grid } }, y: { beginAtZero: true, ticks: { color: tick, font: { size: 8 }, callback: compact }, grid: { color: grid } } } }
 });
 }
 async function loadMaterialMonitoring() {
@@ -1099,17 +1087,18 @@ const ctx = document.getElementById('doughnutChartCanvas').getContext('2d');
 if (doughnutChart) doughnutChart.destroy();
 doughnutChart = new Chart(ctx, {
 type: 'doughnut',
-data: { labels: ['On Track', 'Warning', 'Overbudget'], datasets: [{ data: [counts.ON_TRACK || 0, counts.WARNING || 0, counts.OVERBUDGET || 0], backgroundColor: ['#728E7E', '#C2B8AD', '#B1A8A8'], borderWidth: 0 }] },
-options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#B1A8A8', font: { size: 10 } } } } }
+data: { labels: ['On Track', 'Warning', 'Overbudget'], datasets: [{ data: [counts.ON_TRACK || 0, counts.WARNING || 0, counts.OVERBUDGET || 0], backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')], borderWidth: 0 }] },
+options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: cssVar('--text-sub'), font: { size: 10 } } } } }
 });
 }
 function renderBarMaterialChart(topItems) {
 const ctx = document.getElementById('barMaterialCanvas').getContext('2d');
 if (barMaterialChart) barMaterialChart.destroy();
+const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
 barMaterialChart = new Chart(ctx, {
 type: 'bar',
-data: { labels: topItems.map(i => i.item_name.substring(0, 15) + '...'), datasets: [{ label: 'Budget Qty', data: topItems.map(i => i.budget_qty), backgroundColor: '#728E7E' }, { label: 'Out Qty', data: topItems.map(i => i.out_qty), backgroundColor: '#949C8B' }] },
-options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#B1A8A8', font: { size: 10 } } } }, scales: { x: { ticks: { color: '#B1A8A8', font: { size: 9 } }, grid: { color: 'rgba(114,142,126,0.25)' } }, y: { ticks: { color: '#B1A8A8', font: { size: 9 } }, grid: { color: 'rgba(114,142,126,0.25)' } } } }
+data: { labels: topItems.map(i => i.item_name.substring(0, 15) + '...'), datasets: [{ label: 'Budget Qty', data: topItems.map(i => i.budget_qty), backgroundColor: cssVar('--accent') }, { label: 'Out Qty', data: topItems.map(i => i.out_qty), backgroundColor: cssVar('--accent-2') }] },
+options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tick, font: { size: 10 } } } }, scales: { x: { ticks: { color: tick, font: { size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { size: 9 } }, grid: { color: grid } } } }
 });
 }
 </script>

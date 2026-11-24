@@ -1294,7 +1294,7 @@ html[data-theme="light"] .detail-panel-container > div * {
 /* Pertahankan tombol cetak/analisis di dalam panel detail tetap berteks putih */
 html[data-theme="light"] #content button[style*="background"],
 html[data-theme="light"] .detail-panel-container button {
-  background-color: #0369A1 !important;
+  background-color: #52c3ff !important;
   color: #FFFFFF !important;
 }
 
