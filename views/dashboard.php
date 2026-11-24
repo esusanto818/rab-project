@@ -1,7 +1,7 @@
 <?php
 $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php
-// [REVISI 2026-11-24] PALETTE KONSISTEN - override app-theme.css
+// [REVISI 2026-11-24] THEME SELECTOR: Dark & Light (Warm Cream)
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
@@ -28,14 +28,12 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 <title>Dashboard - RAB Project Monitor</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = { corePlugins: { preflight: false } };
-</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ===== PALETTE DEFINITION ===== */
+/* ===== THEME VARIABLES ===== */
 :root {
+  /* DARK THEME (default) */
   --bg-deep: #373647;
   --bg-card: #3f3e52;
   --bg-inner: #4a4960;
@@ -46,19 +44,30 @@ tailwind.config = { corePlugins: { preflight: false } };
   --text-sub: #B1A8A8;
   --border-soft: rgba(114, 142, 126, 0.25);
   --border-strong: rgba(114, 142, 126, 0.5);
+  --hover-bg: rgba(74, 73, 96, 0.5);
 }
 
-/* ===== OVERRIDE app-theme.css ===== */
-html, body {
-  background-color: var(--bg-deep) !important;
-  color: var(--text-main) !important;
-  font-family: 'Inter', sans-serif !important;
-  overflow-x: hidden !important;
-  max-width: 100vw !important;
+/* LIGHT THEME - Warm Cream (nyaman untuk mata) */
+[data-theme="light"] {
+  --bg-deep: #f5f0e8;
+  --bg-card: #ede8df;
+  --bg-inner: #e5dfd6;
+  --bg-deeper: #ddd7ce;
+  --accent: #728E7E;
+  --accent-2: #949C8B;
+  --text-main: #3a3632;
+  --text-sub: #5a5650;
+  --border-soft: rgba(114, 142, 126, 0.3);
+  --border-strong: rgba(114, 142, 126, 0.6);
+  --hover-bg: rgba(229, 223, 214, 0.7);
 }
-body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
-/* ===== BASE ===== */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -66,19 +75,20 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
 /* ===== HEADER ===== */
 .dash-header {
-  background-color: var(--bg-deeper) !important;
-  border-bottom: 1px solid var(--border-strong) !important;
+  background-color: var(--bg-deeper);
+  border-bottom: 1px solid var(--border-strong);
+  transition: all 0.3s ease;
 }
 
 /* ===== NAV ===== */
 .nav-item { position: relative; }
 .nav-link {
-  color: var(--text-main) !important;
+  color: var(--text-main);
   transition: all 0.2s;
 }
 .nav-link:hover {
-  color: #ffffff !important;
-  background-color: var(--bg-inner) !important;
+  color: #ffffff;
+  background-color: var(--bg-inner);
 }
 
 /* ===== DROPDOWN MEGA MENU ===== */
@@ -88,8 +98,8 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
   max-height: calc(100vh - 90px); overflow-y: auto;
   opacity: 0; visibility: hidden; transform: translateY(-6px);
   pointer-events: none;
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-strong) !important;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-strong);
   transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
 .dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
@@ -97,7 +107,7 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 .menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
 .menu-column h3 {
   font-size: 20px; font-weight: 500;
-  color: var(--accent) !important;
+  color: var(--accent);
   text-transform: uppercase; letter-spacing: 0.05em;
   border-bottom: 1px solid var(--accent);
   padding-bottom: 0.5rem; margin-bottom: 0.5rem;
@@ -106,12 +116,12 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 .menu-column ul li { margin-bottom: 0.25rem; }
 .menu-column ul li a {
   display: block; padding: 0.2rem 0.4rem;
-  color: var(--text-main) !important;
+  color: var(--text-main);
   text-decoration: none; font-size: 16px; font-weight: 300;
   transition: all 0.2s; border-radius: 0.25rem;
 }
 .menu-column ul li a:hover {
-  color: #ffffff !important;
+  color: #ffffff;
   background: rgba(194,184,173,0.15);
   transform: translateX(2px);
 }
@@ -120,43 +130,44 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 #hamburger_btn { display: none; }
 #mobile_dropdown {
   min-width: 220px;
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-strong) !important;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-strong);
 }
 #mobile_dropdown a {
-  color: var(--text-main) !important;
+  color: var(--text-main);
   border-bottom: 1px solid var(--border-soft);
 }
 #mobile_dropdown a:hover {
-  background-color: var(--bg-inner) !important;
-  color: #ffffff !important;
+  background-color: var(--bg-inner);
+  color: #ffffff;
 }
 
 /* ===== CARDS / PANELS ===== */
 .dash-card {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-soft) !important;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-soft);
   border-radius: 0.75rem;
+  transition: all 0.3s ease;
 }
 .dash-card-inner {
-  background-color: var(--bg-inner) !important;
+  background-color: var(--bg-inner);
 }
 
 /* ===== TABS ===== */
 .tab-btn {
-  background-color: var(--bg-inner) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-inner);
+  color: var(--text-main);
   font-weight: 700; font-size: 15px;
   padding: 8px 20px; border: none; border-radius: 4px;
   cursor: pointer; transition: all 0.15s;
 }
 .tab-btn:hover {
-  background-color: #5a5970 !important;
-  color: #ffffff !important;
+  background-color: #5a5970;
+  color: #ffffff;
 }
 .tab-btn.active {
-  background-color: var(--accent) !important;
-  color: #ffffff !important;
+  background-color: var(--accent);
+  color: #ffffff;
 }
 .tab-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 .tab-panel { display: none; }
@@ -164,62 +175,65 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
 /* ===== SELECT / INPUT ===== */
 .dash-select, .dash-input {
-  background-color: var(--bg-inner) !important;
-  border: 1px solid var(--border-strong) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-inner);
+  border: 1px solid var(--border-strong);
+  color: var(--text-main);
+  transition: all 0.2s;
 }
 .dash-select:focus, .dash-input:focus {
-  border-color: var(--accent) !important;
+  border-color: var(--accent);
   outline: none;
 }
 
 /* ===== BUTTONS ===== */
 .btn-accent {
-  background-color: var(--accent) !important;
-  color: #ffffff !important;
+  background-color: var(--accent);
+  color: #ffffff;
 }
-.btn-accent:hover { background-color: #5a7264 !important; }
+.btn-accent:hover { background-color: #5a7264; }
 .btn-ghost {
-  background-color: var(--bg-inner) !important;
-  color: var(--text-main) !important;
-  border: 1px solid var(--accent-2) !important;
+  background-color: var(--bg-inner);
+  color: var(--text-main);
+  border: 1px solid var(--accent-2);
+  transition: all 0.2s;
 }
 .btn-ghost:hover {
-  background-color: #5a5970 !important;
-  color: #ffffff !important;
+  background-color: #5a5970;
+  color: #ffffff;
 }
 
 /* ===== KPI CARDS ===== */
 .kpi-card {
-  background-color: var(--bg-inner) !important;
+  background-color: var(--bg-inner);
   border-radius: 0.75rem;
   padding: 1rem;
+  transition: all 0.3s ease;
 }
 
 /* ===== TABLE ===== */
 .dash-table thead {
-  background-color: var(--bg-inner) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-inner);
+  color: var(--text-main);
 }
 .dash-table tbody tr:hover {
-  background-color: rgba(74, 73, 96, 0.5) !important;
+  background-color: var(--hover-bg);
 }
 
 /* ===== BADGES ===== */
 .badge-kritis {
-  background-color: rgba(177, 168, 168, 0.15) !important;
-  color: var(--text-sub) !important;
-  border: 1px solid rgba(177, 168, 168, 0.5) !important;
+  background-color: rgba(177, 168, 168, 0.15);
+  color: var(--text-sub);
+  border: 1px solid rgba(177, 168, 168, 0.5);
 }
 .badge-waspada {
-  background-color: rgba(194, 184, 173, 0.15) !important;
-  color: var(--text-main) !important;
-  border: 1px solid rgba(194, 184, 173, 0.5) !important;
+  background-color: rgba(194, 184, 173, 0.15);
+  color: var(--text-main);
+  border: 1px solid rgba(194, 184, 173, 0.5);
 }
 .badge-normal {
-  background-color: rgba(114, 142, 126, 0.15) !important;
-  color: var(--accent) !important;
-  border: 1px solid rgba(114, 142, 126, 0.5) !important;
+  background-color: rgba(114, 142, 126, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(114, 142, 126, 0.5);
 }
 
 /* ===== RESPONSIVE ===== */
@@ -301,7 +315,9 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </div>
 <!-- KANAN -->
 <div class="flex items-center space-x-3 text-base">
-<button id="theme_toggle_btn" type="button" onclick="(function(){var c=document.documentElement.getAttribute('data-theme')||'dark';var n=c==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',n);localStorage.setItem('app_theme',n);var l=document.getElementById('theme_lbl');if(l)l.textContent=n==='light'?'Dark':'Light';})()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition">🌓 <span id="theme_lbl">Theme</span></button>
+<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition">
+<span id="theme_icon">🌓</span> <span id="theme_lbl">Theme</span>
+</button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="btn-ghost px-2.5 py-1 rounded transition">Logout</a>
 <div class="relative">
@@ -555,6 +571,35 @@ const API_ENDPOINT = '../php-crud/dashboardCRD.php';
 let currentProjectId = 0;
 let finChart = null, doughnutChart = null, barMaterialChart = null;
 let globalTaxRates = [];
+
+// ===== THEME TOGGLE =====
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('app_theme', next);
+  updateThemeUI(next);
+}
+
+function updateThemeUI(theme) {
+  const icon = document.getElementById('theme_icon');
+  const lbl = document.getElementById('theme_lbl');
+  if (theme === 'light') {
+    icon.textContent = '☀️';
+    lbl.textContent = 'Light';
+  } else {
+    icon.textContent = '🌙';
+    lbl.textContent = 'Dark';
+  }
+}
+
+// Init theme from localStorage
+(function() {
+  const saved = localStorage.getItem('app_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  updateThemeUI(saved);
+})();
+
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
