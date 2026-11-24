@@ -1,7 +1,7 @@
 <?php
 $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php
-// [REVISI 2026-11-24b] FIX: button theme (label tidak terbalik) + LIGHT theme aktif (warm, tanpa putih silau). Dark theme TIDAK diubah.
+// [REVISI 2026-11-24d] LIGHT EMERALD THEME - hijau lembut, nyaman untuk mata
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
@@ -33,187 +33,237 @@ tailwind.config = { corePlugins: { preflight: false } };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<!-- [FIX] Terapkan theme tersimpan SEBELUM render (cegah flash putih) -->
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'dark');</script>
 <style>
-/* ===== PALETTE DEFINITION (DARK - TIDAK DIUBAH) ===== */
+/* ===== DARK THEME (Default - TIDAK DIUBAH) ===== */
 :root {
---bg-deep: #373647;
---bg-card: #3f3e52;
---bg-inner: #4a4960;
---bg-deeper: #2e2d3d;
---accent: #728E7E;
---accent-2: #949C8B;
---text-main: #C2B8AD;
---text-sub: #B1A8A8;
---border-soft: rgba(114, 142, 126, 0.25);
---border-strong: rgba(114, 142, 126, 0.5);
---hover-bg: #4a4960;
---hover-bg-strong: #5a5970;
---hover-text: #ffffff;
+  --bg-deep: #373647;
+  --bg-card: #3f3e52;
+  --bg-inner: #4a4960;
+  --bg-deeper: #2e2d3d;
+  --accent: #728E7E;
+  --accent-2: #949C8B;
+  --text-main: #C2B8AD;
+  --text-sub: #B1A8A8;
+  --border-soft: rgba(114, 142, 126, 0.25);
+  --border-strong: rgba(114, 142, 126, 0.5);
+  --hover-bg: #5a5970;
+  --hover-text: #ffffff;
+  --grid-color: rgba(114, 142, 126, 0.15);
+  --card-shadow: rgba(0, 0, 0, 0.3);
 }
-/* ===== [FIX] LIGHT THEME - Warm Cream, hindari #ffffff silau ===== */
+
+/* ===== LIGHT EMERALD THEME - Hijau Lembut, Eye-Friendly ===== */
 [data-theme="light"] {
---bg-deep: #f4f1ea;
---bg-card: #fbf8f1;
---bg-inner: #ece7dc;
---bg-deeper: #e6e0d3;
---accent: #5f7d6b;
---accent-2: #8a9482;
---text-main: #2d2b26;
---text-sub: #5c564c;
---border-soft: rgba(95, 125, 107, 0.28);
---border-strong: rgba(95, 125, 107, 0.55);
---hover-bg: #e5dfd6;
---hover-bg-strong: #ddd6c9;
---hover-text: #2d2b26;
+  --bg-deep: #e8f5e9;
+  --bg-card: #f1f8f4;
+  --bg-inner: #dcedc8;
+  --bg-deeper: #a5d6a7;
+  --accent: #2e7d32;
+  --accent-2: #4caf50;
+  --text-main: #1b5e20;
+  --text-sub: #388e3c;
+  --border-soft: rgba(46, 125, 50, 0.28);
+  --border-strong: rgba(46, 125, 50, 0.55);
+  --hover-bg: #c8e6c9;
+  --hover-text: #1b5e20;
+  --grid-color: rgba(46, 125, 50, 0.12);
+  --card-shadow: rgba(0, 0, 0, 0.08);
 }
-/* ===== OVERRIDE app-theme.css ===== */
+
 html, body {
-background-color: var(--bg-deep) !important;
-color: var(--text-main) !important;
-font-family: 'Inter', sans-serif !important;
-overflow-x: hidden !important;
-max-width: 100vw !important;
-transition: background-color .3s ease, color .3s ease;
+  background-color: var(--bg-deep) !important;
+  color: var(--text-main) !important;
+  font-family: 'Inter', sans-serif !important;
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 body.dashboard-scope { background-color: var(--bg-deep) !important; }
-/* ===== BASE ===== */
+
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* ===== HEADER ===== */
 .dash-header {
-background-color: var(--bg-deeper) !important;
-border-bottom: 1px solid var(--border-strong) !important;
-transition: background-color .3s ease, border-color .3s ease;
+  background-color: var(--bg-deeper) !important;
+  border-bottom: 1px solid var(--border-strong) !important;
+  transition: all 0.3s ease;
 }
+
 /* ===== NAV ===== */
 .nav-item { position: relative; }
 .nav-link {
-color: var(--text-main) !important;
-transition: all 0.2s;
+  color: var(--text-main) !important;
+  text-decoration: none !important;   /* ← TAMBAHKAN INI */
+  transition: all 0.2s;
 }
 .nav-link:hover {
-color: var(--hover-text) !important;
-background-color: var(--hover-bg) !important;
+  color: var(--hover-text) !important;
+  background-color: var(--hover-bg) !important;
 }
+
 /* ===== DROPDOWN MEGA MENU ===== */
 .dropdown-menu {
-position: absolute; top: 100%; left: 0; z-index: 60;
-width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
-max-height: calc(100vh - 90px); overflow-y: auto;
-opacity: 0; visibility: hidden; transform: translateY(-6px);
-pointer-events: none;
-background-color: var(--bg-card) !important;
-border: 1px solid var(--border-strong) !important;
-transition: opacity .18s ease, transform .18s ease, visibility .18s;
+  position: absolute; top: 100%; left: 0; z-index: 60;
+  width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
+  max-height: calc(100vh - 90px); overflow-y: auto;
+  opacity: 0; visibility: hidden; transform: translateY(-6px);
+  pointer-events: none;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-strong) !important;
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
 .dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
 .dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
 .menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
 .menu-column h3 {
-font-size: 20px; font-weight: 500;
-color: var(--accent) !important;
-text-transform: uppercase; letter-spacing: 0.05em;
-border-bottom: 1px solid var(--accent);
-padding-bottom: 0.5rem; margin-bottom: 0.5rem;
+  font-size: 20px; font-weight: 500;
+  color: var(--accent) !important;
+  text-transform: uppercase; letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 0.5rem; margin-bottom: 0.5rem;
 }
 .menu-column ul { list-style: none; padding: 0; margin: 0; }
 .menu-column ul li { margin-bottom: 0.25rem; }
 .menu-column ul li a {
-display: block; padding: 0.2rem 0.4rem;
-color: var(--text-main) !important;
-text-decoration: none; font-size: 16px; font-weight: 300;
-transition: all 0.2s; border-radius: 0.25rem;
+  display: block; padding: 0.2rem 0.4rem;
+  color: var(--text-main) !important;
+  text-decoration: none; font-size: 16px; font-weight: 300;
+  transition: all 0.2s; border-radius: 0.25rem;
 }
 .menu-column ul li a:hover {
-color: var(--hover-text) !important;
-background: var(--hover-bg) !important;
-transform: translateX(2px);
+  color: var(--hover-text) !important;
+  background: var(--hover-bg) !important;
+  transform: translateX(2px);
 }
+
 /* ===== MOBILE ===== */
 #hamburger_btn { display: none; }
 #mobile_dropdown {
-min-width: 220px;
-background-color: var(--bg-card) !important;
-border: 1px solid var(--border-strong) !important;
+  min-width: 220px;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-strong) !important;
 }
 #mobile_dropdown a {
-color: var(--text-main) !important;
-border-bottom: 1px solid var(--border-soft);
+  color: var(--text-main) !important;
+  border-bottom: 1px solid var(--border-soft);
 }
 #mobile_dropdown a:hover {
-background-color: var(--hover-bg) !important;
-color: var(--hover-text) !important;
+  background-color: var(--hover-bg) !important;
+  color: var(--hover-text) !important;
 }
+
 /* ===== CARDS / PANELS ===== */
 .dash-card {
-background-color: var(--bg-card) !important;
-border: 1px solid var(--border-soft) !important;
-border-radius: 0.75rem;
-transition: background-color .3s ease, border-color .3s ease;
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-soft) !important;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 8px var(--card-shadow);
+  transition: all 0.3s ease;
 }
-.dash-card-inner { background-color: var(--bg-inner) !important; }
+
 /* ===== TABS ===== */
 .tab-btn {
-background-color: var(--bg-inner) !important;
-color: var(--text-main) !important;
-font-weight: 700; font-size: 15px;
-padding: 8px 20px; border: none; border-radius: 4px;
-cursor: pointer; transition: all 0.15s;
+  background-color: var(--bg-inner) !important;
+  color: var(--text-main) !important;
+  font-weight: 700; font-size: 15px;
+  padding: 8px 20px; border: none; border-radius: 4px;
+  cursor: pointer; transition: all 0.15s;
 }
 .tab-btn:hover {
-background-color: var(--hover-bg-strong) !important;
-color: var(--hover-text) !important;
+  background-color: var(--hover-bg) !important;
+  color: var(--hover-text) !important;
 }
 .tab-btn.active {
-background-color: var(--accent) !important;
-color: #ffffff !important;
+  background-color: var(--accent) !important;
+  color: var(--hover-text) !important;
 }
 .tab-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
+
 /* ===== SELECT / INPUT ===== */
 .dash-select, .dash-input {
-background-color: var(--bg-inner) !important;
-border: 1px solid var(--border-strong) !important;
-color: var(--text-main) !important;
+  background-color: var(--bg-inner) !important;
+  border: 1px solid var(--border-strong) !important;
+  color: var(--text-main) !important;
+  transition: all 0.2s;
 }
-.dash-select:focus, .dash-input:focus { border-color: var(--accent) !important; outline: none; }
+.dash-select:focus, .dash-input:focus {
+  border-color: var(--accent) !important;
+  outline: none;
+}
+
 /* ===== BUTTONS ===== */
-.btn-accent { background-color: var(--accent) !important; color: #ffffff !important; }
-.btn-accent:hover { background-color: #5a7264 !important; }
+.btn-accent {
+  background-color: var(--accent) !important;
+  color: var(--hover-text) !important;
+}
+.btn-accent:hover { background-color: #1b5e20 !important; }
 .btn-ghost {
-background-color: var(--bg-inner) !important;
-color: var(--text-main) !important;
-border: 1px solid var(--accent-2) !important;
+  background-color: var(--bg-inner) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--accent-2) !important;
+  transition: all 0.2s;
 }
 .btn-ghost:hover {
-background-color: var(--hover-bg-strong) !important;
-color: var(--hover-text) !important;
+  background-color: var(--hover-bg) !important;
+  color: var(--hover-text) !important;
 }
+
 /* ===== KPI CARDS ===== */
-.kpi-card { background-color: var(--bg-inner) !important; border-radius: 0.75rem; padding: 1rem; transition: background-color .3s ease; }
+.kpi-card {
+  background-color: var(--bg-inner) !important;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  box-shadow: 0 2px 6px var(--card-shadow);
+  transition: all 0.3s ease;
+}
+
 /* ===== TABLE ===== */
-.dash-table thead { background-color: var(--bg-inner) !important; color: var(--text-main) !important; }
-.dash-table tbody tr:hover { background-color: var(--hover-bg) !important; }
-/* ===== BADGES (pakai var -> otomatis ikut theme) ===== */
-.badge-kritis { background-color: rgba(177, 168, 168, 0.15) !important; color: var(--text-sub) !important; border: 1px solid rgba(177, 168, 168, 0.5) !important; }
-.badge-waspada { background-color: rgba(194, 184, 173, 0.15) !important; color: var(--text-main) !important; border: 1px solid rgba(194, 184, 173, 0.5) !important; }
-.badge-normal { background-color: rgba(114, 142, 126, 0.15) !important; color: var(--accent) !important; border: 1px solid rgba(114, 142, 126, 0.5) !important; }
+.dash-table thead {
+  background-color: var(--bg-inner) !important;
+  color: var(--text-main) !important;
+}
+.dash-table tbody tr {
+  border-bottom: 1px solid var(--grid-color);
+}
+.dash-table tbody tr:hover {
+  background-color: var(--hover-bg) !important;
+}
+
+/* ===== BADGES ===== */
+.badge-kritis {
+  background-color: rgba(229, 115, 115, 0.15) !important;
+  color: #c62828 !important;
+  border: 1px solid rgba(229, 115, 115, 0.5) !important;
+}
+.badge-waspada {
+  background-color: rgba(255, 183, 77, 0.15) !important;
+  color: #ef6c00 !important;
+  border: 1px solid rgba(255, 183, 77, 0.5) !important;
+}
+.badge-normal {
+  background-color: rgba(76, 175, 80, 0.15) !important;
+  color: var(--accent) !important;
+  border: 1px solid rgba(76, 175, 80, 0.5) !important;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-.desktop-menu { display: none !important; }
-#header_logout { display: none !important; }
-#hamburger_btn { display: flex !important; }
-section h2 { font-size: 1.25rem !important; }
-.tab-btn { padding: 6px 12px; font-size: 13px; }
+  .desktop-menu { display: none !important; }
+  #header_logout { display: none !important; }
+  #hamburger_btn { display: flex !important; }
+  section h2 { font-size: 1.25rem !important; }
+  .tab-btn { padding: 6px 12px; font-size: 13px; }
 }
 .is-mobile-hw .desktop-menu { display: none !important; }
 .is-mobile-hw #header_logout { display: none !important; }
 .is-mobile-hw #hamburger_btn { display: flex !important; }
+
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
@@ -281,14 +331,13 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </div>
 <!-- KANAN -->
 <div class="flex items-center space-x-3 text-base">
-<!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
-<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition" title="Ganti tema">
+<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition">
 <span id="theme_icon">🌙</span> <span id="theme_lbl">Dark</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="btn-ghost px-2.5 py-1 rounded transition">Logout</a>
 <div class="relative">
-<button id="hamburger_btn" class="items-center justify-center w-10 h-10 rounded-lg border transition" style="background: rgba(114,142,126,0.2); border-color: var(--border-strong); color: var(--text-main);" aria-label="Menu" aria-haspopup="true" aria-expanded="false" onclick="toggleMobileMenu(event)">
+<button id="hamburger_btn" class="items-center justify-center w-10 h-10 rounded-lg border transition" style="background: var(--bg-inner); border-color: var(--border-strong); color: var(--text-main);" aria-label="Menu" aria-haspopup="true" aria-expanded="false" onclick="toggleMobileMenu(event)">
 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
 </button>
 <div id="mobile_dropdown" class="hidden absolute right-0 top-full mt-2 w-60 rounded-xl shadow-2xl py-2 z-50 font-rajdhani text-lg">
@@ -539,28 +588,47 @@ let currentProjectId = 0;
 let finChart = null, doughnutChart = null, barMaterialChart = null;
 let globalTaxRates = [];
 
-/* ===== [FIX] THEME ENGINE (label tidak terbalik) ===== */
+/* ===== THEME ENGINE ===== */
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
+/*
 function updateThemeUI(theme) {
   const icon = document.getElementById('theme_icon');
   const lbl = document.getElementById('theme_lbl');
   if (!icon || !lbl) return;
-  // Tampilkan theme yang SEDANG AKTIF
   if (theme === 'light') { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
   else { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
 }
+*/
+
+function updateThemeUI(theme) {
+  const icon = document.getElementById('theme_icon');
+  const lbl = document.getElementById('theme_lbl');
+  if (!icon || !lbl) return;
+  // Label = state TUJUAN (bukan state saat ini)
+  if (theme === 'light') { 
+    icon.textContent = '🌙';   // klik untuk ke dark
+    lbl.textContent = 'Dark'; 
+  } else { 
+    icon.textContent = '☀️';   // klik untuk ke light
+    lbl.textContent = 'Light'; 
+  }
+}
+
+
+
+
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = cur === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('app_theme', next);
   updateThemeUI(next);
-  rethemeCharts(); // chart ikut berubah warna
+  rethemeCharts();
 }
 function rethemeCharts() {
-  const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
+  const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
   const acc = cssVar('--accent'), acc2 = cssVar('--accent-2'), sub = cssVar('--text-sub'), main = cssVar('--text-main');
   if (finChart) {
     finChart.data.datasets[0].backgroundColor = acc;
@@ -584,7 +652,6 @@ function rethemeCharts() {
     barMaterialChart.update();
   }
 }
-// Sinkronkan label button dengan theme yang sudah di-set di <head>
 updateThemeUI(document.documentElement.getAttribute('data-theme') || 'dark');
 
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -712,7 +779,7 @@ const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_aging&project
 if (!json.success) { showMsg(json.message || 'Gagal memuat data aging.'); return; }
 const ar = json.ar, ap = json.ap;
 const row = (label, labelColor, d, totalColor) => `
-<tr class="hover:bg-[#4a4960]/50 transition">
+<tr class="hover:bg-[var(--hover-bg)] transition">
 <td class="py-2.5 font-sans font-semibold" style="color:${labelColor};">${label}<span class="block text-[9px] font-normal" style="color: var(--text-sub);">${d.count} invoice outstanding</span></td>
 <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(d.age_30)}</td>
 <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_60)}</td>
@@ -721,7 +788,7 @@ const row = (label, labelColor, d, totalColor) => `
 <td class="py-2.5 text-right font-bold" style="color:${totalColor};">${formatNum(d.total)}</td>
 </tr>`;
 const net = (k) => (ar[k] || 0) - (ap[k] || 0);
-tbody.innerHTML = row('Piutang (AR)', '#728E7E', ar, '#728E7E') + row('Hutang (AP)', '#949C8B', ap, '#C2B8AD') + `
+tbody.innerHTML = row('Piutang (AR)', cssVar('--accent'), ar, cssVar('--accent')) + row('Hutang (AP)', cssVar('--accent-2'), ap, cssVar('--text-main')) + `
 <tr class="border-t" style="border-color: var(--border-soft);"><td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">Netto (AR - AP)</td>
 <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_30'))}</td>
 <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_60'))}</td>
@@ -754,10 +821,10 @@ if (!json.success) { ul.innerHTML = `<li class="text-center text-xs py-3" style=
 const order = { danger: 0, warn: 1, info: 2 };
 const active = json.items.filter(i => i.count > 0).sort((a, b) => (order[a.level] - order[b.level]) || (b.count - a.count));
 const calm = json.items.length - active.length;
-const levelBorder = { danger: '#B1A8A8', warn: '#C2B8AD', info: '#728E7E' };
-const levelText = { danger: '#B1A8A8', warn: '#C2B8AD', info: '#728E7E' };
+const levelBorder = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
+const levelText = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
 let html = active.map(i => `
-<li class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 4px solid ${levelBorder[i.level] || '#728E7E'}; color: ${levelText[i.level] || '#728E7E'};" title="${esc(i.hint)}">
+<li class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 4px solid ${levelBorder[i.level] || cssVar('--accent')}; color: ${levelText[i.level] || cssVar('--accent')}; border-bottom: 1px solid var(--grid-color);" title="${esc(i.hint)}">
 <span>${esc(i.label)}<span class="block text-[10px] opacity-60">${esc(i.hint)}</span></span>
 <span class="font-bold font-mono text-lg">${i.count}</span>
 </li>`).join('');
@@ -775,11 +842,11 @@ if (json.data.length > 0) {
 list.innerHTML = json.data.map(t => {
 const late = t.late === true;
 const info = late ? `Terlambat ${Math.abs(t.days_left)} hari` : (t.days_left === 0 ? 'Hari ini' : `${t.days_left} hari lagi`);
-const border = late ? '#B1A8A8' : '#728E7E';
-const textColor = late ? '#B1A8A8' : '#C2B8AD';
-const subColor = late ? '#B1A8A8' : '#B1A8A8';
+const border = late ? cssVar('--text-sub') : cssVar('--accent');
+const textColor = late ? cssVar('--text-sub') : cssVar('--text-main');
+const subColor = late ? cssVar('--text-sub') : cssVar('--text-sub');
 return `
-<div class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 2px solid ${border};">
+<div class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 2px solid ${border}; border-bottom: 1px solid var(--grid-color);">
 <div><div class="font-bold text-xs" style="color: var(--text-main);">${esc(t.task_name)}</div><div class="text-[10px]" style="color: var(--text-sub);">${esc(t.project_name)}</div></div>
 <div class="text-right"><div class="font-mono text-xs font-bold" style="color:${textColor};">${esc(t.deadline)}</div><div class="text-[9px]" style="color:${subColor};">${esc(t.status)} - ${info}</div></div>
 </div>`;
@@ -796,18 +863,18 @@ if (json.data.length > 0) {
 tbody.innerHTML = json.data.map(p => {
 const hasMargin = p.margin_pct !== null && p.margin_pct !== undefined;
 const margin = hasMargin ? parseFloat(p.margin_pct) : 0;
-let mColor = '#B1A8A8';
+let mColor = cssVar('--text-sub');
 if (hasMargin) {
-if (margin < 10) mColor = '#B1A8A8';
-else if (margin < 20) mColor = '#C2B8AD';
-else mColor = '#728E7E';
+if (margin < 10) mColor = cssVar('--text-sub');
+else if (margin < 20) mColor = cssVar('--text-main');
+else mColor = cssVar('--accent');
 }
 const cPct = parseFloat(p.cost_pct) || 0;
-let cColor = '#C2B8AD';
-if (cPct > 100) cColor = '#B1A8A8';
-else if (cPct > 85) cColor = '#C2B8AD';
+let cColor = cssVar('--text-main');
+if (cPct > 100) cColor = cssVar('--text-sub');
+else if (cPct > 85) cColor = cssVar('--text-main');
 const detail = `Material ${fmtRp(p.cost_material)} | Pengeluaran ${fmtRp(p.cost_expense)} | Subkon ${fmtRp(p.cost_subcon)}`;
-return `<tr class="hover:bg-[#4a4960]/50"><td class="py-2 font-sans text-xs" style="color: var(--text-main);">${esc(p.name)}</td>
+return `<tr class="hover:bg-[var(--hover-bg)]"><td class="py-2 font-sans text-xs" style="color: var(--text-main);">${esc(p.name)}</td>
 <td class="py-2 text-right" style="color: var(--accent);">${p.progress}%</td>
 <td class="py-2 text-right" style="color: var(--text-main);">${fmtRp(p.contract_dpp)}</td>
 <td class="py-2 text-right" style="color: var(--text-main);">${fmtRp(p.billed_dpp)}</td>
@@ -819,16 +886,16 @@ return `<tr class="hover:bg-[#4a4960]/50"><td class="py-2 font-sans text-xs" sty
 } catch (err) { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data</td></tr>'; }
 }
 const HEALTH_STYLE = {
-KRITIS:  { badge: 'badge-kritis', icon: '🔴', label: 'KRITIS', num: '#B1A8A8', bar: '#B1A8A8' },
-WASPADA: { badge: 'badge-waspada', icon: '🟡', label: 'WASPADA', num: '#C2B8AD', bar: '#C2B8AD' },
-NORMAL:  { badge: 'badge-normal', icon: '🟢', label: 'NORMAL', num: '#728E7E', bar: '#728E7E' },
-NA:      { badge: 'badge-normal', icon: '⚪', label: 'BUDGET KOSONG', num: '#949C8B', bar: '#949C8B' }
+KRITIS:  { badge: 'badge-kritis', icon: '🔴', label: 'KRITIS', num: cssVar('--text-sub'), bar: cssVar('--text-sub') },
+WASPADA: { badge: 'badge-waspada', icon: '🟡', label: 'WASPADA', num: cssVar('--text-main'), bar: cssVar('--text-main') },
+NORMAL:  { badge: 'badge-normal', icon: '🟢', label: 'NORMAL', num: cssVar('--accent'), bar: cssVar('--accent') },
+NA:      { badge: 'badge-normal', icon: '⚪', label: 'BUDGET KOSONG', num: cssVar('--accent-2'), bar: cssVar('--accent-2') }
 };
 const HEALTH_ICONS = ['🏗️', '🏢', '🏘️', '🏭', '🏠'];
 const RISK_STYLE = {
-HIGH:   { badge: 'badge-kritis', text: '#B1A8A8' },
-MEDIUM: { badge: 'badge-waspada', text: '#C2B8AD' },
-LOW:    { badge: 'badge-normal', text: '#728E7E' }
+HIGH:   { badge: 'badge-kritis', text: cssVar('--text-sub') },
+MEDIUM: { badge: 'badge-waspada', text: cssVar('--text-main') },
+LOW:    { badge: 'badge-normal', text: cssVar('--accent') }
 };
 let healthSelectedId = 0, aiRequestToken = 0;
 const LEVEL_RANK = { NA: 0, NORMAL: 0, WASPADA: 1, KRITIS: 2 };
@@ -866,7 +933,7 @@ if (!json.success) { box.innerHTML = `<div class="border rounded-lg p-3 text-sm"
 const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
 const li = (arr) => arr.map(t => `<li>${esc(t)}</li>`).join('');
 const findings = (d.findings || []).map(f => `
-<div class="border-l-4 rounded px-2 py-1 mb-1" style="background-color: var(--bg-inner); border-left-color: var(--accent);">
+<div class="border-l-4 rounded px-2 py-1 mb-1" style="background-color: var(--bg-inner); border-left-color: var(--accent); border-bottom: 1px solid var(--grid-color);">
 <div class="text-xs font-bold" style="color: var(--text-main);">${esc(f.title)}</div><div class="text-[11px] opacity-80" style="color: var(--text-sub);">${esc(f.evidence)}</div></div>`).join('');
 box.innerHTML = `
 <div class="border rounded-lg p-4 max-h-96 overflow-y-auto no-scrollbar" style="background-color: var(--bg-inner); border-color: var(--border-strong);">
@@ -875,7 +942,7 @@ box.innerHTML = `
 <span class="px-2 py-0.5 text-[11px] font-bold border rounded-md ${rs.badge}">RISK: ${esc(d.risk)}</span>
 <span class="px-2 py-0.5 text-[10px] border rounded-md" style="border-color: var(--accent-2); color: var(--accent-2);">${d.ai_used ? 'Gemini' : 'Analisis sistem'}${d.cached ? ' • cache' : ''}</span>
 <span class="text-[11px] ml-auto" style="color: var(--text-sub);">${esc(d.generated_at || '')}${d.log_id ? ' • log #' + d.log_id : ''}</span>
-<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded text-white cursor-pointer border-0 btn-accent">Analisis Ulang</button>
+<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded cursor-pointer border-0 btn-accent">Analisis Ulang</button>
 </div>
 <div class="italic text-base mb-2" style="color: var(--text-main);"><b>${esc(d.project_name)}:</b> ${esc(d.headline)}</div>
 <div class="text-sm mb-2 leading-relaxed" style="color: var(--text-main);">${esc(d.summary)}</div>
@@ -977,7 +1044,7 @@ if (!rates || rates.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class
 tbody.innerHTML = rates.map(r => {
 const dirColor = r.change_direction === 'UP' ? 'var(--accent)' : (r.change_direction === 'DOWN' ? 'var(--text-sub)' : 'var(--accent-2)');
 const prefix = r.change_direction === 'UP' ? '+' : (r.change_direction === 'DOWN' ? '-' : '');
-return `<tr class="hover:bg-[#4a4960]/50"><td class="p-1.5 font-bold" style="color: var(--text-main);">${r.currency_code}</td>
+return `<tr class="hover:bg-[var(--hover-bg)]"><td class="p-1.5 font-bold" style="color: var(--text-main);">${r.currency_code}</td>
 <td class="p-1.5 text-right" style="color: var(--text-main);">${formatIDR(r.rate)}</td>
 <td class="p-1.5 text-center" style="color:${dirColor};">${prefix}${formatNum(r.change_amount)}</td></tr>`;
 }).join('');
@@ -1019,7 +1086,7 @@ function renderFinChart(labels, incData, expData) {
 const ctx = document.getElementById('finChartCanvas').getContext('2d');
 if (finChart) finChart.destroy();
 const compact = (v) => Number(v).toLocaleString('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
-const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
+const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
 finChart = new Chart(ctx, {
 type: 'bar',
 data: { labels: labels, datasets: [{ label: 'Pendapatan', data: incData, backgroundColor: cssVar('--accent') }, { label: 'Pengeluaran', data: expData, backgroundColor: cssVar('--text-sub') }] },
@@ -1057,12 +1124,12 @@ renderBarMaterialChart(aggregatedItems.slice(0, 5));
 document.getElementById('table_count_label').innerText = `Total Material: ${aggregatedItems.length} Item`;
 if (aggregatedItems.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data penggunaan material untuk proyek ini.</td></tr>'; return; }
 tbody.innerHTML = aggregatedItems.map(item => {
-let statusBg = 'rgba(114,142,126,0.15)';
-let statusText = '#728E7E';
-let statusBorder = 'rgba(114,142,126,0.5)';
-if (item.status === 'WARNING') { statusBg = 'rgba(194,184,173,0.15)'; statusText = '#C2B8AD'; statusBorder = 'rgba(194,184,173,0.5)'; }
-if (item.status === 'OVERBUDGET') { statusBg = 'rgba(177,168,168,0.15)'; statusText = '#B1A8A8'; statusBorder = 'rgba(177,168,168,0.5)'; }
-return `<tr class="hover:bg-[#4a4960]/50 transition">
+let statusBg = 'rgba(76,175,80,0.15)';
+let statusText = '#2e7d32';
+let statusBorder = 'rgba(76,175,80,0.5)';
+if (item.status === 'WARNING') { statusBg = 'rgba(255,183,77,0.15)'; statusText = '#ef6c00'; statusBorder = 'rgba(255,183,77,0.5)'; }
+if (item.status === 'OVERBUDGET') { statusBg = 'rgba(229,115,115,0.15)'; statusText = '#c62828'; statusBorder = 'rgba(229,115,115,0.5)'; }
+return `<tr class="hover:bg-[var(--hover-bg)] transition">
 <td class="p-3 font-sans"><div class="font-bold" style="color: var(--text-main);">${item.item_name}</div><div class="text-sm" style="color: var(--accent-2);">${item.item_code || '-'}</div></td>
 <td class="p-3 text-center" style="color: var(--text-main);">${item.unit || '-'}</td>
 <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(item.budget_qty)}</td>
@@ -1094,7 +1161,7 @@ options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins:
 function renderBarMaterialChart(topItems) {
 const ctx = document.getElementById('barMaterialCanvas').getContext('2d');
 if (barMaterialChart) barMaterialChart.destroy();
-const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
+const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
 barMaterialChart = new Chart(ctx, {
 type: 'bar',
 data: { labels: topItems.map(i => i.item_name.substring(0, 15) + '...'), datasets: [{ label: 'Budget Qty', data: topItems.map(i => i.budget_qty), backgroundColor: cssVar('--accent') }, { label: 'Out Qty', data: topItems.map(i => i.out_qty), backgroundColor: cssVar('--accent-2') }] },
