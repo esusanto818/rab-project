@@ -21,7 +21,7 @@ backup_crd_migration_20261106_220206
 backup_crd_migration_*
 
 
-.claude/
-.claude/settings.local.json
+# .claude/
+# .claude/settings.local.json
 backups/
 tmp_bak/
