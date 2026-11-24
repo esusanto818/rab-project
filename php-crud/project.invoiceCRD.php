@@ -480,8 +480,23 @@ try {
                     }
                     ti_check_faktur_unique($db, $fpNo, $id);
 
+                    // Validate total invoice amount against project contract
+                    $contract = $db->prepare("SELECT contract_amount FROM projects WHERE id = :project_id");
+                    $contract->execute([':project_id' => $projectId]);
+                    $contractAmount = $contract->fetchColumn();
+
+                    $existingInvoices = $db->prepare("SELECT COALESCE(SUM(amount), 0) AS total_invoiced
+                                        FROM project_invoices
+                                        WHERE project_id = :project_id AND status = 'posted' AND id != :id");
+                    $existingInvoices->execute([':project_id' => $projectId, ':id' => $id]);
+                    $totalInvoiced = $existingInvoices->fetchColumn();
+
                     $ppnAmt = ($ppnRate > 0) ? round($amt * $ppnRate / 100, 2) : 0.0;
-                    $total  = round($amt + $ppnAmt, 2);
+                    $total = round($amt + $ppnAmt, 2);
+
+                    if (($totalInvoiced + $total) > $contractAmount) {
+                        throw new Exception("Total akumulasi termin invoice (" . number_format($totalInvoiced + $total, 2) . ") melebihi nilai kontrak proyek (" . number_format($contractAmount, 2) . ")");
+                    }
 
                     if ($id > 0) {
                         // [RELEASE-LAYER] invoice lama (pra migrasi) bisa sudah punya jurnal saat masih draft -> reverse saja;

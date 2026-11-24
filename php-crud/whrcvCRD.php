@@ -295,20 +295,20 @@ try {
                                 COALESCE(NULLIF(gd.unit_cost_base, 0), gd.unit_cost * COALESCE(NULLIF(g.exch_rate,0), 1)) AS unit_cost_base,
                                 g.currency_id, COALESCE(NULLIF(g.exch_rate,0), 1) AS exch_rate,
                                 COALESCE(bi.material_source, 'COMPANY') AS material_source
-                           FROM grn_dtl gd
-                           JOIN grn_hdr g ON g.id = gd.grn_hdr_id
-                           LEFT JOIN public.po_items pi ON pi.id = gd.po_item_id
-                           LEFT JOIN public.budget_items bi ON bi.id = pi.budget_item_id
-                           LEFT JOIN (
-                               SELECT d.grn_dtl_id, SUM(d.qty_received) AS qty_wh_sum
-                                 FROM wh_receiving_dtl d
-                                 JOIN wh_receiving_hdr h ON h.id = d.wh_receiving_hdr_id AND h.status = 'posted'
-                                WHERE d.grn_dtl_id = :grn_dtl_id
-                                GROUP BY d.grn_dtl_id
-                           ) wd ON wd.grn_dtl_id = gd.id
-                          WHERE gd.id = :grn_dtl_id AND gd.grn_hdr_id = :grn_hdr_id
-                          FOR UPDATE OF gd",
-                        ['grn_dtl_id' => $it['grn_dtl_id'], 'grn_hdr_id' => $grn_hdr_id], 'cek sisa qty GRN');
+                        FROM grn_dtl gd
+                        LEFT JOIN (
+                            SELECT d.grn_dtl_id, SUM(d.qty_received) AS qty_wh_sum
+                            FROM wh_receiving_dtl d
+                            JOIN wh_receiving_hdr h ON h.id = d.wh_receiving_hdr_id AND h.status = 'posted'
+                            WHERE d.grn_dtl_id = :grn_dtl_id_1
+                            GROUP BY d.grn_dtl_id
+                        ) wd ON wd.grn_dtl_id = gd.id
+                        LEFT JOIN grn_hdr g ON g.id = gd.grn_hdr_id
+                        LEFT JOIN public.po_items pi ON pi.id = gd.po_item_id
+                        LEFT JOIN public.budget_items bi ON bi.id = pi.budget_item_id
+                        WHERE gd.id = :grn_dtl_id_2 AND gd.grn_hdr_id = :grn_hdr_id
+                        FOR UPDATE OF gd",
+                        ['grn_dtl_id_1' => $it['grn_dtl_id'], 'grn_dtl_id_2' => $it['grn_dtl_id'], 'grn_hdr_id' => $grn_hdr_id], 'cek sisa qty GRN');
                     if (!$chk) throw new Exception('Baris GRN tidak ditemukan (grn_dtl_id=' . $it['grn_dtl_id'] . ')');
                     if ($qty > (float)$chk['qty_remaining'] + 0.0001) {
                         throw new Exception("Qty WH Rcv untuk {$it['item_name']} ({$qty}) melebihi sisa GRN (" . round((float)$chk['qty_remaining'], 4) . ")");
@@ -393,6 +393,19 @@ try {
                     "SELECT * FROM wh_receiving_hdr WHERE id = :id AND status = 'posted' FOR UPDATE",
                     ['id' => $id], 'reverse hdr check');
                 if (!$hdr) throw new Exception('Data tidak ditemukan atau sudah di-reverse');
+
+                // Check if stock from this receiving has already been used
+                $usedStock = fetchOne($db,
+                    "SELECT COUNT(*) AS used_count
+                    FROM stock_movements sm
+                    JOIN stock_movement_hdr smh ON smh.id = sm.stock_movement_hdr_id
+                    WHERE smh.reference_type = 'wh_receiving'
+                    AND smh.reference_id = $1 AND sm.qty > 0",
+                    [$id]);
+
+                if ($usedStock['used_count'] > 0) {
+                    throw new Exception('Pembatalan penerimaan gagal: stok barang dari penerimaan ini sudah terpakai');
+                }
 
                 ReverseStockMovementByReference($db, 'wh_receiving', $id);
                 ReverseJournalByReference($db, 'wh_receiving', $id);

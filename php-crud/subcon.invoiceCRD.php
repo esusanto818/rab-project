@@ -427,6 +427,18 @@ try {
                 
                 $stmt = $db->prepare("SELECT COALESCE(SUM(amount), 0) FROM subcon_invoice_payments WHERE invoice_id = :id AND status = 'Posted'");
                 $stmt->execute([':id' => $id]);
+                // Check for active payments
+                $paymentCheck = $db->prepare("SELECT COUNT(*) AS payment_count
+                                FROM subcon_invoice_payments
+                                WHERE invoice_id = :id AND status = 'Posted'
+                                AND (amount > 0 OR payment_date IS NOT NULL)");
+                $paymentCheck->execute([':id' => $id]);
+                $paymentCount = $paymentCheck->fetchColumn();
+
+                if ($paymentCount > 0) {
+                    throw new ScInvError('Invoice tidak dapat dibatalkan: sudah memiliki pembayaran aktif');
+                }
+
                 $paid = (float)$stmt->fetchColumn();
                 if ($paid > 0) throw new ScInvError('Invoice sudah ada pembayaran. Batalkan pembayaran dulu.');
                 

@@ -437,6 +437,7 @@ function tc08(): void
 function tc09(): void
 {
     $g = $GLOBALS['g'];
+    if (!empty($g['grnHdr'])) { api($g['user_admin'], 'grnCRD.php', 'approve_grn', ['id' => $g['grnHdr']]); }
     $gd = (int)csval("SELECT id FROM grn_dtl WHERE grn_hdr_id = :h", ['h' => $g['grnHdr']]);
     $dbgItem = csval("SELECT item_id FROM grn_dtl WHERE id = :d", ['d' => $gd]);
     $r = api($g['user_admin'], 'whrcvCRD.php', 'create', [
@@ -455,7 +456,7 @@ function tc09(): void
     $jn = $whId ? (int)csval("SELECT COUNT(*) FROM journal_entries WHERE reference_type = 'wh_receiving' AND reference_id = :i", ['i' => $whId]) : -1;
     $ok = $ok && $mv && $mv['movement_type'] === 'IN' && approx((float)$mv['qty'], 100) && approx((float)$mv['unit_cost'], 0) && $jn === 0;
     record('TC-CS-09', 'whrcvCRD: fisik IN 100 @ Rp 0 di stock_movements + TANPA jurnal GRN_RCV', $ok,
-        'mv=' . ($mv ? ($mv['movement_type'] . ' qty=' . $mv['qty'] . ' cost=' . $mv['unit_cost']) : 'null') . " jurnal_rows={$jn}");
+        'mv=' . ($mv ? ($mv['movement_type'] . ' qty=' . $mv['qty'] . ' cost=' . $mv['unit_cost']) : 'null') . " jurnal_rows={$jn} msg=" . ($r['json']['message'] ?? substr($r['raw'], 0, 120)));
 }
 
 /** TC-CS-10: Issuing Rp 0 -> stock_movements OUT + material_out_items @ Rp 0, TANPA jurnal ISSUE_PROJECT. */

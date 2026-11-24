@@ -447,6 +447,17 @@ try {
                 $st=$db->prepare("SELECT po_number, status FROM purchase_orders WHERE id=:id FOR UPDATE"); $st->execute([':id'=>$id]); $po=$st->fetch(PDO::FETCH_ASSOC);
                 if (!$po) throw new PoBusinessError('PO tidak ditemukan.');
                 if ($po['status']!=='Draft') throw new PoBusinessError('Hanya PO berstatus Draft yang dapat dihapus. Gunakan Batalkan untuk PO lain.');
+                // Check for active GRN documents
+                $grnCheck = $db->prepare("SELECT COUNT(*) AS grn_count
+                                FROM grn_hdr
+                                WHERE po_id = :id AND status IN ('posted', 'approved', 'released')");
+                $grnCheck->execute([':id' => $id]);
+                $grnCount = $grnCheck->fetchColumn();
+
+                if ($grnCount > 0) {
+                    throw new PoBusinessError('PO tidak dapat dibatalkan: sudah memiliki dokumen GRN aktif');
+                }
+
                 $st=$db->prepare("SELECT COUNT(*) FROM grn_hdr WHERE po_id=:id"); $st->execute([':id'=>$id]);
                 if ((int)$st->fetchColumn()>0) throw new PoBusinessError('PO sudah memiliki GRN, tidak dapat dihapus.');
                 $db->prepare("DELETE FROM po_items WHERE po_id=:id")->execute([':id'=>$id]);
