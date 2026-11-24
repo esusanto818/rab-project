@@ -27,11 +27,10 @@ Jika identitas instance atau database belum dapat dipastikan, dilarang melakukan
 
 # 1. ATURAN UMUM PENGEMBANGAN
 
-## 1.1 Cara mengubah & backup file
-- **Backup wajib:** Sebelum mengubah file kritis (`> 300` baris atau aktif di produksi), jalankan `cp file file.bak-$(date +%Y%m%d%H%M)`. Jangan hanya mengandalkan Git.
+## 1.1 Cara mengubah, backup & batas edit file (SSOT)
+- **Isolasi Backup Wajib:** Sebelum menyunting file apa pun, wajib salin ke folder terisolasi `tmp_bak/<nama_file>.bak` (`mkdir -p tmp_bak && cp <path_file> tmp_bak/<nama_file>.bak`). **DILARANG** menaruh file `.bak` di dalam folder aplikasi (`js/`, `php-crud/`, `agents/`, dll.).
+- **Batas Surgical Edit (`> 150` baris):** Agent **DILARANG** menulis ulang seluruh isi file lama (`Write`) jika panjangnya lebih dari 150 baris. Wajib gunakan penyuntingan terarah (`Edit`) hanya pada blok kode yang bermasalah.
 - **File baru:** Ditulis secara utuh.
-- **File existing:** Diubah dengan edit terarah dan diff minimal serta komentar jelas pada baris yang berubah/ditambah.
-- **Larangan tulis ulang penuh:** Jangan menulis ulang seluruh file existing jika `> 300` baris, kecuali diminta eksplisit. Jangan menggunakan hasil pembacaan file parsial sebagai dasar penulisan ulang lengkap.
 - **Konteks:** Sebelum mengubah file, baca konteks fungsi, seluruh pemanggil, dan dependency terkait.
 
 ## 1.2 Klasifikasi tugas
@@ -237,8 +236,28 @@ Jangan mengorbankan integritas data demi membuat fitur terlihat berfungsi. Janga
 
 ---
 
-## 13. ATURAN MUTLAK SURGICAL EDIT ONLY (ANTI-FULL-REWRITE)
-Untuk mencegah kerusakan tata letak UI, hilangnya event listener lama, dan bug regresi seperti yang pernah terjadi pada modul User Role:
-1. **Dilarang Full Rewrite File > 150 Baris:** Agent DILARANG menggunakan tool `Write` untuk menimpa seluruh isi file lama yang panjangnya lebih dari 150 baris. Wajib gunakan penyuntingan presisi (`Edit` / patch baris tertentu) hanya pada bagian yang bermasalah.
-2. **Wajib Backup & Cek Diff:** Sebelum menyunting file apa pun, wajib salin ke `<nama_file>.bak`. Setelah menyunting, wajib jalankan `git diff --stat` dan pastikan jumlah baris yang dihapus/ditambah proporsional dengan ruang lingkup perbaikan (tidak menghapus blok fungsi atau CSS tema yang tidak terkait).
-3. **Rollback Otomatis jika Melenceng:** Jika `git diff` menunjukkan perubahan yang merusak struktur ExtJS/CSS yang sudah jalan, wajib segera kembalikan file dari `.bak` dan ulangi dengan perubahan yang lebih kecil.
+## 13. HARD GATE VERIFIKASI PATCH & ANTI-REGRESI (WAJIB)
+Karena beberapa direktori (`js/`, `php-crud/`) diabaikan oleh `.gitignore`, `git diff` **TIDAK DAPAT** diandalkan sebagai satu-satunya pemeriksa perubahan.
+1. **Eksekusi Gate Otomatis:** Setiap selesai mengedit 1 file, agen wajib menjalankan:
+   `./verify_patch_diff.sh tmp_bak/<nama_file>.bak <path_file_target>`
+2. **Validasi Sintaks & Artefak:** Skrip otomatis mengecek `php -l` (PHP), `node --check` + deteksi kata/artefak nyasar (JS), serta menolak perubahan jika file menyusut `> 10` baris.
+3. **Auto-Rollback:** Jika skrip menolak perubahan, file otomatis dikembalikan dari `tmp_bak/`. Agen dilarang memaksa perubahan dengan *full rewrite* dan wajib mengulang penyuntingan terarah (`Edit`).
+4. **Isolasi Lapisan:** Saat menjalankan patch backend PHP, **DILARANG** menyentuh file `js/*.js`, `views/*.php`, atau `css/*.css` kecuali diminta eksplisit.
+
+---
+## 14. STANDAR PEMISAHAN CSS & BUTTON SERAGAM (SSOT)
+1. **Dilarang CSS di dalam JS:** Dilarang keras menulis inline `style: '...'`, `Ext.util.CSS.createStyleSheet`, `setStyle`, atau `<style>` di dalam file `js/*.js`. Semua aturan visual wajib dipindahkan ke `css/app-theme.css` dan dipanggil melalui `cls` / `iconCls`.
+2. **Standar Tombol Seragam (Industrial Slate & Steel Amber):**
+   - Aksi Simpan / Submit / Approve: `cls: 'btn-primary'` (ExtJS) atau `class="app-btn app-btn-primary"` (HTML).
+   - Aksi Cetak / Export / Filter: `cls: 'btn-dark'` atau `class="app-btn app-btn-dark"`.
+   - Aksi Hapus / Void / Tolak: `cls: 'btn-danger'` atau `class="app-btn app-btn-danger"`.
+   - Aksi Umum / Tambah / Edit / Batal: tanpa `cls` (otomatis default Slate) atau `cls: 'btn-slate'`.
+
+---
+## 13. HARD GATE VERIFIKASI PATCH & ANTI-REGRESI (WAJIB)
+Karena beberapa direktori (`js/`, `php-crud/`) diabaikan oleh `.gitignore`, `git diff` **TIDAK DAPAT** diandalkan sebagai satu-satunya pemeriksa perubahan.
+1. **Eksekusi Gate Otomatis:** Setiap selesai mengedit 1 file, agen wajib menjalankan:
+   `./verify_patch_diff.sh tmp_bak/<nama_file>.bak <path_file_target>`
+2. **Validasi Sintaks & Artefak:** Skrip otomatis mengecek `php -l` (PHP), `node --check` + deteksi kata/artefak nyasar (JS), serta menolak perubahan jika file menyusut `> 10` baris.
+3. **Auto-Rollback:** Jika skrip menolak perubahan, file otomatis dikembalikan dari `tmp_bak/`. Agen dilarang memaksa perubahan dengan *full rewrite* dan wajib mengulang penyuntingan terarah (`Edit`).
+4. **Isolasi Lapisan:** Saat menjalankan patch backend PHP, **DILARANG** menyentuh file `js/*.js`, `views/*.php`, atau `css/*.css` kecuali diminta eksplisit.

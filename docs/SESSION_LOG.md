@@ -1,10 +1,7 @@
-# SESSION LOG — 2026-11-23
-- **Task:** Forensic Deep Audit (Batch 1 s.d. Batch 4) sesuai CLAUDE.md v3.0 & skill `audit-ketat`.
-- **Modul Diperiksa:**
-  - Batch 1: Security Gates, RBAC, User Role, ExtJS 3.4.1 UI (`user.valid.php`, `m.user.role.js`, `m.user.system.js`, `m.user.systemCRD.php`).
-  - Batch 2: RAB/RAP, Material `CLIENT_SUPPLIED`, PO Direct Release & GRN, Stock Card, CreateRefNo.
-  - Batch 3: SPK/Subkon Buy-Back, Opname Progress, Retensi, PPN, Jurnal Idempotency Guard.
-  - Batch 4: Dashboard, PDF Reporting, Mobile Views, Upload Security.
-- **Hasil Temuan:** Tercatat lengkap di `docs/DEEP_AUDIT_REGISTER.md`.
-- **Keputusan Release:** `NOT READY FOR RELEASE` (Wajib patch temuan CRITICAL & HIGH).
-- **Status Git:** Clean / Unchanged (Sesuai protokol NO PATCH).
+# SESSION LOG — 2026-11-23 (Patch Batch 3)
+- **Task:** Implementasi PATCH BATCH 3 (Backend User & RBAC: GAP-USR-01, GAP-USR-02, GAP-USR-03).
+- **Modul Diperiksa & Diubah:**
+  - `php-crud/m.user.roleCRD.php`: Pembungkusan transaksi `BEGIN`/`COMMIT`/`ROLLBACK` yang komprehensif pada semua action mutasi role dan matriks, serta validasi eksistensi `form_id` (`GAP-USR-01` & `GAP-USR-03`).
+  - `php-func/user.valid.php`: Penambahan pemetaan `endpointAliases` lengkap untuk `m.user.roleCRD.php` dan `m.user.systemCRD.php` (`GAP-USR-02`).
+- **Verifikasi:** Syntax check `php -l` berhasil tanpa error pada seluruh file yang diubah.
+- **Status Git:** Modified.

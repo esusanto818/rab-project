@@ -10,54 +10,79 @@
 /* ------------------------------------------------------------------------
    BAGIAN A — DESIGN TOKENS (Palet Industrial Slate & Steel Amber)
    ------------------------------------------------------------------------ */
-:root, html[data-theme="light"] {
-  /* Architectural Daylight */
-  --bg-main: #DCE3EC;
-  --bg-panel: #F4F7FA;
-  --bg-card: #F4F7FA;
-  --header-bg: #0F172A;
-  --header-text: #F8FAFC;
-  --border-color: #CBD5E1;
-  --text-main: #0F172A;
-  --text-muted: #475569;
-  --primary: #0369A1;
-  --primary-hover: #075985;
-  --accent-strong: #D97706;
-  --grid-header-bg: #CBD5E1;
-  --grid-header-text: #0F172A;
-  --grid-row-bg: #F8FAFC;
-  --grid-row-alt: #EDF2F7;
-  --grid-cell-text: #0F172A;
-  --grid-selected-bg: #DBEAFE;
-  --grid-selected-text: #1E3A8A;
-  --input-bg: #F8FAFC;
-  --input-text: #0F172A;
-  --input-border: #94A3B8;
+/* 1. DEFAULT THEME (Gambar 1 — California Dream) */
+:root, html[data-theme="default"] {
+  --bg-main: #FCF7EF;
+  --bg-panel: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --header-bg: #243958;
+  --header-text: #FCF7EF;
+  --border-color: #7FC8D6;
+  --text-main: #243958;
+  --text-muted: #4379A2;
+  --primary: #4379A2;
+  --primary-hover: #243958;
+  --accent-strong: #F8C5AA;
+  --grid-header-bg: #F4DB96;
+  --grid-header-text: #243958;
+  --grid-row-bg: #FFFFFF;
+  --grid-row-alt: #FCF7EF;
+  --grid-cell-text: #243958;
+  --grid-selected-bg: #7FC8D6;
+  --grid-selected-text: #243958;
+  --input-bg: #FFFFFF;
+  --input-text: #243958;
+  --input-border: #7FC8D6;
 }
 
+/* 2. DARK THEME (Gambar 2 — Warm Obsidian & Slate) */
 html[data-theme="dark"] {
-  /* Obsidian Blueprint */
-  --bg-main: #090D16;
-  --bg-panel: #111827;
-  --bg-card: #111827;
-  --header-bg: #030712;
-  --header-text: #F8FAFC;
-  --border-color: #1E293B;
-  --text-main: #F1F5F9;
-  --text-muted: #94A3B8;
-  --primary: #38BDF8;
-  --primary-hover: #0EA5E9;
-  --accent-strong: #F59E0B;
-  --grid-header-bg: #1E293B;
-  --grid-header-text: #FBBF24;
-  --grid-row-bg: #111827;
-  --grid-row-alt: #0F172A;
-  --grid-cell-text: #F1F5F9;
-  --grid-selected-bg: #1E3A5F;
+  --bg-main: #202128;
+  --bg-panel: #2D4354;
+  --bg-card: #2D4354;
+  --header-bg: #202128;
+  --header-text: #FED7A5;
+  --border-color: #534145;
+  --text-main: #FED7A5;
+  --text-muted: #C5C2B8;
+  --primary: #9E6752;
+  --primary-hover: #73766A;
+  --accent-strong: #FED7A5;
+  --grid-header-bg: #534145;
+  --grid-header-text: #FED7A5;
+  --grid-row-bg: #2D4354;
+  --grid-row-alt: #253746;
+  --grid-cell-text: #FED7A5;
+  --grid-selected-bg: #9E6752;
   --grid-selected-text: #FFFFFF;
-  --input-bg: #090D16;
-  --input-text: #F1F5F9;
-  --input-border: #334155;
+  --input-bg: #202128;
+  --input-text: #FED7A5;
+  --input-border: #73766A;
+}
+
+/* 3. LIGHT THEME (Gambar 3 — Soft Sage & Mint Full Palette, Tanpa Putih Polos) */
+html[data-theme="light"] {
+  --bg-main: #C2D9AD;
+  --bg-panel: #DCE8CF;
+  --bg-card: #DCE8CF;
+  --header-bg: #375647;
+  --header-text: #E9F2E1;
+  --border-color: #91A4A8;
+  --text-main: #263D32;
+  --text-muted: #375647;
+  --primary: #729E7E;
+  --primary-hover: #375647;
+  --accent-strong: #94BC9B;
+  --grid-header-bg: #94BC9B;
+  --grid-header-text: #263D32;
+  --grid-row-bg: #E4EED9;
+  --grid-row-alt: #D6E4C7;
+  --grid-cell-text: #263D32;
+  --grid-selected-bg: #729E7E;
+  --grid-selected-text: #FFFFFF;
+  --input-bg: #E9F2E1;
+  --input-text: #263D32;
+  --input-border: #91A4A8;
 }
 
 /* ------------------------------------------------------------------------
@@ -1292,4 +1317,204 @@ html[data-theme="light"] #poDtlContainer h3,
 html[data-theme="light"] .detail-panel-container h2,
 html[data-theme="light"] .detail-panel-container h3 {
   color: #0369A1 !important;
+}
+
+/* ==========================================================================
+   UNIFIED BUTTON SYSTEM — INDUSTRIAL SLATE & STEEL AMBER (SSOT)
+   ========================================================================== */
+:root {
+  --slate-900: #0f172a;
+  --slate-800: #1e293b;
+  --slate-700: #334155;
+  --slate-200: #e2e8f0;
+  --slate-100: #f1f5f9;
+  --amber-600: #d97706;
+  --amber-500: #f59e0b;
+  --amber-700: #b45309;
+  --danger-600: #dc2626;
+  --danger-700: #b91c1c;
+  --btn-radius: 5px;
+  --btn-height: 28px;
+}
+
+.x-btn {
+  border-radius: var(--btn-radius) !important;
+  overflow: hidden;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.x-btn-tl, .x-btn-tr, .x-btn-tc,
+.x-btn-ml, .x-btn-mr, .x-btn-mc,
+.x-btn-bl, .x-btn-br, .x-btn-bc {
+  background-image: none !important;
+}
+.x-btn-mc {
+  height: var(--btn-height) !important;
+  padding: 0 12px !important;
+  vertical-align: middle !important;
+}
+.x-btn button {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  line-height: var(--btn-height) !important;
+}
+
+/* Default / Sekunder (Industrial Slate Outline) */
+.x-btn-noicon .x-btn-mc,
+.x-btn-text-icon .x-btn-mc,
+.btn-slate .x-btn-mc {
+  background-color: var(--slate-100) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: var(--btn-radius) !important;
+}
+.x-btn button, .btn-slate button { color: var(--slate-800) !important; }
+.x-btn-over .x-btn-mc, .btn-slate.x-btn-over .x-btn-mc {
+  background-color: var(--slate-200) !important;
+  border-color: var(--slate-700) !important;
+}
+
+/* Primary / Simpan / Submit (Steel Amber) */
+.btn-primary .x-btn-mc, .btn-amber .x-btn-mc {
+  background-color: var(--amber-500) !important;
+  border: 1px solid var(--amber-600) !important;
+  border-radius: var(--btn-radius) !important;
+}
+.btn-primary button, .btn-amber button { color: #ffffff !important; }
+.btn-primary.x-btn-over .x-btn-mc, .btn-amber.x-btn-over .x-btn-mc {
+  background-color: var(--amber-600) !important;
+  border-color: var(--amber-700) !important;
+}
+
+/* Dark / Cetak / Export (Industrial Slate Solid) */
+.btn-dark .x-btn-mc {
+  background-color: var(--slate-800) !important;
+  border: 1px solid var(--slate-900) !important;
+  border-radius: var(--btn-radius) !important;
+}
+.btn-dark button { color: #f8fafc !important; }
+.btn-dark.x-btn-over .x-btn-mc { background-color: var(--slate-700) !important; }
+
+/* Danger / Hapus / Batal */
+.btn-danger .x-btn-mc {
+  background-color: var(--danger-600) !important;
+  border: 1px solid var(--danger-700) !important;
+  border-radius: var(--btn-radius) !important;
+}
+.btn-danger button { color: #ffffff !important; }
+.btn-danger.x-btn-over .x-btn-mc { background-color: var(--danger-700) !important; }
+
+/* Kompatibilitas Tombol HTML / Non-ExtJS */
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: var(--btn-radius);
+  border: 1px solid #cbd5e1;
+  background-color: var(--slate-100);
+  color: var(--slate-800);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.app-btn:hover { background-color: var(--slate-200); }
+.app-btn-primary { background-color: var(--amber-500); border-color: var(--amber-600); color: #fff; }
+.app-btn-primary:hover { background-color: var(--amber-600); }
+.app-btn-dark { background-color: var(--slate-800); border-color: var(--slate-900); color: #f8fafc; }
+.app-btn-danger { background-color: var(--danger-600); border-color: var(--danger-700); color: #fff; }
+
+
+/* ==========================================================================
+   UNIFIED BUTTON SYSTEM (SSOT) — SERAGAM BENTUK & WARNA DI SEMUA THEME
+   ========================================================================== */
+.x-btn {
+  border-radius: 5px !important;
+  overflow: hidden;
+}
+.x-btn-tl, .x-btn-tr, .x-btn-tc,
+.x-btn-ml, .x-btn-mr, .x-btn-mc,
+.x-btn-bl, .x-btn-br, .x-btn-bc {
+  background-image: none !important;
+}
+.x-btn-mc {
+  height: 28px !important;
+  padding: 0 12px !important;
+  background-color: var(--bg-panel) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 5px !important;
+}
+.x-btn button {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 28px !important;
+  color: var(--text-main) !important;
+}
+.x-btn-over .x-btn-mc {
+  background-color: var(--grid-header-bg) !important;
+}
+
+/* Primary / Simpan / Submit */
+.btn-primary .x-btn-mc, .btn-amber .x-btn-mc {
+  background-color: var(--primary) !important;
+  border-color: var(--primary-hover) !important;
+}
+.btn-primary button, .btn-amber button {
+  color: #FFFFFF !important;
+}
+.btn-primary.x-btn-over .x-btn-mc, .btn-amber.x-btn-over .x-btn-mc {
+  background-color: var(--primary-hover) !important;
+}
+
+/* Dark / Cetak / Export */
+.btn-dark .x-btn-mc {
+  background-color: var(--header-bg) !important;
+  border-color: var(--border-color) !important;
+}
+.btn-dark button {
+  color: var(--header-text) !important;
+}
+
+/* Danger / Hapus / Batal */
+.btn-danger .x-btn-mc {
+  background-color: #DC2626 !important;
+  border-color: #B91C1C !important;
+}
+.btn-danger button {
+  color: #FFFFFF !important;
+}
+.btn-danger.x-btn-over .x-btn-mc {
+  background-color: #B91C1C !important;
+}
+
+
+/* SAGE LIGHT SURFACE OVERRIDE (NO PLAIN WHITE) */
+html[data-theme="light"] .bg-white,
+html[data-theme="light"] .bg-slate-50,
+html[data-theme="light"] .bg-gray-50,
+html[data-theme="light"] .dashboard-card,
+html[data-theme="light"] .card,
+html[data-theme="light"] .x-panel-body,
+html[data-theme="light"] .x-grid3,
+html[data-theme="light"] .x-window-mc,
+html[data-theme="light"] .x-tab-panel-body {
+  background-color: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+}
+
+html[data-theme="light"] .x-grid3-row {
+  background-color: var(--grid-row-bg) !important;
+}
+html[data-theme="light"] .x-grid3-row-alt {
+  background-color: var(--grid-row-alt) !important;
+}
+html[data-theme="light"] .x-grid3-row-selected {
+  background-color: var(--grid-selected-bg) !important;
+}
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  color: var(--grid-selected-text) !important;
 }

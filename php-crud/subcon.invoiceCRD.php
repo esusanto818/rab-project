@@ -368,24 +368,41 @@ try {
          * ------------------------------------------------------------------ */
         case 'approve_invoice':
             $id = (int)($_POST['id'] ?? 0);
-            
+
             $db->beginTransaction();
             try {
-                $stmt = $db->prepare("SELECT * FROM subcon_invoices WHERE id = :id FOR UPDATE");
+                $stmt = $db->prepare("SELECT inv.*, p.retention_amount FROM subcon_invoices inv LEFT JOIN subcon_progress p ON p.id = inv.progress_id WHERE inv.id = :id FOR UPDATE");
                 $stmt->execute([':id' => $id]);
                 $inv = $stmt->fetch(PDO::FETCH_ASSOC);
                 if (!$inv) throw new ScInvError('Invoice tidak ditemukan.');
                 if ($inv['status'] !== 'Diajukan') throw new ScInvError('Hanya invoice Diajukan yang bisa disetujui.');
-                
+
                 $db->prepare("UPDATE subcon_invoices SET status = 'Disetujui', approved_by = :uid, approved_at = NOW()
                     WHERE id = :id")->execute([':uid' => sc_inv_uid(), ':id' => $id]);
-                
+
                 $date = $inv['invoice_date'];
+                $totalAmt = (float)$inv['total_amount'];
+                $retAmt = (float)($inv['retention_amount'] ?? 0);
+
+                // Cek apakah akun retensi subkon terdaftar di fiscal_config
+                $stRet = $db->query("SELECT id FROM public.fiscal_config WHERE rule_code = 'SUBCON_RETENTION_LIAB' AND is_active LIMIT 1");
+                $hasRetRule = (bool)$stRet->fetchColumn();
+
+                $netAmt = $totalAmt;
+                if ($hasRetRule && $retAmt > SC_INV_EPS) {
+                    $netAmt = round($totalAmt - $retAmt, 2);
+                    if ($netAmt < 0) $netAmt = 0.0;
+                }
+
                 $desc = "Invoice subkon {$inv['invoice_no']}";
-                sc_inv_post($db, 'SUBCON_INVOICE', SC_INV_REF, $id, $date, (float)$inv['total_amount'], $desc);
-                
+                sc_inv_post($db, 'SUBCON_INVOICE', SC_INV_REF, $id, $date, $netAmt, $desc);
+
+                if ($hasRetRule && $retAmt > SC_INV_EPS) {
+                    sc_inv_post($db, 'SUBCON_RETENTION_LIAB', SC_INV_REF, $id, $date, $retAmt, "Hutang retensi subkon {$inv['invoice_no']}");
+                }
+
                 $db->commit();
-                sc_inv_send(true, [], 'Invoice disetujui & dijurnal.');
+                sc_inv_send(true, [], 'Invoice disetujui & dijurnal (pemisahan retensi subkon aktif).');
             } catch (Throwable $e) {
                 if ($db->inTransaction()) $db->rollBack();
                 throw $e;

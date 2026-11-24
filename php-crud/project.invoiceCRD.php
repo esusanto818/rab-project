@@ -88,13 +88,32 @@ function ti_has_journal($db, int $invId): bool {
     return (bool)$st->fetchColumn();
 }
 
-/** Jurnal penagihan: DPP ke pendapatan + PPN ke PPN Keluaran (bila ada). */
-function ti_post_journal($db, int $invId, string $invNo, string $date, float $dpp, float $ppn, string $projectName): void {
+/** Jurnal penagihan: DPP ke pendapatan + PPN ke PPN Keluaran (bila ada) + Retensi (bila diatur di fiscal_config). */
+function ti_post_journal($db, int $invId, string $invNo, string $date, float $dpp, float $ppn, string $projectName, float $retentionAmount = 0.0): void {
+    // Cek apakah akun retensi khusus terdaftar di fiscal_config
+    $stRet = $db->query("SELECT id FROM public.fiscal_config WHERE rule_code = 'PROJECT_RETENTION' AND is_active LIMIT 1");
+    $hasRetentionRule = (bool)$stRet->fetchColumn();
+
+    $netDpp = $dpp;
+    if ($hasRetentionRule && $retentionAmount > TI_EPS) {
+        $netDpp = round($dpp - $retentionAmount, 2);
+        if ($netDpp < 0) $netDpp = 0.0;
+    }
+
     $jr = AutoPostJournal($db, [
         'rule_code' => 'PROJECT_INVOICE', 'reference_type' => TI_JOURNAL_REF, 'reference_id' => $invId,
-        'journal_date' => $date, 'amount' => $dpp, 'description' => "Tagihan termin {$invNo} - {$projectName}",
+        'journal_date' => $date, 'amount' => $netDpp, 'description' => "Tagihan termin {$invNo} - {$projectName}",
     ]);
     if (!$jr['success']) throw new TiError('Gagal posting jurnal penagihan: ' . $jr['message']);
+
+    if ($hasRetentionRule && $retentionAmount > TI_EPS) {
+        $jrRet = AutoPostJournal($db, [
+            'rule_code' => 'PROJECT_RETENTION', 'reference_type' => TI_JOURNAL_REF, 'reference_id' => $invId,
+            'journal_date' => $date, 'amount' => $retentionAmount, 'description' => "Retensi ditahan termin {$invNo} - {$projectName}",
+        ]);
+        if (!$jrRet['success']) throw new TiError('Gagal posting jurnal retensi proyek: ' . $jrRet['message']);
+    }
+
     if ($ppn > TI_EPS) {
         $jr = AutoPostJournal($db, [
             'rule_code' => TI_PPN_RULE, 'reference_type' => TI_JOURNAL_REF, 'reference_id' => $invId,
