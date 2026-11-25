@@ -32,6 +32,8 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 tailwind.config = { corePlugins: { preflight: false } };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="../css/theme-sync.css?v=<?=$favVer?>">
+<script src="../js/theme-sync.js?v=<?=$favVer?>"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'dark');</script>
 <style>
@@ -72,11 +74,11 @@ tailwind.config = { corePlugins: { preflight: false } };
 }
 
 html, body {
-  background-color: var(--bg-deep) !important;
-  color: var(--text-main) !important;
-  font-family: 'Inter', sans-serif !important;
-  overflow-x: hidden !important;
-  max-width: 100vw !important;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+  max-width: 100vw;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 body.dashboard-scope { background-color: var(--bg-deep) !important; }
@@ -592,40 +594,13 @@ let globalTaxRates = [];
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
-/*
-function updateThemeUI(theme) {
-  const icon = document.getElementById('theme_icon');
-  const lbl = document.getElementById('theme_lbl');
-  if (!icon || !lbl) return;
-  if (theme === 'light') { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
-  else { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
-}
-*/
 
 function updateThemeUI(theme) {
-  const icon = document.getElementById('theme_icon');
-  const lbl = document.getElementById('theme_lbl');
-  if (!icon || !lbl) return;
-  // Label = state TUJUAN (bukan state saat ini)
-  if (theme === 'light') { 
-    icon.textContent = '🌙';   // klik untuk ke dark
-    lbl.textContent = 'Dark'; 
-  } else { 
-    icon.textContent = '☀️';   // klik untuk ke light
-    lbl.textContent = 'Light'; 
-  }
+  window.RabThemeSync.updateUI(theme);
 }
-
-
-
 
 function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('app_theme', next);
-  updateThemeUI(next);
-  rethemeCharts();
+  window.RabThemeSync.cycleTheme();
 }
 function rethemeCharts() {
   const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
@@ -657,7 +632,7 @@ updateThemeUI(document.documentElement.getAttribute('data-theme') || 'dark');
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 async function apiFetch(url, opts = {}) {
 const res = await fetch(url, opts);
 if (res.status === 401) { alert('Sesi berakhir. Silakan login kembali.'); location.href = 'login.php'; throw new Error('401'); }
@@ -861,312 +836,320 @@ const json = await apiFetch(`${API_ENDPOINT}?action=read_project_profitability&p
 if (!json.success) { tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">${esc(json.message || 'Error memuat data')}</td></tr>`; return; }
 if (json.data.length > 0) {
 tbody.innerHTML = json.data.map(p => {
-const hasMargin = p.margin_pct !== null && p.margin_pct !== undefined;
-const margin = hasMargin ? parseFloat(p.margin_pct) : 0;
-let mColor = cssVar('--text-sub');
-if (hasMargin) {
-if (margin < 10) mColor = cssVar('--text-sub');
-else if (margin < 20) mColor = cssVar('--text-main');
-else mColor = cssVar('--accent');
-}
-const cPct = parseFloat(p.cost_pct) || 0;
-let cColor = cssVar('--text-main');
-if (cPct > 100) cColor = cssVar('--text-sub');
-else if (cPct > 85) cColor = cssVar('--text-main');
-const detail = `Material ${fmtRp(p.cost_material)} | Pengeluaran ${fmtRp(p.cost_expense)} | Subkon ${fmtRp(p.cost_subcon)}`;
-return `<tr class="hover:bg-[var(--hover-bg)]"><td class="py-2 font-sans text-xs" style="color: var(--text-main);">${esc(p.name)}</td>
-<td class="py-2 text-right" style="color: var(--accent);">${p.progress}%</td>
-<td class="py-2 text-right" style="color: var(--text-main);">${fmtRp(p.contract_dpp)}</td>
-<td class="py-2 text-right" style="color: var(--text-main);">${fmtRp(p.billed_dpp)}</td>
-<td class="py-2 text-right" style="color: var(--text-main);" title="${esc(detail)}">${fmtRp(p.cost_total)}</td>
-<td class="py-2 text-right" style="color:${cColor};">${cPct.toFixed(1)}%</td>
-<td class="py-2 text-right font-bold" style="color:${mColor};">${hasMargin ? margin.toFixed(1) + '%' : '-'}</td></tr>`;
+const marginPct = (p.margin / p.contract_value) * 100;
+const marginColor = marginPct >= 10 ? cssVar('--accent') : (marginPct >= 5 ? cssVar('--text-main') : cssVar('--text-sub'));
+return `
+<tr class="hover:bg-[var(--hover-bg)] transition">
+<td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(p.project_name)}</td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.progress_pct)}%</td>
+<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.contract_value)}</td>
+<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.invoiced_value)}</td>
+<td class="py-2.5 text-right font-semibold" style="color: var(--text-main);">${formatNum(p.actual_cost)}</td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.cost_per_contract)}%</td>
+<td class="py-2.5 text-right font-bold" style="color:${marginColor};">${formatNum(marginPct)}%</td>
+</tr>`;
 }).join('');
-} else { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Tidak ada data profitabilitas.</td></tr>'; }
-} catch (err) { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data</td></tr>'; }
 }
-const HEALTH_STYLE = {
-KRITIS:  { badge: 'badge-kritis', icon: '🔴', label: 'KRITIS', num: cssVar('--text-sub'), bar: cssVar('--text-sub') },
-WASPADA: { badge: 'badge-waspada', icon: '🟡', label: 'WASPADA', num: cssVar('--text-main'), bar: cssVar('--text-main') },
-NORMAL:  { badge: 'badge-normal', icon: '🟢', label: 'NORMAL', num: cssVar('--accent'), bar: cssVar('--accent') },
-NA:      { badge: 'badge-normal', icon: '⚪', label: 'BUDGET KOSONG', num: cssVar('--accent-2'), bar: cssVar('--accent-2') }
-};
-const HEALTH_ICONS = ['🏗️', '🏢', '🏘️', '🏭', '🏠'];
-const RISK_STYLE = {
-HIGH:   { badge: 'badge-kritis', text: cssVar('--text-sub') },
-MEDIUM: { badge: 'badge-waspada', text: cssVar('--text-main') },
-LOW:    { badge: 'badge-normal', text: cssVar('--accent') }
-};
-let healthSelectedId = 0, aiRequestToken = 0;
-const LEVEL_RANK = { NA: 0, NORMAL: 0, WASPADA: 1, KRITIS: 2 };
-function applyAiRiskToCard(id, aiRisk) {
-const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
-if (!card) return;
-const target = (aiRisk === 'HIGH' || aiRisk === 'CRITICAL') ? 'KRITIS' : (aiRisk === 'MEDIUM' ? 'WASPADA' : null);
-const cur = card.getAttribute('data-level') || 'NORMAL';
-if (!target || LEVEL_RANK[target] <= (LEVEL_RANK[cur] || 0)) return;
-const st = HEALTH_STYLE[target], badge = card.querySelector('.health-badge');
-badge.className = `health-badge px-2 py-0.5 text-[11px] font-bold border rounded-md whitespace-nowrap ${st.badge}`;
-badge.innerHTML = `${st.icon} ${st.label} • AI`;
-card.querySelectorAll('.health-num').forEach(el => { el.style.color = st.num; });
-card.setAttribute('data-level', target);
-}
-function selectHealthProject(id, refresh) {
-healthSelectedId = id;
-document.querySelectorAll('#health_cards [data-pid]').forEach(el => {
-const on = parseInt(el.getAttribute('data-pid'), 10) === id;
-el.style.borderColor = on ? 'var(--accent)' : 'var(--border-soft)';
-el.style.borderWidth = on ? '2px' : '1px';
-});
-loadProjectAI(id, !!refresh);
-}
-async function loadProjectAI(id, refresh) {
-const box = document.getElementById('health_reco');
-const token = ++aiRequestToken;
-const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
-const pname = card ? card.getAttribute('data-name') : '';
-box.innerHTML = `<div class="border rounded-lg p-4 text-sm animate-pulse" style="background-color: var(--bg-inner); border-color: var(--border-strong); color: var(--text-main);">🧠 AI sedang menganalisis <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
-if (token !== aiRequestToken) return;
-if (!json.success) { box.innerHTML = `<div class="border rounded-lg p-3 text-sm" style="background-color: var(--bg-inner); border-color: var(--border-strong); color: var(--text-sub);">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
-const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
-const li = (arr) => arr.map(t => `<li>${esc(t)}</li>`).join('');
-const findings = (d.findings || []).map(f => `
-<div class="border-l-4 rounded px-2 py-1 mb-1" style="background-color: var(--bg-inner); border-left-color: var(--accent); border-bottom: 1px solid var(--grid-color);">
-<div class="text-xs font-bold" style="color: var(--text-main);">${esc(f.title)}</div><div class="text-[11px] opacity-80" style="color: var(--text-sub);">${esc(f.evidence)}</div></div>`).join('');
-box.innerHTML = `
-<div class="border rounded-lg p-4 max-h-96 overflow-y-auto no-scrollbar" style="background-color: var(--bg-inner); border-color: var(--border-strong);">
-<div class="flex flex-wrap items-center gap-2 mb-2">
-<span class="font-bold text-base" style="color: var(--accent);">🧠 AI Recommendation</span>
-<span class="px-2 py-0.5 text-[11px] font-bold border rounded-md ${rs.badge}">RISK: ${esc(d.risk)}</span>
-<span class="px-2 py-0.5 text-[10px] border rounded-md" style="border-color: var(--accent-2); color: var(--accent-2);">${d.ai_used ? 'Gemini' : 'Analisis sistem'}${d.cached ? ' • cache' : ''}</span>
-<span class="text-[11px] ml-auto" style="color: var(--text-sub);">${esc(d.generated_at || '')}${d.log_id ? ' • log #' + d.log_id : ''}</span>
-<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded cursor-pointer border-0 btn-accent">Analisis Ulang</button>
-</div>
-<div class="italic text-base mb-2" style="color: var(--text-main);"><b>${esc(d.project_name)}:</b> ${esc(d.headline)}</div>
-<div class="text-sm mb-2 leading-relaxed" style="color: var(--text-main);">${esc(d.summary)}</div>
-${d.actions.length ? `<div class="text-xs font-bold mt-2 mb-1" style="color: var(--accent);">Tindakan yang disarankan</div><ul class="list-disc pl-5 text-sm space-y-1" style="color: var(--text-main);">${li(d.actions)}</ul>` : ''}
-${d.questions && d.questions.length ? `<div class="text-xs font-bold mt-3 mb-1" style="color: var(--text-main);">Perlu dikonfirmasi</div><ul class="list-disc pl-5 text-sm space-y-1" style="color: var(--text-main);">${li(d.questions)}</ul>` : ''}
-${findings ? `<div class="text-xs font-bold mt-3 mb-1" style="color: var(--text-sub);">Temuan sistem (${d.findings.length})</div>${findings}` : ''}
-${d.ai_note ? `<div class="text-[11px] mt-2" style="color: var(--text-main);">${esc(d.ai_note)}</div>` : ''}
-</div>`;
-box.querySelector('.aiRefresh').onclick = () => loadProjectAI(id, true);
-applyAiRiskToCard(id, d.risk);
-} catch (err) { if (token === aiRequestToken) box.innerHTML = '<div class="border rounded-lg p-3 text-sm" style="background-color: var(--bg-inner); border-color: var(--border-strong); color: var(--text-sub);">Error memuat rekomendasi AI</div>'; }
+} catch (err) { console.error('Error load profitability:', err); tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data profitabilitas</td></tr>'; }
 }
 async function loadProjectHealth() {
-const box = document.getElementById('health_cards'), reco = document.getElementById('health_reco');
+const cards = document.getElementById('health_cards');
+const reco = document.getElementById('health_reco');
 try {
 const json = await apiFetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
-if (!json.success) { box.innerHTML = `<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat kesehatan proyek')}</div>`; reco.innerHTML = ''; return; }
-if (!json.data.length) { box.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada proyek berstatus Berjalan.</div>'; reco.innerHTML = ''; return; }
-const t = json.thresholds || { warn: 10, crit: 25 };
-document.getElementById('health_legend').innerText = `Klik kartu untuk analisis AI | Status = gap biaya (WASPADA >= ${t.warn}, KRITIS >= ${t.crit}), indeks biaya CPI (<${t.cpi_yellow} / <${t.cpi_red}), jadwal, dan hasil AI terakhir`;
-box.innerHTML = json.data.map((p, i) => {
-const st = HEALTH_STYLE[p.level] || HEALTH_STYLE.NA;
-const hasUsage = p.usage_pct !== null && p.usage_pct !== undefined;
-const gap = (p.gap === null || p.gap === undefined) ? null : Math.round(p.gap);
-const gapTxt = gap === null ? '-' : (gap > 0 ? '+' + gap : String(gap));
-const detail = `Budget ${fmtRp(p.budget)} | Biaya ${fmtRp(p.cost_total)} (Material ${fmtRp(p.cost_material)}, Pengeluaran ${fmtRp(p.cost_expense)}, Subkon ${fmtRp(p.cost_subcon)})` +
-(p.cpi !== null && p.cpi !== undefined ? ` | CPI ${p.cpi}` : '') + (p.elapsed_pct !== null ? ` | Waktu terpakai ${p.elapsed_pct}%` : '') +
-(p.late_days ? ` | Lewat jadwal ${p.late_days} hari` : '') + (p.ai_risk ? ` | AI terakhir: ${p.ai_risk} (${p.ai_at})` : '') +
-(p.reasons && p.reasons.length ? ` | Alasan status: ${p.reasons.join('; ')}` : '');
-const w1 = Math.max(0, Math.min(100, p.progress)), w2 = hasUsage ? Math.max(0, Math.min(100, p.usage_pct)) : 0;
+if (!json.success) {
+cards.innerHTML = `<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data kesehatan proyek')}</div>`;
+reco.innerHTML = '';
+return;
+}
+if (json.data.length > 0) {
+cards.innerHTML = json.data.map(p => {
+const healthColor = p.health_score >= 70 ? cssVar('--accent') : (p.health_score >= 40 ? cssVar('--text-main') : cssVar('--text-sub'));
+        const healthText = p.health_score >= 70 ? 'Sehat' : (p.health_score >= 40 ? 'Waspada' : 'Kritis');
 return `
-<div class="border rounded-xl p-3 cursor-pointer transition" data-pid="${p.id}" data-name="${esc(p.name)}" data-level="${p.level}" title="${esc(detail)}" style="background-color: var(--bg-inner); border-color: var(--border-soft);" onmouseover="this.style.borderColor='var(--accent)';" onmouseout="this.style.borderColor='var(--border-soft)';">
-<div class="flex justify-between items-start gap-2">
-<div class="font-bold text-base leading-tight" style="color: var(--text-main);">${HEALTH_ICONS[i % HEALTH_ICONS.length]} ${esc(p.name)}</div>
-<span class="health-badge px-2 py-0.5 text-[11px] font-bold border rounded-md whitespace-nowrap ${st.badge}">${st.icon} ${st.label}${p.ai_risk && p.level !== 'NORMAL' ? ' • AI' : ''}</span>
-</div>
-<div class="flex flex-wrap gap-x-4 text-sm mt-2" style="color: var(--text-sub);">
-<span>Progres: <b style="color: var(--text-main);">${p.progress}%</b></span>
-<span>Pemakaian: <b class="health-num" style="color:${st.num};">${hasUsage ? Number(p.usage_pct).toFixed(0) + '%' : '-'}</b></span>
-<span>Gap: <b class="health-num" style="color:${st.num};">${gapTxt}</b></span>
-</div>
-<div class="mt-2 space-y-1">
-<div class="h-1.5 rounded" style="background-color: var(--bg-deep);"><div class="h-1.5 rounded" style="width:${w1}%; background-color: var(--accent);"></div></div>
-<div class="h-1.5 rounded" style="background-color: var(--bg-deep);"><div class="h-1.5 rounded" style="width:${w2}%; background-color:${st.bar};"></div></div>
-</div>
+<div class="kpi-card" style="border-left: 4px solid ${healthColor}; cursor: pointer;" onclick="showHealthDetail(${p.project_id})">
+<div class="text-base uppercase font-bold tracking-wider" style="color: var(--text-sub);">${esc(p.project_name)}</div>
+<div class="text-xl font-bold font-mono mt-2" style="color:${healthColor};">${p.health_score}%</div>
+<div class="text-[10px] mt-1" style="color: var(--text-sub);">${healthText} - ${esc(p.health_status)}</div>
 </div>`;
 }).join('');
-box.querySelectorAll('[data-pid]').forEach(el => { el.onclick = () => selectHealthProject(parseInt(el.getAttribute('data-pid'), 10), false); });
-const ids = json.data.map(p => p.id);
-const pick = ids.includes(healthSelectedId) ? healthSelectedId : (ids.includes(parseInt(currentProjectId, 10)) ? parseInt(currentProjectId, 10) : ids[0]);
-selectHealthProject(pick, false);
-} catch (err) { console.error('Error load project health:', err); box.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Error memuat kesehatan proyek</div>'; }
+reco.innerHTML = json.recommendations ? `<div class="dash-card p-4 mt-4">
+<h3 class="text-base font-bold uppercase tracking-wider font-rajdhani mb-2" style="color: var(--accent);">Rekomendasi AI</h3>
+<div class="text-sm" style="color: var(--text-main);">${esc(json.recommendations)}</div>
+</div>` : '';
+} else {
+cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada data kesehatan proyek.</div>';
+reco.innerHTML = '';
 }
-async function loadExtra() {
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_extra&project_id=${currentProjectId}`);
-if (!json.success) return;
-const d = json.data;
-document.getElementById('extra_cash').innerText = d.cash === null ? '-' : fmtRp(d.cash);
-const ppnEl = document.getElementById('extra_ppn');
-if (d.ppn) {
-document.getElementById('extra_ppn_period').innerText = `(${d.ppn.periode})`;
-ppnEl.innerText = fmtRp(Math.abs(d.ppn.net));
-ppnEl.className = 'text-xl font-bold font-mono mt-2';
-ppnEl.style.color = d.ppn.net > 0 ? 'var(--text-main)' : 'var(--accent)';
-document.getElementById('extra_ppn_sub').innerText = `${d.ppn.net > 0 ? 'KURANG BAYAR' : (d.ppn.net < 0 ? 'LEBIH BAYAR' : 'NIHIL')} | Keluaran ${fmtRp(d.ppn.keluaran)} - Masukan ${fmtRp(d.ppn.masukan)}`;
-}
-const card = document.getElementById('extra_subcon_card');
-if (d.subcon) {
-card.style.display = '';
-document.getElementById('extra_subcon').innerText = fmtRp(d.subcon.sisa_hutang);
-document.getElementById('extra_subcon_sub').innerText = `${d.subcon.spk_aktif} SPK aktif | Nilai ${fmtRp(d.subcon.nilai_spk)} | Tertagih ${fmtRp(d.subcon.tertagih)} | sisa hutang prestasi`;
-} else { card.style.display = 'none'; }
-} catch (err) { console.error('Error load extra:', err); }
+} catch (err) { console.error('Error load project health:', err); cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Error memuat data kesehatan proyek</div>'; reco.innerHTML = ''; }
 }
 async function loadTaxRates() {
+const tbody = document.getElementById('tax_rate_tbody');
 const badge = document.getElementById('kmk_badge');
-const validDateEl = document.getElementById('kmk_valid_date');
+const dateSpan = document.getElementById('kmk_valid_date');
 try {
 const json = await apiFetch(`${API_ENDPOINT}?action=read_tax_rates`);
-if (json.success) {
-badge.innerText = json.kmk_number !== '-' ? `KMK: ${json.kmk_number}` : 'Kosong';
-if (json.start_date && json.end_date) validDateEl.innerText = `(${json.start_date} s/d ${json.end_date})`;
-else if (json.valid_date) validDateEl.innerText = `(${json.valid_date})`;
-else validDateEl.innerText = '';
-globalTaxRates = json.rates || [];
-filterTaxRates();
+if (!json.success) {
+tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data kurs pajak')}</td></tr>`;
+badge.textContent = 'Error';
+badge.style.backgroundColor = cssVar('--error-color');
+return;
 }
-} catch (err) { document.getElementById('tax_rate_tbody').innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Gagal memuat kurs pajak</td></tr>'; }
+if (json.data.length > 0) {
+globalTaxRates = json.data;
+renderTaxRates();
+badge.textContent = 'Valid';
+badge.style.backgroundColor = cssVar('--success-color');
+dateSpan.textContent = `Per ${json.valid_date}`;
+} else {
+tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data kurs pajak</td></tr>';
+badge.textContent = 'Kosong';
+badge.style.backgroundColor = cssVar('--warning-color');
 }
-function filterTaxRates() {
-const query = (document.getElementById('search_tax_currency').value || '').trim().toLowerCase();
-const filtered = globalTaxRates.filter(r => (r.currency_code && r.currency_code.toLowerCase().includes(query)) || (r.currency_name && r.currency_name.toLowerCase().includes(query)));
-renderTaxRates(filtered);
+} catch (err) { console.error('Error load tax rates:', err); tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Error memuat data kurs pajak</td></tr>'; badge.textContent = 'Error'; badge.style.backgroundColor = cssVar('--error-color'); }
 }
-function renderTaxRates(rates) {
+function renderTaxRates() {
 const tbody = document.getElementById('tax_rate_tbody');
-if (!rates || rates.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Mata uang tidak ditemukan.</td></tr>'; return; }
-tbody.innerHTML = rates.map(r => {
-const dirColor = r.change_direction === 'UP' ? 'var(--accent)' : (r.change_direction === 'DOWN' ? 'var(--text-sub)' : 'var(--accent-2)');
-const prefix = r.change_direction === 'UP' ? '+' : (r.change_direction === 'DOWN' ? '-' : '');
-return `<tr class="hover:bg-[var(--hover-bg)]"><td class="p-1.5 font-bold" style="color: var(--text-main);">${r.currency_code}</td>
-<td class="p-1.5 text-right" style="color: var(--text-main);">${formatIDR(r.rate)}</td>
-<td class="p-1.5 text-center" style="color:${dirColor};">${prefix}${formatNum(r.change_amount)}</td></tr>`;
-}).join('');
-}
-async function syncTaxRates() {
-const btn = document.getElementById('btn_sync_tax');
-btn.disabled = true; btn.innerText = 'Syncing...';
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, { method: 'POST' });
-alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
-await loadTaxRates();
-} catch (err) { alert('Gagal menghubungi server sync kurs'); }
-finally { btn.disabled = false; btn.innerText = 'Update Kurs'; }
-}
-async function loadFinancialPerformance() {
-const year = document.getElementById('fin_year_select').value;
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
-if (!json.success) { renderFinChart(['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'], [], []); setFinMessage(json.message || 'Gagal memuat performa keuangan.', true); return; }
-if (json.available_years) fillYearSelect(json.available_years, json.year);
-renderFinChart(json.labels, json.datasets.pendapatan, json.datasets.pengeluaran);
-const total = [...json.datasets.pendapatan, ...json.datasets.pengeluaran].reduce((a, b) => a + (Number(b) || 0), 0);
-setFinMessage(total === 0 ? `Belum ada transaksi pendapatan/pengeluaran pada ${json.year}` : '', false);
-} catch (err) { console.error('Error load financial performance:', err); setFinMessage('Gagal terhubung ke server.', true); }
-}
-function fillYearSelect(years, selected) {
-const sel = document.getElementById('fin_year_select');
-if (!years || !years.length) return;
-sel.innerHTML = years.map(y => `<option value="${y}" ${String(y) === String(selected) ? 'selected' : ''}>${y}</option>`).join('');
-}
-function setFinMessage(msg, isError) {
-const el = document.getElementById('fin_empty');
-if (!msg) { el.classList.add('hidden'); el.innerHTML = ''; return; }
-el.className = 'absolute inset-0 flex items-center justify-center text-center px-6 text-[11px] font-sans pointer-events-none';
-el.style.color = 'var(--text-sub)';
-el.textContent = msg;
-}
-function renderFinChart(labels, incData, expData) {
-const ctx = document.getElementById('finChartCanvas').getContext('2d');
-if (finChart) finChart.destroy();
-const compact = (v) => Number(v).toLocaleString('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
-const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
-finChart = new Chart(ctx, {
-type: 'bar',
-data: { labels: labels, datasets: [{ label: 'Pendapatan', data: incData, backgroundColor: cssVar('--accent') }, { label: 'Pengeluaran', data: expData, backgroundColor: cssVar('--text-sub') }] },
-options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tick, font: { size: 9 } } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${formatIDR(c.parsed.y)}` } } }, scales: { x: { ticks: { color: tick, font: { size: 8 } }, grid: { color: grid } }, y: { beginAtZero: true, ticks: { color: tick, font: { size: 8 }, callback: compact }, grid: { color: grid } } } }
-});
-}
-async function loadMaterialMonitoring() {
-const tbody = document.getElementById('material_tbody');
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
-if (json.success) {
-document.getElementById('kpi_total_budget').innerText = formatIDR(json.kpi.budget_rab);
-document.getElementById('kpi_material_out').innerText = formatIDR(json.kpi.material_out);
-document.getElementById('kpi_sisa_budget').innerText = formatIDR(json.kpi.sisa_budget);
-document.getElementById('kpi_usage_pct').innerText = `${json.kpi.persentase.toFixed(2)}%`;
-const itemMap = new Map();
-(json.items || []).forEach(item => {
-const key = (item.item_name || '').trim().toLowerCase();
-if (!itemMap.has(key)) itemMap.set(key, { item_name: item.item_name, item_code: item.item_code, unit: item.unit, budget_qty: 0, budget_value: 0, out_qty: 0, out_value: 0 });
-const target = itemMap.get(key);
-target.budget_qty += Number(item.budget_qty || 0); target.budget_value += Number(item.budget_value || 0);
-target.out_qty += Number(item.out_qty || 0); target.out_value += Number(item.out_value || 0);
-});
-const aggregatedItems = Array.from(itemMap.values()).map(item => {
-item.remaining_qty = item.budget_qty - item.out_qty;
-item.usage_pct = item.budget_value > 0 ? ((item.out_value / item.budget_value) * 100).toFixed(2) : (item.budget_qty > 0 ? ((item.out_qty / item.budget_qty) * 100).toFixed(2) : '0.00');
-const pct = Number(item.usage_pct);
-item.status = pct > 100 ? 'OVERBUDGET' : (pct >= 80 ? 'WARNING' : 'ON_TRACK');
-return item;
-});
-const statusCounts = { ON_TRACK: 0, WARNING: 0, OVERBUDGET: 0 };
-aggregatedItems.forEach(i => { if (statusCounts[i.status] !== undefined) statusCounts[i.status]++; });
-renderDoughnutChart(statusCounts);
-renderBarMaterialChart(aggregatedItems.slice(0, 5));
-document.getElementById('table_count_label').innerText = `Total Material: ${aggregatedItems.length} Item`;
-if (aggregatedItems.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data penggunaan material untuk proyek ini.</td></tr>'; return; }
-tbody.innerHTML = aggregatedItems.map(item => {
-let statusBg = 'rgba(76,175,80,0.15)';
-let statusText = '#2e7d32';
-let statusBorder = 'rgba(76,175,80,0.5)';
-if (item.status === 'WARNING') { statusBg = 'rgba(255,183,77,0.15)'; statusText = '#ef6c00'; statusBorder = 'rgba(255,183,77,0.5)'; }
-if (item.status === 'OVERBUDGET') { statusBg = 'rgba(229,115,115,0.15)'; statusText = '#c62828'; statusBorder = 'rgba(229,115,115,0.5)'; }
-return `<tr class="hover:bg-[var(--hover-bg)] transition">
-<td class="p-3 font-sans"><div class="font-bold" style="color: var(--text-main);">${item.item_name}</div><div class="text-sm" style="color: var(--accent-2);">${item.item_code || '-'}</div></td>
-<td class="p-3 text-center" style="color: var(--text-main);">${item.unit || '-'}</td>
-<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(item.budget_qty)}</td>
-<td class="p-3 text-right font-bold" style="color: var(--text-main);">${formatIDR(item.budget_value)}</td>
-<td class="p-3 text-right" style="color: var(--accent);">${formatNum(item.out_qty)}</td>
-<td class="p-3 text-right" style="color: var(--accent-2);">${formatIDR(item.out_value)}</td>
-<td class="p-3 text-right" style="color:${item.remaining_qty < 0 ? 'var(--text-sub)' : 'var(--text-main)'};">${formatNum(item.remaining_qty)}</td>
-<td class="p-3 text-center font-bold" style="color: var(--text-main);">${item.usage_pct}%</td>
-<td class="p-3 text-center"><span class="px-2 py-0.5 text-[10px] border rounded-full" style="background:${statusBg}; color:${statusText}; border-color:${statusBorder};">${item.status}</span></td>
+const search = document.getElementById('search_tax_currency').value.toLowerCase();
+const filtered = globalTaxRates.filter(r => r.currency.toLowerCase().includes(search));
+if (filtered.length > 0) {
+tbody.innerHTML = filtered.map(r => {
+const isEditable = r.is_editable === true;
+return `
+<tr class="hover:bg-[var(--hover-bg)] transition">
+<td class="p-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(r.currency)}</td>
+<td class="p-2.5 text-right font-mono" style="color: var(--text-main);">${formatNum(r.rate)}</td>
+<td class="p-2.5 text-center">${isEditable ? `<button onclick="editTaxRate('${esc(r.currency)}', ${r.rate})" class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--bg-inner); color: var(--text-main); border: 1px solid var(--border-strong);">Ubah</button>` : '<span class="text-[10px]" style="color: var(--text-sub);">Tidak bisa diubah</span>'}</td>
 </tr>`;
 }).join('');
 } else {
-console.error('Monitoring material gagal:', json.message);
-['kpi_total_budget', 'kpi_material_out', 'kpi_sisa_budget'].forEach(id => document.getElementById(id).innerText = '-');
-document.getElementById('kpi_usage_pct').innerText = '-';
-tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data monitoring material')}</td></tr>`;
+tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data yang cocok</td></tr>';
 }
-} catch (err) { console.error('Error load material monitoring:', err); tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Gagal memuat data monitoring material</td></tr>'; }
 }
-function renderDoughnutChart(counts) {
-const ctx = document.getElementById('doughnutChartCanvas').getContext('2d');
-if (doughnutChart) doughnutChart.destroy();
-doughnutChart = new Chart(ctx, {
-type: 'doughnut',
-data: { labels: ['On Track', 'Warning', 'Overbudget'], datasets: [{ data: [counts.ON_TRACK || 0, counts.WARNING || 0, counts.OVERBUDGET || 0], backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')], borderWidth: 0 }] },
-options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: cssVar('--text-sub'), font: { size: 10 } } } } }
+function filterTaxRates() {
+renderTaxRates();
+}
+async function syncTaxRates() {
+const btn = document.getElementById('btn_sync_tax');
+const badge = document.getElementById('kmk_badge');
+const dateSpan = document.getElementById('kmk_valid_date');
+try {
+btn.disabled = true;
+btn.textContent = 'Memperbarui...';
+const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ user_id: <?=$user_id?> })
 });
+if (json.success) {
+await loadTaxRates();
+} else {
+alert(json.message || 'Gagal memperbarui kurs pajak');
+badge.textContent = 'Error';
+badge.style.backgroundColor = cssVar('--error-color');
 }
-function renderBarMaterialChart(topItems) {
-const ctx = document.getElementById('barMaterialCanvas').getContext('2d');
-if (barMaterialChart) barMaterialChart.destroy();
-const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
-barMaterialChart = new Chart(ctx, {
+} catch (err) {
+console.error('Error sync tax rates:', err);
+alert('Error memperbarui kurs pajak');
+badge.textContent = 'Error';
+badge.style.backgroundColor = cssVar('--error-color');
+} finally {
+btn.disabled = false;
+btn.textContent = 'Update Kurs';
+}
+}
+function editTaxRate(currency, currentRate) {
+const newRate = prompt(`Masukkan kurs baru untuk ${currency}:`, currentRate);
+if (newRate === null) return;
+const rate = parseFloat(newRate);
+if (isNaN(rate) || rate <= 0) {
+alert('Kurs harus berupa angka positif');
+return;
+}
+updateTaxRate(currency, rate);
+}
+async function updateTaxRate(currency, rate) {
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=update_tax_rate`, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ currency, rate, user_id: <?=$user_id?> })
+});
+if (json.success) {
+alert('Kurs pajak berhasil diperbarui');
+await loadTaxRates();
+} else {
+alert(json.message || 'Gagal memperbarui kurs pajak');
+}
+} catch (err) {
+console.error('Error update tax rate:', err);
+alert('Error memperbarui kurs pajak');
+}
+}
+async function loadFinancialPerformance() {
+const canvas = document.getElementById('finChartCanvas');
+const emptyDiv = document.getElementById('fin_empty');
+const year = document.getElementById('fin_year_select').value;
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
+if (!json.success) {
+emptyDiv.textContent = json.message || 'Gagal memuat data performa keuangan';
+emptyDiv.classList.remove('hidden');
+return;
+}
+if (json.data.length > 0) {
+emptyDiv.classList.add('hidden');
+const months = json.data.map(d => d.month);
+const income = json.data.map(d => d.income);
+const expense = json.data.map(d => d.expense);
+const ctx = canvas.getContext('2d');
+if (finChart) finChart.destroy();
+finChart = new Chart(ctx, {
 type: 'bar',
-data: { labels: topItems.map(i => i.item_name.substring(0, 15) + '...'), datasets: [{ label: 'Budget Qty', data: topItems.map(i => i.budget_qty), backgroundColor: cssVar('--accent') }, { label: 'Out Qty', data: topItems.map(i => i.out_qty), backgroundColor: cssVar('--accent-2') }] },
-options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tick, font: { size: 10 } } } }, scales: { x: { ticks: { color: tick, font: { size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { size: 9 } }, grid: { color: grid } } } }
+data: {
+labels: months,
+datasets: [
+{ label: 'Pendapatan', data: income, backgroundColor: cssVar('--accent'), borderWidth: 1 },
+{ label: 'Pengeluaran', data: expense, backgroundColor: cssVar('--text-sub'), borderWidth: 1 }
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
+tooltip: { callbacks: { label: ctx => formatIDR(ctx.raw) } }
+},
+scales: {
+x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
+y: { ticks: { color: cssVar('--text-sub'), callback: v => fmtRp(v) }, grid: { color: cssVar('--grid-color') } }
+}
+}
 });
+} else {
+emptyDiv.textContent = 'Tidak ada data untuk tahun ini';
+emptyDiv.classList.remove('hidden');
+}
+} catch (err) {
+console.error('Error load financial performance:', err);
+emptyDiv.textContent = 'Error memuat data performa keuangan';
+emptyDiv.classList.remove('hidden');
+}
+}
+async function loadExtra() {
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_extra_data&project_id=${currentProjectId}`);
+if (json.success) {
+document.getElementById('extra_cash').innerText = fmtRp(json.cash_balance);
+document.getElementById('extra_ppn').innerText = fmtRp(json.ppn_balance);
+document.getElementById('extra_ppn_period').innerText = json.ppn_period;
+document.getElementById('extra_ppn_sub').innerText = json.ppn_direction;
+document.getElementById('extra_subcon').innerText = fmtRp(json.subcon_balance);
+document.getElementById('extra_subcon_sub').innerText = json.subcon_status;
+if (json.subcon_balance === 0) {
+document.getElementById('extra_subcon_card').style.display = 'none';
+}
+}
+} catch (err) { console.error('Error load extra data:', err); }
+}
+async function loadMaterialMonitoring() {
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
+if (!json.success) {
+document.getElementById('material_tbody').innerHTML = `<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data material')}</td></tr>`;
+return;
+}
+if (json.data.length > 0) {
+// Update KPI cards
+const totalBudget = json.summary.total_budget;
+const materialOut = json.summary.material_out;
+const sisaBudget = json.summary.sisa_budget;
+const usagePct = json.summary.usage_pct;
+
+document.getElementById('kpi_total_budget').innerText = fmtRp(totalBudget);
+document.getElementById('kpi_material_out').innerText = fmtRp(materialOut);
+document.getElementById('kpi_sisa_budget').innerText = fmtRp(sisaBudget);
+document.getElementById('kpi_usage_pct').innerText = `${usagePct.toFixed(2)}%`;
+
+document.getElementById('kpi_status_label').innerText = usagePct >= 90 ? 'Kritis' : (usagePct >= 70 ? 'Waspada' : 'Normal');
+document.getElementById('kpi_status_label').style.color = usagePct >= 90 ? cssVar('--text-sub') : (usagePct >= 70 ? cssVar('--text-main') : cssVar('--accent'));
+
+document.getElementById('table_count_label').innerText = `Total Material: ${json.data.length} Item`;
+
+// Render material table
+const tbody = document.getElementById('material_tbody');
+tbody.innerHTML = json.data.map(m => {
+const statusColor = m.status === 'Kritis' ? cssVar('--text-sub') : (m.status === 'Waspada' ? cssVar('--text-main') : cssVar('--accent'));
+return `
+<tr class="hover:bg-[var(--hover-bg)] transition">
+<td class="p-3 font-sans font-semibold" style="color: var(--text-main);">${esc(m.material_name)}<span class="block text-[10px] font-normal" style="color: var(--text-sub);">${esc(m.material_code)}</span></td>
+<td class="p-3 text-center" style="color: var(--text-main);">${esc(m.unit)}</td>
+<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.budget_qty)}</td>
+<td class="p-3 text-right font-medium" style="color: var(--text-main);">${fmtRp(m.total_budget)}</td>
+<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.material_out_qty)}</td>
+<td class="p-3 text-right font-semibold" style="color: var(--text-main);">${fmtRp(m.total_realisasi)}</td>
+<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.sisa_qty)}</td>
+<td class="p-3 text-center font-bold" style="color:${statusColor};">${m.usage_pct.toFixed(2)}%</td>
+<td class="p-3 text-center"><span class="badge-${m.status.toLowerCase()}" style="padding: 2px 6px; border-radius: 4px;">${m.status}</span></td>
+</tr>`;
+}).join('');
+
+// Render doughnut chart
+const doughnutCtx = document.getElementById('doughnutChartCanvas').getContext('2d');
+if (doughnutChart) doughnutChart.destroy();
+doughnutChart = new Chart(doughnutCtx, {
+type: 'doughnut',
+data: {
+labels: ['Normal', 'Waspada', 'Kritis'],
+datasets: [{
+data: [json.summary.normal_count, json.summary.waspada_count, json.summary.kritis_count],
+backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')],
+borderWidth: 1
+}]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: 'bottom', labels: { color: cssVar('--text-sub') } },
+tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} item` } }
+}
+}
+});
+
+// Render bar chart
+const barCtx = document.getElementById('barMaterialCanvas').getContext('2d');
+if (barMaterialChart) barMaterialChart.destroy();
+const topMaterials = json.data.sort((a, b) => b.usage_pct - a.usage_pct).slice(0, 10);
+barMaterialChart = new Chart(barCtx, {
+type: 'bar',
+data: {
+labels: topMaterials.map(m => m.material_name),
+datasets: [
+{ label: 'Budget Qty', data: topMaterials.map(m => m.budget_qty), backgroundColor: cssVar('--accent'), borderWidth: 1 },
+{ label: 'Material Out', data: topMaterials.map(m => m.material_out_qty), backgroundColor: cssVar('--accent-2'), borderWidth: 1 }
+]
+},
+options: {
+responsive: true,
+maintainAspectRatio: false,
+plugins: {
+legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
+tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}` } }
+},
+scales: {
+x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
+y: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } }
+}
+}
+});
+} else {
+document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data material</td></tr>';
+}
+} catch (err) {
+console.error('Error load material monitoring:', err);
+document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Error memuat data material</td></tr>';
+}
 }
 </script>
 </body>

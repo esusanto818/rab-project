@@ -1,0 +1,101 @@
+:root {
+  /* Default California Dream Theme */
+  --primary-color: #3498db;
+  --secondary-color: #2980b9;
+  --background-color: #f5f7fa;
+  --text-color: #333;
+  --header-color: #2c3e50;
+  --button-primary: #3498db;
+  --button-secondary: #95a5a6;
+  --button-danger: #e74c3c;
+  --button-dark: #34495e;
+  --border-color: #bdc3c7;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --error-color: #e74c3c;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --card-bg: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #bdc3c7;
+  --input-focus: #3498db;
+  --text-light: #ecf0f1;
+  --text-dark: #2c3e50;
+  --transition-speed: 0.3s;
+}
+
+/* Dark Warm Obsidian Theme */
+[data-theme="dark-warm-obsidian"] {
+  --primary-color: #9b59b6;
+  --secondary-color: #8e44ad;
+  --background-color: #121212;
+  --text-color: #ecf0f1;
+  --header-color: #1e1e1e;
+  --button-primary: #9b59b6;
+  --button-secondary: #7f8c8d;
+  --button-danger: #e74c3c;
+  --button-dark: #34495e;
+  --border-color: #34495e;
+  --success-color: #2ecc71;
+  --warning-color: #f1c40f;
+  --error-color: #e74c3c;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --card-bg: #1e1e1e;
+  --input-bg: #2d2d2d;
+  --input-border: #34495e;
+  --input-focus: #9b59b6;
+  --text-light: #bdc3c7;
+  --text-dark: #ecf0f1;
+}
+
+/* Light Soft Sage Theme */
+[data-theme="light-soft-sage"] {
+  --primary-color: #27ae60;
+  --secondary-color: #2ecc71;
+  --background-color: #e8f4f8;
+  --text-color: #333;
+  --header-color: #7f8c8d;
+  --button-primary: #27ae60;
+  --button-secondary: #95a5a6;
+  --button-danger: #e74c3c;
+  --button-dark: #34495e;
+  --border-color: #bdc3c7;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --error-color: #e74c3c;
+  --shadow-color: rgba(0, 0, 0, 0.05);
+  --card-bg: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #bdc3c7;
+  --input-focus: #27ae60;
+  --text-light: #ecf0f1;
+  --text-dark: #2c3e50;
+}
+
+/* Theme Transition */
+[data-theme] {
+  transition: background-color var(--transition-speed),
+              color var(--transition-speed),
+              border-color var(--transition-speed);
+}
+
+/* Theme-specific styles for bg-app and text-primary */
+[data-theme="default-california-dream"] {
+  --bg-app: #f5f7fa;
+  --text-primary: #333;
+}
+
+[data-theme="dark-warm-obsidian"] {
+  --bg-app: #121212;
+  --text-primary: #ecf0f1;
+}
+
+[data-theme="light-soft-sage"] {
+  --bg-app: #e8f4f8;
+  --text-primary: #333;
+}
+
+/* Apply to body */
+html[data-theme] body {
+  background-color: var(--bg-app) !important;
+  color: var(--text-primary) !important;
+}
