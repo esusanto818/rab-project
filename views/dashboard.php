@@ -33,7 +33,7 @@ tailwind.config = { corePlugins: { preflight: false } };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link rel="stylesheet" href="../css/theme-sync.css?v=<?=$favVer?>">
-<script src="../js/theme-sync.js?v=<?=$favVer?>"></script>
+<script src="../js/theme-sync.js?v=<?=$favVer?>""></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'dark');</script>
 <style>
@@ -81,7 +81,7 @@ html, body {
   max-width: 100vw;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
-body.dashboard-scope { background-color: var(--bg-deep) !important; }
+body.dashboard-scope { background-color: var(--bg-deep); }
 
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
@@ -90,21 +90,21 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
 /* ===== HEADER ===== */
 .dash-header {
-  background-color: var(--bg-deeper) !important;
-  border-bottom: 1px solid var(--border-strong) !important;
+  background-color: var(--bg-deeper);
+  border-bottom: 1px solid var(--border-strong);
   transition: all 0.3s ease;
 }
 
 /* ===== NAV ===== */
 .nav-item { position: relative; }
 .nav-link {
-  color: var(--text-main) !important;
-  text-decoration: none !important;   /* ← TAMBAHKAN INI */
+  color: var(--text-main);
+  text-decoration: none;
   transition: all 0.2s;
 }
 .nav-link:hover {
-  color: var(--hover-text) !important;
-  background-color: var(--hover-bg) !important;
+  color: var(--hover-text);
+  background-color: var(--hover-bg);
 }
 
 /* ===== DROPDOWN MEGA MENU ===== */
@@ -114,8 +114,8 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
   max-height: calc(100vh - 90px); overflow-y: auto;
   opacity: 0; visibility: hidden; transform: translateY(-6px);
   pointer-events: none;
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-strong) !important;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-strong);
   transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
 .dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
@@ -123,7 +123,7 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 .menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
 .menu-column h3 {
   font-size: 20px; font-weight: 500;
-  color: var(--accent) !important;
+  color: var(--accent);
   text-transform: uppercase; letter-spacing: 0.05em;
   border-bottom: 1px solid var(--accent);
   padding-bottom: 0.5rem; margin-bottom: 0.5rem;
@@ -132,13 +132,13 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 .menu-column ul li { margin-bottom: 0.25rem; }
 .menu-column ul li a {
   display: block; padding: 0.2rem 0.4rem;
-  color: var(--text-main) !important;
+  color: var(--text-main);
   text-decoration: none; font-size: 16px; font-weight: 300;
   transition: all 0.2s; border-radius: 0.25rem;
 }
 .menu-column ul li a:hover {
-  color: var(--hover-text) !important;
-  background: var(--hover-bg) !important;
+  color: var(--hover-text);
+  background: var(--hover-bg);
   transform: translateX(2px);
 }
 
@@ -146,22 +146,22 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 #hamburger_btn { display: none; }
 #mobile_dropdown {
   min-width: 220px;
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-strong) !important;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-strong);
 }
 #mobile_dropdown a {
-  color: var(--text-main) !important;
+  color: var(--text-main);
   border-bottom: 1px solid var(--border-soft);
 }
 #mobile_dropdown a:hover {
-  background-color: var(--hover-bg) !important;
-  color: var(--hover-text) !important;
+  background-color: var(--hover-bg);
+  color: var(--hover-text);
 }
 
 /* ===== CARDS / PANELS ===== */
 .dash-card {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-soft) !important;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-soft);
   border-radius: 0.75rem;
   box-shadow: 0 2px 8px var(--card-shadow);
   transition: all 0.3s ease;
@@ -169,19 +169,19 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
 /* ===== TABS ===== */
 .tab-btn {
-  background-color: var(--bg-inner) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-inner);
+  color: var(--text-main);
   font-weight: 700; font-size: 15px;
   padding: 8px 20px; border: none; border-radius: 4px;
   cursor: pointer; transition: all 0.15s;
 }
 .tab-btn:hover {
-  background-color: var(--hover-bg) !important;
-  color: var(--hover-text) !important;
+  background-color: var(--hover-bg);
+  color: var(--hover-text);
 }
 .tab-btn.active {
-  background-color: var(--accent) !important;
-  color: var(--hover-text) !important;
+  background-color: var(--accent);
+  color: var(--hover-text);
 }
 .tab-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 .tab-panel { display: none; }
@@ -189,36 +189,36 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
 /* ===== SELECT / INPUT ===== */
 .dash-select, .dash-input {
-  background-color: var(--bg-inner) !important;
-  border: 1px solid var(--border-strong) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-inner);
+  border: 1px solid var(--border-strong);
+  color: var(--text-main);
   transition: all 0.2s;
 }
 .dash-select:focus, .dash-input:focus {
-  border-color: var(--accent) !important;
+  border-color: var(--accent);
   outline: none;
 }
 
 /* ===== BUTTONS ===== */
 .btn-accent {
-  background-color: var(--accent) !important;
-  color: var(--hover-text) !important;
+  background-color: var(--accent);
+  color: var(--hover-text);
 }
-.btn-accent:hover { background-color: #1b5e20 !important; }
+.btn-accent:hover { background-color: #1b5e20; }
 .btn-ghost {
-  background-color: var(--bg-inner) !important;
-  color: var(--text-main) !important;
-  border: 1px solid var(--accent-2) !important;
+  background-color: var(--bg-inner);
+  color: var(--text-main);
+  border: 1px solid var(--accent-2);
   transition: all 0.2s;
 }
 .btn-ghost:hover {
-  background-color: var(--hover-bg) !important;
-  color: var(--hover-text) !important;
+  background-color: var(--hover-bg);
+  color: var(--hover-text);
 }
 
 /* ===== KPI CARDS ===== */
 .kpi-card {
-  background-color: var(--bg-inner) !important;
+  background-color: var(--bg-inner);
   border-radius: 0.75rem;
   padding: 1rem;
   box-shadow: 0 2px 6px var(--card-shadow);
@@ -227,31 +227,31 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 
 /* ===== TABLE ===== */
 .dash-table thead {
-  background-color: var(--bg-inner) !important;
-  color: var(--text-main) !important;
+  background-color: var(--bg-inner);
+  color: var(--text-main);
 }
 .dash-table tbody tr {
   border-bottom: 1px solid var(--grid-color);
 }
 .dash-table tbody tr:hover {
-  background-color: var(--hover-bg) !important;
+  background-color: var(--hover-bg);
 }
 
 /* ===== BADGES ===== */
 .badge-kritis {
-  background-color: rgba(229, 115, 115, 0.15) !important;
-  color: #c62828 !important;
-  border: 1px solid rgba(229, 115, 115, 0.5) !important;
+  background-color: rgba(229, 115, 115, 0.15);
+  color: #c62828;
+  border: 1px solid rgba(229, 115, 115, 0.5);
 }
 .badge-waspada {
-  background-color: rgba(255, 183, 77, 0.15) !important;
-  color: #ef6c00 !important;
-  border: 1px solid rgba(255, 183, 77, 0.5) !important;
+  background-color: rgba(255, 183, 77, 0.15);
+  color: #ef6c00;
+  border: 1px solid rgba(255, 183, 77, 0.5);
 }
 .badge-normal {
-  background-color: rgba(76, 175, 80, 0.15) !important;
-  color: var(--accent) !important;
-  border: 1px solid rgba(76, 175, 80, 0.5) !important;
+  background-color: rgba(76, 175, 80, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(76, 175, 80, 0.5);
 }
 
 /* ===== RESPONSIVE ===== */
@@ -274,8 +274,8 @@ body.dashboard-scope { background-color: var(--bg-deep) !important; }
 </style>
 </head>
 <?php $favVer = date('YmdHis'); ?>
-<link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
-<link rel="icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
+<link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>">
+<link rel="icon" href="../favicon.ico?v=<?=$favVer?>">
 <link rel="apple-touch-icon" href="../favicon.ico?v=<?=$favVer?>">
 <body class="dashboard-scope min-h-screen flex flex-col">
 <!-- HEADER -->
@@ -632,525 +632,552 @@ updateThemeUI(document.documentElement.getAttribute('data-theme') || 'dark');
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-const esc = (v) => String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));
+
 async function apiFetch(url, opts = {}) {
-const res = await fetch(url, opts);
-if (res.status === 401) { alert('Sesi berakhir. Silakan login kembali.'); location.href = 'login.php'; throw new Error('401'); }
-if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
-let json;
-try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
-if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
-return json;
+  const res = await fetch(url, opts);
+  if (res.status === 401) { alert('Sesi berakhir. Silakan login kembali.'); location.href = 'login.php'; throw new Error('401'); }
+  if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
+  let json;
+  try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
+  if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
+  return json;
 }
+
 /* MOBILE */
 function toggleMobileMenu(ev) {
-if (ev) ev.stopPropagation();
-const m = document.getElementById('mobile_dropdown');
-const b = document.getElementById('hamburger_btn');
-m.classList.toggle('hidden');
-b.setAttribute('aria-expanded', String(!m.classList.contains('hidden')));
+  if (ev) ev.stopPropagation();
+  const m = document.getElementById('mobile_dropdown');
+  const b = document.getElementById('hamburger_btn');
+  m.classList.toggle('hidden');
+  b.setAttribute('aria-expanded', String(!m.classList.contains('hidden')));
 }
 document.addEventListener('click', function (event) {
-const menu = document.getElementById('mobile_dropdown');
-const btn = document.getElementById('hamburger_btn');
-if (!menu || !btn) return;
-if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !btn.contains(event.target)) {
-menu.classList.add('hidden');
-btn.setAttribute('aria-expanded', 'false');
-}
+  const menu = document.getElementById('mobile_dropdown');
+  const btn = document.getElementById('hamburger_btn');
+  if (!menu || !btn) return;
+  if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !btn.contains(event.target)) {
+    menu.classList.add('hidden');
+    btn.setAttribute('aria-expanded', 'false');
+  }
 });
 document.querySelectorAll('#mobile_dropdown a').forEach(a => a.addEventListener('click', () => document.getElementById('mobile_dropdown').classList.add('hidden')));
 if (navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-document.body.classList.add('is-mobile-hw');
+  document.body.classList.add('is-mobile-hw');
 }
+
 /* MEGA MENU */
 function closeAllDropdowns(except) {
-document.querySelectorAll('.dropdown-menu.open').forEach(d => { if (d !== except) d.classList.remove('open'); });
+  document.querySelectorAll('.dropdown-menu.open').forEach(d => { if (d !== except) d.classList.remove('open'); });
 }
 function positionDropdown(li, dd) {
-dd.style.left = '0px';
-const rect = dd.getBoundingClientRect();
-const vw = document.documentElement.clientWidth;
-let shift = 0;
-if (rect.right > vw - 8) shift = (vw - 8) - rect.right;
-if (rect.left + shift < 8) shift = 8 - rect.left;
-dd.style.left = shift + 'px';
+  dd.style.left = '0px';
+  const rect = dd.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  let shift = 0;
+  if (rect.right > vw - 8) shift = (vw - 8) - rect.right;
+  if (rect.left + shift < 8) shift = 8 - rect.left;
+  dd.style.left = shift + 'px';
 }
 function initMegaMenu() {
-document.querySelectorAll('.nav-item').forEach(li => {
-const dd = li.querySelector('.dropdown-menu');
-if (!dd) return;
-li.addEventListener('mouseenter', () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
-li.addEventListener('mouseleave', () => dd.classList.remove('open'));
-li.addEventListener('focusin',  () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
-li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget)) dd.classList.remove('open'); });
-});
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(null); });
+  document.querySelectorAll('.nav-item').forEach(li => {
+    const dd = li.querySelector('.dropdown-menu');
+    if (!dd) return;
+    li.addEventListener('mouseenter', () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
+    li.addEventListener('mouseleave', () => dd.classList.remove('open'));
+    li.addEventListener('focusin',  () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
+    li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget)) dd.classList.remove('open'); });
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(null); });
 }
 document.addEventListener('DOMContentLoaded', () => { initDashboard(); });
+
 /* TAB ENGINE */
 const TAB_LOADERS = {
-ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
-keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
-material:  () => { loadMaterialMonitoring(); }
+  ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
+  keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
+  material:  () => { loadMaterialMonitoring(); }
 };
 const TAB_CHARTS = { keuangan: () => [finChart], material: () => [doughnutChart, barMaterialChart] };
 const tabDirty = { ringkasan: true, keuangan: true, material: true };
 let activeTab = 'ringkasan';
+
 function tabFromHash() {
-const h = (location.hash || '').replace('#', '');
-return TAB_LOADERS[h] ? h : 'ringkasan';
+  const h = (location.hash || '').replace('#', '');
+  return TAB_LOADERS[h] ? h : 'ringkasan';
 }
+
 function switchTab(name, skipHash) {
-if (!TAB_LOADERS[name]) name = 'ringkasan';
-activeTab = name;
-document.querySelectorAll('.tab-btn').forEach(b => {
-const on = b.getAttribute('data-tab') === name;
-b.classList.toggle('active', on);
-b.setAttribute('aria-selected', on ? 'true' : 'false');
-b.tabIndex = on ? 0 : -1;
-});
-document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab_' + name));
-if (!skipHash && location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
-if (tabDirty[name]) {
-tabDirty[name] = false;
-TAB_LOADERS[name]();
-} else if (TAB_CHARTS[name]) {
-TAB_CHARTS[name]().forEach(c => { if (c) c.resize(); });
+  if (!TAB_LOADERS[name]) name = 'ringkasan';
+  activeTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    const on = b.getAttribute('data-tab') === name;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.tabIndex = on ? 0 : -1;
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab_' + name));
+  if (!skipHash && location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+  if (tabDirty[name]) {
+    tabDirty[name] = false;
+    TAB_LOADERS[name]();
+  } else if (TAB_CHARTS[name]) {
+    TAB_CHARTS[name]().forEach(c => { if (c) c.resize(); });
+  }
 }
-}
+
 function refreshDashboard() {
-Object.keys(tabDirty).forEach(k => { tabDirty[k] = true; });
-switchTab(activeTab, true);
+  Object.keys(tabDirty).forEach(k => { tabDirty[k] = true; });
+  switchTab(activeTab, true);
 }
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
-btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+  btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
 });
 window.addEventListener('hashchange', () => { const t = tabFromHash(); if (t !== activeTab) switchTab(t, true); });
+
 async function initDashboard() {
-await loadProjects();
-initMegaMenu();
-switchTab(tabFromHash(), true);
+  await loadProjects();
+  initMegaMenu();
+  switchTab(tabFromHash(), true);
 }
+
 async function loadProjects() {
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
-const select = document.getElementById('project_select');
-if (json.success && json.data.length > 0) {
-select.innerHTML = '<option value="0">-- Semua Proyek --</option>' + json.data.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
-} else { select.innerHTML = '<option value="0">Tidak ada proyek</option>'; }
-} catch (err) { console.error('Error load projects:', err); }
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
+    const select = document.getElementById('project_select');
+    if (json.success && json.data.length > 0) {
+      select.innerHTML = '<option value="0">-- Semua Proyek --</option>' + json.data.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
+    } else { select.innerHTML = '<option value="0">Tidak ada proyek</option>'; }
+  } catch (err) { console.error('Error load projects:', err); }
 }
+
 function onProjectChange(val) {
-currentProjectId = parseInt(val) || 0;
-refreshDashboard();
+  currentProjectId = parseInt(val) || 0;
+  refreshDashboard();
 }
+
 /* LOADERS */
 async function loadFinancialAging() {
-const tbody = document.getElementById('aging_tbody');
-const showMsg = (msg) => { tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center font-sans" style="color: var(--text-sub);">${msg}</td></tr>`; };
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_aging&project_id=${currentProjectId}`);
-if (!json.success) { showMsg(json.message || 'Gagal memuat data aging.'); return; }
-const ar = json.ar, ap = json.ap;
-const row = (label, labelColor, d, totalColor) => `
-<tr class="hover:bg-[var(--hover-bg)] transition">
-<td class="py-2.5 font-sans font-semibold" style="color:${labelColor};">${label}<span class="block text-[9px] font-normal" style="color: var(--text-sub);">${d.count} invoice outstanding</span></td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(d.age_30)}</td>
-<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_60)}</td>
-<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_90)}</td>
-<td class="py-2.5 text-right font-semibold" style="color: var(--text-sub);">${formatNum(d.age_over_90)}</td>
-<td class="py-2.5 text-right font-bold" style="color:${totalColor};">${formatNum(d.total)}</td>
-</tr>`;
-const net = (k) => (ar[k] || 0) - (ap[k] || 0);
-tbody.innerHTML = row('Piutang (AR)', cssVar('--accent'), ar, cssVar('--accent')) + row('Hutang (AP)', cssVar('--accent-2'), ap, cssVar('--text-main')) + `
-<tr class="border-t" style="border-color: var(--border-soft);"><td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">Netto (AR - AP)</td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_30'))}</td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_60'))}</td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_90'))}</td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_over_90'))}</td>
-<td class="py-2.5 text-right font-bold" style="color: var(--text-main);">${formatNum(net('total'))}</td></tr>
-<tr><td colspan="6" class="pt-2 text-right text-[9px] font-sans" style="color: var(--text-sub);">Umur dihitung dari tanggal invoice, per ${json.as_of}</td></tr>`;
-} catch (err) { console.error('Error load financial aging:', err); showMsg('Gagal memuat data aging.'); }
+  const tbody = document.getElementById('aging_tbody');
+  const showMsg = (msg) => { tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center font-sans" style="color: var(--text-sub);">${msg}</td></tr>`; };
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_aging&project_id=${currentProjectId}`);
+    if (!json.success) { showMsg(json.message || 'Gagal memuat data aging.'); return; }
+    const ar = json.ar, ap = json.ap;
+    const row = (label, labelColor, d, totalColor) => `
+      <tr class="hover:bg-[var(--hover-bg)] transition">
+        <td class="py-2.5 font-sans font-semibold" style="color:${labelColor};">${label}<span class="block text-[9px] font-normal" style="color: var(--text-sub);">${d.count} invoice outstanding</span></td>
+        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(d.age_30)}</td>
+        <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_60)}</td>
+        <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_90)}</td>
+        <td class="py-2.5 text-right font-semibold" style="color: var(--text-sub);">${formatNum(d.age_over_90)}</td>
+        <td class="py-2.5 text-right font-bold" style="color:${totalColor};">${formatNum(d.total)}</td>
+      </tr>`;
+    const net = (k) => (ar[k] || 0) - (ap[k] || 0);
+    tbody.innerHTML = row('Piutang (AR)', cssVar('--accent'), ar, cssVar('--accent')) + row('Hutang (AP)', cssVar('--accent-2'), ap, cssVar('--text-main')) + `
+      <tr class="border-t" style="border-color: var(--border-soft);"><td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">Netto (AR - AP)</td>
+        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_30'))}</td>
+        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_60'))}</td>
+        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_90'))}</td>
+        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_over_90'))}</td>
+        <td class="py-2.5 text-right font-bold" style="color: var(--text-main);">${formatNum(net('total'))}</td></tr>
+      <tr><td colspan="6" class="pt-2 text-right text-[9px] font-sans" style="color: var(--text-sub);">Umur dihitung dari tanggal invoice, per ${json.as_of}</td></tr>`;
+  } catch (err) { console.error('Error load financial aging:', err); showMsg('Gagal memuat data aging.'); }
 }
+
 async function loadInvoicePipeline() {
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
-if (json.success) {
-const d = json.data;
-document.getElementById('pip_overdue_val').innerText = fmtRp(d.values['Jatuh Tempo (Overdue)']);
-document.getElementById('pip_overdue_cnt').innerText = d.counts['Jatuh Tempo (Overdue)'] + ' invoice';
-document.getElementById('pip_unpaid_val').innerText = fmtRp(d.values['Belum Bayar']);
-document.getElementById('pip_unpaid_cnt').innerText = d.counts['Belum Bayar'] + ' invoice';
-document.getElementById('pip_partial_val').innerText = fmtRp(d.values['Sebagian']);
-document.getElementById('pip_partial_cnt').innerText = d.counts['Sebagian'] + ' invoice';
-document.getElementById('pip_paid_cnt').innerText = d.counts['Lunas'] + ' invoice';
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
+    if (json.success) {
+      const d = json.data;
+      document.getElementById('pip_overdue_val').innerText = fmtRp(d.values['Jatuh Tempo (Overdue)']);
+      document.getElementById('pip_overdue_cnt').innerText = d.counts['Jatuh Tempo (Overdue)'] + ' invoice';
+      document.getElementById('pip_unpaid_val').innerText = fmtRp(d.values['Belum Bayar']);
+      document.getElementById('pip_unpaid_cnt').innerText = d.counts['Belum Bayar'] + ' invoice';
+      document.getElementById('pip_partial_val').innerText = fmtRp(d.values['Sebagian']);
+      document.getElementById('pip_partial_cnt').innerText = d.counts['Sebagian'] + ' invoice';
+      document.getElementById('pip_paid_cnt').innerText = d.counts['Lunas'] + ' invoice';
+    }
+  } catch (err) { console.error('Error load invoice pipeline:', err); }
 }
-} catch (err) { console.error('Error load invoice pipeline:', err); }
-}
+
 async function loadActionCenter() {
-const ul = document.getElementById('action_list');
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_action_center&project_id=${currentProjectId}`);
-if (!json.success) { ul.innerHTML = `<li class="text-center text-xs py-3" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat Action Center')}</li>`; return; }
-const order = { danger: 0, warn: 1, info: 2 };
-const active = json.items.filter(i => i.count > 0).sort((a, b) => (order[a.level] - order[b.level]) || (b.count - a.count));
-const calm = json.items.length - active.length;
-const levelBorder = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
-const levelText = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
-let html = active.map(i => `
-<li class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 4px solid ${levelBorder[i.level] || cssVar('--accent')}; color: ${levelText[i.level] || cssVar('--accent')}; border-bottom: 1px solid var(--grid-color);" title="${esc(i.hint)}">
-<span>${esc(i.label)}<span class="block text-[10px] opacity-60">${esc(i.hint)}</span></span>
-<span class="font-bold font-mono text-lg">${i.count}</span>
-</li>`).join('');
-if (!active.length) html = '<li class="text-center text-sm py-4" style="color: var(--accent);">✔ Tidak ada yang perlu ditindaklanjuti.</li>';
-else if (calm > 0) html += `<li class="text-center text-[11px] pt-1" style="color: var(--text-sub);">✔ ${calm} indikator lain aman</li>`;
-ul.innerHTML = html;
-} catch (err) { console.error('Error load action center:', err); ul.innerHTML = '<li class="text-center text-xs py-3" style="color: var(--text-sub);">Error memuat Action Center</li>'; }
+  const ul = document.getElementById('action_list');
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_action_center&project_id=${currentProjectId}`);
+    if (!json.success) { ul.innerHTML = `<li class="text-center text-xs py-3" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat Action Center')}</li>`; return; }
+    const order = { danger: 0, warn: 1, info: 2 };
+    const active = json.items.filter(i => i.count > 0).sort((a, b) => (order[a.level] - order[b.level]) || (b.count - a.count));
+    const calm = json.items.length - active.length;
+    const levelBorder = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
+    const levelText = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
+    let html = active.map(i => `
+      <li class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 4px solid ${levelBorder[i.level] || cssVar('--accent')}; color: ${levelText[i.level] || cssVar('--accent')}; border-bottom: 1px solid var(--grid-color);" title="${esc(i.hint)}">
+        <span>${esc(i.label)}<span class="block text-[10px] opacity-60">${esc(i.hint)}</span></span>
+        <span class="font-bold font-mono text-lg">${i.count}</span>
+      </li>`).join('');
+    if (!active.length) html = '<li class="text-center text-sm py-4" style="color: var(--accent);">✔ Tidak ada yang perlu ditindaklanjuti.</li>';
+    else if (calm > 0) html += `<li class="text-center text-[11px] pt-1" style="color: var(--text-sub);">✔ ${calm} indikator lain aman</li>`;
+    ul.innerHTML = html;
+  } catch (err) { console.error('Error load action center:', err); ul.innerHTML = '<li class="text-center text-xs py-3" style="color: var(--text-sub);">Error memuat Action Center</li>'; }
 }
+
 async function loadMilestones() {
-const list = document.getElementById('milestone_list');
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_upcoming_milestones&project_id=${currentProjectId}`);
-if (!json.success) { list.innerHTML = `<div class="text-center text-xs py-4" style="color: var(--text-sub);">${esc(json.message || 'Error memuat milestone')}</div>`; return; }
-if (json.data.length > 0) {
-list.innerHTML = json.data.map(t => {
-const late = t.late === true;
-const info = late ? `Terlambat ${Math.abs(t.days_left)} hari` : (t.days_left === 0 ? 'Hari ini' : `${t.days_left} hari lagi`);
-const border = late ? cssVar('--text-sub') : cssVar('--accent');
-const textColor = late ? cssVar('--text-sub') : cssVar('--text-main');
-const subColor = late ? cssVar('--text-sub') : cssVar('--text-sub');
-return `
-<div class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 2px solid ${border}; border-bottom: 1px solid var(--grid-color);">
-<div><div class="font-bold text-xs" style="color: var(--text-main);">${esc(t.task_name)}</div><div class="text-[10px]" style="color: var(--text-sub);">${esc(t.project_name)}</div></div>
-<div class="text-right"><div class="font-mono text-xs font-bold" style="color:${textColor};">${esc(t.deadline)}</div><div class="text-[9px]" style="color:${subColor};">${esc(t.status)} - ${info}</div></div>
-</div>`;
-}).join('');
-} else { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Tidak ada milestone terdekat.</div>'; }
-} catch (err) { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Error memuat milestone</div>'; }
+  const list = document.getElementById('milestone_list');
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_upcoming_milestones&project_id=${currentProjectId}`);
+    if (!json.success) { list.innerHTML = `<div class="text-center text-xs py-4" style="color: var(--text-sub);">${esc(json.message || 'Error memuat milestone')}</div>`; return; }
+    if (json.data.length > 0) {
+      list.innerHTML = json.data.map(t => {
+        const late = t.late === true;
+        const info = late ? `Terlambat ${Math.abs(t.days_left)} hari` : (t.days_left === 0 ? 'Hari ini' : `${t.days_left} hari lagi`);
+        const border = late ? cssVar('--text-sub') : cssVar('--accent');
+        const textColor = late ? cssVar('--text-sub') : cssVar('--text-main');
+        const subColor = late ? cssVar('--text-sub') : cssVar('--text-sub');
+        return `
+          <div class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 2px solid ${border}; border-bottom: 1px solid var(--grid-color);">
+            <div><div class="font-bold text-xs" style="color: var(--text-main);">${esc(t.task_name)}</div><div class="text-[10px]" style="color: var(--text-sub);">${esc(t.project_name)}</div></div>
+            <div class="text-right"><div class="font-mono text-xs font-bold" style="color:${textColor};">${esc(t.deadline)}</div><div class="text-[9px]" style="color:${subColor};">${esc(t.status)} - ${info}</div></div>
+          </div>`;
+      }).join('');
+    } else { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Tidak ada milestone terdekat.</div>'; }
+  } catch (err) { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Error memuat milestone</div>'; }
 }
+
 async function loadProfitability() {
-const tbody = document.getElementById('profit_tbody');
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_project_profitability&project_id=${currentProjectId}`);
-if (!json.success) { tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">${esc(json.message || 'Error memuat data')}</td></tr>`; return; }
-if (json.data.length > 0) {
-tbody.innerHTML = json.data.map(p => {
-const marginPct = (p.margin / p.contract_value) * 100;
-const marginColor = marginPct >= 10 ? cssVar('--accent') : (marginPct >= 5 ? cssVar('--text-main') : cssVar('--text-sub'));
-return `
-<tr class="hover:bg-[var(--hover-bg)] transition">
-<td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(p.project_name)}</td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.progress_pct)}%</td>
-<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.contract_value)}</td>
-<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.invoiced_value)}</td>
-<td class="py-2.5 text-right font-semibold" style="color: var(--text-main);">${formatNum(p.actual_cost)}</td>
-<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.cost_per_contract)}%</td>
-<td class="py-2.5 text-right font-bold" style="color:${marginColor};">${formatNum(marginPct)}%</td>
-</tr>`;
-}).join('');
+  const tbody = document.getElementById('profit_tbody');
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_project_profitability&project_id=${currentProjectId}`);
+    if (!json.success) { tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">${esc(json.message || 'Error memuat data')}</td></tr>`; return; }
+    if (json.data.length > 0) {
+      tbody.innerHTML = json.data.map(p => {
+        const marginPct = (p.margin / p.contract_value) * 100;
+        const marginColor = marginPct >= 10 ? cssVar('--accent') : (marginPct >= 5 ? cssVar('--text-main') : cssVar('--text-sub'));
+        return `
+          <tr class="hover:bg-[var(--hover-bg)] transition">
+            <td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(p.project_name)}</td>
+            <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.progress_pct)}%</td>
+            <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.contract_value)}</td>
+            <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.invoiced_value)}</td>
+            <td class="py-2.5 text-right font-semibold" style="color: var(--text-main);">${formatNum(p.actual_cost)}</td>
+            <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.cost_per_contract)}%</td>
+            <td class="py-2.5 text-right font-bold" style="color:${marginColor};">${formatNum(marginPct)}%</td>
+          </tr>`;
+      }).join('');
+    }
+  } catch (err) { console.error('Error load profitability:', err); tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data profitabilitas</td></tr>'; }
 }
-} catch (err) { console.error('Error load profitability:', err); tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data profitabilitas</td></tr>'; }
-}
+
 async function loadProjectHealth() {
-const cards = document.getElementById('health_cards');
-const reco = document.getElementById('health_reco');
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
-if (!json.success) {
-cards.innerHTML = `<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data kesehatan proyek')}</div>`;
-reco.innerHTML = '';
-return;
-}
-if (json.data.length > 0) {
-cards.innerHTML = json.data.map(p => {
-const healthColor = p.health_score >= 70 ? cssVar('--accent') : (p.health_score >= 40 ? cssVar('--text-main') : cssVar('--text-sub'));
+  const cards = document.getElementById('health_cards');
+  const reco = document.getElementById('health_reco');
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
+    if (!json.success || !json.data || json.data.length === 0) {
+      cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada data kesehatan proyek.</div>';
+      reco.innerHTML = '';
+      return;
+    }
+    if (json.data.length > 0) {
+      cards.innerHTML = json.data.map(p => {
+        const healthColor = p.health_score >= 70 ? cssVar('--accent') : (p.health_score >= 40 ? cssVar('--text-main') : cssVar('--text-sub'));
         const healthText = p.health_score >= 70 ? 'Sehat' : (p.health_score >= 40 ? 'Waspada' : 'Kritis');
-return `
-<div class="kpi-card" style="border-left: 4px solid ${healthColor}; cursor: pointer;" onclick="showHealthDetail(${p.project_id})">
-<div class="text-base uppercase font-bold tracking-wider" style="color: var(--text-sub);">${esc(p.project_name)}</div>
-<div class="text-xl font-bold font-mono mt-2" style="color:${healthColor};">${p.health_score}%</div>
-<div class="text-[10px] mt-1" style="color: var(--text-sub);">${healthText} - ${esc(p.health_status)}</div>
-</div>`;
-}).join('');
-reco.innerHTML = json.recommendations ? `<div class="dash-card p-4 mt-4">
-<h3 class="text-base font-bold uppercase tracking-wider font-rajdhani mb-2" style="color: var(--accent);">Rekomendasi AI</h3>
-<div class="text-sm" style="color: var(--text-main);">${esc(json.recommendations)}</div>
-</div>` : '';
-} else {
-cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada data kesehatan proyek.</div>';
-reco.innerHTML = '';
+        return `
+          <div class="kpi-card" style="border-left: 4px solid ${healthColor}; cursor: pointer;" onclick="showHealthDetail(${p.project_id})">
+            <div class="text-base uppercase font-bold tracking-wider" style="color: var(--text-sub);">${esc(p.project_name)}</div>
+            <div class="text-xl font-bold font-mono mt-2" style="color:${healthColor};">${p.health_score}%</div>
+            <div class="text-[10px] mt-1" style="color: var(--text-sub);">${healthText} - ${esc(p.health_status)}</div>
+          </div>`;
+      }).join('');
+      reco.innerHTML = json.recommendations ? `<div class="dash-card p-4 mt-4">
+        <h3 class="text-base font-bold uppercase tracking-wider font-rajdhani mb-2" style="color: var(--accent);">Rekomendasi AI</h3>
+        <div class="text-sm" style="color: var(--text-main);">${esc(json.recommendations)}</div>
+      </div>` : '';
+    } else {
+      cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada data kesehatan proyek.</div>';
+      reco.innerHTML = '';
+    }
+  } catch (err) { console.error('Error load project health:', err); cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Error memuat data kesehatan proyek</div>'; reco.innerHTML = ''; }
 }
-} catch (err) { console.error('Error load project health:', err); cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Error memuat data kesehatan proyek</div>'; reco.innerHTML = ''; }
-}
+
 async function loadTaxRates() {
-const tbody = document.getElementById('tax_rate_tbody');
-const badge = document.getElementById('kmk_badge');
-const dateSpan = document.getElementById('kmk_valid_date');
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_tax_rates`);
-if (!json.success) {
-tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data kurs pajak')}</td></tr>`;
-badge.textContent = 'Error';
-badge.style.backgroundColor = cssVar('--error-color');
-return;
+  const tbody = document.getElementById('tax_rate_tbody');
+  const badge = document.getElementById('kmk_badge');
+  const dateSpan = document.getElementById('kmk_valid_date');
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_tax_rates`);
+    if (!json.success) {
+      tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data kurs pajak')}</td></tr>`;
+      badge.textContent = 'Error';
+      badge.style.backgroundColor = cssVar('--error-color');
+      return;
+    }
+    if (json.data.length > 0) {
+      globalTaxRates = json.data;
+      renderTaxRates();
+      badge.textContent = 'Valid';
+      badge.style.backgroundColor = cssVar('--success-color');
+      dateSpan.textContent = `Per ${json.valid_date}`;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data kurs pajak</td></tr>';
+      badge.textContent = 'Kosong';
+      badge.style.backgroundColor = cssVar('--warning-color');
+    }
+  } catch (err) { console.error('Error load tax rates:', err); tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Error memuat data kurs pajak</td></tr>'; badge.textContent = 'Error'; badge.style.backgroundColor = cssVar('--error-color'); }
 }
-if (json.data.length > 0) {
-globalTaxRates = json.data;
-renderTaxRates();
-badge.textContent = 'Valid';
-badge.style.backgroundColor = cssVar('--success-color');
-dateSpan.textContent = `Per ${json.valid_date}`;
-} else {
-tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data kurs pajak</td></tr>';
-badge.textContent = 'Kosong';
-badge.style.backgroundColor = cssVar('--warning-color');
-}
-} catch (err) { console.error('Error load tax rates:', err); tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Error memuat data kurs pajak</td></tr>'; badge.textContent = 'Error'; badge.style.backgroundColor = cssVar('--error-color'); }
-}
+
 function renderTaxRates() {
-const tbody = document.getElementById('tax_rate_tbody');
-const search = document.getElementById('search_tax_currency').value.toLowerCase();
-const filtered = globalTaxRates.filter(r => r.currency.toLowerCase().includes(search));
-if (filtered.length > 0) {
-tbody.innerHTML = filtered.map(r => {
-const isEditable = r.is_editable === true;
-return `
-<tr class="hover:bg-[var(--hover-bg)] transition">
-<td class="p-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(r.currency)}</td>
-<td class="p-2.5 text-right font-mono" style="color: var(--text-main);">${formatNum(r.rate)}</td>
-<td class="p-2.5 text-center">${isEditable ? `<button onclick="editTaxRate('${esc(r.currency)}', ${r.rate})" class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--bg-inner); color: var(--text-main); border: 1px solid var(--border-strong);">Ubah</button>` : '<span class="text-[10px]" style="color: var(--text-sub);">Tidak bisa diubah</span>'}</td>
-</tr>`;
-}).join('');
-} else {
-tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data yang cocok</td></tr>';
+  const tbody = document.getElementById('tax_rate_tbody');
+  const search = document.getElementById('search_tax_currency').value.toLowerCase();
+  const filtered = globalTaxRates.filter(r => r.currency.toLowerCase().includes(search));
+  if (filtered.length > 0) {
+    tbody.innerHTML = filtered.map(r => {
+      const isEditable = r.is_editable === true;
+      return `
+        <tr class="hover:bg-[var(--hover-bg)] transition">
+          <td class="p-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(r.currency)}</td>
+          <td class="p-2.5 text-right font-mono" style="color: var(--text-main);">${formatNum(r.rate)}</td>
+          <td class="p-2.5 text-center">${isEditable ? `<button onclick="editTaxRate('${esc(r.currency)}', ${r.rate})" class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--bg-inner); color: var(--text-main); border: 1px solid var(--border-strong);">Ubah</button>` : '<span class="text-[10px]" style="color: var(--text-sub);">Tidak bisa diubah</span>'}</td>
+        </tr>`;
+    }).join('');
+  } else {
+    tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data yang cocok</td></tr>';
+  }
 }
-}
+
 function filterTaxRates() {
-renderTaxRates();
+  renderTaxRates();
 }
+
 async function syncTaxRates() {
-const btn = document.getElementById('btn_sync_tax');
-const badge = document.getElementById('kmk_badge');
-const dateSpan = document.getElementById('kmk_valid_date');
-try {
-btn.disabled = true;
-btn.textContent = 'Memperbarui...';
-const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ user_id: <?=$user_id?> })
-});
-if (json.success) {
-await loadTaxRates();
-} else {
-alert(json.message || 'Gagal memperbarui kurs pajak');
-badge.textContent = 'Error';
-badge.style.backgroundColor = cssVar('--error-color');
+  const btn = document.getElementById('btn_sync_tax');
+  const badge = document.getElementById('kmk_badge');
+  const dateSpan = document.getElementById('kmk_valid_date');
+  try {
+    btn.disabled = true;
+    btn.textContent = 'Memperbarui...';
+    const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: <?=$user_id?> })
+    });
+    if (json.success) {
+      await loadTaxRates();
+    } else {
+      alert(json.message || 'Gagal memperbarui kurs pajak');
+      badge.textContent = 'Error';
+      badge.style.backgroundColor = cssVar('--error-color');
+    }
+  } catch (err) {
+    console.error('Error sync tax rates:', err);
+    alert('Error memperbarui kurs pajak');
+    badge.textContent = 'Error';
+    badge.style.backgroundColor = cssVar('--error-color');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Update Kurs';
+  }
 }
-} catch (err) {
-console.error('Error sync tax rates:', err);
-alert('Error memperbarui kurs pajak');
-badge.textContent = 'Error';
-badge.style.backgroundColor = cssVar('--error-color');
-} finally {
-btn.disabled = false;
-btn.textContent = 'Update Kurs';
-}
-}
+
 function editTaxRate(currency, currentRate) {
-const newRate = prompt(`Masukkan kurs baru untuk ${currency}:`, currentRate);
-if (newRate === null) return;
-const rate = parseFloat(newRate);
-if (isNaN(rate) || rate <= 0) {
-alert('Kurs harus berupa angka positif');
-return;
+  const newRate = prompt(`Masukkan kurs baru untuk ${currency}:`, currentRate);
+  if (newRate === null) return;
+  const rate = parseFloat(newRate);
+  if (isNaN(rate) || rate <= 0) {
+    alert('Kurs harus berupa angka positif');
+    return;
+  }
+  updateTaxRate(currency, rate);
 }
-updateTaxRate(currency, rate);
-}
+
 async function updateTaxRate(currency, rate) {
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=update_tax_rate`, {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ currency, rate, user_id: <?=$user_id?> })
-});
-if (json.success) {
-alert('Kurs pajak berhasil diperbarui');
-await loadTaxRates();
-} else {
-alert(json.message || 'Gagal memperbarui kurs pajak');
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=update_tax_rate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currency, rate, user_id: <?=$user_id?> })
+    });
+    if (json.success) {
+      alert('Kurs pajak berhasil diperbarui');
+      await loadTaxRates();
+    } else {
+      alert(json.message || 'Gagal memperbarui kurs pajak');
+    }
+  } catch (err) {
+    console.error('Error update tax rate:', err);
+    alert('Error memperbarui kurs pajak');
+  }
 }
-} catch (err) {
-console.error('Error update tax rate:', err);
-alert('Error memperbarui kurs pajak');
-}
-}
+
 async function loadFinancialPerformance() {
-const canvas = document.getElementById('finChartCanvas');
-const emptyDiv = document.getElementById('fin_empty');
-const year = document.getElementById('fin_year_select').value;
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
-if (!json.success) {
-emptyDiv.textContent = json.message || 'Gagal memuat data performa keuangan';
-emptyDiv.classList.remove('hidden');
-return;
+  const canvas = document.getElementById('finChartCanvas');
+  const emptyDiv = document.getElementById('fin_empty');
+  const year = document.getElementById('fin_year_select').value;
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
+    if (!json.success) {
+      emptyDiv.textContent = json.message || 'Gagal memuat data performa keuangan';
+      emptyDiv.classList.remove('hidden');
+      return;
+    }
+    if (json.data.length > 0) {
+      emptyDiv.classList.add('hidden');
+      const months = json.data.map(d => d.month);
+      const income = json.data.map(d => d.income);
+      const expense = json.data.map(d => d.expense);
+      const ctx = canvas.getContext('2d');
+      if (finChart) finChart.destroy();
+      finChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            { label: 'Pendapatan', data: income, backgroundColor: cssVar('--accent'), borderWidth: 1 },
+            { label: 'Pengeluaran', data: expense, backgroundColor: cssVar('--text-sub'), borderWidth: 1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
+            tooltip: { callbacks: { label: ctx => formatIDR(ctx.raw) } }
+          },
+          scales: {
+            x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
+            y: { ticks: { color: cssVar('--text-sub'), callback: v => fmtRp(v) }, grid: { color: cssVar('--grid-color') } }
+          }
+        }
+      });
+    } else {
+      emptyDiv.textContent = 'Tidak ada data untuk tahun ini';
+      emptyDiv.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Error load financial performance:', err);
+    emptyDiv.textContent = 'Error memuat data performa keuangan';
+    emptyDiv.classList.remove('hidden');
+  }
 }
-if (json.data.length > 0) {
-emptyDiv.classList.add('hidden');
-const months = json.data.map(d => d.month);
-const income = json.data.map(d => d.income);
-const expense = json.data.map(d => d.expense);
-const ctx = canvas.getContext('2d');
-if (finChart) finChart.destroy();
-finChart = new Chart(ctx, {
-type: 'bar',
-data: {
-labels: months,
-datasets: [
-{ label: 'Pendapatan', data: income, backgroundColor: cssVar('--accent'), borderWidth: 1 },
-{ label: 'Pengeluaran', data: expense, backgroundColor: cssVar('--text-sub'), borderWidth: 1 }
-]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-plugins: {
-legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
-tooltip: { callbacks: { label: ctx => formatIDR(ctx.raw) } }
-},
-scales: {
-x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
-y: { ticks: { color: cssVar('--text-sub'), callback: v => fmtRp(v) }, grid: { color: cssVar('--grid-color') } }
-}
-}
-});
-} else {
-emptyDiv.textContent = 'Tidak ada data untuk tahun ini';
-emptyDiv.classList.remove('hidden');
-}
-} catch (err) {
-console.error('Error load financial performance:', err);
-emptyDiv.textContent = 'Error memuat data performa keuangan';
-emptyDiv.classList.remove('hidden');
-}
-}
+
 async function loadExtra() {
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_extra_data&project_id=${currentProjectId}`);
-if (json.success) {
-document.getElementById('extra_cash').innerText = fmtRp(json.cash_balance);
-document.getElementById('extra_ppn').innerText = fmtRp(json.ppn_balance);
-document.getElementById('extra_ppn_period').innerText = json.ppn_period;
-document.getElementById('extra_ppn_sub').innerText = json.ppn_direction;
-document.getElementById('extra_subcon').innerText = fmtRp(json.subcon_balance);
-document.getElementById('extra_subcon_sub').innerText = json.subcon_status;
-if (json.subcon_balance === 0) {
-document.getElementById('extra_subcon_card').style.display = 'none';
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_extra_data&project_id=${currentProjectId}`);
+    if (json.success) {
+      document.getElementById('extra_cash').innerText = fmtRp(json.cash_balance);
+      document.getElementById('extra_ppn').innerText = fmtRp(json.ppn_balance);
+      document.getElementById('extra_ppn_period').innerText = json.ppn_period;
+      document.getElementById('extra_ppn_sub').innerText = json.ppn_direction;
+      document.getElementById('extra_subcon').innerText = fmtRp(json.subcon_balance);
+      document.getElementById('extra_subcon_sub').innerText = json.subcon_status;
+      if (json.subcon_balance === 0) {
+        document.getElementById('extra_subcon_card').style.display = 'none';
+      }
+    }
+  } catch (err) { console.error('Error load extra data:', err); }
 }
-}
-} catch (err) { console.error('Error load extra data:', err); }
-}
+
 async function loadMaterialMonitoring() {
-try {
-const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
-if (!json.success) {
-document.getElementById('material_tbody').innerHTML = `<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data material')}</td></tr>`;
-return;
-}
-if (json.data.length > 0) {
-// Update KPI cards
-const totalBudget = json.summary.total_budget;
-const materialOut = json.summary.material_out;
-const sisaBudget = json.summary.sisa_budget;
-const usagePct = json.summary.usage_pct;
+  try {
+    const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
+    if (!json.success) {
+      document.getElementById('material_tbody').innerHTML = `<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data material')}</td></tr>`;
+      return;
+    }
+    if (json.data.length > 0) {
+      // Update KPI cards
+      const totalBudget = json.summary.total_budget;
+      const materialOut = json.summary.material_out;
+      const sisaBudget = json.summary.sisa_budget;
+      const usagePct = json.summary.usage_pct;
 
-document.getElementById('kpi_total_budget').innerText = fmtRp(totalBudget);
-document.getElementById('kpi_material_out').innerText = fmtRp(materialOut);
-document.getElementById('kpi_sisa_budget').innerText = fmtRp(sisaBudget);
-document.getElementById('kpi_usage_pct').innerText = `${usagePct.toFixed(2)}%`;
+      document.getElementById('kpi_total_budget').innerText = fmtRp(totalBudget);
+      document.getElementById('kpi_material_out').innerText = fmtRp(materialOut);
+      document.getElementById('kpi_sisa_budget').innerText = fmtRp(sisaBudget);
+      document.getElementById('kpi_usage_pct').innerText = `${usagePct.toFixed(2)}%`;
 
-document.getElementById('kpi_status_label').innerText = usagePct >= 90 ? 'Kritis' : (usagePct >= 70 ? 'Waspada' : 'Normal');
-document.getElementById('kpi_status_label').style.color = usagePct >= 90 ? cssVar('--text-sub') : (usagePct >= 70 ? cssVar('--text-main') : cssVar('--accent'));
+      document.getElementById('kpi_status_label').innerText = usagePct >= 90 ? 'Kritis' : (usagePct >= 70 ? 'Waspada' : 'Normal');
+      document.getElementById('kpi_status_label').style.color = usagePct >= 90 ? cssVar('--text-sub') : (usagePct >= 70 ? cssVar('--text-main') : cssVar('--accent'));
 
-document.getElementById('table_count_label').innerText = `Total Material: ${json.data.length} Item`;
+      document.getElementById('table_count_label').innerText = `Total Material: ${json.data.length} Item`;
 
-// Render material table
-const tbody = document.getElementById('material_tbody');
-tbody.innerHTML = json.data.map(m => {
-const statusColor = m.status === 'Kritis' ? cssVar('--text-sub') : (m.status === 'Waspada' ? cssVar('--text-main') : cssVar('--accent'));
-return `
-<tr class="hover:bg-[var(--hover-bg)] transition">
-<td class="p-3 font-sans font-semibold" style="color: var(--text-main);">${esc(m.material_name)}<span class="block text-[10px] font-normal" style="color: var(--text-sub);">${esc(m.material_code)}</span></td>
-<td class="p-3 text-center" style="color: var(--text-main);">${esc(m.unit)}</td>
-<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.budget_qty)}</td>
-<td class="p-3 text-right font-medium" style="color: var(--text-main);">${fmtRp(m.total_budget)}</td>
-<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.material_out_qty)}</td>
-<td class="p-3 text-right font-semibold" style="color: var(--text-main);">${fmtRp(m.total_realisasi)}</td>
-<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.sisa_qty)}</td>
-<td class="p-3 text-center font-bold" style="color:${statusColor};">${m.usage_pct.toFixed(2)}%</td>
-<td class="p-3 text-center"><span class="badge-${m.status.toLowerCase()}" style="padding: 2px 6px; border-radius: 4px;">${m.status}</span></td>
-</tr>`;
-}).join('');
+      // Render material table
+      const tbody = document.getElementById('material_tbody');
+      tbody.innerHTML = json.data.map(m => {
+        const statusColor = m.status === 'Kritis' ? cssVar('--text-sub') : (m.status === 'Waspada' ? cssVar('--text-main') : cssVar('--accent'));
+        return `
+          <tr class="hover:bg-[var(--hover-bg)] transition">
+            <td class="p-3 font-sans font-semibold" style="color: var(--text-main);">${esc(m.material_name)}<span class="block text-[10px] font-normal" style="color: var(--text-sub);">${esc(m.material_code)}</span></td>
+            <td class="p-3 text-center" style="color: var(--text-main);">${esc(m.unit)}</td>
+            <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.budget_qty)}</td>
+            <td class="p-3 text-right font-medium" style="color: var(--text-main);">${fmtRp(m.total_budget)}</td>
+            <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.material_out_qty)}</td>
+            <td class="p-3 text-right font-semibold" style="color: var(--text-main);">${fmtRp(m.total_realisasi)}</td>
+            <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.sisa_qty)}</td>
+            <td class="p-3 text-center font-bold" style="color:${statusColor};">${m.usage_pct.toFixed(2)}%</td>
+            <td class="p-3 text-center"><span class="badge-${m.status.toLowerCase()}" style="padding: 2px 6px; border-radius: 4px;">${m.status}</span></td>
+          </tr>`;
+      }).join('');
 
-// Render doughnut chart
-const doughnutCtx = document.getElementById('doughnutChartCanvas').getContext('2d');
-if (doughnutChart) doughnutChart.destroy();
-doughnutChart = new Chart(doughnutCtx, {
-type: 'doughnut',
-data: {
-labels: ['Normal', 'Waspada', 'Kritis'],
-datasets: [{
-data: [json.summary.normal_count, json.summary.waspada_count, json.summary.kritis_count],
-backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')],
-borderWidth: 1
-}]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-plugins: {
-legend: { position: 'bottom', labels: { color: cssVar('--text-sub') } },
-tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} item` } }
-}
-}
-});
+      // Render doughnut chart
+      const doughnutCtx = document.getElementById('doughnutChartCanvas').getContext('2d');
+      if (doughnutChart) doughnutChart.destroy();
+      doughnutChart = new Chart(doughnutCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Normal', 'Waspada', 'Kritis'],
+          datasets: [{
+            data: [json.summary.normal_count, json.summary.waspada_count, json.summary.kritis_count],
+            backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: cssVar('--text-sub') } },
+            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} item` } }
+          }
+        }
+      });
 
-// Render bar chart
-const barCtx = document.getElementById('barMaterialCanvas').getContext('2d');
-if (barMaterialChart) barMaterialChart.destroy();
-const topMaterials = json.data.sort((a, b) => b.usage_pct - a.usage_pct).slice(0, 10);
-barMaterialChart = new Chart(barCtx, {
-type: 'bar',
-data: {
-labels: topMaterials.map(m => m.material_name),
-datasets: [
-{ label: 'Budget Qty', data: topMaterials.map(m => m.budget_qty), backgroundColor: cssVar('--accent'), borderWidth: 1 },
-{ label: 'Material Out', data: topMaterials.map(m => m.material_out_qty), backgroundColor: cssVar('--accent-2'), borderWidth: 1 }
-]
-},
-options: {
-responsive: true,
-maintainAspectRatio: false,
-plugins: {
-legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
-tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}` } }
-},
-scales: {
-x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
-y: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } }
+      // Render bar chart
+      const barCtx = document.getElementById('barMaterialCanvas').getContext('2d');
+      if (barMaterialChart) barMaterialChart.destroy();
+      const topMaterials = json.data.sort((a, b) => b.usage_pct - a.usage_pct).slice(0, 10);
+      barMaterialChart = new Chart(barCtx, {
+        type: 'bar',
+        data: {
+          labels: topMaterials.map(m => m.material_name),
+          datasets: [
+            { label: 'Budget Qty', data: topMaterials.map(m => m.budget_qty), backgroundColor: cssVar('--accent'), borderWidth: 1 },
+            { label: 'Material Out', data: topMaterials.map(m => m.material_out_qty), backgroundColor: cssVar('--accent-2'), borderWidth: 1 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
+            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}` } }
+          },
+          scales: {
+            x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
+            y: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } }
+          }
+        }
+      });
+    } else {
+      document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data material</td></tr>';
+    }
+  } catch (err) {
+    console.error('Error load material monitoring:', err);
+    document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Error memuat data material</td></tr>';
+  }
 }
-}
-});
-} else {
-document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data material</td></tr>';
-}
-} catch (err) {
-console.error('Error load material monitoring:', err);
-document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Error memuat data material</td></tr>';
-}
-}
+
 </script>
 </body>
 </html>
