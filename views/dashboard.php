@@ -1,7 +1,7 @@
 <?php
 $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 // views/dashboard.php
-// [REVISI 2026-11-24d] LIGHT EMERALD THEME - hijau lembut, nyaman untuk mata
+// [REVISI 2026-11-24b] FIX: button theme (label tidak terbalik) + LIGHT theme aktif (warm, tanpa putih silau). Dark theme TIDAK diubah.
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit; }
 require_once __DIR__ . '/../php-class/crudClass.php';
@@ -32,240 +32,188 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 tailwind.config = { corePlugins: { preflight: false } };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<link rel="stylesheet" href="../css/theme-sync.css?v=<?=$favVer?>">
-<script src="../js/theme-sync.js?v=<?=$favVer?>""></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<!-- [FIX] Terapkan theme tersimpan SEBELUM render (cegah flash putih) -->
 <script>document.documentElement.setAttribute('data-theme', localStorage.getItem('app_theme') || 'dark');</script>
 <style>
-/* ===== DARK THEME (Default - TIDAK DIUBAH) ===== */
+/* ===== PALETTE DEFINITION (DARK - TIDAK DIUBAH) ===== */
 :root {
-  --bg-deep: #373647;
-  --bg-card: #3f3e52;
-  --bg-inner: #4a4960;
-  --bg-deeper: #2e2d3d;
-  --accent: #728E7E;
-  --accent-2: #949C8B;
-  --text-main: #C2B8AD;
-  --text-sub: #B1A8A8;
-  --border-soft: rgba(114, 142, 126, 0.25);
-  --border-strong: rgba(114, 142, 126, 0.5);
-  --hover-bg: #5a5970;
-  --hover-text: #ffffff;
-  --grid-color: rgba(114, 142, 126, 0.15);
-  --card-shadow: rgba(0, 0, 0, 0.3);
+--bg-deep: #373647;
+--bg-card: #3f3e52;
+--bg-inner: #4a4960;
+--bg-deeper: #2e2d3d;
+--accent: #728E7E;
+--accent-2: #949C8B;
+--text-main: #C2B8AD;
+--text-sub: #B1A8A8;
+--border-soft: rgba(114, 142, 126, 0.25);
+--border-strong: rgba(114, 142, 126, 0.5);
+--hover-bg: #4a4960;
+--hover-bg-strong: #5a5970;
+--hover-text: #ffffff;
 }
-
-/* ===== LIGHT EMERALD THEME - Hijau Lembut, Eye-Friendly ===== */
+/* ===== [FIX] LIGHT THEME - Warm Cream, hindari #ffffff silau ===== */
 [data-theme="light"] {
-  --bg-deep: #e8f5e9;
-  --bg-card: #f1f8f4;
-  --bg-inner: #dcedc8;
-  --bg-deeper: #a5d6a7;
-  --accent: #2e7d32;
-  --accent-2: #4caf50;
-  --text-main: #1b5e20;
-  --text-sub: #388e3c;
-  --border-soft: rgba(46, 125, 50, 0.28);
-  --border-strong: rgba(46, 125, 50, 0.55);
-  --hover-bg: #c8e6c9;
-  --hover-text: #1b5e20;
-  --grid-color: rgba(46, 125, 50, 0.12);
-  --card-shadow: rgba(0, 0, 0, 0.08);
+--bg-deep: #f4f1ea;
+--bg-card: #fbf8f1;
+--bg-inner: #ece7dc;
+--bg-deeper: #e6e0d3;
+--accent: #5f7d6b;
+--accent-2: #8a9482;
+--text-main: #2d2b26;
+--text-sub: #5c564c;
+--border-soft: rgba(95, 125, 107, 0.28);
+--border-strong: rgba(95, 125, 107, 0.55);
+--hover-bg: #e5dfd6;
+--hover-bg-strong: #ddd6c9;
+--hover-text: #2d2b26;
 }
-
+/* ===== OVERRIDE app-theme.css ===== */
 html, body {
-  background-color: var(--bg-app);
-  color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden;
-  max-width: 100vw;
-  transition: background-color 0.3s ease, color 0.3s ease;
+background-color: var(--bg-deep) !important;
+color: var(--text-main) !important;
+font-family: 'Inter', sans-serif !important;
+overflow-x: hidden !important;
+max-width: 100vw !important;
+transition: background-color .3s ease, color .3s ease;
 }
-body.dashboard-scope { background-color: var(--bg-deep); }
-
+body.dashboard-scope { background-color: var(--bg-deep) !important; }
+/* ===== BASE ===== */
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-rajdhani { font-family: 'Rajdhani', sans-serif; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
 /* ===== HEADER ===== */
 .dash-header {
-  background-color: var(--bg-deeper);
-  border-bottom: 1px solid var(--border-strong);
-  transition: all 0.3s ease;
+background-color: var(--bg-deeper) !important;
+border-bottom: 1px solid var(--border-strong) !important;
+transition: background-color .3s ease, border-color .3s ease;
 }
-
 /* ===== NAV ===== */
 .nav-item { position: relative; }
 .nav-link {
-  color: var(--text-main);
-  text-decoration: none;
-  transition: all 0.2s;
+color: var(--text-main) !important;
+transition: all 0.2s;
 }
 .nav-link:hover {
-  color: var(--hover-text);
-  background-color: var(--hover-bg);
+color: var(--hover-text) !important;
+background-color: var(--hover-bg) !important;
 }
-
 /* ===== DROPDOWN MEGA MENU ===== */
 .dropdown-menu {
-  position: absolute; top: 100%; left: 0; z-index: 60;
-  width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
-  max-height: calc(100vh - 90px); overflow-y: auto;
-  opacity: 0; visibility: hidden; transform: translateY(-6px);
-  pointer-events: none;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-strong);
-  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+position: absolute; top: 100%; left: 0; z-index: 60;
+width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
+max-height: calc(100vh - 90px); overflow-y: auto;
+opacity: 0; visibility: hidden; transform: translateY(-6px);
+pointer-events: none;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-strong) !important;
+transition: opacity .18s ease, transform .18s ease, visibility .18s;
 }
 .dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
 .dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
 .menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
 .menu-column h3 {
-  font-size: 20px; font-weight: 500;
-  color: var(--accent);
-  text-transform: uppercase; letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--accent);
-  padding-bottom: 0.5rem; margin-bottom: 0.5rem;
+font-size: 20px; font-weight: 500;
+color: var(--accent) !important;
+text-transform: uppercase; letter-spacing: 0.05em;
+border-bottom: 1px solid var(--accent);
+padding-bottom: 0.5rem; margin-bottom: 0.5rem;
 }
 .menu-column ul { list-style: none; padding: 0; margin: 0; }
 .menu-column ul li { margin-bottom: 0.25rem; }
 .menu-column ul li a {
-  display: block; padding: 0.2rem 0.4rem;
-  color: var(--text-main);
-  text-decoration: none; font-size: 16px; font-weight: 300;
-  transition: all 0.2s; border-radius: 0.25rem;
+display: block; padding: 0.2rem 0.4rem;
+color: var(--text-main) !important;
+text-decoration: none; font-size: 16px; font-weight: 300;
+transition: all 0.2s; border-radius: 0.25rem;
 }
 .menu-column ul li a:hover {
-  color: var(--hover-text);
-  background: var(--hover-bg);
-  transform: translateX(2px);
+color: var(--hover-text) !important;
+background: var(--hover-bg) !important;
+transform: translateX(2px);
 }
-
 /* ===== MOBILE ===== */
 #hamburger_btn { display: none; }
 #mobile_dropdown {
-  min-width: 220px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-strong);
+min-width: 220px;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-strong) !important;
 }
 #mobile_dropdown a {
-  color: var(--text-main);
-  border-bottom: 1px solid var(--border-soft);
+color: var(--text-main) !important;
+border-bottom: 1px solid var(--border-soft);
 }
 #mobile_dropdown a:hover {
-  background-color: var(--hover-bg);
-  color: var(--hover-text);
+background-color: var(--hover-bg) !important;
+color: var(--hover-text) !important;
 }
-
 /* ===== CARDS / PANELS ===== */
 .dash-card {
-  background-color: var(--bg-card);
-  border: 1px solid var(--border-soft);
-  border-radius: 0.75rem;
-  box-shadow: 0 2px 8px var(--card-shadow);
-  transition: all 0.3s ease;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-soft) !important;
+border-radius: 0.75rem;
+transition: background-color .3s ease, border-color .3s ease;
 }
-
+.dash-card-inner { background-color: var(--bg-inner) !important; }
 /* ===== TABS ===== */
 .tab-btn {
-  background-color: var(--bg-inner);
-  color: var(--text-main);
-  font-weight: 700; font-size: 15px;
-  padding: 8px 20px; border: none; border-radius: 4px;
-  cursor: pointer; transition: all 0.15s;
+background-color: var(--bg-inner) !important;
+color: var(--text-main) !important;
+font-weight: 700; font-size: 15px;
+padding: 8px 20px; border: none; border-radius: 4px;
+cursor: pointer; transition: all 0.15s;
 }
 .tab-btn:hover {
-  background-color: var(--hover-bg);
-  color: var(--hover-text);
+background-color: var(--hover-bg-strong) !important;
+color: var(--hover-text) !important;
 }
 .tab-btn.active {
-  background-color: var(--accent);
-  color: var(--hover-text);
+background-color: var(--accent) !important;
+color: #ffffff !important;
 }
 .tab-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
-
 /* ===== SELECT / INPUT ===== */
 .dash-select, .dash-input {
-  background-color: var(--bg-inner);
-  border: 1px solid var(--border-strong);
-  color: var(--text-main);
-  transition: all 0.2s;
+background-color: var(--bg-inner) !important;
+border: 1px solid var(--border-strong) !important;
+color: var(--text-main) !important;
 }
-.dash-select:focus, .dash-input:focus {
-  border-color: var(--accent);
-  outline: none;
-}
-
+.dash-select:focus, .dash-input:focus { border-color: var(--accent) !important; outline: none; }
 /* ===== BUTTONS ===== */
-.btn-accent {
-  background-color: var(--accent);
-  color: var(--hover-text);
-}
-.btn-accent:hover { background-color: #1b5e20; }
+.btn-accent { background-color: var(--accent) !important; color: #ffffff !important; }
+.btn-accent:hover { background-color: #5a7264 !important; }
 .btn-ghost {
-  background-color: var(--bg-inner);
-  color: var(--text-main);
-  border: 1px solid var(--accent-2);
-  transition: all 0.2s;
+background-color: var(--bg-inner) !important;
+color: var(--text-main) !important;
+border: 1px solid var(--accent-2) !important;
 }
 .btn-ghost:hover {
-  background-color: var(--hover-bg);
-  color: var(--hover-text);
+background-color: var(--hover-bg-strong) !important;
+color: var(--hover-text) !important;
 }
-
 /* ===== KPI CARDS ===== */
-.kpi-card {
-  background-color: var(--bg-inner);
-  border-radius: 0.75rem;
-  padding: 1rem;
-  box-shadow: 0 2px 6px var(--card-shadow);
-  transition: all 0.3s ease;
-}
-
+.kpi-card { background-color: var(--bg-inner) !important; border-radius: 0.75rem; padding: 1rem; transition: background-color .3s ease; }
 /* ===== TABLE ===== */
-.dash-table thead {
-  background-color: var(--bg-inner);
-  color: var(--text-main);
-}
-.dash-table tbody tr {
-  border-bottom: 1px solid var(--grid-color);
-}
-.dash-table tbody tr:hover {
-  background-color: var(--hover-bg);
-}
-
-/* ===== BADGES ===== */
-.badge-kritis {
-  background-color: rgba(229, 115, 115, 0.15);
-  color: #c62828;
-  border: 1px solid rgba(229, 115, 115, 0.5);
-}
-.badge-waspada {
-  background-color: rgba(255, 183, 77, 0.15);
-  color: #ef6c00;
-  border: 1px solid rgba(255, 183, 77, 0.5);
-}
-.badge-normal {
-  background-color: rgba(76, 175, 80, 0.15);
-  color: var(--accent);
-  border: 1px solid rgba(76, 175, 80, 0.5);
-}
-
+.dash-table thead { background-color: var(--bg-inner) !important; color: var(--text-main) !important; }
+.dash-table tbody tr:hover { background-color: var(--hover-bg) !important; }
+/* ===== BADGES (pakai var -> otomatis ikut theme) ===== */
+.badge-kritis { background-color: rgba(177, 168, 168, 0.15) !important; color: var(--text-sub) !important; border: 1px solid rgba(177, 168, 168, 0.5) !important; }
+.badge-waspada { background-color: rgba(194, 184, 173, 0.15) !important; color: var(--text-main) !important; border: 1px solid rgba(194, 184, 173, 0.5) !important; }
+.badge-normal { background-color: rgba(114, 142, 126, 0.15) !important; color: var(--accent) !important; border: 1px solid rgba(114, 142, 126, 0.5) !important; }
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .desktop-menu { display: none !important; }
-  #header_logout { display: none !important; }
-  #hamburger_btn { display: flex !important; }
-  section h2 { font-size: 1.25rem !important; }
-  .tab-btn { padding: 6px 12px; font-size: 13px; }
+.desktop-menu { display: none !important; }
+#header_logout { display: none !important; }
+#hamburger_btn { display: flex !important; }
+section h2 { font-size: 1.25rem !important; }
+.tab-btn { padding: 6px 12px; font-size: 13px; }
 }
 .is-mobile-hw .desktop-menu { display: none !important; }
 .is-mobile-hw #header_logout { display: none !important; }
 .is-mobile-hw #hamburger_btn { display: flex !important; }
-
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
@@ -274,8 +222,8 @@ body.dashboard-scope { background-color: var(--bg-deep); }
 </style>
 </head>
 <?php $favVer = date('YmdHis'); ?>
-<link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>">
-<link rel="icon" href="../favicon.ico?v=<?=$favVer?>">
+<link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
+<link rel="icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="apple-touch-icon" href="../favicon.ico?v=<?=$favVer?>">
 <body class="dashboard-scope min-h-screen flex flex-col">
 <!-- HEADER -->
@@ -333,13 +281,14 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 </div>
 <!-- KANAN -->
 <div class="flex items-center space-x-3 text-base">
-<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition">
+<!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
+<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition" title="Ganti tema">
 <span id="theme_icon">🌙</span> <span id="theme_lbl">Dark</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="btn-ghost px-2.5 py-1 rounded transition">Logout</a>
 <div class="relative">
-<button id="hamburger_btn" class="items-center justify-center w-10 h-10 rounded-lg border transition" style="background: var(--bg-inner); border-color: var(--border-strong); color: var(--text-main);" aria-label="Menu" aria-haspopup="true" aria-expanded="false" onclick="toggleMobileMenu(event)">
+<button id="hamburger_btn" class="items-center justify-center w-10 h-10 rounded-lg border transition" style="background: rgba(114,142,126,0.2); border-color: var(--border-strong); color: var(--text-main);" aria-label="Menu" aria-haspopup="true" aria-expanded="false" onclick="toggleMobileMenu(event)">
 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
 </button>
 <div id="mobile_dropdown" class="hidden absolute right-0 top-full mt-2 w-60 rounded-xl shadow-2xl py-2 z-50 font-rajdhani text-lg">
@@ -590,20 +539,28 @@ let currentProjectId = 0;
 let finChart = null, doughnutChart = null, barMaterialChart = null;
 let globalTaxRates = [];
 
-/* ===== THEME ENGINE ===== */
+/* ===== [FIX] THEME ENGINE (label tidak terbalik) ===== */
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
-
 function updateThemeUI(theme) {
-  window.RabThemeSync.updateUI(theme);
+  const icon = document.getElementById('theme_icon');
+  const lbl = document.getElementById('theme_lbl');
+  if (!icon || !lbl) return;
+  // Tampilkan theme yang SEDANG AKTIF
+  if (theme === 'light') { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
+  else { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
 }
-
 function toggleTheme() {
-  window.RabThemeSync.cycleTheme();
+  const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('app_theme', next);
+  updateThemeUI(next);
+  rethemeCharts(); // chart ikut berubah warna
 }
 function rethemeCharts() {
-  const tick = cssVar('--text-sub'), grid = cssVar('--grid-color');
+  const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
   const acc = cssVar('--accent'), acc2 = cssVar('--accent-2'), sub = cssVar('--text-sub'), main = cssVar('--text-main');
   if (finChart) {
     finChart.data.datasets[0].backgroundColor = acc;
@@ -627,557 +584,523 @@ function rethemeCharts() {
     barMaterialChart.update();
   }
 }
+// Sinkronkan label button dengan theme yang sudah di-set di <head>
 updateThemeUI(document.documentElement.getAttribute('data-theme') || 'dark');
 
 const formatIDR = (num) => 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const formatNum = (num) => Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtRp = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-const esc = (v) => String(v == null ? '' : v).replace(/[&<>\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;' }[c]));
-
+const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 async function apiFetch(url, opts = {}) {
-  const res = await fetch(url, opts);
-  if (res.status === 401) { alert('Sesi berakhir. Silakan login kembali.'); location.href = 'login.php'; throw new Error('401'); }
-  if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
-  let json;
-  try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
-  if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
-  return json;
+const res = await fetch(url, opts);
+if (res.status === 401) { alert('Sesi berakhir. Silakan login kembali.'); location.href = 'login.php'; throw new Error('401'); }
+if (!res.ok) throw new Error("HTTP " + res.status + " " + res.statusText);
+let json;
+try { json = await res.json(); } catch (e) { throw new Error("Respons bukan JSON dari server."); }
+if (json === null || typeof json !== 'object') throw new Error("Format respons server tidak valid.");
+return json;
 }
-
 /* MOBILE */
 function toggleMobileMenu(ev) {
-  if (ev) ev.stopPropagation();
-  const m = document.getElementById('mobile_dropdown');
-  const b = document.getElementById('hamburger_btn');
-  m.classList.toggle('hidden');
-  b.setAttribute('aria-expanded', String(!m.classList.contains('hidden')));
+if (ev) ev.stopPropagation();
+const m = document.getElementById('mobile_dropdown');
+const b = document.getElementById('hamburger_btn');
+m.classList.toggle('hidden');
+b.setAttribute('aria-expanded', String(!m.classList.contains('hidden')));
 }
 document.addEventListener('click', function (event) {
-  const menu = document.getElementById('mobile_dropdown');
-  const btn = document.getElementById('hamburger_btn');
-  if (!menu || !btn) return;
-  if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !btn.contains(event.target)) {
-    menu.classList.add('hidden');
-    btn.setAttribute('aria-expanded', 'false');
-  }
+const menu = document.getElementById('mobile_dropdown');
+const btn = document.getElementById('hamburger_btn');
+if (!menu || !btn) return;
+if (!menu.classList.contains('hidden') && !menu.contains(event.target) && !btn.contains(event.target)) {
+menu.classList.add('hidden');
+btn.setAttribute('aria-expanded', 'false');
+}
 });
 document.querySelectorAll('#mobile_dropdown a').forEach(a => a.addEventListener('click', () => document.getElementById('mobile_dropdown').classList.add('hidden')));
 if (navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-  document.body.classList.add('is-mobile-hw');
+document.body.classList.add('is-mobile-hw');
 }
-
 /* MEGA MENU */
 function closeAllDropdowns(except) {
-  document.querySelectorAll('.dropdown-menu.open').forEach(d => { if (d !== except) d.classList.remove('open'); });
+document.querySelectorAll('.dropdown-menu.open').forEach(d => { if (d !== except) d.classList.remove('open'); });
 }
 function positionDropdown(li, dd) {
-  dd.style.left = '0px';
-  const rect = dd.getBoundingClientRect();
-  const vw = document.documentElement.clientWidth;
-  let shift = 0;
-  if (rect.right > vw - 8) shift = (vw - 8) - rect.right;
-  if (rect.left + shift < 8) shift = 8 - rect.left;
-  dd.style.left = shift + 'px';
+dd.style.left = '0px';
+const rect = dd.getBoundingClientRect();
+const vw = document.documentElement.clientWidth;
+let shift = 0;
+if (rect.right > vw - 8) shift = (vw - 8) - rect.right;
+if (rect.left + shift < 8) shift = 8 - rect.left;
+dd.style.left = shift + 'px';
 }
 function initMegaMenu() {
-  document.querySelectorAll('.nav-item').forEach(li => {
-    const dd = li.querySelector('.dropdown-menu');
-    if (!dd) return;
-    li.addEventListener('mouseenter', () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
-    li.addEventListener('mouseleave', () => dd.classList.remove('open'));
-    li.addEventListener('focusin',  () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
-    li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget)) dd.classList.remove('open'); });
-  });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(null); });
+document.querySelectorAll('.nav-item').forEach(li => {
+const dd = li.querySelector('.dropdown-menu');
+if (!dd) return;
+li.addEventListener('mouseenter', () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
+li.addEventListener('mouseleave', () => dd.classList.remove('open'));
+li.addEventListener('focusin',  () => { closeAllDropdowns(dd); dd.classList.add('open'); positionDropdown(li, dd); });
+li.addEventListener('focusout', (e) => { if (!li.contains(e.relatedTarget)) dd.classList.remove('open'); });
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllDropdowns(null); });
 }
 document.addEventListener('DOMContentLoaded', () => { initDashboard(); });
-
 /* TAB ENGINE */
 const TAB_LOADERS = {
-  ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
-  keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
-  material:  () => { loadMaterialMonitoring(); }
+ringkasan: () => { loadProjectHealth(); loadActionCenter(); loadMilestones(); loadProfitability(); },
+keuangan:  () => { if (!globalTaxRates.length) loadTaxRates(); loadFinancialAging(); loadInvoicePipeline(); loadExtra(); loadFinancialPerformance(); },
+material:  () => { loadMaterialMonitoring(); }
 };
 const TAB_CHARTS = { keuangan: () => [finChart], material: () => [doughnutChart, barMaterialChart] };
 const tabDirty = { ringkasan: true, keuangan: true, material: true };
 let activeTab = 'ringkasan';
-
 function tabFromHash() {
-  const h = (location.hash || '').replace('#', '');
-  return TAB_LOADERS[h] ? h : 'ringkasan';
+const h = (location.hash || '').replace('#', '');
+return TAB_LOADERS[h] ? h : 'ringkasan';
 }
-
 function switchTab(name, skipHash) {
-  if (!TAB_LOADERS[name]) name = 'ringkasan';
-  activeTab = name;
-  document.querySelectorAll('.tab-btn').forEach(b => {
-    const on = b.getAttribute('data-tab') === name;
-    b.classList.toggle('active', on);
-    b.setAttribute('aria-selected', on ? 'true' : 'false');
-    b.tabIndex = on ? 0 : -1;
-  });
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab_' + name));
-  if (!skipHash && location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
-  if (tabDirty[name]) {
-    tabDirty[name] = false;
-    TAB_LOADERS[name]();
-  } else if (TAB_CHARTS[name]) {
-    TAB_CHARTS[name]().forEach(c => { if (c) c.resize(); });
-  }
+if (!TAB_LOADERS[name]) name = 'ringkasan';
+activeTab = name;
+document.querySelectorAll('.tab-btn').forEach(b => {
+const on = b.getAttribute('data-tab') === name;
+b.classList.toggle('active', on);
+b.setAttribute('aria-selected', on ? 'true' : 'false');
+b.tabIndex = on ? 0 : -1;
+});
+document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab_' + name));
+if (!skipHash && location.hash !== '#' + name) history.replaceState(null, '', '#' + name);
+if (tabDirty[name]) {
+tabDirty[name] = false;
+TAB_LOADERS[name]();
+} else if (TAB_CHARTS[name]) {
+TAB_CHARTS[name]().forEach(c => { if (c) c.resize(); });
 }
-
+}
 function refreshDashboard() {
-  Object.keys(tabDirty).forEach(k => { tabDirty[k] = true; });
-  switchTab(activeTab, true);
+Object.keys(tabDirty).forEach(k => { tabDirty[k] = true; });
+switchTab(activeTab, true);
 }
-
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
 });
 window.addEventListener('hashchange', () => { const t = tabFromHash(); if (t !== activeTab) switchTab(t, true); });
-
 async function initDashboard() {
-  await loadProjects();
-  initMegaMenu();
-  switchTab(tabFromHash(), true);
+await loadProjects();
+initMegaMenu();
+switchTab(tabFromHash(), true);
 }
-
 async function loadProjects() {
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
-    const select = document.getElementById('project_select');
-    if (json.success && json.data.length > 0) {
-      select.innerHTML = '<option value="0">-- Semua Proyek --</option>' + json.data.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
-    } else { select.innerHTML = '<option value="0">Tidak ada proyek</option>'; }
-  } catch (err) { console.error('Error load projects:', err); }
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=get_projects`);
+const select = document.getElementById('project_select');
+if (json.success && json.data.length > 0) {
+select.innerHTML = '<option value="0">-- Semua Proyek --</option>' + json.data.map(p => `<option value="${p.id}">${p.project_name}</option>`).join('');
+} else { select.innerHTML = '<option value="0">Tidak ada proyek</option>'; }
+} catch (err) { console.error('Error load projects:', err); }
 }
-
 function onProjectChange(val) {
-  currentProjectId = parseInt(val) || 0;
-  refreshDashboard();
+currentProjectId = parseInt(val) || 0;
+refreshDashboard();
 }
-
 /* LOADERS */
 async function loadFinancialAging() {
-  const tbody = document.getElementById('aging_tbody');
-  const showMsg = (msg) => { tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center font-sans" style="color: var(--text-sub);">${msg}</td></tr>`; };
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_aging&project_id=${currentProjectId}`);
-    if (!json.success) { showMsg(json.message || 'Gagal memuat data aging.'); return; }
-    const ar = json.ar, ap = json.ap;
-    const row = (label, labelColor, d, totalColor) => `
-      <tr class="hover:bg-[var(--hover-bg)] transition">
-        <td class="py-2.5 font-sans font-semibold" style="color:${labelColor};">${label}<span class="block text-[9px] font-normal" style="color: var(--text-sub);">${d.count} invoice outstanding</span></td>
-        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(d.age_30)}</td>
-        <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_60)}</td>
-        <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_90)}</td>
-        <td class="py-2.5 text-right font-semibold" style="color: var(--text-sub);">${formatNum(d.age_over_90)}</td>
-        <td class="py-2.5 text-right font-bold" style="color:${totalColor};">${formatNum(d.total)}</td>
-      </tr>`;
-    const net = (k) => (ar[k] || 0) - (ap[k] || 0);
-    tbody.innerHTML = row('Piutang (AR)', cssVar('--accent'), ar, cssVar('--accent')) + row('Hutang (AP)', cssVar('--accent-2'), ap, cssVar('--text-main')) + `
-      <tr class="border-t" style="border-color: var(--border-soft);"><td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">Netto (AR - AP)</td>
-        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_30'))}</td>
-        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_60'))}</td>
-        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_90'))}</td>
-        <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_over_90'))}</td>
-        <td class="py-2.5 text-right font-bold" style="color: var(--text-main);">${formatNum(net('total'))}</td></tr>
-      <tr><td colspan="6" class="pt-2 text-right text-[9px] font-sans" style="color: var(--text-sub);">Umur dihitung dari tanggal invoice, per ${json.as_of}</td></tr>`;
-  } catch (err) { console.error('Error load financial aging:', err); showMsg('Gagal memuat data aging.'); }
+const tbody = document.getElementById('aging_tbody');
+const showMsg = (msg) => { tbody.innerHTML = `<tr><td colspan="6" class="p-3 text-center font-sans" style="color: var(--text-sub);">${msg}</td></tr>`; };
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_aging&project_id=${currentProjectId}`);
+if (!json.success) { showMsg(json.message || 'Gagal memuat data aging.'); return; }
+const ar = json.ar, ap = json.ap;
+const row = (label, labelColor, d, totalColor) => `
+<tr class="hover:bg-[#4a4960]/50 transition">
+<td class="py-2.5 font-sans font-semibold" style="color:${labelColor};">${label}<span class="block text-[9px] font-normal" style="color: var(--text-sub);">${d.count} invoice outstanding</span></td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(d.age_30)}</td>
+<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_60)}</td>
+<td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(d.age_90)}</td>
+<td class="py-2.5 text-right font-semibold" style="color: var(--text-sub);">${formatNum(d.age_over_90)}</td>
+<td class="py-2.5 text-right font-bold" style="color:${totalColor};">${formatNum(d.total)}</td>
+</tr>`;
+const net = (k) => (ar[k] || 0) - (ap[k] || 0);
+tbody.innerHTML = row('Piutang (AR)', '#728E7E', ar, '#728E7E') + row('Hutang (AP)', '#949C8B', ap, '#C2B8AD') + `
+<tr class="border-t" style="border-color: var(--border-soft);"><td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">Netto (AR - AP)</td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_30'))}</td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_60'))}</td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_90'))}</td>
+<td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(net('age_over_90'))}</td>
+<td class="py-2.5 text-right font-bold" style="color: var(--text-main);">${formatNum(net('total'))}</td></tr>
+<tr><td colspan="6" class="pt-2 text-right text-[9px] font-sans" style="color: var(--text-sub);">Umur dihitung dari tanggal invoice, per ${json.as_of}</td></tr>`;
+} catch (err) { console.error('Error load financial aging:', err); showMsg('Gagal memuat data aging.'); }
 }
-
 async function loadInvoicePipeline() {
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
-    if (json.success) {
-      const d = json.data;
-      document.getElementById('pip_overdue_val').innerText = fmtRp(d.values['Jatuh Tempo (Overdue)']);
-      document.getElementById('pip_overdue_cnt').innerText = d.counts['Jatuh Tempo (Overdue)'] + ' invoice';
-      document.getElementById('pip_unpaid_val').innerText = fmtRp(d.values['Belum Bayar']);
-      document.getElementById('pip_unpaid_cnt').innerText = d.counts['Belum Bayar'] + ' invoice';
-      document.getElementById('pip_partial_val').innerText = fmtRp(d.values['Sebagian']);
-      document.getElementById('pip_partial_cnt').innerText = d.counts['Sebagian'] + ' invoice';
-      document.getElementById('pip_paid_cnt').innerText = d.counts['Lunas'] + ' invoice';
-    }
-  } catch (err) { console.error('Error load invoice pipeline:', err); }
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_invoice_pipeline&project_id=${currentProjectId}`);
+if (json.success) {
+const d = json.data;
+document.getElementById('pip_overdue_val').innerText = fmtRp(d.values['Jatuh Tempo (Overdue)']);
+document.getElementById('pip_overdue_cnt').innerText = d.counts['Jatuh Tempo (Overdue)'] + ' invoice';
+document.getElementById('pip_unpaid_val').innerText = fmtRp(d.values['Belum Bayar']);
+document.getElementById('pip_unpaid_cnt').innerText = d.counts['Belum Bayar'] + ' invoice';
+document.getElementById('pip_partial_val').innerText = fmtRp(d.values['Sebagian']);
+document.getElementById('pip_partial_cnt').innerText = d.counts['Sebagian'] + ' invoice';
+document.getElementById('pip_paid_cnt').innerText = d.counts['Lunas'] + ' invoice';
 }
-
+} catch (err) { console.error('Error load invoice pipeline:', err); }
+}
 async function loadActionCenter() {
-  const ul = document.getElementById('action_list');
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_action_center&project_id=${currentProjectId}`);
-    if (!json.success) { ul.innerHTML = `<li class="text-center text-xs py-3" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat Action Center')}</li>`; return; }
-    const order = { danger: 0, warn: 1, info: 2 };
-    const active = json.items.filter(i => i.count > 0).sort((a, b) => (order[a.level] - order[b.level]) || (b.count - a.count));
-    const calm = json.items.length - active.length;
-    const levelBorder = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
-    const levelText = { danger: cssVar('--text-sub'), warn: cssVar('--text-main'), info: cssVar('--accent') };
-    let html = active.map(i => `
-      <li class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 4px solid ${levelBorder[i.level] || cssVar('--accent')}; color: ${levelText[i.level] || cssVar('--accent')}; border-bottom: 1px solid var(--grid-color);" title="${esc(i.hint)}">
-        <span>${esc(i.label)}<span class="block text-[10px] opacity-60">${esc(i.hint)}</span></span>
-        <span class="font-bold font-mono text-lg">${i.count}</span>
-      </li>`).join('');
-    if (!active.length) html = '<li class="text-center text-sm py-4" style="color: var(--accent);">✔ Tidak ada yang perlu ditindaklanjuti.</li>';
-    else if (calm > 0) html += `<li class="text-center text-[11px] pt-1" style="color: var(--text-sub);">✔ ${calm} indikator lain aman</li>`;
-    ul.innerHTML = html;
-  } catch (err) { console.error('Error load action center:', err); ul.innerHTML = '<li class="text-center text-xs py-3" style="color: var(--text-sub);">Error memuat Action Center</li>'; }
+const ul = document.getElementById('action_list');
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_action_center&project_id=${currentProjectId}`);
+if (!json.success) { ul.innerHTML = `<li class="text-center text-xs py-3" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat Action Center')}</li>`; return; }
+const order = { danger: 0, warn: 1, info: 2 };
+const active = json.items.filter(i => i.count > 0).sort((a, b) => (order[a.level] - order[b.level]) || (b.count - a.count));
+const calm = json.items.length - active.length;
+const levelBorder = { danger: '#B1A8A8', warn: '#C2B8AD', info: '#728E7E' };
+const levelText = { danger: '#B1A8A8', warn: '#C2B8AD', info: '#728E7E' };
+let html = active.map(i => `
+<li class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 4px solid ${levelBorder[i.level] || '#728E7E'}; color: ${levelText[i.level] || '#728E7E'};" title="${esc(i.hint)}">
+<span>${esc(i.label)}<span class="block text-[10px] opacity-60">${esc(i.hint)}</span></span>
+<span class="font-bold font-mono text-lg">${i.count}</span>
+</li>`).join('');
+if (!active.length) html = '<li class="text-center text-sm py-4" style="color: var(--accent);">✔ Tidak ada yang perlu ditindaklanjuti.</li>';
+else if (calm > 0) html += `<li class="text-center text-[11px] pt-1" style="color: var(--text-sub);">✔ ${calm} indikator lain aman</li>`;
+ul.innerHTML = html;
+} catch (err) { console.error('Error load action center:', err); ul.innerHTML = '<li class="text-center text-xs py-3" style="color: var(--text-sub);">Error memuat Action Center</li>'; }
 }
-
 async function loadMilestones() {
-  const list = document.getElementById('milestone_list');
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_upcoming_milestones&project_id=${currentProjectId}`);
-    if (!json.success) { list.innerHTML = `<div class="text-center text-xs py-4" style="color: var(--text-sub);">${esc(json.message || 'Error memuat milestone')}</div>`; return; }
-    if (json.data.length > 0) {
-      list.innerHTML = json.data.map(t => {
-        const late = t.late === true;
-        const info = late ? `Terlambat ${Math.abs(t.days_left)} hari` : (t.days_left === 0 ? 'Hari ini' : `${t.days_left} hari lagi`);
-        const border = late ? cssVar('--text-sub') : cssVar('--accent');
-        const textColor = late ? cssVar('--text-sub') : cssVar('--text-main');
-        const subColor = late ? cssVar('--text-sub') : cssVar('--text-sub');
-        return `
-          <div class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 2px solid ${border}; border-bottom: 1px solid var(--grid-color);">
-            <div><div class="font-bold text-xs" style="color: var(--text-main);">${esc(t.task_name)}</div><div class="text-[10px]" style="color: var(--text-sub);">${esc(t.project_name)}</div></div>
-            <div class="text-right"><div class="font-mono text-xs font-bold" style="color:${textColor};">${esc(t.deadline)}</div><div class="text-[9px]" style="color:${subColor};">${esc(t.status)} - ${info}</div></div>
-          </div>`;
-      }).join('');
-    } else { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Tidak ada milestone terdekat.</div>'; }
-  } catch (err) { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Error memuat milestone</div>'; }
+const list = document.getElementById('milestone_list');
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_upcoming_milestones&project_id=${currentProjectId}`);
+if (!json.success) { list.innerHTML = `<div class="text-center text-xs py-4" style="color: var(--text-sub);">${esc(json.message || 'Error memuat milestone')}</div>`; return; }
+if (json.data.length > 0) {
+list.innerHTML = json.data.map(t => {
+const late = t.late === true;
+const info = late ? `Terlambat ${Math.abs(t.days_left)} hari` : (t.days_left === 0 ? 'Hari ini' : `${t.days_left} hari lagi`);
+const border = late ? '#B1A8A8' : '#728E7E';
+const textColor = late ? '#B1A8A8' : '#C2B8AD';
+const subColor = late ? '#B1A8A8' : '#B1A8A8';
+return `
+<div class="flex justify-between items-center p-2 rounded" style="background-color: var(--bg-inner); border-left: 2px solid ${border};">
+<div><div class="font-bold text-xs" style="color: var(--text-main);">${esc(t.task_name)}</div><div class="text-[10px]" style="color: var(--text-sub);">${esc(t.project_name)}</div></div>
+<div class="text-right"><div class="font-mono text-xs font-bold" style="color:${textColor};">${esc(t.deadline)}</div><div class="text-[9px]" style="color:${subColor};">${esc(t.status)} - ${info}</div></div>
+</div>`;
+}).join('');
+} else { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Tidak ada milestone terdekat.</div>'; }
+} catch (err) { list.innerHTML = '<div class="text-center text-xs py-4" style="color: var(--text-sub);">Error memuat milestone</div>'; }
 }
-
 async function loadProfitability() {
-  const tbody = document.getElementById('profit_tbody');
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_project_profitability&project_id=${currentProjectId}`);
-    if (!json.success) { tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">${esc(json.message || 'Error memuat data')}</td></tr>`; return; }
-    if (json.data.length > 0) {
-      tbody.innerHTML = json.data.map(p => {
-        const marginPct = (p.margin / p.contract_value) * 100;
-        const marginColor = marginPct >= 10 ? cssVar('--accent') : (marginPct >= 5 ? cssVar('--text-main') : cssVar('--text-sub'));
-        return `
-          <tr class="hover:bg-[var(--hover-bg)] transition">
-            <td class="py-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(p.project_name)}</td>
-            <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.progress_pct)}%</td>
-            <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.contract_value)}</td>
-            <td class="py-2.5 text-right font-medium" style="color: var(--text-main);">${formatNum(p.invoiced_value)}</td>
-            <td class="py-2.5 text-right font-semibold" style="color: var(--text-main);">${formatNum(p.actual_cost)}</td>
-            <td class="py-2.5 text-right" style="color: var(--text-main);">${formatNum(p.cost_per_contract)}%</td>
-            <td class="py-2.5 text-right font-bold" style="color:${marginColor};">${formatNum(marginPct)}%</td>
-          </tr>`;
-      }).join('');
-    }
-  } catch (err) { console.error('Error load profitability:', err); tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data profitabilitas</td></tr>'; }
+const tbody = document.getElementById('profit_tbody');
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_project_profitability&project_id=${currentProjectId}`);
+if (!json.success) { tbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">${esc(json.message || 'Error memuat data')}</td></tr>`; return; }
+if (json.data.length > 0) {
+tbody.innerHTML = json.data.map(p => {
+const hasMargin = p.margin_pct !== null && p.margin_pct !== undefined;
+const margin = hasMargin ? parseFloat(p.margin_pct) : 0;
+let mColor = '#B1A8A8';
+if (hasMargin) {
+if (margin < 10) mColor = '#B1A8A8';
+else if (margin < 20) mColor = '#C2B8AD';
+else mColor = '#728E7E';
 }
-
+const cPct = parseFloat(p.cost_pct) || 0;
+let cColor = '#C2B8AD';
+if (cPct > 100) cColor = '#B1A8A8';
+else if (cPct > 85) cColor = '#C2B8AD';
+const detail = `Material ${fmtRp(p.cost_material)} | Pengeluaran ${fmtRp(p.cost_expense)} | Subkon ${fmtRp(p.cost_subcon)}`;
+return `<tr class="hover:bg-[#4a4960]/50"><td class="py-2 font-sans text-xs" style="color: var(--text-main);">${esc(p.name)}</td>
+<td class="py-2 text-right" style="color: var(--accent);">${p.progress}%</td>
+<td class="py-2 text-right" style="color: var(--text-main);">${fmtRp(p.contract_dpp)}</td>
+<td class="py-2 text-right" style="color: var(--text-main);">${fmtRp(p.billed_dpp)}</td>
+<td class="py-2 text-right" style="color: var(--text-main);" title="${esc(detail)}">${fmtRp(p.cost_total)}</td>
+<td class="py-2 text-right" style="color:${cColor};">${cPct.toFixed(1)}%</td>
+<td class="py-2 text-right font-bold" style="color:${mColor};">${hasMargin ? margin.toFixed(1) + '%' : '-'}</td></tr>`;
+}).join('');
+} else { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Tidak ada data profitabilitas.</td></tr>'; }
+} catch (err) { tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-xs" style="color: var(--text-sub);">Error memuat data</td></tr>'; }
+}
+const HEALTH_STYLE = {
+KRITIS:  { badge: 'badge-kritis', icon: '🔴', label: 'KRITIS', num: '#B1A8A8', bar: '#B1A8A8' },
+WASPADA: { badge: 'badge-waspada', icon: '🟡', label: 'WASPADA', num: '#C2B8AD', bar: '#C2B8AD' },
+NORMAL:  { badge: 'badge-normal', icon: '🟢', label: 'NORMAL', num: '#728E7E', bar: '#728E7E' },
+NA:      { badge: 'badge-normal', icon: '⚪', label: 'BUDGET KOSONG', num: '#949C8B', bar: '#949C8B' }
+};
+const HEALTH_ICONS = ['🏗️', '🏢', '🏘️', '🏭', '🏠'];
+const RISK_STYLE = {
+HIGH:   { badge: 'badge-kritis', text: '#B1A8A8' },
+MEDIUM: { badge: 'badge-waspada', text: '#C2B8AD' },
+LOW:    { badge: 'badge-normal', text: '#728E7E' }
+};
+let healthSelectedId = 0, aiRequestToken = 0;
+const LEVEL_RANK = { NA: 0, NORMAL: 0, WASPADA: 1, KRITIS: 2 };
+function applyAiRiskToCard(id, aiRisk) {
+const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
+if (!card) return;
+const target = (aiRisk === 'HIGH' || aiRisk === 'CRITICAL') ? 'KRITIS' : (aiRisk === 'MEDIUM' ? 'WASPADA' : null);
+const cur = card.getAttribute('data-level') || 'NORMAL';
+if (!target || LEVEL_RANK[target] <= (LEVEL_RANK[cur] || 0)) return;
+const st = HEALTH_STYLE[target], badge = card.querySelector('.health-badge');
+badge.className = `health-badge px-2 py-0.5 text-[11px] font-bold border rounded-md whitespace-nowrap ${st.badge}`;
+badge.innerHTML = `${st.icon} ${st.label} • AI`;
+card.querySelectorAll('.health-num').forEach(el => { el.style.color = st.num; });
+card.setAttribute('data-level', target);
+}
+function selectHealthProject(id, refresh) {
+healthSelectedId = id;
+document.querySelectorAll('#health_cards [data-pid]').forEach(el => {
+const on = parseInt(el.getAttribute('data-pid'), 10) === id;
+el.style.borderColor = on ? 'var(--accent)' : 'var(--border-soft)';
+el.style.borderWidth = on ? '2px' : '1px';
+});
+loadProjectAI(id, !!refresh);
+}
+async function loadProjectAI(id, refresh) {
+const box = document.getElementById('health_reco');
+const token = ++aiRequestToken;
+const card = document.querySelector(`#health_cards [data-pid="${id}"]`);
+const pname = card ? card.getAttribute('data-name') : '';
+box.innerHTML = `<div class="border rounded-lg p-4 text-sm animate-pulse" style="background-color: var(--bg-inner); border-color: var(--border-strong); color: var(--text-main);">🧠 AI sedang menganalisis <b>${esc(pname)}</b> (biaya, material, subkon, jadwal, penagihan)...</div>`;
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_project_ai&project_id=${id}&refresh=${refresh ? 1 : 0}`);
+if (token !== aiRequestToken) return;
+if (!json.success) { box.innerHTML = `<div class="border rounded-lg p-3 text-sm" style="background-color: var(--bg-inner); border-color: var(--border-strong); color: var(--text-sub);">${esc(json.message || 'Gagal memuat rekomendasi AI')}</div>`; return; }
+const d = json.data, rs = RISK_STYLE[d.risk] || RISK_STYLE.LOW;
+const li = (arr) => arr.map(t => `<li>${esc(t)}</li>`).join('');
+const findings = (d.findings || []).map(f => `
+<div class="border-l-4 rounded px-2 py-1 mb-1" style="background-color: var(--bg-inner); border-left-color: var(--accent);">
+<div class="text-xs font-bold" style="color: var(--text-main);">${esc(f.title)}</div><div class="text-[11px] opacity-80" style="color: var(--text-sub);">${esc(f.evidence)}</div></div>`).join('');
+box.innerHTML = `
+<div class="border rounded-lg p-4 max-h-96 overflow-y-auto no-scrollbar" style="background-color: var(--bg-inner); border-color: var(--border-strong);">
+<div class="flex flex-wrap items-center gap-2 mb-2">
+<span class="font-bold text-base" style="color: var(--accent);">🧠 AI Recommendation</span>
+<span class="px-2 py-0.5 text-[11px] font-bold border rounded-md ${rs.badge}">RISK: ${esc(d.risk)}</span>
+<span class="px-2 py-0.5 text-[10px] border rounded-md" style="border-color: var(--accent-2); color: var(--accent-2);">${d.ai_used ? 'Gemini' : 'Analisis sistem'}${d.cached ? ' • cache' : ''}</span>
+<span class="text-[11px] ml-auto" style="color: var(--text-sub);">${esc(d.generated_at || '')}${d.log_id ? ' • log #' + d.log_id : ''}</span>
+<button type="button" class="aiRefresh px-3 py-1 text-[11px] font-bold rounded text-white cursor-pointer border-0 btn-accent">Analisis Ulang</button>
+</div>
+<div class="italic text-base mb-2" style="color: var(--text-main);"><b>${esc(d.project_name)}:</b> ${esc(d.headline)}</div>
+<div class="text-sm mb-2 leading-relaxed" style="color: var(--text-main);">${esc(d.summary)}</div>
+${d.actions.length ? `<div class="text-xs font-bold mt-2 mb-1" style="color: var(--accent);">Tindakan yang disarankan</div><ul class="list-disc pl-5 text-sm space-y-1" style="color: var(--text-main);">${li(d.actions)}</ul>` : ''}
+${d.questions && d.questions.length ? `<div class="text-xs font-bold mt-3 mb-1" style="color: var(--text-main);">Perlu dikonfirmasi</div><ul class="list-disc pl-5 text-sm space-y-1" style="color: var(--text-main);">${li(d.questions)}</ul>` : ''}
+${findings ? `<div class="text-xs font-bold mt-3 mb-1" style="color: var(--text-sub);">Temuan sistem (${d.findings.length})</div>${findings}` : ''}
+${d.ai_note ? `<div class="text-[11px] mt-2" style="color: var(--text-main);">${esc(d.ai_note)}</div>` : ''}
+</div>`;
+box.querySelector('.aiRefresh').onclick = () => loadProjectAI(id, true);
+applyAiRiskToCard(id, d.risk);
+} catch (err) { if (token === aiRequestToken) box.innerHTML = '<div class="border rounded-lg p-3 text-sm" style="background-color: var(--bg-inner); border-color: var(--border-strong); color: var(--text-sub);">Error memuat rekomendasi AI</div>'; }
+}
 async function loadProjectHealth() {
-  const cards = document.getElementById('health_cards');
-  const reco = document.getElementById('health_reco');
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
-    if (!json.success || !json.data || json.data.length === 0) {
-      cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada data kesehatan proyek.</div>';
-      reco.innerHTML = '';
-      return;
-    }
-    if (json.data.length > 0) {
-      cards.innerHTML = json.data.map(p => {
-        const healthColor = p.health_score >= 70 ? cssVar('--accent') : (p.health_score >= 40 ? cssVar('--text-main') : cssVar('--text-sub'));
-        const healthText = p.health_score >= 70 ? 'Sehat' : (p.health_score >= 40 ? 'Waspada' : 'Kritis');
-        return `
-          <div class="kpi-card" style="border-left: 4px solid ${healthColor}; cursor: pointer;" onclick="showHealthDetail(${p.project_id})">
-            <div class="text-base uppercase font-bold tracking-wider" style="color: var(--text-sub);">${esc(p.project_name)}</div>
-            <div class="text-xl font-bold font-mono mt-2" style="color:${healthColor};">${p.health_score}%</div>
-            <div class="text-[10px] mt-1" style="color: var(--text-sub);">${healthText} - ${esc(p.health_status)}</div>
-          </div>`;
-      }).join('');
-      reco.innerHTML = json.recommendations ? `<div class="dash-card p-4 mt-4">
-        <h3 class="text-base font-bold uppercase tracking-wider font-rajdhani mb-2" style="color: var(--accent);">Rekomendasi AI</h3>
-        <div class="text-sm" style="color: var(--text-main);">${esc(json.recommendations)}</div>
-      </div>` : '';
-    } else {
-      cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada data kesehatan proyek.</div>';
-      reco.innerHTML = '';
-    }
-  } catch (err) { console.error('Error load project health:', err); cards.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Error memuat data kesehatan proyek</div>'; reco.innerHTML = ''; }
+const box = document.getElementById('health_cards'), reco = document.getElementById('health_reco');
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_project_health&project_id=${currentProjectId}`);
+if (!json.success) { box.innerHTML = `<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat kesehatan proyek')}</div>`; reco.innerHTML = ''; return; }
+if (!json.data.length) { box.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Tidak ada proyek berstatus Berjalan.</div>'; reco.innerHTML = ''; return; }
+const t = json.thresholds || { warn: 10, crit: 25 };
+document.getElementById('health_legend').innerText = `Klik kartu untuk analisis AI | Status = gap biaya (WASPADA >= ${t.warn}, KRITIS >= ${t.crit}), indeks biaya CPI (<${t.cpi_yellow} / <${t.cpi_red}), jadwal, dan hasil AI terakhir`;
+box.innerHTML = json.data.map((p, i) => {
+const st = HEALTH_STYLE[p.level] || HEALTH_STYLE.NA;
+const hasUsage = p.usage_pct !== null && p.usage_pct !== undefined;
+const gap = (p.gap === null || p.gap === undefined) ? null : Math.round(p.gap);
+const gapTxt = gap === null ? '-' : (gap > 0 ? '+' + gap : String(gap));
+const detail = `Budget ${fmtRp(p.budget)} | Biaya ${fmtRp(p.cost_total)} (Material ${fmtRp(p.cost_material)}, Pengeluaran ${fmtRp(p.cost_expense)}, Subkon ${fmtRp(p.cost_subcon)})` +
+(p.cpi !== null && p.cpi !== undefined ? ` | CPI ${p.cpi}` : '') + (p.elapsed_pct !== null ? ` | Waktu terpakai ${p.elapsed_pct}%` : '') +
+(p.late_days ? ` | Lewat jadwal ${p.late_days} hari` : '') + (p.ai_risk ? ` | AI terakhir: ${p.ai_risk} (${p.ai_at})` : '') +
+(p.reasons && p.reasons.length ? ` | Alasan status: ${p.reasons.join('; ')}` : '');
+const w1 = Math.max(0, Math.min(100, p.progress)), w2 = hasUsage ? Math.max(0, Math.min(100, p.usage_pct)) : 0;
+return `
+<div class="border rounded-xl p-3 cursor-pointer transition" data-pid="${p.id}" data-name="${esc(p.name)}" data-level="${p.level}" title="${esc(detail)}" style="background-color: var(--bg-inner); border-color: var(--border-soft);" onmouseover="this.style.borderColor='var(--accent)';" onmouseout="this.style.borderColor='var(--border-soft)';">
+<div class="flex justify-between items-start gap-2">
+<div class="font-bold text-base leading-tight" style="color: var(--text-main);">${HEALTH_ICONS[i % HEALTH_ICONS.length]} ${esc(p.name)}</div>
+<span class="health-badge px-2 py-0.5 text-[11px] font-bold border rounded-md whitespace-nowrap ${st.badge}">${st.icon} ${st.label}${p.ai_risk && p.level !== 'NORMAL' ? ' • AI' : ''}</span>
+</div>
+<div class="flex flex-wrap gap-x-4 text-sm mt-2" style="color: var(--text-sub);">
+<span>Progres: <b style="color: var(--text-main);">${p.progress}%</b></span>
+<span>Pemakaian: <b class="health-num" style="color:${st.num};">${hasUsage ? Number(p.usage_pct).toFixed(0) + '%' : '-'}</b></span>
+<span>Gap: <b class="health-num" style="color:${st.num};">${gapTxt}</b></span>
+</div>
+<div class="mt-2 space-y-1">
+<div class="h-1.5 rounded" style="background-color: var(--bg-deep);"><div class="h-1.5 rounded" style="width:${w1}%; background-color: var(--accent);"></div></div>
+<div class="h-1.5 rounded" style="background-color: var(--bg-deep);"><div class="h-1.5 rounded" style="width:${w2}%; background-color:${st.bar};"></div></div>
+</div>
+</div>`;
+}).join('');
+box.querySelectorAll('[data-pid]').forEach(el => { el.onclick = () => selectHealthProject(parseInt(el.getAttribute('data-pid'), 10), false); });
+const ids = json.data.map(p => p.id);
+const pick = ids.includes(healthSelectedId) ? healthSelectedId : (ids.includes(parseInt(currentProjectId, 10)) ? parseInt(currentProjectId, 10) : ids[0]);
+selectHealthProject(pick, false);
+} catch (err) { console.error('Error load project health:', err); box.innerHTML = '<div class="text-center text-xs py-4 col-span-full" style="color: var(--text-sub);">Error memuat kesehatan proyek</div>'; }
 }
-
-async function loadTaxRates() {
-  const tbody = document.getElementById('tax_rate_tbody');
-  const badge = document.getElementById('kmk_badge');
-  const dateSpan = document.getElementById('kmk_valid_date');
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_tax_rates`);
-    if (!json.success) {
-      tbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data kurs pajak')}</td></tr>`;
-      badge.textContent = 'Error';
-      badge.style.backgroundColor = cssVar('--error-color');
-      return;
-    }
-    if (json.data.length > 0) {
-      globalTaxRates = json.data;
-      renderTaxRates();
-      badge.textContent = 'Valid';
-      badge.style.backgroundColor = cssVar('--success-color');
-      dateSpan.textContent = `Per ${json.valid_date}`;
-    } else {
-      tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data kurs pajak</td></tr>';
-      badge.textContent = 'Kosong';
-      badge.style.backgroundColor = cssVar('--warning-color');
-    }
-  } catch (err) { console.error('Error load tax rates:', err); tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Error memuat data kurs pajak</td></tr>'; badge.textContent = 'Error'; badge.style.backgroundColor = cssVar('--error-color'); }
-}
-
-function renderTaxRates() {
-  const tbody = document.getElementById('tax_rate_tbody');
-  const search = document.getElementById('search_tax_currency').value.toLowerCase();
-  const filtered = globalTaxRates.filter(r => r.currency.toLowerCase().includes(search));
-  if (filtered.length > 0) {
-    tbody.innerHTML = filtered.map(r => {
-      const isEditable = r.is_editable === true;
-      return `
-        <tr class="hover:bg-[var(--hover-bg)] transition">
-          <td class="p-2.5 font-sans font-semibold" style="color: var(--text-main);">${esc(r.currency)}</td>
-          <td class="p-2.5 text-right font-mono" style="color: var(--text-main);">${formatNum(r.rate)}</td>
-          <td class="p-2.5 text-center">${isEditable ? `<button onclick="editTaxRate('${esc(r.currency)}', ${r.rate})" class="text-[10px] px-1.5 py-0.5 rounded" style="background: var(--bg-inner); color: var(--text-main); border: 1px solid var(--border-strong);">Ubah</button>` : '<span class="text-[10px]" style="color: var(--text-sub);">Tidak bisa diubah</span>'}</td>
-        </tr>`;
-    }).join('');
-  } else {
-    tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Tidak ada data yang cocok</td></tr>';
-  }
-}
-
-function filterTaxRates() {
-  renderTaxRates();
-}
-
-async function syncTaxRates() {
-  const btn = document.getElementById('btn_sync_tax');
-  const badge = document.getElementById('kmk_badge');
-  const dateSpan = document.getElementById('kmk_valid_date');
-  try {
-    btn.disabled = true;
-    btn.textContent = 'Memperbarui...';
-    const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: <?=$user_id?> })
-    });
-    if (json.success) {
-      await loadTaxRates();
-    } else {
-      alert(json.message || 'Gagal memperbarui kurs pajak');
-      badge.textContent = 'Error';
-      badge.style.backgroundColor = cssVar('--error-color');
-    }
-  } catch (err) {
-    console.error('Error sync tax rates:', err);
-    alert('Error memperbarui kurs pajak');
-    badge.textContent = 'Error';
-    badge.style.backgroundColor = cssVar('--error-color');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Update Kurs';
-  }
-}
-
-function editTaxRate(currency, currentRate) {
-  const newRate = prompt(`Masukkan kurs baru untuk ${currency}:`, currentRate);
-  if (newRate === null) return;
-  const rate = parseFloat(newRate);
-  if (isNaN(rate) || rate <= 0) {
-    alert('Kurs harus berupa angka positif');
-    return;
-  }
-  updateTaxRate(currency, rate);
-}
-
-async function updateTaxRate(currency, rate) {
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=update_tax_rate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ currency, rate, user_id: <?=$user_id?> })
-    });
-    if (json.success) {
-      alert('Kurs pajak berhasil diperbarui');
-      await loadTaxRates();
-    } else {
-      alert(json.message || 'Gagal memperbarui kurs pajak');
-    }
-  } catch (err) {
-    console.error('Error update tax rate:', err);
-    alert('Error memperbarui kurs pajak');
-  }
-}
-
-async function loadFinancialPerformance() {
-  const canvas = document.getElementById('finChartCanvas');
-  const emptyDiv = document.getElementById('fin_empty');
-  const year = document.getElementById('fin_year_select').value;
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
-    if (!json.success) {
-      emptyDiv.textContent = json.message || 'Gagal memuat data performa keuangan';
-      emptyDiv.classList.remove('hidden');
-      return;
-    }
-    if (json.data.length > 0) {
-      emptyDiv.classList.add('hidden');
-      const months = json.data.map(d => d.month);
-      const income = json.data.map(d => d.income);
-      const expense = json.data.map(d => d.expense);
-      const ctx = canvas.getContext('2d');
-      if (finChart) finChart.destroy();
-      finChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: months,
-          datasets: [
-            { label: 'Pendapatan', data: income, backgroundColor: cssVar('--accent'), borderWidth: 1 },
-            { label: 'Pengeluaran', data: expense, backgroundColor: cssVar('--text-sub'), borderWidth: 1 }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
-            tooltip: { callbacks: { label: ctx => formatIDR(ctx.raw) } }
-          },
-          scales: {
-            x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
-            y: { ticks: { color: cssVar('--text-sub'), callback: v => fmtRp(v) }, grid: { color: cssVar('--grid-color') } }
-          }
-        }
-      });
-    } else {
-      emptyDiv.textContent = 'Tidak ada data untuk tahun ini';
-      emptyDiv.classList.remove('hidden');
-    }
-  } catch (err) {
-    console.error('Error load financial performance:', err);
-    emptyDiv.textContent = 'Error memuat data performa keuangan';
-    emptyDiv.classList.remove('hidden');
-  }
-}
-
 async function loadExtra() {
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_extra_data&project_id=${currentProjectId}`);
-    if (json.success) {
-      document.getElementById('extra_cash').innerText = fmtRp(json.cash_balance);
-      document.getElementById('extra_ppn').innerText = fmtRp(json.ppn_balance);
-      document.getElementById('extra_ppn_period').innerText = json.ppn_period;
-      document.getElementById('extra_ppn_sub').innerText = json.ppn_direction;
-      document.getElementById('extra_subcon').innerText = fmtRp(json.subcon_balance);
-      document.getElementById('extra_subcon_sub').innerText = json.subcon_status;
-      if (json.subcon_balance === 0) {
-        document.getElementById('extra_subcon_card').style.display = 'none';
-      }
-    }
-  } catch (err) { console.error('Error load extra data:', err); }
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_extra&project_id=${currentProjectId}`);
+if (!json.success) return;
+const d = json.data;
+document.getElementById('extra_cash').innerText = d.cash === null ? '-' : fmtRp(d.cash);
+const ppnEl = document.getElementById('extra_ppn');
+if (d.ppn) {
+document.getElementById('extra_ppn_period').innerText = `(${d.ppn.periode})`;
+ppnEl.innerText = fmtRp(Math.abs(d.ppn.net));
+ppnEl.className = 'text-xl font-bold font-mono mt-2';
+ppnEl.style.color = d.ppn.net > 0 ? 'var(--text-main)' : 'var(--accent)';
+document.getElementById('extra_ppn_sub').innerText = `${d.ppn.net > 0 ? 'KURANG BAYAR' : (d.ppn.net < 0 ? 'LEBIH BAYAR' : 'NIHIL')} | Keluaran ${fmtRp(d.ppn.keluaran)} - Masukan ${fmtRp(d.ppn.masukan)}`;
 }
-
+const card = document.getElementById('extra_subcon_card');
+if (d.subcon) {
+card.style.display = '';
+document.getElementById('extra_subcon').innerText = fmtRp(d.subcon.sisa_hutang);
+document.getElementById('extra_subcon_sub').innerText = `${d.subcon.spk_aktif} SPK aktif | Nilai ${fmtRp(d.subcon.nilai_spk)} | Tertagih ${fmtRp(d.subcon.tertagih)} | sisa hutang prestasi`;
+} else { card.style.display = 'none'; }
+} catch (err) { console.error('Error load extra:', err); }
+}
+async function loadTaxRates() {
+const badge = document.getElementById('kmk_badge');
+const validDateEl = document.getElementById('kmk_valid_date');
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_tax_rates`);
+if (json.success) {
+badge.innerText = json.kmk_number !== '-' ? `KMK: ${json.kmk_number}` : 'Kosong';
+if (json.start_date && json.end_date) validDateEl.innerText = `(${json.start_date} s/d ${json.end_date})`;
+else if (json.valid_date) validDateEl.innerText = `(${json.valid_date})`;
+else validDateEl.innerText = '';
+globalTaxRates = json.rates || [];
+filterTaxRates();
+}
+} catch (err) { document.getElementById('tax_rate_tbody').innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Gagal memuat kurs pajak</td></tr>'; }
+}
+function filterTaxRates() {
+const query = (document.getElementById('search_tax_currency').value || '').trim().toLowerCase();
+const filtered = globalTaxRates.filter(r => (r.currency_code && r.currency_code.toLowerCase().includes(query)) || (r.currency_name && r.currency_name.toLowerCase().includes(query)));
+renderTaxRates(filtered);
+}
+function renderTaxRates(rates) {
+const tbody = document.getElementById('tax_rate_tbody');
+if (!rates || rates.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="p-3 text-center" style="color: var(--text-sub);">Mata uang tidak ditemukan.</td></tr>'; return; }
+tbody.innerHTML = rates.map(r => {
+const dirColor = r.change_direction === 'UP' ? 'var(--accent)' : (r.change_direction === 'DOWN' ? 'var(--text-sub)' : 'var(--accent-2)');
+const prefix = r.change_direction === 'UP' ? '+' : (r.change_direction === 'DOWN' ? '-' : '');
+return `<tr class="hover:bg-[#4a4960]/50"><td class="p-1.5 font-bold" style="color: var(--text-main);">${r.currency_code}</td>
+<td class="p-1.5 text-right" style="color: var(--text-main);">${formatIDR(r.rate)}</td>
+<td class="p-1.5 text-center" style="color:${dirColor};">${prefix}${formatNum(r.change_amount)}</td></tr>`;
+}).join('');
+}
+async function syncTaxRates() {
+const btn = document.getElementById('btn_sync_tax');
+btn.disabled = true; btn.innerText = 'Syncing...';
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=sync_tax_rates`, { method: 'POST' });
+alert(json.message || (json.success ? 'Berhasil update kurs pajak.' : 'Gagal update kurs pajak.'));
+await loadTaxRates();
+} catch (err) { alert('Gagal menghubungi server sync kurs'); }
+finally { btn.disabled = false; btn.innerText = 'Update Kurs'; }
+}
+async function loadFinancialPerformance() {
+const year = document.getElementById('fin_year_select').value;
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_financial_performance&year=${year}&project_id=${currentProjectId}`);
+if (!json.success) { renderFinChart(['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'], [], []); setFinMessage(json.message || 'Gagal memuat performa keuangan.', true); return; }
+if (json.available_years) fillYearSelect(json.available_years, json.year);
+renderFinChart(json.labels, json.datasets.pendapatan, json.datasets.pengeluaran);
+const total = [...json.datasets.pendapatan, ...json.datasets.pengeluaran].reduce((a, b) => a + (Number(b) || 0), 0);
+setFinMessage(total === 0 ? `Belum ada transaksi pendapatan/pengeluaran pada ${json.year}` : '', false);
+} catch (err) { console.error('Error load financial performance:', err); setFinMessage('Gagal terhubung ke server.', true); }
+}
+function fillYearSelect(years, selected) {
+const sel = document.getElementById('fin_year_select');
+if (!years || !years.length) return;
+sel.innerHTML = years.map(y => `<option value="${y}" ${String(y) === String(selected) ? 'selected' : ''}>${y}</option>`).join('');
+}
+function setFinMessage(msg, isError) {
+const el = document.getElementById('fin_empty');
+if (!msg) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+el.className = 'absolute inset-0 flex items-center justify-center text-center px-6 text-[11px] font-sans pointer-events-none';
+el.style.color = 'var(--text-sub)';
+el.textContent = msg;
+}
+function renderFinChart(labels, incData, expData) {
+const ctx = document.getElementById('finChartCanvas').getContext('2d');
+if (finChart) finChart.destroy();
+const compact = (v) => Number(v).toLocaleString('id-ID', { notation: 'compact', maximumFractionDigits: 1 });
+const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
+finChart = new Chart(ctx, {
+type: 'bar',
+data: { labels: labels, datasets: [{ label: 'Pendapatan', data: incData, backgroundColor: cssVar('--accent') }, { label: 'Pengeluaran', data: expData, backgroundColor: cssVar('--text-sub') }] },
+options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tick, font: { size: 9 } } }, tooltip: { callbacks: { label: (c) => ` ${c.dataset.label}: ${formatIDR(c.parsed.y)}` } } }, scales: { x: { ticks: { color: tick, font: { size: 8 } }, grid: { color: grid } }, y: { beginAtZero: true, ticks: { color: tick, font: { size: 8 }, callback: compact }, grid: { color: grid } } } }
+});
+}
 async function loadMaterialMonitoring() {
-  try {
-    const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
-    if (!json.success) {
-      document.getElementById('material_tbody').innerHTML = `<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data material')}</td></tr>`;
-      return;
-    }
-    if (json.data.length > 0) {
-      // Update KPI cards
-      const totalBudget = json.summary.total_budget;
-      const materialOut = json.summary.material_out;
-      const sisaBudget = json.summary.sisa_budget;
-      const usagePct = json.summary.usage_pct;
-
-      document.getElementById('kpi_total_budget').innerText = fmtRp(totalBudget);
-      document.getElementById('kpi_material_out').innerText = fmtRp(materialOut);
-      document.getElementById('kpi_sisa_budget').innerText = fmtRp(sisaBudget);
-      document.getElementById('kpi_usage_pct').innerText = `${usagePct.toFixed(2)}%`;
-
-      document.getElementById('kpi_status_label').innerText = usagePct >= 90 ? 'Kritis' : (usagePct >= 70 ? 'Waspada' : 'Normal');
-      document.getElementById('kpi_status_label').style.color = usagePct >= 90 ? cssVar('--text-sub') : (usagePct >= 70 ? cssVar('--text-main') : cssVar('--accent'));
-
-      document.getElementById('table_count_label').innerText = `Total Material: ${json.data.length} Item`;
-
-      // Render material table
-      const tbody = document.getElementById('material_tbody');
-      tbody.innerHTML = json.data.map(m => {
-        const statusColor = m.status === 'Kritis' ? cssVar('--text-sub') : (m.status === 'Waspada' ? cssVar('--text-main') : cssVar('--accent'));
-        return `
-          <tr class="hover:bg-[var(--hover-bg)] transition">
-            <td class="p-3 font-sans font-semibold" style="color: var(--text-main);">${esc(m.material_name)}<span class="block text-[10px] font-normal" style="color: var(--text-sub);">${esc(m.material_code)}</span></td>
-            <td class="p-3 text-center" style="color: var(--text-main);">${esc(m.unit)}</td>
-            <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.budget_qty)}</td>
-            <td class="p-3 text-right font-medium" style="color: var(--text-main);">${fmtRp(m.total_budget)}</td>
-            <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.material_out_qty)}</td>
-            <td class="p-3 text-right font-semibold" style="color: var(--text-main);">${fmtRp(m.total_realisasi)}</td>
-            <td class="p-3 text-right" style="color: var(--text-main);">${formatNum(m.sisa_qty)}</td>
-            <td class="p-3 text-center font-bold" style="color:${statusColor};">${m.usage_pct.toFixed(2)}%</td>
-            <td class="p-3 text-center"><span class="badge-${m.status.toLowerCase()}" style="padding: 2px 6px; border-radius: 4px;">${m.status}</span></td>
-          </tr>`;
-      }).join('');
-
-      // Render doughnut chart
-      const doughnutCtx = document.getElementById('doughnutChartCanvas').getContext('2d');
-      if (doughnutChart) doughnutChart.destroy();
-      doughnutChart = new Chart(doughnutCtx, {
-        type: 'doughnut',
-        data: {
-          labels: ['Normal', 'Waspada', 'Kritis'],
-          datasets: [{
-            data: [json.summary.normal_count, json.summary.waspada_count, json.summary.kritis_count],
-            backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')],
-            borderWidth: 1
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'bottom', labels: { color: cssVar('--text-sub') } },
-            tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw} item` } }
-          }
-        }
-      });
-
-      // Render bar chart
-      const barCtx = document.getElementById('barMaterialCanvas').getContext('2d');
-      if (barMaterialChart) barMaterialChart.destroy();
-      const topMaterials = json.data.sort((a, b) => b.usage_pct - a.usage_pct).slice(0, 10);
-      barMaterialChart = new Chart(barCtx, {
-        type: 'bar',
-        data: {
-          labels: topMaterials.map(m => m.material_name),
-          datasets: [
-            { label: 'Budget Qty', data: topMaterials.map(m => m.budget_qty), backgroundColor: cssVar('--accent'), borderWidth: 1 },
-            { label: 'Material Out', data: topMaterials.map(m => m.material_out_qty), backgroundColor: cssVar('--accent-2'), borderWidth: 1 }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: { position: 'top', labels: { color: cssVar('--text-sub') } },
-            tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${ctx.raw}` } }
-          },
-          scales: {
-            x: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } },
-            y: { ticks: { color: cssVar('--text-sub') }, grid: { color: cssVar('--grid-color') } }
-          }
-        }
-      });
-    } else {
-      document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data material</td></tr>';
-    }
-  } catch (err) {
-    console.error('Error load material monitoring:', err);
-    document.getElementById('material_tbody').innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Error memuat data material</td></tr>';
-  }
+const tbody = document.getElementById('material_tbody');
+try {
+const json = await apiFetch(`${API_ENDPOINT}?action=read_material_monitoring&project_id=${currentProjectId}`);
+if (json.success) {
+document.getElementById('kpi_total_budget').innerText = formatIDR(json.kpi.budget_rab);
+document.getElementById('kpi_material_out').innerText = formatIDR(json.kpi.material_out);
+document.getElementById('kpi_sisa_budget').innerText = formatIDR(json.kpi.sisa_budget);
+document.getElementById('kpi_usage_pct').innerText = `${json.kpi.persentase.toFixed(2)}%`;
+const itemMap = new Map();
+(json.items || []).forEach(item => {
+const key = (item.item_name || '').trim().toLowerCase();
+if (!itemMap.has(key)) itemMap.set(key, { item_name: item.item_name, item_code: item.item_code, unit: item.unit, budget_qty: 0, budget_value: 0, out_qty: 0, out_value: 0 });
+const target = itemMap.get(key);
+target.budget_qty += Number(item.budget_qty || 0); target.budget_value += Number(item.budget_value || 0);
+target.out_qty += Number(item.out_qty || 0); target.out_value += Number(item.out_value || 0);
+});
+const aggregatedItems = Array.from(itemMap.values()).map(item => {
+item.remaining_qty = item.budget_qty - item.out_qty;
+item.usage_pct = item.budget_value > 0 ? ((item.out_value / item.budget_value) * 100).toFixed(2) : (item.budget_qty > 0 ? ((item.out_qty / item.budget_qty) * 100).toFixed(2) : '0.00');
+const pct = Number(item.usage_pct);
+item.status = pct > 100 ? 'OVERBUDGET' : (pct >= 80 ? 'WARNING' : 'ON_TRACK');
+return item;
+});
+const statusCounts = { ON_TRACK: 0, WARNING: 0, OVERBUDGET: 0 };
+aggregatedItems.forEach(i => { if (statusCounts[i.status] !== undefined) statusCounts[i.status]++; });
+renderDoughnutChart(statusCounts);
+renderBarMaterialChart(aggregatedItems.slice(0, 5));
+document.getElementById('table_count_label').innerText = `Total Material: ${aggregatedItems.length} Item`;
+if (aggregatedItems.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Tidak ada data penggunaan material untuk proyek ini.</td></tr>'; return; }
+tbody.innerHTML = aggregatedItems.map(item => {
+let statusBg = 'rgba(114,142,126,0.15)';
+let statusText = '#728E7E';
+let statusBorder = 'rgba(114,142,126,0.5)';
+if (item.status === 'WARNING') { statusBg = 'rgba(194,184,173,0.15)'; statusText = '#C2B8AD'; statusBorder = 'rgba(194,184,173,0.5)'; }
+if (item.status === 'OVERBUDGET') { statusBg = 'rgba(177,168,168,0.15)'; statusText = '#B1A8A8'; statusBorder = 'rgba(177,168,168,0.5)'; }
+return `<tr class="hover:bg-[#4a4960]/50 transition">
+<td class="p-3 font-sans"><div class="font-bold" style="color: var(--text-main);">${item.item_name}</div><div class="text-sm" style="color: var(--accent-2);">${item.item_code || '-'}</div></td>
+<td class="p-3 text-center" style="color: var(--text-main);">${item.unit || '-'}</td>
+<td class="p-3 text-right" style="color: var(--text-main);">${formatNum(item.budget_qty)}</td>
+<td class="p-3 text-right font-bold" style="color: var(--text-main);">${formatIDR(item.budget_value)}</td>
+<td class="p-3 text-right" style="color: var(--accent);">${formatNum(item.out_qty)}</td>
+<td class="p-3 text-right" style="color: var(--accent-2);">${formatIDR(item.out_value)}</td>
+<td class="p-3 text-right" style="color:${item.remaining_qty < 0 ? 'var(--text-sub)' : 'var(--text-main)'};">${formatNum(item.remaining_qty)}</td>
+<td class="p-3 text-center font-bold" style="color: var(--text-main);">${item.usage_pct}%</td>
+<td class="p-3 text-center"><span class="px-2 py-0.5 text-[10px] border rounded-full" style="background:${statusBg}; color:${statusText}; border-color:${statusBorder};">${item.status}</span></td>
+</tr>`;
+}).join('');
+} else {
+console.error('Monitoring material gagal:', json.message);
+['kpi_total_budget', 'kpi_material_out', 'kpi_sisa_budget'].forEach(id => document.getElementById(id).innerText = '-');
+document.getElementById('kpi_usage_pct').innerText = '-';
+tbody.innerHTML = `<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">${esc(json.message || 'Gagal memuat data monitoring material')}</td></tr>`;
 }
-
+} catch (err) { console.error('Error load material monitoring:', err); tbody.innerHTML = '<tr><td colspan="9" class="p-4 text-center" style="color: var(--text-sub);">Gagal memuat data monitoring material</td></tr>'; }
+}
+function renderDoughnutChart(counts) {
+const ctx = document.getElementById('doughnutChartCanvas').getContext('2d');
+if (doughnutChart) doughnutChart.destroy();
+doughnutChart = new Chart(ctx, {
+type: 'doughnut',
+data: { labels: ['On Track', 'Warning', 'Overbudget'], datasets: [{ data: [counts.ON_TRACK || 0, counts.WARNING || 0, counts.OVERBUDGET || 0], backgroundColor: [cssVar('--accent'), cssVar('--text-main'), cssVar('--text-sub')], borderWidth: 0 }] },
+options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: cssVar('--text-sub'), font: { size: 10 } } } } }
+});
+}
+function renderBarMaterialChart(topItems) {
+const ctx = document.getElementById('barMaterialCanvas').getContext('2d');
+if (barMaterialChart) barMaterialChart.destroy();
+const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
+barMaterialChart = new Chart(ctx, {
+type: 'bar',
+data: { labels: topItems.map(i => i.item_name.substring(0, 15) + '...'), datasets: [{ label: 'Budget Qty', data: topItems.map(i => i.budget_qty), backgroundColor: cssVar('--accent') }, { label: 'Out Qty', data: topItems.map(i => i.out_qty), backgroundColor: cssVar('--accent-2') }] },
+options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: tick, font: { size: 10 } } } }, scales: { x: { ticks: { color: tick, font: { size: 9 } }, grid: { color: grid } }, y: { ticks: { color: tick, font: { size: 9 } }, grid: { color: grid } } } }
+});
+}
 </script>
 </body>
 </html>
