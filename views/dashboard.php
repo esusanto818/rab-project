@@ -93,6 +93,7 @@ transition: background-color .3s ease, border-color .3s ease;
 .nav-item { position: relative; }
 .nav-link {
 color: var(--text-main) !important;
+text-decoration: none !important;
 transition: all 0.2s;
 }
 .nav-link:hover {
