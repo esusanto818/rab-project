@@ -1,0 +1,312 @@
+/* ==========================================================================
+   RAB-PROJECT STANDARD THEME (app-standard.css)
+   Palet IDENTIK dengan views/dashboard.php
+   - Dark:  #373647 (ungu gelap)
+   - Light: #f4f1ea (warm cream, bukan putih silau)
+   - Accent: #728E7E (sage green)
+   ========================================================================== */
+
+/* ===== 1. PALET DARK (default) — sama persis dengan dashboard ===== */
+:root,
+html[data-theme="dark"] {
+  --bg-main: #373647;
+  --bg-surface: #3f3e52;
+  --bg-elevated: #4a4960;
+  --bg-deeper: #2e2d3d;
+  --border-subtle: rgba(114, 142, 126, 0.25);
+  --border-strong: rgba(114, 142, 126, 0.5);
+  --text-muted: #B1A8A8;
+  --text-primary: #C2B8AD;
+  --accent-primary: #728E7E;
+  --accent-2: #949C8B;
+  --hover-bg: #4a4960;
+  --hover-bg-strong: #5a5970;
+  --hover-text: #ffffff;
+}
+
+/* ===== 2. PALET LIGHT — warm cream, identik dengan dashboard ===== */
+html[data-theme="light"] {
+  --bg-main: #f4f1ea;
+  --bg-surface: #fbf8f1;
+  --bg-elevated: #ece7dc;
+  --bg-deeper: #e6e0d3;
+  --border-subtle: rgba(95, 125, 107, 0.28);
+  --border-strong: rgba(95, 125, 107, 0.55);
+  --text-muted: #5c564c;
+  --text-primary: #2d2b26;
+  --accent-primary: #5f7d6b;
+  --accent-2: #8a9482;
+  --hover-bg: #e5dfd6;
+  --hover-bg-strong: #ddd6c9;
+  --hover-text: #2d2b26;
+}
+
+/* ===== 3. BASE ===== */
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Inter', sans-serif;
+  transition: background-color .3s ease, color .3s ease;
+}
+
+/* ===== 4. EXTJS 3.4.1 — PANEL & WINDOW ===== */
+.x-panel-body, .x-window-mc, .x-toolbar, .x-panel-btns,
+.x-panel-bwrap, .x-plain-body, .x-tab-panel-body {
+  background-color: var(--bg-surface) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+.x-panel-header, .x-panel-tl, .x-panel-tr, .x-panel-tc {
+  background-color: var(--bg-elevated) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-panel-header-text { color: var(--text-primary) !important; }
+
+.x-window-tl, .x-window-tr, .x-window-tc, .x-window-header {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+}
+.x-window-header-text { color: var(--text-primary) !important; }
+
+/* ===== 5. EXTJS GRID ===== */
+.x-grid3-header, .x-grid3-header-offset, .x-grid3-hd-row td, td.x-grid3-hd {
+  background-color: var(--bg-elevated) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+  font-weight: 600 !important;
+}
+.x-grid3-hd-inner { color: var(--text-primary) !important; }
+
+.x-grid3-row, .x-grid3-scroller, .x-grid3-viewport {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-primary) !important;
+}
+.x-grid3-row-alt { background-color: var(--bg-elevated) !important; }
+.x-grid3-row-over { background-color: var(--hover-bg-strong) !important; }
+.x-grid3-row-selected { background-color: var(--accent-primary) !important; }
+.x-grid3-row-selected .x-grid3-cell-inner { color: #ffffff !important; }
+.x-grid3-cell-inner { color: var(--text-primary) !important; }
+
+/* ===== 6. EXTJS FORM ===== */
+.x-form-text, .x-form-field, textarea.x-form-field, input.x-form-field {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-form-item-label, .x-fieldset legend { color: var(--text-muted) !important; }
+
+.x-combo-list, .x-combo-list-inner, .x-layer.x-combo-list {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+.x-combo-list-item { color: var(--text-primary) !important; }
+.x-combo-list-selected, .x-combo-selected {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+/* ===== 7. EXTJS BUTTON ===== */
+.x-btn button { color: var(--text-primary) !important; }
+.x-btn-mc {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-btn-over .x-btn-mc { background-color: var(--hover-bg-strong) !important; }
+
+/* ===== 8. DATE PICKER ===== */
+.x-date-picker, .x-date-inner, .x-date-inner td, .x-date-bottom {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-date-middle, .x-date-left, .x-date-right {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+}
+.x-date-inner th {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+.x-date-inner a { color: var(--text-primary) !important; }
+.x-date-inner .x-date-selected a {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+/* ===== 9. HOTFIX: ELEMEN INLINE-STYLE DARI JS (m.proyek.js, dll.) ===== */
+html[data-theme="light"] #projMainDtlContainer,
+html[data-theme="light"] .detail-panel-container,
+html[data-theme="light"] #divDetailGrid,
+html[data-theme="light"] #poDtlContainer {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer h2,
+html[data-theme="light"] #projMainDtlContainer h3,
+html[data-theme="light"] #content h3[style*="color:#00bcd4"],
+html[data-theme="light"] #content b[style*="color:#00bcd4"] {
+  color: var(--accent-primary) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#132330"],
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#0f"],
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#3b"],
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#3a"] {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer table,
+html[data-theme="light"] #projMainDtlContainer td,
+html[data-theme="light"] #projMainDtlContainer th,
+html[data-theme="light"] #projMainDtlContainer tr,
+html[data-theme="light"] #projMainDtlContainer span,
+html[data-theme="light"] #projMainDtlContainer b,
+html[data-theme="light"] #projMainDtlContainer div {
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer tr[style*="background:#1a2f40"],
+html[data-theme="light"] #projMainDtlContainer thead tr[style*="background:#1a2f40"] {
+  background-color: var(--bg-elevated) !important;
+}
+
+html[data-theme="light"] #content div[style*="background"],
+html[data-theme="light"] #divDetailGrid div[style*="background"],
+html[data-theme="light"] .detail-panel-container > div {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="light"] #content div[style*="background"] *,
+html[data-theme="light"] #divDetailGrid div[style*="background"] *,
+html[data-theme="light"] .detail-panel-container > div * {
+  color: var(--text-primary) !important;
+}
+
+/* ===== 10. SCROLLBAR ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }
+::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-2); }
+/* ===== [PATCH] EXTJS MODAL & FORM FIELDS — Light & Dark ===== */
+
+/* 1. Window Modal Body (area form di dalam modal) */
+.x-window-mc {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* 2. Window Modal Header (judul "Edit Proyek") */
+.x-window-tl, .x-window-tr, .x-window-tc,
+.x-window-header {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-window-header-text {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+/* 3. Form Input Fields (text, number, date, combo) */
+.x-form-text, .x-form-field,
+textarea.x-form-field, input.x-form-field,
+.x-trigger-noedit {
+  background-color: var(--bg-elevated) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* 4. Form Labels */
+.x-form-item-label, .x-fieldset legend {
+  color: var(--text-muted) !important;
+}
+
+/* 5. Tombol ExtJS (Save, Discard, dll.) */
+.x-btn-mc {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-btn button {
+  color: var(--text-primary) !important;
+}
+.x-btn-over .x-btn-mc {
+  background-color: var(--hover-bg-strong) !important;
+}
+
+/* 6. ComboBox Dropdown List */
+.x-combo-list, .x-combo-list-inner, .x-layer.x-combo-list {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+.x-combo-list-item { color: var(--text-primary) !important; }
+.x-combo-selected, .x-combo-list-selected {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+/* 7. Toolbar (bawah modal) */
+.x-toolbar, .x-panel-btns {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 8. Panel body di dalam modal */
+.x-panel-body, .x-panel-bwrap, .x-plain-body, .x-tab-panel-body {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 9. Override khusus untuk tombol Save (hijau) & Discard (merah) di modal */
+html[data-theme="light"] .x-window .btn-save,
+html[data-theme="light"] .x-window button[id*="save" i] {
+  background-color: #047857 !important;
+  color: #ffffff !important;
+  border-color: #065F46 !important;
+}
+html[data-theme="light"] .x-window .btn-discard,
+html[data-theme="light"] .x-window button[id*="discard" i],
+html[data-theme="light"] .x-window button[id*="cancel" i] {
+  background-color: #B91C1C !important;
+  color: #ffffff !important;
+  border-color: #991B1B !important;
+}
+
+/* 10. DatePicker popup */
+.x-date-picker, .x-date-inner, .x-date-inner td, .x-date-bottom {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+.x-date-middle, .x-date-left, .x-date-right {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+}
+.x-date-inner th {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+.x-date-inner a { color: var(--text-primary) !important; }
+.x-date-inner .x-date-selected a {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
