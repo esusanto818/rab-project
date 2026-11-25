@@ -283,7 +283,8 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <div class="flex items-center space-x-3 text-base">
 <!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
 <button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition" title="Ganti tema">
-<span id="theme_icon">🌙</span> <span id="theme_lbl">Dark</span>
+<!-- <span id="theme_icon">🌙</span> <span id="theme_lbl">Dark</span> -->
+<span id="theme_icon">☀️</span> <span id="theme_lbl">Light</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="btn-ghost px-2.5 py-1 rounded transition">Logout</a>
@@ -543,6 +544,7 @@ let globalTaxRates = [];
 function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
+/*
 function updateThemeUI(theme) {
   const icon = document.getElementById('theme_icon');
   const lbl = document.getElementById('theme_lbl');
@@ -551,6 +553,7 @@ function updateThemeUI(theme) {
   if (theme === 'light') { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
   else { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
 }
+*/
 function toggleTheme() {
   const cur = document.documentElement.getAttribute('data-theme') || 'dark';
   const next = cur === 'dark' ? 'light' : 'dark';
@@ -558,6 +561,15 @@ function toggleTheme() {
   localStorage.setItem('app_theme', next);
   updateThemeUI(next);
   rethemeCharts(); // chart ikut berubah warna
+}
+
+function updateThemeUI(theme) {
+  const icon = document.getElementById('theme_icon');
+  const lbl = document.getElementById('theme_lbl');
+  if (!icon || !lbl) return;
+  // Tampilkan theme TUJUAN (lawan dari yang aktif) - konvensi toggle standar
+  if (theme === 'light') { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
+  else { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
 }
 function rethemeCharts() {
   const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');
