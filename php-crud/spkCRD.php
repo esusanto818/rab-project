@@ -45,7 +45,7 @@ define('SPK_SUBCON_REQUIRE_CLIENT_PAYMENT', false);
 // SPK SUBCON hanya boleh diterbitkan bila kontrak subkon yang terhubung berstatus Disetujui (aktifkan setelah tautan kontrak dipakai)
 define('SPK_SUBCON_REQUIRE_CONTRACT_ON_ISSUE', true);
 // SPK SUBCON wajib punya minimal satu item lingkup pekerjaan aktif sebelum diterbitkan (nyalakan setelah klaim kuantitas dipakai)
-define('SPK_SUBCON_REQUIRE_WORK_ITEMS_ON_ISSUE', false);
+define('SPK_SUBCON_REQUIRE_WORK_ITEMS_ON_ISSUE', true);
 
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
 $spkUserId = (int)($_SESSION['user_id'] ?? 0);

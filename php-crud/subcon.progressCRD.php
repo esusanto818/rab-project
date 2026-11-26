@@ -106,6 +106,34 @@ try {
 
             $db->beginTransaction();
             try {
+                // [GAP-06] Validasi hard-check saldo progres kumulatif
+                foreach ($items as $item) {
+                    $pqii = (int)($item['progress_qty_item_id'] ?? 0);
+                    $qi = (float)($item['qty_inspected'] ?? 0);
+
+                    if ($pqii <= 0) continue;
+
+                    // Hitung total kumulatif yang sudah di-approve + sedang diajukan
+                    $stCheck = $db->prepare("
+                        SELECT swi.contract_qty,
+                               (SELECT COALESCE(SUM(sii.qty_passed), 0)
+                                FROM subcon_inspection_items sii
+                                JOIN subcon_inspections si ON si.id = sii.inspection_id
+                                WHERE sii.progress_qty_item_id = :pqii AND si.status = 'APPROVED') as approved_qty
+                        FROM subcon_progress_qty_items spqi
+                        JOIN spk_work_items swi ON swi.id = spqi.work_item_id
+                        WHERE spqi.id = :pqii
+                    ");
+                    $stCheck->execute([':pqii' => $pqii]);
+                    $res = $stCheck->fetch(PDO::FETCH_ASSOC);
+
+                    if (!$res) throw new Exception("Data work item tidak ditemukan untuk klaim.");
+
+                    if (($res['approved_qty'] + $qi) > $res['contract_qty']) {
+                        throw new Exception("Klaim melebihi kontrak! Kontrak: {$res['contract_qty']}, Ter-approve: {$res['approved_qty']}, Klaim ini: {$qi}");
+                    }
+                }
+
                 $inspection_no = 'INS-' . date('Ymd') . '-' . str_pad((string)mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
                 
                 $stmt = $db->prepare("

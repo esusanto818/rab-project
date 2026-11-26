@@ -299,11 +299,12 @@ function IssSave() {
 
     validateMaterialOutAgainstProgress($projectId, $estimatedTotalValue);
 
+    $spkId = (int)WhPost('spk_id');
     $refNo = CreateRefNo('material_out_header', 'ref_no', 'GI');
     $h = WhRow("INSERT INTO material_out_header
-                    (ref_no, project_id, warehouse_id, issue_date, issued_by, received_by_mandor, status, remark)
-                VALUES ($1,$2,$3,$4,$5,$6,'posted',$7) RETURNING id",
-               array($refNo, $projectId, $whId, $date, $userId, $mandor, $remark));
+                    (ref_no, project_id, warehouse_id, issue_date, issued_by, received_by_mandor, status, remark, spk_id)
+                VALUES ($1,$2,$3,$4,$5,$6,'posted',$7, $8) RETURNING id",
+               array($refNo, $projectId, $whId, $date, $userId, $mandor, $remark, $spkId > 0 ? $spkId : null));
     $hdrId = (int)$h['id'];
     $issueValue = 0.0;                              
 

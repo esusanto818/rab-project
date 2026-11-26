@@ -393,6 +393,10 @@ try {
                               ':sc' => $m['cost_actual'], ':cpi' => $m['cpi'], ':id' => $id]);
                 $st = $db->prepare("UPDATE projects SET progress = :p WHERE id = :id");      // satu-satunya jalur yang mengubah progress
                 $st->execute([':p' => $pct, ':id' => $pid]);
+
+                // [F-1.1] Jika progress disetujui, update status invoice yang belum released
+                $stInv = $db->prepare("UPDATE project_invoices SET release_status = 'released', release_date = CURRENT_DATE WHERE project_id = :pid AND release_status = 'draft'");
+                $stInv->execute([':pid' => $pid]);
                 $db->commit();
                 sendJsonResponse(true, [], "Progress {$pj['name']} terverifikasi {$pct}%." .
                     ($m['cpi'] !== null ? ' Indeks biaya ' . number_format($m['cpi'], 2, ',', '.') . ' (' . $m['cpi_status'] . ').' : ''));

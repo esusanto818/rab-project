@@ -714,15 +714,27 @@ try {
                         // dana = kas diterima (kurs) + deposit; selisih pembulatan kecil di-snap
                         if ($total < 0) throw new PpBusinessError('Jumlah diterima tidak valid.');
                         $fundsIdr = round($total * $rate + $depApplied, 2);
+
+                        // [GAP-08 PATCH] Perketat validasi konversi untuk mencegah manipulasi saldo
+                        if (abs($fundsIdr - $allocatedIdr) < PP_EPS) {
+                             $fundsIdr = $allocatedIdr;
+                        }
+
                         $tol      = 0.005 * $rate + PP_EPS;
                         if ($fundsIdr + $tol < $allocatedIdr) throw new PpBusinessError('Kas diterima + deposit lebih kecil dari total alokasi termin.');
                         $excess   = ($fundsIdr > $allocatedIdr + $tol) ? round($fundsIdr - $allocatedIdr, 2) : 0.0;
                         $totalIdr = round($allocatedIdr + $excess, 2);
                     } else {
                         if ($total <= 0) throw new PpBusinessError('Jumlah diterima harus lebih dari 0.');
-                        if ($total + PP_EPS < $allocated) throw new PpBusinessError('Jumlah diterima lebih kecil dari total alokasi termin.');
-                        $excessCur = round($total - $allocated, 2);
-                        $excess    = round($excessCur * $rate, 2);
+
+                        // [GAP-08 PATCH] Perketat validasi konversi
+                        $totalIdrRaw = round($total * $rate, 2);
+                        if (abs($totalIdrRaw - $allocatedIdr) < PP_EPS) {
+                             $totalIdrRaw = $allocatedIdr;
+                        }
+
+                        if ($totalIdrRaw + PP_EPS < $allocatedIdr) throw new PpBusinessError('Jumlah diterima lebih kecil dari total alokasi termin.');
+                        $excess    = ($totalIdrRaw > $allocatedIdr + PP_EPS) ? round($totalIdrRaw - $allocatedIdr, 2) : 0.0;
                         $totalIdr  = round($allocatedIdr + $excess, 2);
                     }
 
