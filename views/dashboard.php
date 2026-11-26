@@ -344,7 +344,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
 <button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="theme-toggle-btn" title="Ganti tema">
 <span id="theme_icon">🌙</span>
-<span id="theme_lbl">Ganti Tema (Light / Dark)</span>
+<span id="theme_lbl">(Light/Dark)</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
 <a id="header_logout" href="logout.php" class="btn-logout px-2.5 py-1 rounded transition">Logout</a>
