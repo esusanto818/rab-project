@@ -2142,3 +2142,108 @@ body.x-body-masked .x-window-plain .x-window-mc {background-color: #000;}
   max-height       : 100%;
   background-color : rgba(0, 0, 0, .0);
 }
+
+/* ==========================================================================
+   [FIX FINAL] Override selected row untuk light theme
+   Specificity lebih tinggi dari rule default di atas
+   ========================================================================== */
+
+/* Selected row - light theme: sage solid + teks putih */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner,
+html[data-theme="light"] .x-grid3-row-selected td {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Selected row - dark theme: sage terang + teks putih */
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner,
+html[data-theme="dark"] .x-grid3-row-selected td {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Override untuk kolom spesifik (col-0 sampai col-9) */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+/* Hapus garis bawah tebal */
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-row,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-row td {
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-row,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-row td {
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* ==========================================================================
+   [PATCH] Light Green untuk Selected Row
+   ========================================================================== */
+.x-grid3-row-selected {
+  background-color: #A8D5A2 !important;
+  background-image: none !important;
+}
+
+.x-grid3-row-selected .x-grid3-cell {
+  background-color: #A8D5A2 !important;
+  color: #1a3a1a !important;
+}
+
+.x-grid3-row-selected .x-grid3-cell-inner {
+  color: #1a3a1a !important;
+  font-weight: 600 !important;
+}
+
+.x-grid3-row-selected td {
+  background-color: #A8D5A2 !important;
+  color: #1a3a1a !important;
+}
+
+/* Hover effect untuk selected row */
+.x-grid3-row-selected:hover {
+  background-color: #95C78F !important;
+}

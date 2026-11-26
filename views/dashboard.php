@@ -220,6 +220,65 @@ section h2 { font-size: 1.25rem !important; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
 ::-webkit-scrollbar-thumb { background: var(--bg-inner); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--accent-2); }
+
+/* ===== THEME TOGGLE BUTTON (Style Profesional) ===== */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.theme-toggle-btn:hover {
+  background-color: #4b5563 !important;
+  border-color: #6b7280 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+.theme-toggle-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+[data-theme="light"] .theme-toggle-btn {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+[data-theme="light"] .theme-toggle-btn:hover {
+  background-color: #111827 !important;
+  border-color: #4b5563 !important;
+}
+#theme_icon { font-size: 16px; line-height: 1; }
+#theme_lbl { white-space: nowrap; }
+
+/* ===== LOGOUT BUTTON - MERAH TUA TRANSPARAN ===== */
+.btn-logout {
+  background-color: rgba(139, 0, 0, 0.12) !important;
+  color: #8B0000 !important;
+  border: 1px solid rgba(139, 0, 0, 0.35) !important;
+  transition: all 0.2s ease;
+}
+.btn-logout:hover {
+  background-color: rgba(139, 0, 0, 0.22) !important;
+  color: #660000 !important;
+  border-color: rgba(139, 0, 0, 0.55) !important;
+}
+[data-theme="light"] .btn-logout {
+  background-color: rgba(139, 0, 0, 0.08) !important;
+  color: #8B0000 !important;
+  border-color: rgba(139, 0, 0, 0.3) !important;
+}
+[data-theme="light"] .btn-logout:hover {
+  background-color: rgba(139, 0, 0, 0.15) !important;
+  color: #660000 !important;
+}
 </style>
 </head>
 <?php $favVer = date('YmdHis'); ?>
@@ -283,12 +342,12 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <!-- KANAN -->
 <div class="flex items-center space-x-3 text-base">
 <!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
-<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="btn-ghost px-2.5 py-1 rounded text-sm font-semibold transition" title="Ganti tema">
-<!-- <span id="theme_icon">🌙</span> <span id="theme_lbl">Dark</span> -->
-<span id="theme_icon">☀️</span> <span id="theme_lbl">Light</span>
+<button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="theme-toggle-btn" title="Ganti tema">
+<span id="theme_icon">🌙</span>
+<span id="theme_lbl">Ganti Tema (Light / Dark)</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
-<a id="header_logout" href="logout.php" class="btn-ghost px-2.5 py-1 rounded transition">Logout</a>
+<a id="header_logout" href="logout.php" class="btn-logout px-2.5 py-1 rounded transition">Logout</a>
 <div class="relative">
 <button id="hamburger_btn" class="items-center justify-center w-10 h-10 rounded-lg border transition" style="background: rgba(114,142,126,0.2); border-color: var(--border-strong); color: var(--text-main);" aria-label="Menu" aria-haspopup="true" aria-expanded="false" onclick="toggleMobileMenu(event)">
 <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -550,9 +609,10 @@ function updateThemeUI(theme) {
   const icon = document.getElementById('theme_icon');
   const lbl = document.getElementById('theme_lbl');
   if (!icon || !lbl) return;
-  // Tampilkan theme yang SEDANG AKTIF
-  if (theme === 'light') { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
-  else { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
+  // Ikon menunjukkan tema AKTIF, label tetap "Ganti Tema (Light / Dark)"
+  if (theme === 'light') { icon.textContent = '☀️'; }
+  else { icon.textContent = '🌙'; }
+  // Label tidak berubah, tetap "Ganti Tema (Light / Dark)"
 }
 */
 function toggleTheme() {
@@ -568,9 +628,10 @@ function updateThemeUI(theme) {
   const icon = document.getElementById('theme_icon');
   const lbl = document.getElementById('theme_lbl');
   if (!icon || !lbl) return;
-  // Tampilkan theme TUJUAN (lawan dari yang aktif) - konvensi toggle standar
-  if (theme === 'light') { icon.textContent = '🌙'; lbl.textContent = 'Dark'; }
-  else { icon.textContent = '☀️'; lbl.textContent = 'Light'; }
+  // Ikon menunjukkan tema AKTIF, label tetap "Ganti Tema (Light / Dark)"
+  if (theme === 'light') { icon.textContent = '☀️'; }
+  else { icon.textContent = '🌙'; }
+  // Label tidak berubah, tetap "Ganti Tema (Light / Dark)"
 }
 function rethemeCharts() {
   const tick = cssVar('--text-sub'), grid = cssVar('--border-soft');

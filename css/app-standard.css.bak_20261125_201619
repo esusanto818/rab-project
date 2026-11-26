@@ -1,0 +1,1405 @@
+/* ==========================================================================
+   RAB-PROJECT STANDARD THEME (app-standard.css) v5
+   - Fix: Selected row SEMUA kolom visible (sage green + white text)
+   - Fix: Dropdown combo konsisten (terang di light, gelap di dark)
+   - Fix: Form modal header ikut tema
+   - Palet identik dengan dashboard.php
+   ========================================================================== */
+
+/* ===== 1. PALET DARK (default) ===== */
+:root,
+html[data-theme="dark"] {
+  --bg-main: #373647;
+  --bg-surface: #3f3e52;
+  --bg-elevated: #4a4960;
+  --bg-deeper: #2e2d3d;
+  --border-subtle: rgba(114, 142, 126, 0.25);
+  --border-strong: rgba(114, 142, 126, 0.5);
+  --text-muted: #B1A8A8;
+  --text-primary: #C2B8AD;
+  --accent-primary: #728E7E;
+  --accent-2: #949C8B;
+  --hover-bg: #4a4960;
+  --hover-bg-strong: #5a5970;
+  --hover-text: #ffffff;
+}
+
+/* ===== 2. PALET LIGHT — warm cream ===== */
+html[data-theme="light"] {
+  --bg-main: #f4f1ea;
+  --bg-surface: #fbf8f1;
+  --bg-elevated: #ece7dc;
+  --bg-deeper: #e6e0d3;
+  --border-subtle: rgba(95, 125, 107, 0.28);
+  --border-strong: rgba(95, 125, 107, 0.55);
+  --text-muted: #5c564c;
+  --text-primary: #2d2b26;
+  --accent-primary: #5f7d6b;
+  --accent-2: #8a9482;
+  --hover-bg: #e5dfd6;
+  --hover-bg-strong: #ddd6c9;
+  --hover-text: #2d2b26;
+}
+
+/* ===== 3. BASE ===== */
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-primary) !important;
+  font-family: 'Inter', sans-serif;
+  transition: background-color .3s ease, color .3s ease;
+}
+
+/* ===== 4. EXTJS GRID — HEADER ===== */
+html[data-theme="light"] .x-grid3-header,
+html[data-theme="light"] .x-grid3-header-offset,
+html[data-theme="light"] .x-grid3-hd-row td,
+html[data-theme="light"] td.x-grid3-hd {
+  background-color: var(--bg-elevated) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .x-grid3-header,
+html[data-theme="dark"] .x-grid3-header-offset,
+html[data-theme="dark"] .x-grid3-hd-row td,
+html[data-theme="dark"] td.x-grid3-hd {
+  background-color: var(--bg-elevated) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+  font-weight: 600 !important;
+}
+
+/* ===== 5. EXTJS GRID — ROWS (NORMAL) ===== */
+html[data-theme="light"] .x-grid3-row,
+html[data-theme="light"] .x-grid3-row td,
+html[data-theme="light"] .x-grid3-row .x-grid3-cell-inner {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+html[data-theme="dark"] .x-grid3-row,
+html[data-theme="dark"] .x-grid3-row td,
+html[data-theme="dark"] .x-grid3-row .x-grid3-cell-inner {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+/* Alternating rows */
+html[data-theme="light"] .x-grid3-row-alt,
+html[data-theme="light"] .x-grid3-row-alt td {
+  background-color: var(--bg-elevated) !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-alt,
+html[data-theme="dark"] .x-grid3-row-alt td {
+  background-color: var(--bg-elevated) !important;
+}
+
+/* ===== 6. EXTJS GRID — SELECTED ROW (FIX: SEMUA KOLOM) ===== */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Override untuk kolom yang mungkin punya rule khusus */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3 {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-3 {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+/* ===== 7. EXTJS GRID — HOVER ===== */
+html[data-theme="light"] .x-grid3-row-over,
+html[data-theme="light"] .x-grid3-row-over td {
+  background-color: var(--hover-bg-strong) !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-over,
+html[data-theme="dark"] .x-grid3-row-over td {
+  background-color: var(--hover-bg-strong) !important;
+}
+
+/* ===== 8. EXTJS FORM — INPUT FIELDS ===== */
+html[data-theme="light"] .x-form-text,
+html[data-theme="light"] .x-form-field,
+html[data-theme="light"] textarea.x-form-field,
+html[data-theme="light"] input.x-form-field {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="dark"] .x-form-text,
+html[data-theme="dark"] .x-form-field,
+html[data-theme="dark"] textarea.x-form-field,
+html[data-theme="dark"] input.x-form-field {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* Form labels */
+html[data-theme="light"] .x-form-item-label,
+html[data-theme="light"] .x-fieldset legend {
+  color: var(--text-muted) !important;
+}
+
+html[data-theme="dark"] .x-form-item-label,
+html[data-theme="dark"] .x-fieldset legend {
+  color: var(--text-muted) !important;
+}
+
+/* ===== 9. EXTJS COMBOBOX — DROPDOWN LIST (FIX: KONSISTEN) ===== */
+html[data-theme="light"] .x-combo-list,
+html[data-theme="light"] .x-combo-list-inner,
+html[data-theme="light"] .x-layer.x-combo-list {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .x-combo-list .x-combo-list-item {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .x-combo-list .x-combo-list-item:hover,
+html[data-theme="light"] .x-combo-list .x-combo-selected {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-combo-list,
+html[data-theme="dark"] .x-combo-list-inner,
+html[data-theme="dark"] .x-layer.x-combo-list {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .x-combo-list .x-combo-list-item {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .x-combo-list .x-combo-list-item:hover,
+html[data-theme="dark"] .x-combo-list .x-combo-selected {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+/* ===== 10. EXTJS WINDOW MODAL — HEADER (FIX: IKUT TEMA) ===== */
+html[data-theme="light"] .x-window-tl,
+html[data-theme="light"] .x-window-tr,
+html[data-theme="light"] .x-window-tc,
+html[data-theme="light"] .x-window-header {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="light"] .x-window-header-text {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="dark"] .x-window-tl,
+html[data-theme="dark"] .x-window-tr,
+html[data-theme="dark"] .x-window-tc,
+html[data-theme="dark"] .x-window-header {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="dark"] .x-window-header-text {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
+}
+
+/* Window body */
+html[data-theme="light"] .x-window-mc,
+html[data-theme="light"] .x-window-ml,
+html[data-theme="light"] .x-window-mr,
+html[data-theme="light"] .x-window-bl,
+html[data-theme="light"] .x-window-br,
+html[data-theme="light"] .x-window-bc {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="dark"] .x-window-mc,
+html[data-theme="dark"] .x-window-ml,
+html[data-theme="dark"] .x-window-mr,
+html[data-theme="dark"] .x-window-bl,
+html[data-theme="dark"] .x-window-br,
+html[data-theme="dark"] .x-window-bc {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* ===== 11. EXTJS BUTTON ===== */
+html[data-theme="light"] .x-btn button,
+html[data-theme="dark"] .x-btn button {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .x-btn-mc,
+html[data-theme="dark"] .x-btn-mc {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="light"] .x-btn-over .x-btn-mc,
+html[data-theme="dark"] .x-btn-over .x-btn-mc {
+  background-color: var(--hover-bg-strong) !important;
+}
+
+/* ===== 12. EXTJS PANEL ===== */
+html[data-theme="light"] .x-panel-body,
+html[data-theme="light"] .x-panel-bwrap,
+html[data-theme="light"] .x-plain-body,
+html[data-theme="light"] .x-tab-panel-body {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .x-panel-body,
+html[data-theme="dark"] .x-panel-bwrap,
+html[data-theme="dark"] .x-plain-body,
+html[data-theme="dark"] .x-tab-panel-body {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+}
+
+/* ===== 13. DATE PICKER ===== */
+html[data-theme="light"] .x-date-picker,
+html[data-theme="light"] .x-date-inner,
+html[data-theme="light"] .x-date-inner td,
+html[data-theme="light"] .x-date-bottom {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="light"] .x-date-middle,
+html[data-theme="light"] .x-date-left,
+html[data-theme="light"] .x-date-right {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+}
+
+html[data-theme="light"] .x-date-inner th {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .x-date-inner a {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .x-date-inner .x-date-selected a {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-date-picker,
+html[data-theme="dark"] .x-date-inner,
+html[data-theme="dark"] .x-date-inner td,
+html[data-theme="dark"] .x-date-bottom {
+  background-color: var(--bg-surface) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="dark"] .x-date-middle,
+html[data-theme="dark"] .x-date-left,
+html[data-theme="dark"] .x-date-right {
+  background-color: var(--bg-deeper) !important;
+  background-image: none !important;
+}
+
+html[data-theme="dark"] .x-date-inner th {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .x-date-inner a {
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="dark"] .x-date-inner .x-date-selected a {
+  background-color: var(--accent-primary) !important;
+  color: #ffffff !important;
+}
+
+/* ===== 14. HOTFIX: DETAIL PANEL (m.proyek.js inline style) ===== */
+html[data-theme="light"] #projMainDtlContainer,
+html[data-theme="light"] .detail-panel-container,
+html[data-theme="light"] #divDetailGrid,
+html[data-theme="light"] #poDtlContainer {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer h2,
+html[data-theme="light"] #projMainDtlContainer h3,
+html[data-theme="light"] #content h3[style*="color:#00bcd4"],
+html[data-theme="light"] #content b[style*="color:#00bcd4"] {
+  color: var(--accent-primary) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#132330"],
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#0f"],
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#3b"],
+html[data-theme="light"] #projMainDtlContainer div[style*="background:#3a"] {
+  background-color: var(--bg-elevated) !important;
+  border-color: var(--border-strong) !important;
+  color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer table,
+html[data-theme="light"] #projMainDtlContainer td,
+html[data-theme="light"] #projMainDtlContainer th,
+html[data-theme="light"] #projMainDtlContainer tr,
+html[data-theme="light"] #projMainDtlContainer span,
+html[data-theme="light"] #projMainDtlContainer b,
+html[data-theme="light"] #projMainDtlContainer div {
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+
+html[data-theme="light"] #projMainDtlContainer tr[style*="background:#1a2f40"],
+html[data-theme="light"] #projMainDtlContainer thead tr[style*="background:#1a2f40"] {
+  background-color: var(--bg-elevated) !important;
+}
+
+html[data-theme="light"] #content div[style*="background"],
+html[data-theme="light"] #divDetailGrid div[style*="background"],
+html[data-theme="light"] .detail-panel-container > div {
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+html[data-theme="light"] #content div[style*="background"] *,
+html[data-theme="light"] #divDetailGrid div[style*="background"] *,
+html[data-theme="light"] .detail-panel-container > div * {
+  color: var(--text-primary) !important;
+}
+
+/* ===== 15. SCROLLBAR ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-main); }
+::-webkit-scrollbar-thumb { background: var(--bg-elevated); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-2); }
+
+/* ==========================================================================
+   [PATCH FINAL] FIX: Selected Row + Date Picker Light Theme
+   Specificity TINGGI untuk override ext-all.css & mainCSS.css
+   ========================================================================== */
+
+/* ===== A. SELECTED ROW — PAKSA SEMUA KOLOM ===== */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+/* Override untuk kolom spesifik yang mungkin punya inline style */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+}
+
+/* ===== B. DATE PICKER — LIGHT THEME ===== */
+html[data-theme="light"] .x-date-picker {
+  background-color: #fbf8f1 !important;
+  border-color: #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-middle,
+html[data-theme="light"] .x-date-left,
+html[data-theme="light"] .x-date-right {
+  background-color: #e6e0d3 !important;
+  background-image: none !important;
+}
+
+html[data-theme="light"] .x-date-middle .x-btn button {
+  color: #2d2b26 !important;
+}
+
+html[data-theme="light"] .x-date-inner th {
+  background-color: #ece7dc !important;
+  color: #2d2b26 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="light"] .x-date-inner a {
+  color: #2d2b26 !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="light"] .x-date-inner a:hover {
+  background-color: #ddd6c9 !important;
+  color: #2d2b26 !important;
+}
+
+html[data-theme="light"] .x-date-inner .x-date-selected a {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="light"] .x-date-inner .x-date-today a {
+  border-color: #5f7d6b !important;
+}
+
+html[data-theme="light"] .x-date-bottom {
+  background-color: #fbf8f1 !important;
+  border-top-color: #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-bottom .x-btn button {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border-color: #5f7d6b !important;
+}
+
+/* ===== C. DATE PICKER — DARK THEME ===== */
+html[data-theme="dark"] .x-date-picker {
+  background-color: #3f3e52 !important;
+  border-color: #949C8B !important;
+}
+
+html[data-theme="dark"] .x-date-middle,
+html[data-theme="dark"] .x-date-left,
+html[data-theme="dark"] .x-date-right {
+  background-color: #2e2d3d !important;
+  background-image: none !important;
+}
+
+html[data-theme="dark"] .x-date-middle .x-btn button {
+  color: #C2B8AD !important;
+}
+
+html[data-theme="dark"] .x-date-inner th {
+  background-color: #4a4960 !important;
+  color: #C2B8AD !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .x-date-inner a {
+  color: #C2B8AD !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="dark"] .x-date-inner a:hover {
+  background-color: #5a5970 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-date-inner .x-date-selected a {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="dark"] .x-date-inner .x-date-today a {
+  border-color: #728E7E !important;
+}
+
+html[data-theme="dark"] .x-date-bottom {
+  background-color: #3f3e52 !important;
+  border-top-color: #949C8B !important;
+}
+
+html[data-theme="dark"] .x-date-bottom .x-btn button {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border-color: #728E7E !important;
+}
+/* ==========================================================================
+   [PATCH FINAL v2] FIX: Selected Row Underline + Date Picker Light Theme
+   Specificity MAKSIMAL untuk override ext-all.css
+   ========================================================================== */
+
+/* ===== A. SELECTED ROW — HAPUS GARIS BAWAH ===== */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+  text-decoration: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+  text-decoration: none !important;
+}
+
+/* Override untuk kolom spesifik (col-0 sampai col-9) */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+/* ===== B. DATE PICKER — LIGHT THEME (Specificity Tinggi) ===== */
+html[data-theme="light"] .x-date-picker,
+html[data-theme="light"] .x-date-picker .x-date-inner,
+html[data-theme="light"] .x-date-picker .x-date-inner td,
+html[data-theme="light"] .x-date-picker .x-date-bottom {
+  background-color: #fbf8f1 !important;
+  color: #2d2b26 !important;
+  border-color: #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-middle,
+html[data-theme="light"] .x-date-picker .x-date-left,
+html[data-theme="light"] .x-date-picker .x-date-right {
+  background-color: #e6e0d3 !important;
+  background-image: none !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-middle .x-btn button {
+  color: #2d2b26 !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-inner th {
+  background-color: #ece7dc !important;
+  color: #2d2b26 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-inner a {
+  color: #2d2b26 !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-inner a:hover {
+  background-color: #ddd6c9 !important;
+  color: #2d2b26 !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-inner .x-date-selected a {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-inner .x-date-today a {
+  border-color: #5f7d6b !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-bottom {
+  background-color: #fbf8f1 !important;
+  border-top-color: #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-picker .x-date-bottom .x-btn button {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border-color: #5f7d6b !important;
+}
+
+/* ===== C. DATE PICKER — DARK THEME (Specificity Tinggi) ===== */
+html[data-theme="dark"] .x-date-picker,
+html[data-theme="dark"] .x-date-picker .x-date-inner,
+html[data-theme="dark"] .x-date-picker .x-date-inner td,
+html[data-theme="dark"] .x-date-picker .x-date-bottom {
+  background-color: #3f3e52 !important;
+  color: #C2B8AD !important;
+  border-color: #949C8B !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-middle,
+html[data-theme="dark"] .x-date-picker .x-date-left,
+html[data-theme="dark"] .x-date-picker .x-date-right {
+  background-color: #2e2d3d !important;
+  background-image: none !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-middle .x-btn button {
+  color: #C2B8AD !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-inner th {
+  background-color: #4a4960 !important;
+  color: #C2B8AD !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-inner a {
+  color: #C2B8AD !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-inner a:hover {
+  background-color: #5a5970 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-inner .x-date-selected a {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-inner .x-date-today a {
+  border-color: #728E7E !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-bottom {
+  background-color: #3f3e52 !important;
+  border-top-color: #949C8B !important;
+}
+
+html[data-theme="dark"] .x-date-picker .x-date-bottom .x-btn button {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border-color: #728E7E !important;
+}
+/* ==========================================================================
+   [PATCH FINAL v3] FIX: Selected Row - Semua Kolom + Hapus Garis Bawah
+   Specificity MAKSIMAL untuk override ext-all.css & mainCSS.css
+   ========================================================================== */
+
+/* ===== A. SELECTED ROW - PAKSA SEMUA KOLOM SAGE GREEN ===== */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+  text-decoration: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+  text-decoration: none !important;
+}
+
+/* Override untuk kolom spesifik (col-0 sampai col-9) */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+/* Override untuk baris tabel (tr) */
+html[data-theme="light"] .x-grid3-row-selected tr,
+html[data-theme="light"] .x-grid3-row-selected tr td {
+  background-color: #5f7d6b !important;
+  border-bottom: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected tr,
+html[data-theme="dark"] .x-grid3-row-selected tr td {
+  background-color: #728E7E !important;
+  border-bottom: none !important;
+}
+
+/* Hapus border-bottom dari ExtJS yang mungkin menambahkan garis */
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-row,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-row td {
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-row,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-row td {
+  border-bottom: none !important;
+  border-top: none !important;
+}
+/* ==========================================================================
+   [FINAL FIX] Override mainCSS.css untuk Light Theme
+   Target: selected row, grid text color, date picker
+   ========================================================================== */
+
+/* ===== A. GRID TEXT COLOR - Light Theme ===== */
+html[data-theme="light"] .x-grid3-row td,
+html[data-theme="light"] .x-grid3-row .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row .x-grid3-cell-inner {
+  color: #2d2b26 !important;
+  font-size: .7rem;
+}
+
+html[data-theme="light"] .x-grid3-row-alt,
+html[data-theme="light"] .x-grid3-row-alt td,
+html[data-theme="light"] .x-grid3-row-alt .x-grid3-cell {
+  background-color: #ece7dc !important;
+}
+
+/* ===== B. SELECTED ROW - Light Theme (Target .x-grid3-cell) ===== */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Override untuk kolom spesifik */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+}
+
+/* ===== C. SELECTED ROW - Dark Theme ===== */
+html[data-theme="dark"] .x-grid3-row td,
+html[data-theme="dark"] .x-grid3-row .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row .x-grid3-cell-inner {
+  color: #C2B8AD !important;
+  font-size: .7rem;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* ===== D. DATE PICKER - Light Theme (Override mainCSS.css) ===== */
+html[data-theme="light"] .x-date-picker {
+  background-color: #fbf8f1 !important;
+  border-color: #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-middle,
+html[data-theme="light"] .x-date-left,
+html[data-theme="light"] .x-date-right {
+  background-color: #e6e0d3 !important;
+  background-image: none !important;
+}
+
+html[data-theme="light"] .x-date-middle .x-btn-text,
+html[data-theme="light"] .x-date-middle .x-btn button {
+  color: #2d2b26 !important;
+  background-color: #e6e0d3 !important;
+}
+
+html[data-theme="light"] .x-date-inner th {
+  background-color: #ece7dc !important;
+  color: #2d2b26 !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="light"] .x-date-inner a {
+  color: #2d2b26 !important;
+  font-weight: 500 !important;
+  font: normal 14px HelveticaNeue !important;
+}
+
+html[data-theme="light"] .x-date-inner a:hover {
+  background-color: #ddd6c9 !important;
+  color: #2d2b26 !important;
+  border: 1px solid #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-inner .x-date-selected a {
+  background-color: #5f7d6b !important;
+  border-color: #5f7d6b !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="light"] .x-date-inner .x-date-today a {
+  background-color: transparent !important;
+  border: 1px solid #5f7d6b !important;
+  color: #2d2b26 !important;
+}
+
+html[data-theme="light"] .x-date-bottom {
+  background-color: #fbf8f1 !important;
+  border-top-color: #949C8B !important;
+}
+
+html[data-theme="light"] .x-date-bottom .x-btn-mc {
+  background-color: #5f7d6b !important;
+}
+
+html[data-theme="light"] .x-date-bottom .x-btn-text {
+  color: #ffffff !important;
+}
+
+/* ===== E. DATE PICKER - Dark Theme ===== */
+html[data-theme="dark"] .x-date-picker {
+  background-color: #3f3e52 !important;
+  border-color: #949C8B !important;
+}
+
+html[data-theme="dark"] .x-date-middle,
+html[data-theme="dark"] .x-date-left,
+html[data-theme="dark"] .x-date-right {
+  background-color: #2e2d3d !important;
+  background-image: none !important;
+}
+
+html[data-theme="dark"] .x-date-middle .x-btn-text,
+html[data-theme="dark"] .x-date-middle .x-btn button {
+  color: #C2B8AD !important;
+  background-color: #2e2d3d !important;
+}
+
+html[data-theme="dark"] .x-date-inner th {
+  background-color: #4a4960 !important;
+  color: #C2B8AD !important;
+  font-weight: 600 !important;
+}
+
+html[data-theme="dark"] .x-date-inner a {
+  color: #C2B8AD !important;
+  font-weight: 500 !important;
+}
+
+html[data-theme="dark"] .x-date-inner a:hover {
+  background-color: #5a5970 !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-date-inner .x-date-selected a {
+  background-color: #728E7E !important;
+  border-color: #728E7E !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html[data-theme="dark"] .x-date-inner .x-date-today a {
+  background-color: transparent !important;
+  border: 1px solid #728E7E !important;
+  color: #C2B8AD !important;
+}
+
+html[data-theme="dark"] .x-date-bottom {
+  background-color: #3f3e52 !important;
+  border-top-color: #949C8B !important;
+}
+
+html[data-theme="dark"] .x-date-bottom .x-btn-mc {
+  background-color: #728E7E !important;
+}
+
+html[data-theme="dark"] .x-date-bottom .x-btn-text {
+  color: #ffffff !important;
+}
+/* ==========================================================================
+   [FIX] OVERRIDE SELECTED ROW & GRID TEXT COLOR UNTUK LIGHT THEME
+   Specificity lebih tinggi dari rule default di atas
+   ========================================================================== */
+
+/* Selected row — paksa SEMUA td (bukan hanya .x-grid3-cell) */
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Override untuk kolom spesifik */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+
+/* Hapus garis bawah tebal */
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-row,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-row td {
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Grid text color — light theme pakai warna gelap */
+html[data-theme="light"] .x-grid3-row td,
+html[data-theme="light"] .x-grid3-row .x-grid3-cell-inner {
+  color: #2d2b26 !important;
+}
+
+/* Dark theme — pertahankan putih */
+html[data-theme="dark"] .x-grid3-row td,
+html[data-theme="dark"] .x-grid3-row .x-grid3-cell-inner {
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border-bottom: none !important;
+}
+/* ==========================================================================
+   [FINAL FIX] Override .x-grid3-cell-selected dari mainCSS.css
+   Specificity TERTINGGI untuk memastikan menang
+   ========================================================================== */
+
+/* Light theme: semua selected cell = sage solid + teks putih */
+html[data-theme="light"] .x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-selected,
+html[data-theme="light"] body .x-grid3-cell-selected,
+html[data-theme="light"] body .x-grid3-row-selected .x-grid3-cell-selected {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+/* Dark theme: semua selected cell = sage terang + teks putih */
+html[data-theme="dark"] .x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-selected,
+html[data-theme="dark"] body .x-grid3-cell-selected,
+html[data-theme="dark"] body .x-grid3-row-selected .x-grid3-cell-selected {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+/* Override untuk kolom spesifik yang mungkin punya class tambahan */
+html[data-theme="light"] .x-grid3-col-1.x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-col-2.x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-col-5.x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-col-6.x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-col-7.x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-col-8.x-grid3-cell-selected,
+html[data-theme="light"] .x-grid3-col-9.x-grid3-cell-selected {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+}
+
+html[data-theme="dark"] .x-grid3-col-1.x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-col-2.x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-col-5.x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-col-6.x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-col-7.x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-col-8.x-grid3-cell-selected,
+html[data-theme="dark"] .x-grid3-col-9.x-grid3-cell-selected {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+}
+
+/* Hapus border/garis bawah tebal di selected row */
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-selected {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-selected {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
+/* ==========================================================================
+   [FINAL PATCH] Override .x-grid3-cell-selected dengan specificity TERTINGGI
+   Target: semua cell di row selected, termasuk yang di-click
+   ========================================================================== */
+
+/* Light theme */
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-0.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-1.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-2.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-3.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-4.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-5.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-6.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-7.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-8.x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-9.x-grid3-cell-selected {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+/* Dark theme */
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-0.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-1.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-2.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-3.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-4.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-5.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-6.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-7.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-8.x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-9.x-grid3-cell-selected {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+}
+
+/* Hapus border/garis bawah */
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-selected {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-selected {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
+/* ==========================================================================
+   [PATCH] Light Green untuk Selected Row - Light & Dark Theme
+   ========================================================================== */
+
+/* Light Theme: Light Green */
+html[data-theme="light"] .x-grid3-row-selected,
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #A8D5A2 !important;
+  background-image: none !important;
+  color: #1a3a1a !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Dark Theme: Light Green (sedikit lebih gelap untuk kontras) */
+html[data-theme="dark"] .x-grid3-row-selected,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell-inner {
+  background-color: #7FB87A !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-bottom: none !important;
+  border-top: none !important;
+}
+
+/* Override untuk kolom spesifik */
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #A8D5A2 !important;
+  color: #1a3a1a !important;
+}
+
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="dark"] .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #7FB87A !important;
+  color: #ffffff !important;
+}
+
+/* Hapus border/garis bawah */
+html[data-theme="light"] .x-grid3-row-selected td,
+html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] .x-grid3-row-selected td,
+html[data-theme="dark"] .x-grid3-row-selected .x-grid3-cell {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
+/* ==========================================================================
+   [ULTIMATE PATCH] Selected Row - Specificity MAKSIMAL dengan ID #divMainGrid
+   Mengalahkan SEMUA rule di mainCSS.css dan ext-all.css
+   ========================================================================== */
+
+/* Light Theme - Selected Row */
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-inner,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-inner div {
+  background-color: #5f7d6b !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+
+/* Dark Theme - Selected Row */
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-inner,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-cell-inner div {
+  background-color: #728E7E !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border: none !important;
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+}
+
+/* Override untuk setiap kolom spesifik (col-0 sampai col-9) */
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #5f7d6b !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-0,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-1,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-2,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-3,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-4,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-5,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-6,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-7,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-8,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected td.x-grid3-col-9 {
+  background-color: #728E7E !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+/* Hapus border-bottom tebal dari row selected */
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-row,
+html[data-theme="light"] body #divMainGrid .x-grid3-row-selected .x-grid3-row-table {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
+
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-row,
+html[data-theme="dark"] body #divMainGrid .x-grid3-row-selected .x-grid3-row-table {
+  border-bottom: 0 !important;
+  border-top: 0 !important;
+  border-color: transparent !important;
+}
