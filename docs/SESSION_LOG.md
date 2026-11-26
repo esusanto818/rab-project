@@ -1,2 +1,5 @@
 - [Audit & Patching Business Gaps (GAP-01 s/d GAP-08)](docs/SESSION_LOG.md) — Selesai.
 - [Audit & Perbaikan Akhir (Tahap 0 s/d Tahap 7)](docs/PRE_DELIVERY_07_FINAL_QA_SIGN_OFF.md) — Sign-off QA Final.
+- [Final Independent Audit (Tahap 8)](docs/PRE_DELIVERY_08_FINAL_INDEPENDENT_AUDIT.md) — READY FOR HANDOVER.
+- [Handover Package (Tahap 9)](docs/PRE_DELIVERY_09_HANDOVER_PACKAGE.md) — Paket dokumen handover dibuat.
+- **Kesimpulan Akhir:** Siklus Audit Pra-Pengiriman selesai dengan status siap diserahkan (Handover).
