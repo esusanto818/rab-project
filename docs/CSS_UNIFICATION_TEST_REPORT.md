@@ -1,0 +1,50 @@
+# Laporan Automated CSS Unification Test
+
+- **Waktu Eksekusi:** 2026-11-27 09:39:45
+- **Ringkasan:** `2 PASS` | `5 FAIL`
+
+## Detail Hasil Audit CSS
+- **[PASS]** `[CSS-01]` Ditemukan 23 file CSS valid di folder css/
+- **[FAIL]** `[CSS-02]` Ditemukan 1 file masih mengandung tag <style> lokal
+  - `views/dashboard.php (1 blok <style>)`
+- **[FAIL]** `[CSS-03]` Ditemukan 3 baris dengan inline style warna/background manual
+  - `views/dashboard.php:352`
+  - `js/journal.entry.js:197`
+  - `js/project.payment.js:1290`
+- **[FAIL]** `[CSS-04]` Ditemukan 26 file JS menyuntikkan CSS secara dinamis
+  - `js/ap.aging.js`
+  - `js/ar.aging.js`
+  - `js/bin.location.js`
+  - `js/inventory.recon.js`
+  - `js/m.user.system.js`
+  - `js/material.leftover.js`
+  - `js/po.js`
+  - `js/ppn.report.js`
+  - `js/project.invoice.js`
+  - `js/project.payment.js`
+  - *... dan 16 temuan lainnya*
+- **[PASS]** `[CSS-05]` Seluruh aturan UI inti (Button, Grid, Form) terdefinisi di file CSS terpusat
+- **[FAIL]** `[CSS-06]` Ditemukan 11 tautan CSS mati (404)
+  - `views/m.department.php -> /rab-project/ext-3.4.1/resources/css/ext-all.css`
+  - `views/m.department.php -> /rab-project/css/mainCSS.css`
+  - `views/m.department.php -> /rab-project/css/header.black.css`
+  - `views/m.department.php -> /rab-project/css/grddetail.css`
+  - `views/m.department.php -> /rab-project/css/frm.css`
+  - `views/stock.opname.php -> /proyek/ext-3.4.1/resources/css/ext-all.css`
+  - `views/stock.opname.php -> /proyek/css/mainCSS.css`
+  - `views/stock.opname.php -> /proyek/css/header.black.css`
+  - `views/stock.opname.php -> /proyek/css/grddetail.css`
+  - `views/stock.opname.php -> /proyek/css/frm.css`
+  - *... dan 1 temuan lainnya*
+- **[FAIL]** `[CSS-07]` Ditemukan 191 pemanggilan file CSS terpisah lama (header.black/grddetail/frm)
+  - `views/ap.aging.php -> mainCSS.css`
+  - `views/ap.aging.php -> header.black.css`
+  - `views/ap.aging.php -> grddetail.css`
+  - `views/ap.aging.php -> frm.css`
+  - `views/ar.aging.php -> mainCSS.css`
+  - `views/ar.aging.php -> header.black.css`
+  - `views/ar.aging.php -> grddetail.css`
+  - `views/ar.aging.php -> frm.css`
+  - `views/balancesheet.php -> mainCSS.css`
+  - `views/balancesheet.php -> header.black.css`
+  - *... dan 181 temuan lainnya*
