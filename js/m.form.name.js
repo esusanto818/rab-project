@@ -210,7 +210,7 @@ Ext.onReady(function() {
       //{columnWidth: .5, xtype:'label', text:'Links', cls:'x-form-item my-label-styleBl'},{columnWidth:0.4, items:ButtonSpace},
 			{ columnWidth: .2, xtype: 'label', text: 'Link\'s', cls: 'x-form-item my-label-GroupLbl' },
       {columnWidth:0.7, items:FieldSpace},
-			{columnWidth: 0.08, xtype: 'button', text: 'Add', cls:'field-button green-field-button', id: 'btnAddItem',
+			{columnWidth: 0.08, xtype: 'button', text: 'Add', cls:'btn-primary', id: 'btnAddItem',
         listeners: {
           click: function() {
             document.getElementById('addWdw').style.display='block';

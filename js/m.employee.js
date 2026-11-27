@@ -266,12 +266,12 @@ Ext.onReady(function() {
       {items: new myTextField({name: 'employee_status_id',id:'employee_status_id', hidden: true})},
       {items: new myTextField({name: 'employee_section_id',id:'employee_section_id', hidden: true})},
       //{columnWidth: 1, xtype:'label', text:'* Personal Info', cls:'x-form-item my-label-styleBl'},
-			{ columnWidth: .3, labelAlign: 'top', xtype: 'label', text: 'Personal Info', cls: 'x-form-item my-label-GroupLbl', style: 'clear:both' },
+			{ columnWidth: .3, labelAlign: 'top', xtype: 'label', text: 'Personal Info', cls: 'x-form-item my-label-GroupLbl' },
 			{ columnWidth: .7, labelAlign: 'top', items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleW'} },
-      {columnWidth: .15,labelAlign: 'top', style: 'clear:both', items: new myTextField({fieldLabel:'NIK', id:'nik', name:'nik', readOnly:true})},
+      {columnWidth: .15,labelAlign: 'top', items: new myTextField({fieldLabel:'NIK', id:'nik', name:'nik', readOnly:true})},
       {columnWidth: .35, labelAlign: 'top', items: new myTextField({fieldLabel:'Name', id:'employee_name', name:'employee_name',allowBlank: false,autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"},listeners :{change:function(field){field.setValue(field.getValue().toUpperCase());}}})},
       {columnWidth: .5, labelAlign: 'top', items: new myTextArea({fieldLabel:'Address', height: '55', id:'address', name:'address', allowBlank: false, autoCreate : {tag: "textarea", autocomplete: "off"}})},
-      {columnWidth: .16, labelAlign: 'top', style: 'clear:both', items: {xtype:'radiogroup', labelSeparator:'&nbsp;', cls:'fieldRadioClass', fieldLabel:'Gender ', id: 'gender',items : [{cls: 'regular-radio', boxLabel: 'Male', name: 'gender',inputValue: 'M',checked: true}, {cls: 'regular-radio', boxLabel: 'Female', name: 'gender',inputValue: 'F'}]}},
+      {columnWidth: .16, labelAlign: 'top', items: {xtype:'radiogroup', labelSeparator:'&nbsp;', cls:'fieldRadioClass', fieldLabel:'Gender ', id: 'gender',items : [{cls: 'regular-radio', boxLabel: 'Male', name: 'gender',inputValue: 'M',checked: true}, {cls: 'regular-radio', boxLabel: 'Female', name: 'gender',inputValue: 'F'}]}},
       {columnWidth: .34, labelAlign: 'top', items: {
         xtype:'radiogroup', labelSeparator:'&nbsp;', cls:'fieldRadioClass', fieldLabel:'Marital',  id: 'martial_status', allowBlank: true,
         items : [
@@ -286,24 +286,24 @@ Ext.onReady(function() {
       {columnWidth: .18, labelAlign: 'top', items: new myTextField({fieldLabel:'NPWP No.', id:'npwp_no', name:'npwp_no',autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       {columnWidth: .14, labelAlign: 'top', items: new myTextField({fieldLabel:'Bank Account No.', id:'bank_account_no', name:'bank_account_no', autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       //{columnWidth:1, xtype:'label', text:'* ID Information', cls:'x-form-item my-label-styleBl'},
-			{ columnWidth: .3, xtype: 'label', text: 'ID Information', cls: 'x-form-item my-label-GroupLbl', style: 'clear:both' },
+			{ columnWidth: .3, xtype: 'label', text: 'ID Information', cls: 'x-form-item my-label-GroupLbl' },
 			{ columnWidth: .7, labelAlign: 'top', items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleW'} },
-      {columnWidth: .2, labelAlign: 'top', style: 'clear:both', items: new myTextField({fieldLabel:'ID No.', id:'id_number', name:'id_number', allowBlank: false, autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
+      {columnWidth: .2, labelAlign: 'top', items: new myTextField({fieldLabel:'ID No.', id:'id_number', name:'id_number', allowBlank: false, autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       {columnWidth: .2, labelAlign: 'top', items: new myTextField({fieldLabel:'Place of Birth', id:'place_birth', name:'place_birth', allowBlank: false, autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       {columnWidth: .2, labelAlign: 'top', items: new myDateField({fieldLabel:'Date of Birth', id:'birth_date', name:'birth_date', allowBlank: false})},
       {columnWidth: .4, labelAlign: 'top', items: new myTextArea({fieldLabel:'ID Address', height: '55', id:'id_address', name:'id_address', allowBlank: false, autoCreate : {tag: "textarea", autocomplete: "off"}})},
       //{columnWidth:1, xtype:'label', text:'* In Case of Emergency Please Notify', cls:'x-form-item my-label-styleBl'},
-			{ columnWidth: .3, xtype: 'label', text: 'In Case of Emergency Please Notify', cls: 'x-form-item my-label-GroupLbl', style: 'clear:both' },
+			{ columnWidth: .3, xtype: 'label', text: 'In Case of Emergency Please Notify', cls: 'x-form-item my-label-GroupLbl' },
 			{ columnWidth: .7, labelAlign: 'top', items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleW'} },
-      {columnWidth: .2, labelAlign: 'top', style: 'clear:both', items: new myTextField({fieldLabel:'Name', id:'emergency_name', name:'emergency_name',autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
+      {columnWidth: .2, labelAlign: 'top', items: new myTextField({fieldLabel:'Name', id:'emergency_name', name:'emergency_name',autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       {columnWidth: .2, labelAlign: 'top', items: new myTextField({fieldLabel:'Phone', id:'emergency_phone', name:'emergency_phone',autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       {columnWidth: .2, labelAlign: 'top', items: new myTextField({fieldLabel:'Relationship', id:'emergency_relation', name:'emergency_relation',autoCreate:{tag: "input", maxlength : 100, type: "text", size: "100", autocomplete: "off"}})},
       {columnWidth: .4, labelAlign: 'top', items: new myTextArea({fieldLabel:'Address', height: '55', id:'emergency_address', name:'emergency_address',autoCreate : {tag: "textarea", autocomplete: "off"}})},
       //{columnWidth:1, xtype:'label', text:'* Public Info', cls:'x-form-item my-label-styleBl'},
-			{ columnWidth: .3, xtype: 'label', text: 'Public Info', cls: 'x-form-item my-label-GroupLbl', style: 'clear:both' },
+			{ columnWidth: .3, xtype: 'label', text: 'Public Info', cls: 'x-form-item my-label-GroupLbl' },
 			{ columnWidth: .7, labelAlign: 'top', items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleW'} },
-			{columnWidth: .15, xtype: 'button',text: 'Transfer Depart', style: 'clear:both', cls:'field-button grey-field-button',id: 'btnTransferDept',listeners: {click: function() {Ext.getCmp('fSetDepart').show(); Ext.getCmp('btnTransferDept').disable();}}},
-      {columnWidth: .15, xtype: 'button',text: 'Change Status',cls:'field-button grey-field-button',id: 'btnChangeSts',listeners: {click: function() {Ext.getCmp('fSetStatus').show(); Ext.getCmp('btnChangeSts').disable();}}},
+			{columnWidth: .15, xtype: 'button',text: 'Transfer Depart', cls:'btn-dark',id: 'btnTransferDept',listeners: {click: function() {Ext.getCmp('fSetDepart').show(); Ext.getCmp('btnTransferDept').disable();}}},
+      {columnWidth: .15, xtype: 'button',text: 'Change Status',cls:'btn-dark',id: 'btnChangeSts',listeners: {click: function() {Ext.getCmp('fSetStatus').show(); Ext.getCmp('btnChangeSts').disable();}}},
       {columnWidth: .7, items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleButton'}},
       {columnWidth: .95, xtype:"fieldset", cls:'myfieldset', title:'Transfer to new department/section', flex:1, id:'fSetDepart',
         items:[{
@@ -323,7 +323,7 @@ Ext.onReady(function() {
             {columnWidth: .5, labelAlign: 'top', items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleW'}},
             {columnWidth: .2, labelAlign: 'top', items: new myDateField({fieldLabel:'Start Date', id:'transferDepartStart', minValue: transferDate, name:'transferDepartStart'})},
             {columnWidth: .2, labelAlign: 'top', items: new myTimeField({fieldLabel: 'Start Time', id: 'start_time', name: 'start_time', })},
-            {columnWidth: .1, items: {anchor: '90%', xtype:'button', text:'Discard', cls:'field-button red-field-button', id:'btnDiscardTransfer', listeners: {click: function() {Ext.getCmp('fSetDepart').hide(); Ext.getCmp('btnTransferDept').enable(); Ext.getCmp('transferDepartTo').setValue(departmentId); Ext.getCmp('transferSectionTo').setValue(sectionId);}}}}
+            {columnWidth: .1, items: {anchor: '90%', xtype:'button', text:'Discard', cls:'btn-danger', id:'btnDiscardTransfer', listeners: {click: function() {Ext.getCmp('fSetDepart').hide(); Ext.getCmp('btnTransferDept').enable(); Ext.getCmp('transferDepartTo').setValue(departmentId); Ext.getCmp('transferSectionTo').setValue(sectionId);}}}}
           ]
         }]
       },
@@ -337,7 +337,7 @@ Ext.onReady(function() {
             {labelAlign: 'top', items: new myComboField({fieldLabel:'To', id:'changeStatusTo', name:'changeStatusTo', store:statusDs,valueField:'id',displayField:'name', hiddenName:'changeStatusTo'})},
             {columnWidth: .2, labelAlign: 'top', items: new myDateField({fieldLabel:'Start Date', id:'changeStatusStart', minValue: transferDate, name:'changeStatusStart'})},
             {columnWidth: .2, labelAlign: 'top', items: {xtype:'label', text:'-', cls:'x-form-item my-label-styleW'}},
-            {columnWidth:.1, items: {anchor: '90%', xtype:'button', text:'Discard', cls:'field-button red-field-button', id:'btnDiscardChange', listeners: {click: function() {Ext.getCmp('fSetStatus').hide();Ext.getCmp('btnChangeSts').enable(); Ext.getCmp('changeStatusTo').setValue(statusId);}}}}
+            {columnWidth:.1, items: {anchor: '90%', xtype:'button', text:'Discard', cls:'btn-danger', id:'btnDiscardChange', listeners: {click: function() {Ext.getCmp('fSetStatus').hide();Ext.getCmp('btnChangeSts').enable(); Ext.getCmp('changeStatusTo').setValue(statusId);}}}}
           ]
         }]
       },

@@ -75,7 +75,7 @@ Ext.onReady(function () {
         fieldLabel: 'Periode', width: 200, store: periodDs, displayField: 'period_name', valueField: 'id', allowBlank: false
     });
     var fldHideZero = new Ext.form.Checkbox({ boxLabel: 'Sembunyikan saldo nol', checked: true });
-    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'field-button grey-field-button' });
+    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'btn-dark' });
 
     var filterPanel = new Ext.Panel({
         renderTo: 'tbFilterBar',

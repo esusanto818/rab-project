@@ -7,7 +7,35 @@
                    & keterangan tidak terpotong "...".
   Backend       : /php-crud/ar.agingCRD.php  (task: list_clients | list_cards | list_details | export_csv)
 */
-Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+Ext.onReady(function () {
+    Ext.QuickTips.init();
+    document.getElementById("mainHeaderText").innerHTML = "Kartu <em>Piutang</em> & Aging";
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid Kartu Piutang/Aging (#divMainGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Klien, Proyek, Termin) terpotong "...".
+    // Paksa wrap + clip + tinggi baris dinamis; angka tetap rata kanan (align ColumnModel dihormati).
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            '#divMainGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#divMainGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+            '#divMainGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#divMainGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#divMainGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
 
     var CRD = main_url + '/php-crud/ar.agingCRD.php';
     var MONTHS = [[1, 'Januari'], [2, 'Februari'], [3, 'Maret'], [4, 'April'], [5, 'Mei'], [6, 'Juni'],
@@ -49,7 +77,36 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
     // ------------------------------------------------------------
     // Gaya tab & filter (tema gelap, mengikuti tab Laporan PPN)
     // ------------------------------------------------------------
-    /* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+    (function injectCss() {
+        var css = [
+            '.ar-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}',
+            '.ar-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}',
+            '.ar-tab:hover{background:rgba(43,193,226,.06);}',
+            '.ar-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}',
+            '.ar-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;}',
+            '.ar-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}',
+            '.ar-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}',
+            '.ar-tab.active svg{stroke:#2bc1e2;}',
+            '.ar-tab.active .tt{color:#2bc1e2;}',
+            '.ar-tab.active .st{color:#7fa3b8;}',
+            '.ar-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}',
+            '.ar-filter select,.ar-filter input{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;}',
+            '.ar-filter input[type=number]{width:80px;}',
+            '.ar-filter select#arClient{min-width:240px;}',
+            '.ar-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;}',
+            '.ar-filter .btn.go{background:#03615e;}',
+            '.ar-filter .btn.exp{background:#2e6da4;margin-left:auto;}',
+            '.ar-totals{padding:8px 10px;font:13px arial;color:#9fc3d1;background:#031126;border:1px solid #123049;border-radius:3px;margin:0 8px 8px 8px;}',
+            '.ar-panel{padding:0 8px 8px 8px;}',
+            // Baris saldo nol ditandai kusam; sisa menunggak (>90) disorot merah pada kartu.
+            '.x-grid3-row-ar-zero .x-grid3-cell-inner{color:#5d7488;}',
+            '#divMainGrid .x-grid3-row-ar-old .x-grid3-cell-inner{color:#ff8d7e;}'
+        ].join('\n');
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(css));
+        document.head.appendChild(st);
+    })();
 
     var ICON = {
         cards:   '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',

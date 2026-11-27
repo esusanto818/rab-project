@@ -46,11 +46,11 @@ Ext.onReady(function () {
 
     // 1. Filter Bar: toggle Customer / Supplier
     var btnCustomer = new Ext.Button({
-        text: 'Customer Deposit', cls: 'field-button grey-field-button',
+        text: 'Customer Deposit', cls: 'btn-dark',
         handler: function () { switchPartyType('customer'); }
     });
     var btnSupplier = new Ext.Button({
-        text: 'Supplier Deposit', cls: 'field-button grey-field-button',
+        text: 'Supplier Deposit', cls: 'btn-dark',
         handler: function () { switchPartyType('supplier'); }
     });
 

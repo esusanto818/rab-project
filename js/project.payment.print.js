@@ -4,7 +4,74 @@
  * lalu menampilkan hasil analisis AI terbaru untuk setiap proyek terkait.
  * PHP cetak hanya berisi kerangka HTML/CSS.
  */
-/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+(function () {
+    'use strict';
+
+    var paymentId = parseInt(window.PAYMENT_ID, 10) || 0;
+    var endpoint = window.PAYMENT_CRD_URL || '/rab-project/dev/php-crud/project.paymentCRD.php';
+    var root = document.getElementById('receipt');
+
+    function esc(value) {
+        return String(value === null || value === undefined ? '' : value)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function num(value) {
+        var n = parseFloat(value);
+        return isFinite(n) ? n : 0;
+    }
+    function money(value) {
+        return num(value).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function dateId(value) {
+        if (!value) return '-';
+        var s = String(value).substring(0, 10);
+        var p = s.split('-');
+        return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : esc(value);
+    }
+    function methodLabel(value) {
+        var map = { BANK_TRANSFER: 'Transfer Bank', CASH: 'Tunai', GIRO: 'Giro', CEK: 'Cek' };
+        return map[String(value || '').toUpperCase()] || value || '-';
+    }
+    function request(params, callback) {
+        var xhr = new XMLHttpRequest();
+        var body = Object.keys(params).map(function (k) {
+            return encodeURIComponent(k) + '=' + encodeURIComponent(params[k] === undefined ? '' : params[k]);
+        }).join('&');
+        xhr.open('POST', endpoint, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var response;
+            try { response = JSON.parse(xhr.responseText); }
+            catch (e) { callback(new Error('Respons server bukan JSON yang valid.')); return; }
+            if (xhr.status < 200 || xhr.status >= 300) {
+                callback(new Error(response.message || 'Permintaan ke server gagal.'));
+                return;
+            }
+            callback(null, response);
+        };
+        xhr.onerror = function () { callback(new Error('Tidak dapat terhubung ke server.')); };
+        xhr.send(body);
+    }
+    function fail(message) {
+        root.innerHTML = '<div class="err">' + esc(message) + '</div>';
+    }
+    // Gaya cetak mengikuti hierarki panel AI pada layar detail pembayaran.
+    (function injectAiPrintStyles() {
+        var style = document.createElement('style');
+        style.textContent =
+            '.ai-project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;color:#075e58;font-size:14px}' +
+            '.ai-risk{font-weight:bold;border:1px solid currentColor;padding:3px 8px;border-radius:3px;white-space:nowrap}' +
+            '.ai-summary{font-size:12px;line-height:1.55;margin-bottom:12px}' +
+            '.ai-summary p{margin:5px 0 0;white-space:pre-wrap}' +
+            '.ai-mitigations{font-size:12px;line-height:1.5}' +
+            '.ai-recommendations{margin:6px 0 0 18px;padding:0}' +
+            '.ai-recommendations li{margin-bottom:6px}' +
+            '.ai-project{margin:12px 0;padding:10px 0;border-bottom:1px solid #d8e0e3}';
+        document.head.appendChild(style);
+    })();
 
     function renderAiPlaceholder(projects) {
         if (!projects.length) {

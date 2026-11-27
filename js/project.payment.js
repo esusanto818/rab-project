@@ -17,7 +17,282 @@
   Cetak         : /rab-project/views/project.payment.print.php?id=<id>  (project.payment.print.js)
 */
 
-Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+Ext.onReady(function () {
+    Ext.QuickTips.init();
+    document.getElementById("mainHeaderText").innerHTML = "Pembayaran <em>Termin</em>";
+
+    var CRD = '../php-crud/project.paymentCRD.php';
+    var PRINT_URL = '../views/project.payment.print.php?id=';
+    var ACCESS_ADD = 2;      // level akses minimal: input pembayaran / termin
+    var ACCESS_EDIT = 3;     // level akses minimal: hapus pembayaran
+    var VEPS = 0.01;         // toleransi nilai
+    var TERMIN_RULE_PCT = { 1: 30, 2: 20 };   
+    var DP_PCT = 30;                          
+    var allocNote = '';
+    var PPN_DEFAULT_RATE = 11;                // [PPN] tarif default (%); samakan dengan PP_PPN_DEFAULT_RATE di backend                       
+
+    var dataRecord = null;         
+    var hdrForm = null;
+    var fDate, fClient, fAccount, fMethod, fRef, fTotal, fNotes, fInfo;
+    var fDeposit, fDepInfo, depBalance = 0;     // [DEPOSIT] pemakaian deposit client (IDR) & info saldo     
+    var fCurrency, fRate, fRateInfo;       
+    var rateManual = false;                
+    var rateReq = 0;                       
+    var totalManual = false;       
+    var autoMode = true;           
+    var projSummary = [];          
+
+    function getFormAccess() {
+        return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0);
+    }
+
+    // ------------------------------------------------------------
+    // [AI-VARIANCE] Fungsi Pendukung Analisis AI
+    // ------------------------------------------------------------
+    function triggerAiAnalysis(projectId) {
+        if (!projectId) {
+            Ext.Msg.alert('Peringatan', 'Tidak ada proyek yang terikat pada data ini.');
+            return;
+        }
+        
+        Ext.MessageBox.wait('AI sedang menganalisis biaya, progres, jadwal, penagihan, pembelian & subkon proyek...', 'Mohon Tunggu');
+
+        ajax({ task: 'analyze_project_variance', project_id: projectId }, function (res) {
+            Ext.MessageBox.hide();
+            if (res.success) {
+                renderAiResultPanel(res.data);
+            } else {
+                Ext.Msg.show({
+                    title: 'Kendala Layanan AI',
+                    msg: enc(res.message || 'Server AI sedang sibuk. Silakan klik tombol Analisis Varian AI sekali lagi.'),
+                    buttons: Ext.Msg.OK,
+                    icon: Ext.MessageBox.WARNING
+                });
+            }
+        }, function () {
+            Ext.MessageBox.hide();
+            Ext.Msg.alert('Gagal', 'Gagal terhubung ke server.');
+        });
+    }
+
+    // [AI-VARIANCE 2026-11-01] Panel ini kini menampilkan analisis yang SAMA dengan panel AI & kartu Kesehatan Proyek di dashboard
+    // (mesin bersama php-func/project.analysis.php, tabel ai_variance_logs): headline, ringkasan, tindakan, hal yang perlu dikonfirmasi, temuan sistem.
+    function renderAiResultPanel(d, projectName, append) {
+        var risk = String(d.risk_level || 'BELUM DIKETAHUI').toUpperCase();
+        var riskColor = '#2e9e4f'; // LOW
+        if (risk === 'MEDIUM') riskColor = '#e6a817';
+        else if (risk === 'HIGH' || risk === 'CRITICAL') riskColor = '#e05353';
+
+        var recHtml = '';
+        if (d.recommendations && d.recommendations.length) {
+            Ext.each(d.recommendations, function (r) {
+                recHtml += '<li style="margin-bottom:6px;">' + enc(r) + '</li>';
+            });
+        } else {
+            recHtml = '<li>Tidak ada rekomendasi khusus.</li>';
+        }
+        var qHtml = '';
+        Ext.each(d.questions || [], function (q) { qHtml += '<li style="margin-bottom:4px;">' + enc(q) + '</li>'; });
+        var findHtml = '';
+        var sevColor = { high: '#e05353', medium: '#e6a817', low: '#2bc1e2' };
+        Ext.each(d.findings || [], function (f) {
+            findHtml += '<div style="border-left:4px solid ' + (sevColor[f.sev] || '#2bc1e2') + '; background:#0b141b; padding:4px 8px; margin-bottom:4px;">' +
+                        '<div style="font-size:12px; font-weight:bold;">' + enc(f.title) + '</div>' +
+                        '<div style="font-size:11px; color:#b7c6cc;">' + enc(f.evidence) + '</div></div>';
+        });
+        var m = d.metrics || {};
+        var metricLine = (m.budget !== undefined && m.budget !== null)
+            ? '<div style="font-size:12px; color:#b7c6cc; margin-bottom:10px;">Budget <b>' + Ext.util.Format.number(m.budget, '0,000') + '</b> &nbsp;|&nbsp; Biaya riil <b>' +
+              Ext.util.Format.number(m.cost_total, '0,000') + '</b> (material ' + Ext.util.Format.number(m.cost_material, '0,000') + ', pengeluaran ' + Ext.util.Format.number(m.cost_expense, '0,000') +
+              ', subkon ' + Ext.util.Format.number(m.cost_subcon, '0,000') + ') &nbsp;|&nbsp; Progres <b>' + enc(m.progress) + '%</b>' +
+              (m.usage_pct !== null && m.usage_pct !== undefined ? ' &nbsp;|&nbsp; Pemakaian <b>' + enc(m.usage_pct) + '%</b>' : '') + '</div>'
+            : '';
+        var srcChip = d.legacy ? 'Format lama (jalankan Analisis Varian AI untuk memperbarui)' : (d.ai_used ? 'Gemini' : 'Analisis sistem') + (d.source ? ' &bull; dari ' + enc(d.source) : '');
+
+        var html = '<div class="pp-ai-project" style="margin-top:15px; margin-bottom:20px; background:#111b24; border:1px solid #00bcd4; border-radius:6px; padding:18px; color:#ffffff !important;">' +
+                   (projectName ? '<div style="font-weight:bold; color:#b7dce2; margin-bottom:8px;">Proyek: ' + enc(projectName) + '</div>' : '') +
+                   '<div style="font-weight:bold; font-size:15px; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">' +
+                   '<span>&#9881; AI Cost &amp; Schedule Variance Analysis <span style="font-size:11px; color:#b7c6cc; font-weight:normal;">(' + srcChip + ')</span></span>' +
+                   '<span style="background:' + riskColor + '; color:#fff; padding:3px 10px; border-radius:3px; font-size:13px;">RISK: ' + enc(risk) + '</span>' +
+                   '</div>' +
+                   (d.headline ? '<div style="font-size:15px; font-style:italic; color:' + riskColor + '; margin-bottom:8px;">' + enc(d.headline) + '</div>' : '') +
+                   metricLine +
+                   '<div style="font-size:14px; line-height:22px; margin-bottom:12px; color:#ffffff !important;">' +
+                   '<b style="color:#00bcd4;">Ringkasan Eksekutif:</b> ' + enc(d.ai_summary || '-') +
+                   '</div>' +
+                   '<div style="font-size:14px; line-height:22px; color:#ffffff !important;">' +
+                   '<b style="color:#00bcd4;">Rekomendasi Mitigasi:</b>' +
+                   '<ul style="margin:6px 0 0 18px; padding:0; color:#ffffff !important;">' + recHtml + '</ul>' +
+                   (qHtml ? '<div style="margin-top:10px;"><b style="color:#e6a817;">Perlu dikonfirmasi:</b><ul style="margin:6px 0 0 18px; padding:0; color:#ffffff !important;">' + qHtml + '</ul></div>' : '') +
+                   (findHtml ? '<div style="margin-top:12px;"><b style="color:#b7c6cc;">Temuan sistem (' + (d.findings || []).length + '):</b><div style="margin-top:6px;">' + findHtml + '</div></div>' : '') +
+                   (d.ai_note ? '<div style="font-size:11px; color:#e6a817; margin-top:8px;">' + enc(d.ai_note) + '</div>' : '') +
+                   (d.created_at ? '<div style="font-size:11px; color:#b7c6cc; margin-top:10px;">Analisis terakhir: ' + enc(d.created_at) + '</div>' : '') +
+                   '</div></div>';
+
+        var aiContainer = document.getElementById('ppAiResultContainer');
+        if (!aiContainer) {
+            aiContainer = document.createElement('div');
+            aiContainer.id = 'ppAiResultContainer';
+            dtlDiv.appendChild(aiContainer);
+        }
+        if (append) aiContainer.innerHTML += html;
+        else aiContainer.innerHTML = html;
+        dtlDiv.style.display = 'block';
+    }
+
+    function loadSavedAiResults(items) {
+        var byProject = {};
+        Ext.each(items || [], function (item) {
+            var projectId = item && item.project_id ? String(item.project_id) : '';
+            if (projectId && !byProject[projectId]) {
+                byProject[projectId] = item.project_name || ('Proyek #' + projectId);
+            }
+        });
+        var ids = [];
+        for (var id in byProject) {
+            if (Object.prototype.hasOwnProperty.call(byProject, id)) ids.push(id);
+        }
+
+        var target = document.getElementById('ppAiResultContainer');
+        if (!target) return;
+        if (!ids.length) {
+            target.innerHTML = '<div style="margin-top:12px;padding:10px;border:1px solid #45616b;color:#b7c6cc;">Tidak ada proyek pada detail pembayaran ini untuk memuat hasil analisis AI.</div>';
+            return;
+        }
+
+        target.innerHTML = '<div style="padding:10px;color:#b7dce2;">Memuat hasil analisis AI tersimpan...</div>';
+        var completed = 0;
+        var savedResults = [];
+        var failedCount = 0;
+
+        function finishOne() {
+            completed++;
+            if (completed !== ids.length) return;
+            var currentTarget = document.getElementById('ppAiResultContainer');
+            if (!currentTarget) return;
+            currentTarget.innerHTML = '';
+            if (savedResults.length) {
+                // Keep the original project order from the payment detail.
+                savedResults.sort(function (a, b) { return a.order - b.order; });
+                Ext.each(savedResults, function (saved, index) {
+                    renderAiResultPanel(saved.data, saved.projectName, index > 0);
+                });
+            } else if (failedCount) {
+                currentTarget.innerHTML = '<div style="margin-top:12px;padding:10px;color:#ffcc80;">Tidak berhasil memuat hasil analisis tersimpan. Periksa koneksi/server, lalu muat ulang detail.</div>';
+            } else {
+                currentTarget.innerHTML = '<div style="margin-top:12px;padding:10px;border:1px solid #45616b;color:#b7c6cc;">Belum ada hasil analisis AI tersimpan untuk proyek pada pembayaran ini. Klik "Analisis Varian AI" untuk menjalankan analisis.</div>';
+            }
+        }
+
+        Ext.each(ids, function (projectId, index) {
+            ajax({ task: 'latest_project_variance', project_id: projectId }, function (res) {
+                if (res && res.success && res.data) {
+                    savedResults.push({
+                        order: index,
+                        projectId: projectId,
+                        projectName: byProject[projectId],
+                        data: res.data
+                    });
+                } else if (res && res.message && String(res.message).toLowerCase().indexOf('belum ada hasil') === -1) {
+                    failedCount++;
+                }
+                finishOne();
+            }, function () {
+                failedCount++;
+                finishOne();
+            });
+        });
+    }
+
+    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
+    function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
+    function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
+
+    var METHOD_LABEL = { BANK_TRANSFER: 'Transfer Bank', CASH: 'Tunai', GIRO: 'Giro', CEK: 'Cek' };
+    function methodLabel(v) { return METHOD_LABEL[v] || v || '-'; }
+
+    function ajax(params, onOk, onFail) {
+        Ext.Ajax.request({
+            url: CRD,
+            method: 'POST',
+            params: params,
+            success: function (response) {
+                var res;
+                try { res = Ext.util.JSON.decode(response.responseText); }
+                catch (e) { Ext.Msg.alert('Gagal', 'Respons server tidak valid.'); return; }
+                onOk(res);
+            },
+            failure: function () {
+                if (onFail) onFail(); else Ext.Msg.alert('Gagal', 'Gagal menghubungi server.');
+            }
+        });
+    }
+
+    function onStoreException() {
+        Ext.Msg.alert('Gagal', 'Gagal memuat data dari server.');
+    }
+
+    function numVal(f) {
+        if (!f) return 0;
+        var v = parseFloat(f.getValue());
+        if (isNaN(v)) v = parseFloat(String(f.getRawValue() || '').replace(/,/g, ''));
+        return isNaN(v) ? 0 : v;
+    }
+
+    function fmtRate(v) { return Ext.util.Format.number(v || 0, '0,000.0000'); }
+    function currencyCode(id) { var r = id ? currencyDs.getById(id) : null; return r ? r.get('init') : 'IDR'; }
+    function baseCurrencyId() {
+        var id = null;
+        currencyDs.each(function (r) { if (id === null && r.get('is_base') === true) id = r.get('id'); });
+        return id;
+    }
+    function curId() { return Number((fCurrency && fCurrency.getValue()) || baseCurrencyId()) || null; }
+    function isBaseCur(id) { var r = id ? currencyDs.getById(id) : null; return !r || r.get('is_base') === true; }
+    function curCode() { return currencyCode(curId()); }
+    function curRate() { return isBaseCur(curId()) ? 1 : (parseFloat(fRate.getValue()) || 0); }
+    function rateTol() { return 0.005 * curRate() + VEPS; }
+    function toIdr(pay, remaining) {
+        var idr = round2(pay * curRate());
+        if (Math.abs(idr - remaining) <= rateTol()) idr = round2(remaining);
+        return idr;
+    }
+    function maxPay(remaining) { var r = curRate(); return r > 0 ? round2(remaining / r) : 0; }
+
+    // ------------------------------------------------------------
+    // 0. Panel Detail Dinamis Berbasis Persentase Tinggi Layanan
+    // ------------------------------------------------------------
+    var gridContainer = document.getElementById('divMainGrid');
+    var screenH = window.innerHeight || document.documentElement.clientHeight || 700;
+    
+    // Alokasi porsi grid utama & panel detail mengikuti persentase tinggi layar
+    var mainHeight = Math.round(screenH * 0.38);
+    var dtlHeight  = Math.round(screenH * 0.45);
+
+    (function injectHeaderCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            // [GRID-WRAP 2026-11-17] Override SCOPED ke grid Pembayaran Termin (.ppMainGrid / #editorFormGrid /
+            // .ppDepGrid) — tidak menyentuh CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+            //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            // sehingga header & sel panjang terpotong "...". Paksa wrap + clip + tinggi baris dinamis.
+            // Angka tetap rata kanan (align ColumnModel dihormati — kita hanya mengubah white-space).
+            '.ppMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner, .ppDepGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '.ppMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner, .ppDepGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Header & baris tinggi dinamis (tidak mengunci 36px / tinggi tetap): teks membungkus ke 2 baris bila perlu.
+            '.ppMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd, .ppDepGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '.ppMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td, .ppDepGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '.ppMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset, .ppDepGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
 
     var dtlDiv = document.createElement('div');
     dtlDiv.id = 'ppDtlContainer';
@@ -49,13 +324,13 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
     function loadDetailPanel(id) {
         ajax({ task: 'load_payment', id: id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
             renderDetailPanel(res.data);
         }, function () {
-            dtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
+            dtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
             dtlDiv.style.display = 'block';
         });
     }
@@ -64,15 +339,15 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         var h = d.header, items = d.items || [];
         var cur = h.currency_code || 'IDR', foreign = (cur !== 'IDR'), allocCur = 0;
         
-        var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">' +
-                   '<h3 class="detail-title" style="margin:0">Detail Pembayaran: ' + enc(h.payment_no) + '</h3>' +
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
+                   '<h3 class="detail-title" style="margin:0;">Detail Pembayaran: ' + enc(h.payment_no) + '</h3>' +
                    '<div>' +
-                   '<button type="button" id="ppBtnAi" style="margin-left:8px; padding:6px 14px; ; ; cursor:pointer; font-weight:bold; font-size:12px">Analisis Varian AI</button>' +
-                   '<button type="button" id="ppBtnPrint" style="margin-left:8px; padding:6px 14px; ; ; cursor:pointer; font-weight:bold; font-size:12px">Cetak Tanda Terima</button>' +
+                   '<button type="button" id="ppBtnAi" style="margin-left:8px; padding:6px 14px; background:#00796b; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px;">Analisis Varian AI</button>' +
+                   '<button type="button" id="ppBtnPrint" style="margin-left:8px; padding:6px 14px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px;">Cetak Tanda Terima</button>' +
                    '</div>' +
                    '</div>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px">Tanggal: <b>' + enc(h.payment_date) + '</b> &nbsp;|&nbsp; Client: <b>' + enc(h.client_name) +
+                   '<div style="padding:4px 2px 10px 2px;">Tanggal: <b>' + enc(h.payment_date) + '</b> &nbsp;|&nbsp; Client: <b>' + enc(h.client_name) +
                    '</b> &nbsp;|&nbsp; Metode: <b>' + enc(methodLabel(h.payment_method)) + '</b>' +
                    ' &nbsp;|&nbsp; Mata uang: <b>' + enc(cur) + '</b>' + (foreign ? ' (kurs ' + fmtRate(h.exch_rate) + ')' : '') +
                    (h.account_name ? ' &nbsp;|&nbsp; Akun: <b>' + enc(h.account_code + ' - ' + h.account_name) + '</b>' : '') +
@@ -90,18 +365,18 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                    '</tr></thead><tbody>';
 
         if (!items.length) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center">Tidak ada alokasi termin.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#557982;">Tidak ada alokasi termin.</td></tr>';
         }
         Ext.each(items, function (i) {
             var sisaColor = i.sisa_after <= VEPS ? '#2e9e4f' : '#e6a817';
             allocCur += parseFloat(i.amount_cur) || 0;
             html += '<tr class="data-row">' +
                     '<td align="left">' + enc(i.project_name) + '</td>' +
-                    '<td align="left">' + enc(i.termin_name) + (i.percentage !== null ? ' <span >(' + fmtAmt(i.percentage) + '%)</span>' : '') + '</td>' +
+                    '<td align="left">' + enc(i.termin_name) + (i.percentage !== null ? ' <span style="color:#668894;">(' + fmtAmt(i.percentage) + '%)</span>' : '') + '</td>' +
                     '<td align="left">' + enc(i.inv_no) + '</td>' +
                     '<td align="right">' + fmtAmt(i.invoice_amount) + '</td>' +
                     '<td align="right" class="subtotal-val">' + fmtAmt(i.amount_paid) + '</td>' +
-                    '<td align="right" >' + fmtAmt(i.sisa_after) + '</td>' +
+                    '<td align="right" style="color:' + sisaColor + ';">' + fmtAmt(i.sisa_after) + '</td>' +
                     (foreign ? '<td align="right">' + fmtAmt(i.amount_cur) + '</td>' : '') +
                     '</tr>';
         });
@@ -109,11 +384,11 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                 '<td align="right" class="subtotal-val"><b>' + fmtAmt(h.allocated_amount) + '</b></td><td></td>' + (foreign ? '<td align="right"><b>' + fmtAmt(allocCur) + '</b></td>' : '') + '</tr>';
         if (h.excess_amount > VEPS) {
             html += '<tr class="data-row"><td colspan="4" align="right"><b>Lebih Bayar</b></td>' +
-                    '<td align="right" ><b>' + fmtAmt(h.excess_amount) + '</b></td><td></td>' + (foreign ? '<td align="right" ><b>' + fmtAmt(round2(h.total_amount_cur - allocCur)) + '</b></td>' : '') + '</tr>';
+                    '<td align="right" style="color:#e6a817;"><b>' + fmtAmt(h.excess_amount) + '</b></td><td></td>' + (foreign ? '<td align="right" style="color:#e6a817;"><b>' + fmtAmt(round2(h.total_amount_cur - allocCur)) + '</b></td>' : '') + '</tr>';
         }
         if (h.deposit_applied > VEPS) {                                                       // [DEPOSIT] bagian deposit dari total dana
             html += '<tr class="data-row"><td colspan="4" align="right">Termasuk deposit dipakai</td>' +
-                    '<td align="right" >' + fmtAmt(h.deposit_applied) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>' +
+                    '<td align="right" style="color:#2bc1e2;">' + fmtAmt(h.deposit_applied) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>' +
                     '<tr class="data-row"><td colspan="4" align="right">Kas / bank diterima</td>' +
                     '<td align="right">' + fmtAmt(round2(h.total_amount - h.deposit_applied)) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>';
         }
@@ -303,10 +578,10 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
             { header: 'Teralokasi (IDR)', dataIndex: 'allocated_amount', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },  // [GRID-WRAP] 120 -> 140
             {
                 header: 'Lebih Bayar (IDR)', dataIndex: 'excess_amount', width: 120, align: 'right',  // [GRID-WRAP] 100 -> 120
-                renderer: function (v) { return v > VEPS ? '<span style="font-weight:bold">' + fmtAmt(v) + '</span>' : '-'; }
+                renderer: function (v) { return v > VEPS ? '<span style="color:#e6a817;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; }
             },
             { header: 'Deposit Dipakai (IDR)', dataIndex: 'deposit_applied', width: 130, align: 'right',          // [GRID-WRAP] 110 -> 130
-              renderer: function (v) { return v > VEPS ? '<span style="font-weight:bold">' + fmtAmt(v) + '</span>' : '-'; } },
+              renderer: function (v) { return v > VEPS ? '<span style="color:#2bc1e2;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; } },
             { header: 'Referensi', dataIndex: 'reference_no', width: 130, renderer: function (v) { return CellWrap(v || ''); } }  // [GRID-WRAP] 120 -> 130
         ],
         // [GRID-WRAP 2026-11-17] forceFit dimatikan (pola sama seperti js/project.invoice.js):
@@ -349,14 +624,14 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         // [RELEASE-LAYER] kosong = belum ada tagihan resmi yang diterbitkan ke client ini
         // [GRID-WRAP 2026-11-17] forceFit dimatikan agar nominal / header panjang tidak terpotong "..." (pola js/project.invoice.js).
         viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false,
-                      emptyText: '<div style="padding:12px">Belum ada tagihan yang diterbitkan (release) untuk client ini. ' +
+                      emptyText: '<div style="padding:12px;color:#9fc3d1;">Belum ada tagihan yang diterbitkan (release) untuk client ini. ' +
                                  'Release dulu dari menu Tagihan ke Klien.</div>' },
         height: 280,
         columns: [
             { header: 'Proyek', dataIndex: 'project_name', width: 175, renderer: CellWrap },   // [GRID-WRAP] 170 -> 175
             { header: 'Termin', dataIndex: 'termin_name', width: 155, renderer: CellWrap },    // [GRID-WRAP] 150 -> 155
             { header: 'No. Invoice', dataIndex: 'inv_no', width: 125 },                        // [GRID-WRAP] 110 -> 125 (INV-2611-00057)
-            { header: 'No. Dokumen', dataIndex: 'release_no', width: 120, renderer: function (v) { return v ? '<span >' + enc(v) + '</span>' : '-'; } },   // [GRID-WRAP] 100 -> 120 (TAG-2611-00012) [RELEASE-LAYER]
+            { header: 'No. Dokumen', dataIndex: 'release_no', width: 120, renderer: function (v) { return v ? '<span style="color:#2e9e4f;">' + enc(v) + '</span>' : '-'; } },   // [GRID-WRAP] 100 -> 120 (TAG-2611-00012) [RELEASE-LAYER]
             { header: 'Tgl Termin', dataIndex: 'invoice_date', width: 92, align: 'center' },   // [GRID-WRAP] 85 -> 92 (DD/MM/YYYY)
             {
                 header: '%', dataIndex: 'percentage', width: 55, align: 'right',                // [GRID-WRAP] 50 -> 55
@@ -372,16 +647,16 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
             },
             {
                 header: 'Setara IDR', dataIndex: 'pay_idr', width: 135, align: 'right',           // [GRID-WRAP] 110 -> 135
-                renderer: function (v) { return '<span >' + fmtAmt(v) + '</span>'; }
+                renderer: function (v) { return '<span style="color:#9fc3d1;">' + fmtAmt(v) + '</span>'; }
             },
             {
                 id: 'ppDeleteCol', dataIndex: 'invoice_id', width: 32, align: 'center', fixed: true,
-                header: '<span title="Hapus termin" style="display:inline-block;line-height:0">' +
+                header: '<span title="Hapus termin" style="display:inline-block;line-height:0;">' +
                         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
                         '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
                         '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span>',
                 renderer: function () {
-                    return '<span style="cursor:pointer;font-weight:bold;font-size:14px" title="Hapus termin ini">&#10005;</span>';
+                    return '<span style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus termin ini">&#10005;</span>';
                 }
             }
         ],
@@ -428,9 +703,9 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
 
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; font-family:arial; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
-            totalsDiv.innerHTML = '<div>Total Dialokasikan: <span id="lblPpAlloc" >0.00</span></div>' +
-                                  '<div id="lblPpSplit" style="font-size:14px; line-height:22px; font-weight:normal; margin-top:4px"></div>' +
-                                  '<div id="lblPpExcess" style="font-size:14px; line-height:22px; font-weight:normal; margin-top:4px"></div>';
+            totalsDiv.innerHTML = '<div>Total Dialokasikan: <span id="lblPpAlloc" style="color:#ffffff !important;">0.00</span></div>' +
+                                  '<div id="lblPpSplit" style="font-size:14px; font-family:arial; line-height:22px; font-weight:normal; margin-top:4px; color:#c8dde6;"></div>' +
+                                  '<div id="lblPpExcess" style="font-size:14px; font-family:arial; line-height:22px; font-weight:normal; margin-top:4px;"></div>';
             g.parentNode.insertBefore(totalsDiv, g.nextSibling);
         }
     })();
@@ -467,12 +742,12 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
             if (fClient.getValue() !== cid) return;                 // client sudah diganti
             depBalance = round2(parseFloat(res.balance) || 0);
             if (depBalance > VEPS) {
-                fDepInfo.setValue('<span >Deposit client tersedia: <b>' + fmtAmt(depBalance) + ' IDR</b></span> ' +
-                                  '&nbsp;<a href="#"  onclick="window.ppUseDeposit(); return false;">pakai maksimal</a>' +
-                                  ' &nbsp;|&nbsp; <a href="#"  onclick="window.ppDepositHistory(); return false;">riwayat</a>');
+                fDepInfo.setValue('<span style="color:#e6a817;">Deposit client tersedia: <b>' + fmtAmt(depBalance) + ' IDR</b></span> ' +
+                                  '&nbsp;<a href="#" style="color:#2bc1e2;" onclick="window.ppUseDeposit(); return false;">pakai maksimal</a>' +
+                                  ' &nbsp;|&nbsp; <a href="#" style="color:#2bc1e2;" onclick="window.ppDepositHistory(); return false;">riwayat</a>');
             } else {
-                fDepInfo.setValue('<span >Deposit client: 0 IDR</span> ' +
-                                  '&nbsp;<a href="#"  onclick="window.ppDepositHistory(); return false;">riwayat</a>');
+                fDepInfo.setValue('<span style="color:#668894;">Deposit client: 0 IDR</span> ' +
+                                  '&nbsp;<a href="#" style="color:#2bc1e2;" onclick="window.ppDepositHistory(); return false;">riwayat</a>');
             }
             recalcAll();
         });
@@ -496,7 +771,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                 store: ds, stripeRows: true, cls: 'ppDepGrid',
                 // [GRID-WRAP 2026-11-17] forceFit dimatikan + wrap scoped (.ppDepGrid) agar header/nominal
                 // riwayat deposit tidak terpotong "..." (pola sama seperti grid utama pembayaran).
-                viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false, emptyText: '<div style="padding:12px">Belum ada deposit.</div>' },
+                viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false, emptyText: '<div style="padding:12px;">Belum ada deposit.</div>' },
                 columns: [
                     { header: 'Tanggal', dataIndex: 'payment_date', width: 95, align: 'center' },                       // [GRID-WRAP] 90 -> 95
                     { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 140 },                                     // [GRID-WRAP] 130 -> 140 (PPAY-...)
@@ -570,19 +845,19 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         fInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 105, items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 105, bodyStyle: 'background:transparent;', items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'ppHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'padding:4px 2px 0 2px',
+            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
             items: [col(0.34, [fDate, fClient, fCurrency]), col(0.34, [fAccount, fMethod, fRef]), col(0.32, [fTotal, fDeposit, fRate, fNotes])]
         });
         new Ext.form.FormPanel({
             renderTo: 'ppHdrForm',
             border: false,
-            bodyStyle: 'padding:0 2px 4px 2px',
+            bodyStyle: 'background:transparent; padding:0 2px 4px 2px;',
             items: [fRateInfo, fDepInfo, fInfo]
         });
     }
@@ -595,7 +870,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         fRate.setValue(1);
         fRate.setReadOnly(true);
         rateManual = false;
-        fRateInfo.setValue('<span >Mata uang dasar (IDR, kurs 1)</span>');
+        fRateInfo.setValue('<span style="color:#668894;">Mata uang dasar (IDR, kurs 1)</span>');
         applyCurrencyLabels();
         fAccount.clearValue();
         fMethod.setValue('BANK_TRANSFER');
@@ -618,20 +893,20 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         Ext.each(projSummary, function (p) {
             var bel = Math.max(p.contract_value - p.total_dpp, 0);      // [PPN] kontrak dibanding DPP termin, bukan tagihan incl. PPN
             cv += p.contract_value; tt += p.total_termin; tp += p.total_paid; bt += bel; td += p.total_draft || 0;
-            lines += '<div style="font-size:14px;line-height:22px">&bull; <b>' + enc(p.project_name) + '</b>' +
+            lines += '<div style="font-size:14px; font-family: arial;line-height:22px; color:#c8dde6;">&bull; <b>' + enc(p.project_name) + '</b>' +
                      ' &nbsp;&ndash;&nbsp; kontrak <b>' + fmtAmt(p.contract_value) + '</b>' +
                      ' &nbsp;|&nbsp; termin (incl. PPN) <b>' + fmtAmt(p.total_termin) + '</b>' +
                      ' &nbsp;|&nbsp; dibayar <b>' + fmtAmt(p.total_paid) + '</b>' +
                      ' &nbsp;|&nbsp; belum ditagihkan <b>' + fmtAmt(bel) + '</b>' +
-                     (p.draft_count ? ' &nbsp;|&nbsp; <span >draft ' + p.draft_count + ' x (' + fmtAmt(p.total_draft || 0) + ')</span>' : '') + '</div>';   // [RELEASE-LAYER]
+                     (p.draft_count ? ' &nbsp;|&nbsp; <span style="color:#e6a817;">draft ' + p.draft_count + ' x (' + fmtAmt(p.total_draft || 0) + ')</span>' : '') + '</div>';   // [RELEASE-LAYER]
         });
         var multi = projSummary.length > 1;
-        fInfo.setValue('<div style="padding:6px 2px 2px 2px">' +
-                       '<div style="font-size:14px; line-height:24px">' + (multi ? ('Total ' + projSummary.length + ' proyek &nbsp;&ndash;&nbsp; ') : '') +
+        fInfo.setValue('<div style="padding:6px 2px 2px 2px;">' +
+                       '<div style="font-size:14px; line-height:24px; color:#ffffff;">' + (multi ? ('Total ' + projSummary.length + ' proyek &nbsp;&ndash;&nbsp; ') : '') +
                        'Nilai kontrak: <b>' + fmtAmt(cv) + '</b> &nbsp;|&nbsp; Total termin: <b>' + fmtAmt(tt) +
                        '</b> &nbsp;|&nbsp; Sudah dibayar: <b>' + fmtAmt(tp) + '</b> &nbsp;|&nbsp; Belum ditagihkan: <b>' + fmtAmt(bt) + '</b>' +
-                       (td > 0 ? ' &nbsp;|&nbsp; <span >Belum diterbitkan (draft): <b>' + fmtAmt(td) + '</b></span>' : '') + '</div>' +   // [RELEASE-LAYER]
-                       (multi ? ('<div style="margin-top:4px">' + lines + '</div>') : '') + '</div>');
+                       (td > 0 ? ' &nbsp;|&nbsp; <span style="color:#e6a817;">Belum diterbitkan (draft): <b>' + fmtAmt(td) + '</b></span>' : '') + '</div>' +   // [RELEASE-LAYER]
+                       (multi ? ('<div style="margin-top:4px;">' + lines + '</div>') : '') + '</div>');
         setTimeout(fitGrid, 0);
     }
 
@@ -698,28 +973,28 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         if (isBaseCur(cid)) {
             fRate.setValue(1);
             fRate.setReadOnly(true);
-            fRateInfo.setValue('<span >Mata uang dasar (IDR, kurs 1)</span>');
+            fRateInfo.setValue('<span style="color:#668894;">Mata uang dasar (IDR, kurs 1)</span>');
             recalcAll();
             return;
         }
         fRate.setReadOnly(false);
         var token = ++rateReq;
-        fRateInfo.setValue('<span >memuat kurs...</span>');
+        fRateInfo.setValue('<span style="color:#668894;">memuat kurs...</span>');
         ajax({ task: 'get_exchange_rate', currency_id: cid, date: dt.dateFormat('Y-m-d') }, function (res) {
             if (token !== rateReq) return;
             if (!res.success) {
-                fRateInfo.setValue('<span >' + enc(res.message || 'Gagal memuat kurs.') + '</span>');
+                fRateInfo.setValue('<span style="color:#c0392b;">' + enc(res.message || 'Gagal memuat kurs.') + '</span>');
                 return;
             }
             var d = res.data || {};
             if (d.rate) fRate.setValue(d.rate);
             if (d.source === 'periode') {
-                fRateInfo.setValue('<span >KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
+                fRateInfo.setValue('<span style="color:#2e9e4f;">KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
             } else if (d.source === 'terakhir') {
-                fRateInfo.setValue('<span >Belum ada kurs untuk tanggal bayar, memakai kurs terakhir: KMK ' +
+                fRateInfo.setValue('<span style="color:#e6a817;">Belum ada kurs untuk tanggal bayar, memakai kurs terakhir: KMK ' +
                                    enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
             } else {
-                fRateInfo.setValue('<span >Data kurs belum tersedia, isi manual.</span>');
+                fRateInfo.setValue('<span style="color:#e6a817;">Data kurs belum tersedia, isi manual.</span>');
             }
             recalcAll();
         });
@@ -759,13 +1034,13 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         var el = document.getElementById('lblPpAlloc');
         if (el) {
             el.innerHTML = fmtAmt(alloc) + ' ' + enc(code) +
-                           (foreign ? ' <span style="font-weight:normal">&asymp; ' + fmtAmt(allocIdr) + ' IDR</span>' : '');
+                           (foreign ? ' <span style="color:#9fc3d1; font-weight:normal;">&asymp; ' + fmtAmt(allocIdr) + ' IDR</span>' : '');
         }
         var ex = document.getElementById('lblPpExcess');
         if (ex) {
-            if (foreign && !(rate > 0)) ex.innerHTML = '<span >Isi kurs ' + enc(code) + ' agar nilai setara IDR dapat dihitung.</span>';
-            else if (excess < -VEPS) ex.innerHTML = '<span >Jumlah diterima kurang ' + fmtAmt(-excess) + ' ' + enc(code) + ' dari total alokasi.</span>';
-            else if (excess > VEPS) ex.innerHTML = '<span >Lebih bayar ' + fmtAmt(excess) + ' ' + enc(code) + ' (dicatat sebagai excess).</span>';
+            if (foreign && !(rate > 0)) ex.innerHTML = '<span style="color:#e6a817;">Isi kurs ' + enc(code) + ' agar nilai setara IDR dapat dihitung.</span>';
+            else if (excess < -VEPS) ex.innerHTML = '<span style="color:#ff6b5e;">Jumlah diterima kurang ' + fmtAmt(-excess) + ' ' + enc(code) + ' dari total alokasi.</span>';
+            else if (excess > VEPS) ex.innerHTML = '<span style="color:#e6a817;">Lebih bayar ' + fmtAmt(excess) + ' ' + enc(code) + ' (dicatat sebagai excess).</span>';
             else ex.innerHTML = '';
         }
         var sp = document.getElementById('lblPpSplit');
@@ -787,7 +1062,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
             } else {
                 sp.innerHTML = '';
             }
-            if (allocNote) sp.innerHTML += (sp.innerHTML ? '<br/>' : '') + '<span >' + allocNote + '</span>';
+            if (allocNote) sp.innerHTML += (sp.innerHTML ? '<br/>' : '') + '<span style="color:#e6c36a;">' + allocNote + '</span>';
         }
         fitGrid();
     }
@@ -913,7 +1188,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         var win = new Ext.Window({
             title: 'Faktur Pajak - ' + rec.get('inv_no'), width: 420, height: 230, modal: true, layout: 'fit',
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 120, bodyStyle: 'padding:12px',
+                border: false, labelWidth: 120, bodyStyle: 'padding:12px;',
                 items: [{ xtype: 'displayfield', hideLabel: true,
                           value: 'PPN Keluaran <b>' + fmtAmt(rec.get('ppn_amount')) + '</b> (DPP ' + fmtAmt(rec.get('dpp_amount')) +
                                  '). Tanggal faktur menentukan masa pajak di Laporan PPN. Kosongkan nomor untuk menghapus.' }, fNo, fDt]
@@ -1006,29 +1281,29 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
         function refreshContractInfo() {
             // [PPN] ringkasan DPP / PPN / total tagihan (rumus sama dengan backend: PPN = DPP x tarif, dibulatkan 2 desimal)
             var dpp = round2(parseFloat(tAmt.getValue()) || 0), rt = curPpnRate(), ppn = round2(dpp * rt / 100);
-            tInfo.setValue('<span >Nilai kontrak (DPP): <b>' + fmtAmt(contract) + '</b>.</span><br/>' +
-                           '<span >DPP <b>' + fmtAmt(dpp) + '</b> &nbsp;|&nbsp; PPN ' + rt + '% <b>' + fmtAmt(ppn) +
+            tInfo.setValue('<span style="color:#9fc3d1;">Nilai kontrak (DPP): <b>' + fmtAmt(contract) + '</b>.</span><br/>' +
+                           '<span style="color:#9fc3d1;">DPP <b>' + fmtAmt(dpp) + '</b> &nbsp;|&nbsp; PPN ' + rt + '% <b>' + fmtAmt(ppn) +
                            '</b> &nbsp;|&nbsp; Total tagihan <b>' + fmtAmt(round2(dpp + ppn)) + '</b></span>');
         }
         refreshContractInfo();
 
-        var lblCls = 'lbl-termin-info';
-        var btnCls = 'btn-termin-action';
+        var lblStyle = 'color:#9fc3d1;';
+        var btnCss = 'margin-left:8px; padding:7px 18px; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;';
         var win = new Ext.Window({
             title: 'Tambah Termin - ' + enc(fClient.getRawValue()),
             width: 460, height: 500, modal: true, closeAction: 'close', resizable: false,
             layout: 'fit',
-            ,
+            bodyStyle: 'background:#0f1d29;',
             items: [new Ext.form.FormPanel({
                 border: false, labelWidth: 120, labelStyle: lblStyle, autoScroll: true,
-                bodyStyle: 'padding:14px',
+                bodyStyle: 'background:#0f1d29; padding:14px;',
                 defaults: { labelStyle: lblStyle },
                 items: [
                     tProject, tName, tDate, tPct, tAmt, tPpnOn, tPpnRate, tFpNo, tFpDate, tInfo,
                     {
-                        xtype: 'panel', border: false, bodyStyle: 'text-align:right; padding-top:10px',
-                        html: '<button type="button" id="ppTerminSave" class="' + btnCls + '">Simpan</button>' +
-                              '<button type="button" id="ppTerminCancel" class="' + btnCls + '">Batal</button>',
+                        xtype: 'panel', border: false, bodyStyle: 'background:transparent; text-align:right; padding-top:10px;',
+                        html: '<button type="button" id="ppTerminSave" style="' + btnCss + 'background:#03615e;">Simpan</button>' +
+                              '<button type="button" id="ppTerminCancel" style="' + btnCss + 'background:#555555;">Batal</button>',
                         listeners: {
                             afterrender: function () {
                                 document.getElementById('ppTerminCancel').onclick = function () { win.close(); };

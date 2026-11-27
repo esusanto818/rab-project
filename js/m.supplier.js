@@ -278,7 +278,7 @@ Ext.onReady(function() {
       { columnWidth: .5, items: new myTextArea({ fieldLabel: 'Remark', id: 'remark', name: 'remark', allowBlank: true, autoCreate: { tag: "textarea", autocomplete: "off" } }) },
       { columnWidth: .8, xtype: 'label', text: 'Contact Person', cls: 'x-form-item my-label-styleBl' },
       {
-        columnWidth: .1, xtype: 'button', text: 'Add', cls: 'field-button grey-field-button', id: 'btnAddContact',
+        columnWidth: .1, xtype: 'button', text: 'Add', cls: 'btn-dark', id: 'btnAddContact',
         listeners: {
           click: function() {
             gridEditorCheck = 0;
@@ -289,7 +289,7 @@ Ext.onReady(function() {
         }
       },
       {
-        columnWidth: .1, xtype: 'button', text: 'Edit', cls: 'field-button grey-field-button', id: 'btnEditContact',
+        columnWidth: .1, xtype: 'button', text: 'Edit', cls: 'btn-dark', id: 'btnEditContact',
         listeners: {
           click: function() {
             gridEditorCheck = 1;

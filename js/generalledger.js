@@ -78,8 +78,8 @@ Ext.onReady(function () {
         fieldLabel: 'Periode', width: 180, store: periodDs, displayField: 'period_name', valueField: 'id',
         emptyText: '-- Semua Periode --'
     });
-    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'field-button grey-field-button' });
-    var btnClearFilter = new Ext.Button({ text: 'Reset', cls: 'field-button grey-field-button' });
+    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'btn-dark' });
+    var btnClearFilter = new Ext.Button({ text: 'Reset', cls: 'btn-dark' });
 
     var filterPanel = new Ext.Panel({
         renderTo: 'glFilterBar',

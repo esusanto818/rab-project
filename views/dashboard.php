@@ -41,7 +41,7 @@ tailwind.config = { corePlugins: { preflight: false } };
 <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 <link rel="apple-touch-icon" href="../favicon.ico?v=<?=$favVer?>">
-<body class="dashboard-scope min-h-screen flex flex-col">
+<body class="dashboard-scope dashboard-page min-h-screen flex flex-col">
 <!-- HEADER -->
 <header class="dash-header sticky top-0 z-50 shadow-lg">
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

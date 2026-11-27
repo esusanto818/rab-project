@@ -30,7 +30,7 @@ Ext.onReady(function () {
 
             var toolbar = document.createElement('div');
             toolbar.style.padding = '5px 0';
-            //toolbar.innerHTML = '<button id="btnAddItem" type="button" class="field-button grey-field-button">+ Tambah Item Manual</button>';
+            //toolbar.innerHTML = '<button id="btnAddItem" type="button" class="btn-dark">+ Tambah Item Manual</button>';
             gridContainer.parentNode.insertBefore(toolbar, gridContainer);
 
             var totalsDiv = document.createElement('div');

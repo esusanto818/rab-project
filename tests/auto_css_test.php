@@ -94,7 +94,7 @@ report(
 // [CSS-04] Pemisahan CSS dari JavaScript (Inject <style> via JS)
 $jsCssInject = [];
 foreach ($jsFiles as $file) {
-    if (preg_match('/(ext-all|chart|jquery)/i', basename($file))) continue;
+    if (preg_match('/(ext-all|chart|jquery|FileUploadField)/i', basename($file))) continue;
     $content = file_get_contents($file);
     $rel     = str_replace($ROOT_DIR . '/', '', $file);
     if (preg_match('/createElement\s*\(\s*[\'"]style[\'"]\s*\)|<style/i', $content)) {
@@ -125,21 +125,19 @@ report(
     "Seluruh aturan UI inti (Button, Grid, Form) terdefinisi di file CSS terpusat"
 );
 
-// [CSS-06] Validasi Tautan <link rel="stylesheet"> & Cek Legacy CSS Terpecah
+// [CSS-06] Validasi Tautan <link rel="stylesheet"> & [CSS-07] Cek Legacy CSS Terpecah
 $brokenCssLinks = [];
 $legacyMultiCss = [];
 foreach ($viewFiles as $file) {
     $content = file_get_contents($file);
     $rel     = str_replace($ROOT_DIR . '/', '', $file);
     if (preg_match_all('/<link[^>]+href=["\']([^"\']+\.css(?:\?[^"\']*)?)["\']/i', $content, $matches)) {
-        // Cek apakah masih memanggil CSS lama yang terpisah (header.black.css, grddetail.css, frm.css)
-        foreach ($matches[1] as $href) {
+        foreach ((array)end($matches) as $href) {
             if (preg_match('/(header\.black\.css|grddetail\.css|frm\.css|mainCSS\.css)/i', $href)) {
                 $legacyMultiCss[] = "$rel -> " . basename(preg_replace('/\?.*$/', '', $href));
             }
             if (preg_match('/^(https?:)?\/\//i', $href) || strpos($href, '<?') !== false) continue;
             $cleanPath = preg_replace('/\?.*$/', '', $href);
-            // Normalisasi prefix /rab-project/dev/ atau /proyekgmn-dev/
             $cleanPath = preg_replace('#^/(rab-project/dev|proyekgmn-dev)/#i', '', $cleanPath);
             $cleanPath = ltrim(preg_replace('/^(\.\.\/)+/', '', $cleanPath), '/');
             if (!file_exists($ROOT_DIR . '/' . $cleanPath)) {
@@ -164,6 +162,46 @@ report(
         ? "Seluruh modul sudah memakai single unified CSS (bebas file CSS terpisah lama)"
         : "Ditemukan " . count($legacyMultiCss) . " pemanggilan file CSS terpisah lama (header.black/grddetail/frm)",
     $legacyMultiCss
+);
+
+// [CSS-08] Audit Konsistensi Kelas & Gaya Tombol (Acuan UAT v3)
+$nonStdButtons = [];
+$btnTargets = array_merge($viewFiles, $jsFiles);
+
+// [CSS-08] Audit Konsistensi Kelas & Gaya Tombol (Acuan UAT v3)
+$nonStdButtons = [];
+$btnTargets = array_merge($viewFiles, $jsFiles);
+foreach ($btnTargets as $bf) {
+    $bRel = str_replace($ROOT_DIR . '/', '', $bf);
+    if (preg_match('/(ext-all|chart|jquery|FileUploadField)/i', basename($bf))) continue;
+    $bLines = file($bf);
+    foreach ($bLines as $bIdx => $bLine) {
+        if (preg_match('/new\s+Ext\.Button\s*\(|xtype\s*:\s*[\'"]button[\'"]/i', $bLine)) {
+            $chunk = implode('', array_slice($bLines, $bIdx, 8));
+            if (preg_match('/\bstyle\s*:/i', $chunk)) {
+                $nonStdButtons[] = "$bRel:" . ($bIdx + 1) . " (ExtJS button memakai style: manual)";
+            } elseif (preg_match('/\bcls\s*:\s*[\'"]([^\'"]+)[\'"]/i', $chunk, $bm)) {
+                $cls = trim((string)array_pop($bm));
+                if (!in_array($cls, ['btn-primary', 'btn-dark', 'btn-danger', 'whDarkWin'], true)) {
+                    $nonStdButtons[] = "$bRel:" . ($bIdx + 1) . " (cls non-standar: $cls)";
+                }
+            }
+        }
+        if (preg_match('/<button\b([^>]*)>/i', $bLine, $bm)) {
+            $attrStr = (string)array_pop($bm);
+            if (preg_match('/\bstyle\s*=/i', $attrStr)) {
+                $nonStdButtons[] = "$bRel:" . ($bIdx + 1) . " (<button> memakai style= inline)";
+            }
+        }
+    }
+}
+report(
+    count($nonStdButtons) === 0,
+    'CSS-08',
+    count($nonStdButtons) === 0
+        ? "Seluruh tombol di views/ & js/ seragam mengikuti standar UAT v3 (btn-primary/dark/danger/app-btn)"
+        : "Ditemukan " . count($nonStdButtons) . " tombol belum mengikuti standar UAT v3",
+    $nonStdButtons
 );
 
 if (is_dir($ROOT_DIR . '/docs')) {

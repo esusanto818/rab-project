@@ -16,7 +16,137 @@
   Backend       : /proyek/php-crud/poCRD.php   (REMARK: penanda merge conflict git dibersihkan)
 */
 
-Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+Ext.onReady(function () {
+    Ext.QuickTips.init();
+    document.getElementById("mainHeaderText").innerHTML = "Purchase <em>Order</em>";
+
+    var CRD = main_url + '/php-crud/poCRD.php';
+
+
+    var ACCESS_ADD = 2;      // level akses minimal: buat PO
+    var ACCESS_EDIT = 3;     // ubah / hapus / ganti status PO
+    var EPS = 0.0001;        // toleransi qty
+    var VEPS = 0.01;         // toleransi nilai
+    var PPN_DEFAULT_RATE = 11;   // [PPN] tarif default (%); samakan dengan PPN_DEFAULT_RATE di poCRD.php
+    var PPN_MODE_DATA = [        // [PPN] mode PPN per PO
+        ['NONE', 'Tanpa PPN'],
+        ['EXCL', 'PPN belum termasuk harga (exclude)'],
+        ['INCL', 'PPN sudah termasuk harga (include)']
+    ];
+
+    var dataRecord = null;         // baris PO terpilih di grid utama
+    var editingId = 0;             // 0 = PO baru, >0 = edit PO tsb
+    var hdrForm = null, budForm = null;
+    var fDate, fProject, fSupplier, fCurrency, fRate, fRateInfo, fNotes, fBudRate, fBudInfo;
+    var fPpnMode, fPpnRate, fPpnInfo, ppnForm = null;     // [PPN] field & form PPN di editor
+    var ppnManual = false;         // [PPN] mode PPN diubah manual / dimuat dari PO tersimpan -> jangan ditimpa default supplier
+    var rateManual = false;        // kurs PO diubah manual / dimuat dari PO tersimpan -> jangan ditimpa otomatis
+    var budRateManual = false;     // idem untuk kurs mata uang anggaran
+    var rateReq = 0, budRateReq = 0;   // penanda request terbaru (abaikan respons usang)
+    // Info anggaran proyek terpilih (dari list_rab_items.summary)
+    var budgetInfo = { id: null, code: '', isBase: true, baseCode: 'IDR', totalLimit: 0, totalCommitted: 0, ceiling: null };
+
+    function getFormAccess() {
+        return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0);
+    }
+
+    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
+    function fmtQty(v) { return Ext.util.Format.number(v || 0, '0,000.000'); }
+    function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
+    function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
+    function round3(v) { return Math.round((parseFloat(v) || 0) * 1000) / 1000; }
+
+    // [PPN] helper -----------------------------------------------------------
+    function ppnMode() { return (fPpnMode && fPpnMode.getValue()) || 'NONE'; }
+    function ppnRate() { return ppnMode() === 'NONE' ? 0 : (parseFloat(fPpnRate && fPpnRate.getValue()) || 0); }
+    // Hitung DPP / PPN / total dari subtotal item (rumus sama dengan po_ppn_calc di poCRD.php; server tetap acuan)
+    function ppnCalc(subtotal, mode, rate) {
+        subtotal = round2(subtotal);
+        if (mode === 'NONE' || !(rate > 0)) return { subtotal: subtotal, dpp: subtotal, ppn: 0, total: subtotal };
+        if (mode === 'INCL') {
+            var dpp = round2(subtotal / (1 + rate / 100));
+            return { subtotal: subtotal, dpp: dpp, ppn: round2(subtotal - dpp), total: subtotal };
+        }
+        var ppn = round2(subtotal * rate / 100);
+        return { subtotal: subtotal, dpp: subtotal, ppn: ppn, total: round2(subtotal + ppn) };
+    }
+    // Nilai satu baris tanpa PPN (dasar kontrol anggaran RAB): INCL -> dibagi (1 + tarif)
+    function ppnRowDpp(sub) {
+        return ppnMode() === 'INCL' ? round2(sub / (1 + ppnRate() / 100)) : sub;
+    }
+    function ppnText(mode, rate) {
+        if (mode === 'EXCL') return 'Exclude ' + rate + '%';
+        if (mode === 'INCL') return 'Include ' + rate + '%';
+        return 'Tanpa PPN';
+    }
+    function supplierIsPkp(id) {
+        var r = id ? supplierDs.getById(id) : null;
+        return !!r && r.get('is_pkp') === true;
+    }
+
+    function statusColor(v) {
+        switch (v) {
+            case 'Draft': return '#999999 !important';
+            case 'Diajukan': return '#e6a817 !important';
+            case 'Disetujui': return '#2bc1e2 !important';
+            case 'Selesai': return '#00ff4c !important';
+            case 'Dibatalkan': return '#c0392b !important';
+        }
+        return '#ffffff !important';
+    }
+
+    var ACTION_LABEL = {
+        Diajukan: 'Ajukan', Disetujui: 'Setujui', Draft: 'Kembalikan ke Draft',
+        Selesai: 'Tutup PO (Selesai)', Dibatalkan: 'Batalkan PO'
+    };
+
+    function ajax(params, onOk, onFail) {
+        Ext.Ajax.request({
+            url: CRD,
+            method: 'POST',
+            params: params,
+            success: function (response) {
+                var res;
+                try { res = Ext.util.JSON.decode(response.responseText); }
+                catch (e) { Ext.Msg.alert('Gagal', 'Respons server tidak valid (cek error_log PHP).'); return; }
+                onOk(res);
+            },
+            failure: function () {
+                if (onFail) onFail(); else Ext.Msg.alert('Gagal', 'Gagal menghubungi server.');
+            }
+        });
+    }
+
+    // ------------------------------------------------------------
+    // 0. Panel Detail (di bawah grid utama)
+    // ------------------------------------------------------------
+    var gridContainer = document.getElementById('divMainGrid');
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk seluruh grid di halaman PO (#divMainGrid = daftar PO,
+    // #editorFormGrid = item PO) — tidak menyentuh CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang terpotong "...". Paksa wrap + clip + tinggi baris dinamis.
+    // Angka tetap rata kanan (align ColumnModel dihormati — hanya white-space yang berubah).
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            '#divMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#divMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
+            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
+            '#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }'));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
 
     var GridMainHeight = (maxGridHeight(document.getElementById('divMainGrid')));
     var DtlHeight = Math.round(GridMainHeight-(GridMainHeight * 0.6)-30);

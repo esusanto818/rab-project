@@ -73,7 +73,7 @@ Ext.onReady(function () {
     var fldPeriod = new myComboField({
         fieldLabel: 'Periode', width: 220, store: periodDs, displayField: 'period_name', valueField: 'id', allowBlank: false
     });
-    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'field-button grey-field-button' });
+    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'btn-dark' });
 
     var filterPanel = new Ext.Panel({
         renderTo: 'plFilterBar',

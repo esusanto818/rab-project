@@ -78,7 +78,7 @@ $appBase = rtrim(BASE_URL, '/') . '/';
             <label for="fEvid">🔗 Bukti Lain (No. BA / Link)</label>
             <input type="text" id="fEvid" maxlength="300" placeholder="Contoh: BA-2026-001 atau https://...">
 
-            <button id="btnSave" type="button" style="width:100%;margin-top:14px">💾 Simpan Klaim</button>
+            <button id="btnSave" type="button" class="app-btn app-btn-primary">💾 Simpan Klaim</button>
         </div>
 
         <!-- Antrean Offline -->

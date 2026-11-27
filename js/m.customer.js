@@ -412,13 +412,13 @@ Ext.onReady(function() {
           ,autoCreate : {tag: "textarea", autocomplete: "off"}})},
 			{ columnWidth: .2, xtype: 'label', text: 'Contact Person', cls: 'x-form-item my-label-GroupLbl' },
 			{ columnWidth: .65, items: FieldSpace },
-      {columnWidth: .075, xtype: 'button',text: 'Add',cls:'field-button purple-field-button',id: 'btnAddContact',listeners: {click: function() {
+      {columnWidth: .075, xtype: 'button',text: 'Add',cls:'btn-dark',id: 'btnAddContact',listeners: {click: function() {
           gridEditorCheck=0;
           frmAdd.getForm().reset();
           document.getElementById('addWdw').style.display='block';
           document.getElementById("addFormHeaderText").innerHTML = "Add Contact";}}
       },
-    	{columnWidth: .075, xtype: 'button',text: 'Edit',cls:'field-button purple-field-button',id: 'btnEditContact',listeners: {click: function() {gridEditorCheck=1;
+    	{columnWidth: .075, xtype: 'button',text: 'Edit',cls:'btn-dark',id: 'btnEditContact',listeners: {click: function() {gridEditorCheck=1;
       	document.getElementById('addWdw').style.display='block';
         document.getElementById("addFormHeaderText").innerHTML = "Edit Contact";}}
       },

@@ -197,7 +197,7 @@ Ext.onReady(function() {
       //{columnWidth:0.13, xtype:'label', text:'Section\'s', cls:'x-form-item my-label-styleR'},{columnWidth:0.77, items:ButtonSpace},
       {columnWidth: .5, id:'listSection', xtype:'label', text:'Section\'s', cls:'x-form-item my-label-styleBl'},
       {columnWidth:0.4, items:ButtonSpace},
-      {columnWidth: 0.08, xtype: 'button', text: 'Add', cls:'field-button grey-field-button', id: 'btnAddItem',
+      {columnWidth: 0.08, xtype: 'button', text: 'Add', cls:'btn-dark', id: 'btnAddItem',
         listeners: {
           click: function() {
             let coll = new addSection({id: null, department_id: Ext.getCmp('id').getValue(), seq_no: null, section_name: '', line_no:'', remark: ''});

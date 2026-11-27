@@ -9,7 +9,42 @@ Project       : Universal ERP / Inventory
   4) CSS wrap header grid yang MENGENA: target #gridEditor + .x-grid3-gridEditor
      (bukan #editorFormGrid yang tidak ada di halaman ini)
 */
-Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+Ext.onReady(function() {
+    Ext.QuickTips.init();
+    document.getElementById("mainHeaderText").innerHTML = "User <em>List</em> ";
+    var CRD = main_url + '/php-crud/m.user.systemCRD.php';
+
+    // ==========================================
+    // [FIX #4] CSS WRAP HEADER GRID - TARGET YANG BENAR
+    // Grid editor di halaman ini punya id='gridEditor' dan class 'x-grid3-gridEditor'
+    // (BUKAN #editorFormGrid yang tidak ada di DOM)
+    // ==========================================
+    (function injectGridWrapCss() {
+        var st = document.createElement('style');
+        st.type = 'text/css';
+        st.appendChild(document.createTextNode(
+            // Target: gridEditor (id) + class x-grid3-gridEditor + addFormGrid (popup)
+            '#gridEditor .x-grid3-hd-inner, #addFormGrid .x-grid3-hd-inner,' +
+            '.x-grid3-gridEditor .x-grid3-hd-inner, .x-grid3-gridAddItem .x-grid3-hd-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
+            ' line-height:1.25 !important; height:auto !important; min-height:34px !important;' +
+            ' padding:4px 4px !important; box-sizing:border-box; vertical-align:middle !important;' +
+            ' display:flex !important; flex-direction:column; justify-content:center; }' +
+            '#gridEditor .x-grid3-cell-inner, #addFormGrid .x-grid3-cell-inner,' +
+            '.x-grid3-gridEditor .x-grid3-cell-inner, .x-grid3-gridAddItem .x-grid3-cell-inner {' +
+            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
+            ' word-wrap:break-word !important; line-height:1.35 !important; height:auto !important;' +
+            ' padding:3px 6px !important; box-sizing:border-box; }' +
+            '#gridEditor .x-grid3-hd, #addFormGrid .x-grid3-hd,' +
+            '.x-grid3-gridEditor .x-grid3-hd, .x-grid3-gridAddItem .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
+            '#gridEditor .x-grid3-row td, #addFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
+            '#gridEditor .x-grid3-header-offset, #addFormGrid .x-grid3-header-offset { height:auto !important; }' +
+            // Label "Form Access" - hapus background gradient dari my-label-GroupLbl
+            '#editorForm .x-form-item.fsa-label, .fsa-label .x-form-label { background:transparent !important; border:none !important; box-shadow:none !important; }'
+        ));
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
 
     // ==========================================
     // SVG ICONS (SHOW / HIDE PASSWORD)
@@ -381,7 +416,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
     var editorDeleter = new Extensive.grid.ItemDeleter({
         header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" ' +
                 'fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
-                'style="vertical-align:middle">' +
+                'style="vertical-align:middle;">' +
                 '<polyline points="3 6 5 6 21 6"/>' +
                 '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
                 '<path d="M10 11v6M14 11v6"/>' +
@@ -433,7 +468,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 5px',
+                style: 'margin-bottom: 5px;',
                 items: [
                     {
                         columnWidth: 0.2,
@@ -501,7 +536,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 5px',
+                style: 'margin-bottom: 5px;',
                 items: [
                     {
                         columnWidth: 0.4,
@@ -587,18 +622,18 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                 columnWidth: 1.0,
                 layout: 'form',
                 baseCls: 'x-plain',
-                style: 'margin-top:10px; margin-bottom:8px',
+                style: 'margin-top:10px; margin-bottom:8px;',
                 items: [{
                     xtype: 'container',
                     layout: { type: 'hbox', defaultAlign: 'middle' },
-                    style: 'padding:0 4px',
+                    style: 'padding:0 4px;',
                     items: [
                         {
                             xtype: 'label',
                             text: 'Form Access',
                             cls: 'fsa-label',  // [FIX #2] custom cls, BUKAN my-label-GroupLbl
                             flex: 1,
-                            style: 'box-shadow:none !important' +
+                            style: 'background:transparent !important; border:none !important; box-shadow:none !important;' +
                                    ' padding:4px 0 !important; margin:0 !important; width:auto !important;' +
                                    ' font-weight:800 !important; font-size:13px !important; color:#22d3ee !important;' +
                                    ' letter-spacing:.5px; text-transform:uppercase;'
@@ -607,8 +642,8 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                             xtype: 'button',
                             text: '➕ Add Form',
                             id: 'btnAddItem',
-                            cls: 'field-button grey-field-button',
-                             +
+                            cls: 'btn-dark',
+                            style: 'background:#475569 !important; color:#fff !important; border:1px solid #64748b !important;' +
                                    ' border-radius:6px !important; padding:6px 14px !important; font-size:12px !important;' +
                                    ' font-weight:600 !important; height:32px !important;',
                             listeners: {
@@ -631,8 +666,8 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
                             xtype: 'button',
                             text: '🎭 Apply Role',
                             id: 'btnApplyRole',
-                            cls: 'field-button grey-field-button',
-                             +
+                            cls: 'btn-dark',
+                            style: 'background:#10B981 !important; color:#fff !important; border:1px solid #059669 !important;' +
                                    ' border-radius:6px !important; padding:6px 14px !important; font-size:12px !important;' +
                                    ' font-weight:600 !important; height:32px !important; margin-left:8px !important;',
                             listeners: {
@@ -689,7 +724,7 @@ Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
     });
     var addCheckColumn = new Ext.grid.CheckColumn({
         id: 'addCheckColumn',
-        header: '<img class="header-icon-grid" style="vertical-align:middle" src="../img/icon/add_check.png"/>',
+        header: '<img class="header-icon-grid" style="vertical-align:middle;" src="../img/icon/add_check.png"/>',
         dataIndex: 'active',
         width: 30,
         fixed: true,

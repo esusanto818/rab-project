@@ -16,7 +16,47 @@
                   sehingga #editorWdw template tampil kosong dan grid tidak muncul; URL AJAX juga relatif
                   ke /views/ (kini '../php-crud/').
 */
-Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
+Ext.onReady(function () {
+    Ext.QuickTips.init();
+
+    // [FIX-UI] Style khusus halaman Retur Pembelian (disuntik dari JS agar CSS global tidak berubah).
+    //  1) Header grid editor seragam: <td> dan .x-grid3-hd-inner sama-sama biru #194a82 (sebelumnya inner
+    //     kena warna gelap grddetail.css sedangkan td biru -> muncul garis/pita tidak sejajar),
+    //     teks rata tengah vertikal, tinggi satu baris & dua baris ('Sudah<br>Diretur') tidak lagi beda.
+    //  2) Window bantu (Bukti / Kirim / Selesaikan, class rtDarkWin): tombol & label terbaca di tema dark.
+    (function () {
+        var old = document.getElementById('gridEditorHdrCss');
+        if (old) old.parentNode.removeChild(old);
+        var H = 'body .x-grid3-gridEditor ';
+        var css = [
+            H + '.x-grid3-header,' + H + '.x-grid3-header-offset,' + H + '.x-grid3-header-inner,' + H + '.x-grid3-hd-row,',
+            H + '.x-grid3-hd-row td.x-grid3-hd,' + H + '.x-grid3-hd-row td.x-grid3-hd-over,' + H + '.x-grid3-hd-row td.x-grid3-hd-click,',
+            H + '.x-grid3-hd-row td.sort-asc,' + H + '.x-grid3-hd-row td.sort-desc,' + H + '.x-grid3-hd-row td.x-grid3-hd-menu-open{',
+            '  background:#194a82 !important;background-image:none !important;border-top:none !important;',
+            '  border-bottom:2px solid #2b6cb0 !important;border-left:none !important;border-right:1px solid rgba(255,255,255,.12) !important;',
+            '  vertical-align:middle !important;}',
+            H + '.x-grid3-hd-row td.x-grid3-hd:last-child{border-right:none !important;}',
+            H + '.x-grid3-hd-inner,' + H + 'td.x-grid3-hd-over .x-grid3-hd-inner,' + H + 'td.sort-asc .x-grid3-hd-inner,' + H + 'td.sort-desc .x-grid3-hd-inner{',
+            '  background:transparent !important;background-image:none !important;border:none !important;',
+            '  padding:8px 8px !important;white-space:normal !important;text-overflow:clip !important;',
+            '  line-height:14px !important;height:auto !important;color:#ffffff !important;}',
+            H + '.x-grid3-hd-btn,' + H + 'img.x-grid3-sort-icon{display:none !important;}',
+            '.rtDarkWin .x-form-item label{color:#9fc3d1 !important;}',
+            '.rtDarkWin .x-form-display-field{color:#e2e8f0 !important;}',
+            '.rtDarkWin .x-form-empty-field{color:#9fb4c7 !important;}',
+            '.rtDarkWin .x-btn button{color:#ffffff !important;font-weight:bold !important;opacity:1 !important;}',
+            '.rtDarkWin .x-btn-tl,.rtDarkWin .x-btn-tr,.rtDarkWin .x-btn-tc,.rtDarkWin .x-btn-ml,.rtDarkWin .x-btn-mr,',
+            '.rtDarkWin .x-btn-bl,.rtDarkWin .x-btn-br,.rtDarkWin .x-btn-bc{background:none !important;background-image:none !important;}',
+            '.rtDarkWin .x-btn-mc{background-color:#2e7dd1 !important;background-image:none !important;border-radius:4px;}',
+            '.rtDarkWin .x-btn-over .x-btn-mc{background-color:#4695e6 !important;}',
+            '.rtDarkWin .x-btn-mc button{padding:2px 8px;}'
+        ].join('\n');
+        var st = document.createElement('style');
+        st.id = 'gridEditorHdrCss';
+        st.type = 'text/css';
+        st.innerHTML = css;
+        document.getElementsByTagName('head')[0].appendChild(st);
+    })();
     document.getElementById("mainHeaderText").innerHTML = "Retur <em>Pembelian</em>";
 
     var CRD = main_url + '/php-crud/purchase.returnCRD.php';

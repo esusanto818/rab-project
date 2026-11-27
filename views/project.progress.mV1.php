@@ -27,7 +27,7 @@ header('ngrok-skip-browser-warning: 1');
 </head>
 <body>
     <header>
-        <button id="btnBack" class="sec hidden" style="min-height:36px;padding:4px 12px">&larr;</button>
+        <button id="btnBack" class="sec hidden app-btn app-btn-primary">&larr;</button>
         <h1 id="ttl">Lapor Progress</h1>
         <span id="pillQ" class="pill q hidden"></span>
         <span id="pillNet" class="pill">online</span>
@@ -52,7 +52,7 @@ header('ngrok-skip-browser-warning: 1');
                 <div id="thumbs" class="thumbs"></div>
                 <label>No. BAP / keterangan bukti (opsional bila ada foto)</label>
                 <input type="text" id="fEvid" maxlength="300">
-                <div style="margin-top:14px"><button id="btnSave" style="width:100%">Ajukan Klaim</button></div>
+                <div style="margin-top:14px"><button id="btnSave" class="app-btn app-btn-primary">Ajukan Klaim</button></div>
             </div>
             <div id="qBox"></div>
             <h2>Riwayat klaim</h2>

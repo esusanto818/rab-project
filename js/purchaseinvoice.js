@@ -691,7 +691,7 @@ Ext.onReady(function () {
             { xtype: 'tbfill' },
             { 
                 text: '&nbsp;&nbsp;&nbsp;Add Item&nbsp;&nbsp;&nbsp;', 
-                ctCls: 'field-button green-field-button', 
+                ctCls: 'btn-primary', 
                 id: 'btnAddInvoiceItem', 
                 handler: function() {
                     var supplierId = fldSupplier.getValue();

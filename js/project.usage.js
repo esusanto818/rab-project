@@ -60,7 +60,7 @@ Ext.onReady(function () {
     dtlDiv.style.maxHeight = Math.round(gh - gh * 0.55 - 30) + 'px';
 
     var onlyActive = new Ext.form.Checkbox({ boxLabel: 'Sembunyikan proyek Selesai', checked: true });
-    var btnShow = new Ext.Button({ text: 'Muat Ulang', cls: 'field-button grey-field-button' });
+    var btnShow = new Ext.Button({ text: 'Muat Ulang', cls: 'btn-dark' });
     var fbar = document.createElement('div');
     fbar.style.padding = '0 10px';
     if (gridContainer && gridContainer.parentNode) { gridContainer.parentNode.insertBefore(fbar, topDiv); }

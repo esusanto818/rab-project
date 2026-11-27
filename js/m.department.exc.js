@@ -220,7 +220,7 @@
         {items: new myTextField({fieldLabel:'Status', id:'status_name', name:'status_name', readOnly: true})},
         {columnWidth: .15,items: new myDateField({fieldLabel:'Hire Date', id:'from_date', name:'from_date', readOnly: true})},
         {columnWidth: 1, items: ButtonSpace},
-        {columnWidth: .1, xtype: 'button',text: 'Add',cls:'field-button blue-field-button', id: 'btnAddItem',
+        {columnWidth: .1, xtype: 'button',text: 'Add',cls:'btn-dark', id: 'btnAddItem',
           listeners: {click: function() {
             btnRow='add';
             frmAdd.getForm().reset();
@@ -231,7 +231,7 @@
             Ext.getCmp('frmAdd').doLayout();
           }}
         },
-        {columnWidth: .1, xtype: 'button',text: 'Edit',cls:'field-button blue-field-button',
+        {columnWidth: .1, xtype: 'button',text: 'Edit',cls:'btn-dark',
           listeners: {click: function() {
             btnRow='edit';
             document.getElementById('addWdw').style.display='block';

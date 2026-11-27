@@ -43,7 +43,41 @@ Ext.onReady(function () {
 
     // Gaya ringan agar label & teks bantuan terbaca di tema gelap
     if (!document.getElementById('settingsStyle')) {
-        /* [CSS-UNIFIED] Style node dipindahkan ke css/app-theme.css */
+        var st = document.createElement('style');
+        st.id = 'settingsStyle';
+        st.innerHTML =
+            '#divMainGrid .x-form-item label { color: #9fc3d1 !important; }' +
+            '#divMainGrid textarea.x-form-textarea { background: #041426 !important; color: #cbd5e1 !important; border: 1px solid #1a3a52 !important; border-radius: 4px; padding: 6px 8px !important; line-height: 1.5; font-family: inherit; resize: vertical; }' +
+            '#divMainGrid textarea.x-form-textarea.x-form-focus { border-color: #38bdf8 !important; }' +
+            '.st-nav { position: relative; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; border-bottom: 1px solid #1a3a52; margin-bottom: 14px; }' +
+            '.st-tab { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #7f9fb0; cursor: pointer; padding: 10px 20px 12px 14px; border-radius: 8px 8px 0 0; transition: color .2s, background .2s; font-family: inherit; text-align: left; }' +
+            '.st-tab:hover { background: rgba(56,189,248,.06); color: #bfe3f5; }' +
+            '.st-tab.on { color: #38bdf8; background: linear-gradient(180deg, rgba(56,189,248,.12), rgba(56,189,248,0)); }' +
+            '.st-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }' +
+            '.st-txt b { display: block; font-size: 13px; font-weight: 600; letter-spacing: .2px; }' +
+            '.st-txt small { display: block; font-size: 10.5px; opacity: .75; margin-top: 1px; }' +
+            '.st-bar { position: absolute; left: 0; bottom: -1px; height: 3px; width: 0; border-radius: 3px 3px 0 0; background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc); box-shadow: 0 0 10px rgba(56,189,248,.55); transition: transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1); }' +
+            '@keyframes stIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }' +
+            '.st-in { animation: stIn .22s ease-out; }' +
+            '.set-note { margin: 4px 0 14px 0; padding: 10px 14px; border-radius: 4px; background: #0b2236; border: 1px solid #1a3a52; color: #9fc3d1; font-size: 12px; line-height: 1.6; }' +
+            '.set-note b { color: #38bdf8; }' +
+            '.set-warn { background: #3b2f0b; border-color: #8a6d1c; color: #f5c542; }' +
+            '.logo-card { display: inline-block; vertical-align: top; width: 420px; margin: 0 20px 20px 0; padding: 14px; border: 1px solid #1a3a52; border-radius: 6px; background: #0b2236; }' +
+            '.logo-card h4 { margin: 0 0 4px 0; color: #38bdf8; font-size: 14px; }' +
+            '.logo-card .hint { color: #7f9fb0; font-size: 11px; margin-bottom: 10px; line-height: 1.5; }' +
+            '.logo-box { height: 130px; display: flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 4px; margin-bottom: 10px; overflow: hidden; }' +
+            '.logo-box img { max-width: 100%; max-height: 120px; }' +
+            '.logo-box .none { color: #888; font-size: 12px; }' +
+            '.logo-card button { padding: 6px 14px; margin-right: 6px; border: none; border-radius: 3px; cursor: pointer; color: #fff; font-weight: bold; }' +
+            '.logo-card .btn-up { background: #03615e; } .logo-card .btn-del { background: #8e2b22; }' +
+            '.logo-card button[disabled] { opacity: .45; cursor: not-allowed; }' +
+            '.doc-preview { background: #ffffff; color: #222; padding: 18px 22px; border-radius: 4px; max-width: 760px; font-family: Arial, sans-serif; }' +
+            '.doc-preview .head { display: flex; align-items: center; border-bottom: 2px solid #222; padding-bottom: 10px; }' +
+            '.doc-preview .head img { max-height: 70px; max-width: 160px; margin-right: 16px; }' +
+            '.doc-preview .co { font-size: 17px; font-weight: bold; } .doc-preview .ad { font-size: 11px; line-height: 1.5; color: #444; }' +
+            '.doc-preview .body { padding: 26px 0; color: #999; font-size: 12px; text-align: center; }' +
+            '.doc-preview .sign { text-align: right; font-size: 12px; margin-top: 10px; } .doc-preview .foot { border-top: 1px solid #bbb; margin-top: 16px; padding-top: 6px; font-size: 10px; color: #666; }';
+        document.head.appendChild(st);
     }
 
     // ------------------------------------------------------------
@@ -94,7 +128,7 @@ Ext.onReady(function () {
 
     var companyForm = new Ext.form.FormPanel({
         labelWidth: 150, border: false, autoScroll: true,
-        bodyStyle: 'padding:16px',
+        bodyStyle: 'background:transparent; padding:16px;',
         defaults: { anchor: '60%' },
         items: [
             { xtype: 'box', html: '<div class="set-note">Data ini dipakai sebagai <b>kop dokumen</b> (PO, invoice, laporan) dan header laporan keuangan.</div>' },
@@ -126,7 +160,7 @@ Ext.onReady(function () {
                '<h4>' + title + '</h4><div class="hint">' + hint + '</div>' +
                '<div class="logo-box"><img id="logoImg_' + type + '" style="display:none" alt="" />' +
                '<span class="none" id="logoNone_' + type + '">Belum ada logo</span></div>' +
-               '<input type="file" id="logoFile_' + type + '" accept="image/png,image/jpeg,image/webp" ' + (canWrite ? '' : 'disabled') + ' style="margin-bottom:10px" /><br />' +
+               '<input type="file" id="logoFile_' + type + '" accept="image/png,image/jpeg,image/webp" ' + (canWrite ? '' : 'disabled') + ' style="color:#9fc3d1;margin-bottom:10px;" /><br />' +
                '<button type="button" class="btn-up" id="logoUp_' + type + '"' + (canWrite ? '' : ' disabled') + '>Unggah</button>' +
                '<button type="button" class="btn-del" id="logoDel_' + type + '"' + (canWrite ? '' : ' disabled') + '>Hapus</button>' +
                '</div>';
@@ -176,7 +210,7 @@ Ext.onReady(function () {
 
     var logoPanel = new Ext.Panel({
         border: false, autoScroll: true,
-        bodyStyle: 'padding:16px',
+        bodyStyle: 'background:transparent; padding:16px;',
         html: '<div class="set-note">Format <b>PNG / JPEG / WEBP</b>, maksimal <b>1 MB</b> dan 4000 x 4000 piksel. PNG berlatar transparan paling cocok. SVG tidak didukung.</div>' +
               logoCard('document', 'Logo Dokumen', 'Tampil di kop PO, invoice, dan laporan cetak. Disarankan landscape / persegi, lebar minimal 400 px.') +
               logoCard('app', 'Logo Aplikasi', 'Dipakai di header aplikasi / halaman login. Disarankan persegi.'),
@@ -198,7 +232,7 @@ Ext.onReady(function () {
 
     var financeForm = new Ext.form.FormPanel({
         labelWidth: 230, border: false, autoScroll: true,
-        bodyStyle: 'padding:16px',
+        bodyStyle: 'background:transparent; padding:16px;',
         defaults: { anchor: '60%' },
         items: [
             { xtype: 'box', html: '<div class="set-note">Transaksi (RAB, PO, penerimaan, dst) <b>boleh memakai banyak mata uang</b>. ' +
@@ -206,7 +240,7 @@ Ext.onReady(function () {
                 '<b>laporan keuangan final mengacu ke pengaturan ini</b>: ditampilkan dalam <b>mata uang laporan</b> memakai jenis dan dasar kurs di bawah. ' +
                 'Bila mata uang laporan sama dengan mata uang dasar, tidak ada penjabaran kurs.</div>' },
             fBase, fLockInfo, fReport, fRateType, fBasisPl,
-            { xtype: 'box', html: '<div class="set-note" style="margin-top:2px">Neraca selalu memakai <b>kurs akhir periode</b>. ' +
+            { xtype: 'box', html: '<div class="set-note" style="margin-top:2px;">Neraca selalu memakai <b>kurs akhir periode</b>. ' +
                 'Pilihan kurs untuk pembukuan (KMK atau BI) sebaiknya dipastikan dengan akuntan / konsultan pajak. ' +
                 'Kurs otomatis di PO saat ini bersumber dari kurs pajak KMK dan mengasumsikan mata uang dasar IDR.</div>' },
             fMonth, fDecimals
@@ -262,12 +296,12 @@ Ext.onReady(function () {
 
     var docForm = new Ext.form.FormPanel({
         labelWidth: 170, border: false, autoScroll: true,
-        bodyStyle: 'padding:16px',
+        bodyStyle: 'background:transparent; padding:16px;',
         defaults: { anchor: '60%' },
         items: [
             { xtype: 'box', html: '<div class="set-note">Pelengkap dokumen cetak. Pratinjau kop di bawah memakai profil perusahaan dan logo dokumen.</div>' },
             fFooter, fSignName, fSignTitle,
-            { xtype: 'box', html: '<div style="margin:14px 0 6px 0;font-weight:bold">Pratinjau Kop Dokumen</div>' },
+            { xtype: 'box', html: '<div style="margin:14px 0 6px 0;color:#38bdf8;font-weight:bold;">Pratinjau Kop Dokumen</div>' },
             previewBox
         ],
         buttons: [{
@@ -318,7 +352,7 @@ Ext.onReady(function () {
         layout: 'card',
         activeItem: 0,
         layoutConfig: { deferredRender: false, layoutOnCardChange: true },
-        ,
+        bodyStyle: 'background:transparent;',
         height: Math.max(320, totalH - 78),
         items: [companyForm, logoPanel, financeForm, docForm]
     });

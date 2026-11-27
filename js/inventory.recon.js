@@ -101,8 +101,8 @@ Ext.onReady(function () {
         mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false
     });
     var fldOnlyIssue = new Ext.form.Checkbox({ boxLabel: 'Dokumen: hanya yang bermasalah', checked: false });
-    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'field-button grey-field-button' });
-    var btnFix = new Ext.Button({ text: 'Proses Perbaikan Otomatis', cls: 'field-button grey-field-button', hidden: true });    // tampil hanya bila ada yang bisa diperbaiki
+    var btnShow = new Ext.Button({ text: 'Tampilkan', cls: 'btn-dark' });
+    var btnFix = new Ext.Button({ text: 'Proses Perbaikan Otomatis', cls: 'btn-dark', hidden: true });    // tampil hanya bila ada yang bisa diperbaiki
 
     new Ext.Panel({
         renderTo: 'irFilterBar',
@@ -177,7 +177,9 @@ Ext.onReady(function () {
     gridContainer.appendChild(holder);
 
     // ukuran font isi tabel di area ini dinaikkan agar terbaca
-    /* [CSS-UNIFIED] Style node dipindahkan ke css/app-theme.css */
+    var st = document.createElement('style');
+    st.innerHTML = '#irPanes .x-grid3-cell-inner { font-size:15px !important; } #irPanes .x-grid3-hd-inner { font-size:14px !important; }';
+    document.head.appendChild(st);
 
     Ext.each(tabNames, function (name, i) {
         var btn = document.createElement('button');

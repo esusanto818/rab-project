@@ -57,14 +57,14 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    rabDtlDiv.innerHTML = '<div style="padding:10px">Gagal memuat detail RAB.</div>';
+                    rabDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal memuat detail RAB.</div>';
                     rabDtlDiv.style.display = 'block';
                     return;
                 }
                 renderRabDetailPanel(res.data.items || [], projectName, res.data.currency);
             },
             failure: function () {
-                rabDtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
+                rabDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
                 rabDtlDiv.style.display = 'block';
             }
         });
@@ -76,13 +76,13 @@ Ext.onReady(function () {
         var fmtPct = function (v) { return Ext.util.Format.number(v || 0, '0.00') + '%'; };
 
         var code = (cur && cur.code) || 'IDR';
-        var curLine = '<div style="padding:0 2px 10px 2px">Mata uang anggaran: <b>' + Ext.util.Format.htmlEncode(code) + '</b>' +
+        var curLine = '<div style="padding:0 2px 10px 2px;">Mata uang anggaran: <b>' + Ext.util.Format.htmlEncode(code) + '</b>' +
                       (cur && !cur.is_base ? ' &nbsp;|&nbsp; Kurs: <b>' + fmtAmt(cur.exch_rate) + '</b> ' +
                           Ext.util.Format.htmlEncode(cur.base_code || 'IDR') + ' per 1 ' + Ext.util.Format.htmlEncode(code) : '') + '</div>';
         var html = '<h3 class="detail-title">Daftar Material RAB: ' +
                    Ext.util.Format.htmlEncode(projectName || '') + '</h3>' +
                    '<hr class="detail-hr" />' + curLine +
-                   '<div id="rabDtlScroll" style="overflow-y: auto; overflow-x: auto">' +
+                   '<div id="rabDtlScroll" style="overflow-y: auto; overflow-x: auto;">' +
                    '<table id="rabTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="0">' +
                    '<thead>' +
                    '<tr class="header-row">' +
@@ -98,25 +98,25 @@ Ext.onReady(function () {
                    '<tbody>';
 
         if (!rows || rows.length === 0) {
-            html += '<tr><td colspan="7" style="padding:15px; text-align:center">Belum ada baris RAB material untuk proyek ini. Klik Edit untuk menambahkan.</td></tr>';
+            html += '<tr><td colspan="7" style="padding:15px; text-align:center; color:#557982;">Belum ada baris RAB material untuk proyek ini. Klik Edit untuk menambahkan.</td></tr>';
         } else {
             var grandBudget = 0;
             Ext.each(rows, function (r) {
                 var totalBudget = (parseFloat(r.budget_qty) || 0) * (parseFloat(r.unit_price) || 0);
                 grandBudget += totalBudget;
                 html += '<tr class="data-row">' +
-                        '<td align="left">' + Ext.util.Format.htmlEncode(r.material_name || '-') + ' <span >(' + Ext.util.Format.htmlEncode(r.material_code || '') + ')</span></td>' +
+                        '<td align="left">' + Ext.util.Format.htmlEncode(r.material_name || '-') + ' <span style="color:#668894;">(' + Ext.util.Format.htmlEncode(r.material_code || '') + ')</span></td>' +
                         '<td align="right">' + fmtQty(r.budget_qty) + ' ' + Ext.util.Format.htmlEncode(r.unit || '') + '</td>' +
                         '<td align="right">' + fmtAmt(r.unit_price) + '</td>' +
                         '<td align="right" class="subtotal-val">' + fmtAmt(totalBudget) + '</td>' +
                         '<td align="right">' + fmtQty(r.total_qty_out) + '</td>' +
                         '<td align="right">' + fmtPct(r.usage_pct) + '</td>' +
-                        '<td align="center" style="font-weight:bold">' + Ext.util.Format.htmlEncode(r.status || '-') + '</td>' +
+                        '<td align="center" style="font-weight:bold; color:' + statusColor(r.status) + ';">' + Ext.util.Format.htmlEncode(r.status || '-') + '</td>' +
                         '</tr>';
             });
             html += '<tr class="data-row"><td colspan="3" align="right"><b>Total Budget RAB (' + Ext.util.Format.htmlEncode(code) + ')</b></td>' +
                     '<td align="right" class="subtotal-val"><b>' + fmtAmt(grandBudget) + '</b></td>' +
-                    '<td colspan="3" >' +
+                    '<td colspan="3" style="color:#668894;">' +
                     (cur && !cur.is_base ? '&asymp; ' + Ext.util.Format.htmlEncode(cur.base_code || 'IDR') + ' ' + fmtAmt(grandBudget * (parseFloat(cur.exch_rate) || 1)) : '') +
                     '</td></tr>';
         }
@@ -205,7 +205,7 @@ Ext.onReady(function () {
             {
                 header: 'Status RAB', dataIndex: 'rab_status', width: 110, align: 'center',
                 renderer: function (v) {
-                    return '<span style="font-weight:bold">' + Ext.util.Format.htmlEncode(v || '-') + '</span>';
+                    return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + Ext.util.Format.htmlEncode(v || '-') + '</span>';
                 }
             }
         ],
@@ -259,7 +259,7 @@ Ext.onReady(function () {
                     var rec = materialDs.getById(v);
                     if (rec) return Ext.util.Format.htmlEncode(rec.get('material_name'));
                     if (record && record.get('material_name')) {
-                        return '<span >' + Ext.util.Format.htmlEncode(record.get('material_name')) + '</span>';
+                        return '<span style="color:#e6a817;">' + Ext.util.Format.htmlEncode(record.get('material_name')) + '</span>';
                     }
                     return '<i>-- pilih material --</i>';
                 }
@@ -297,13 +297,13 @@ Ext.onReady(function () {
             {
                 header: 'Status', dataIndex: 'status', width: 90, align: 'center',
                 renderer: function (v) {
-                    return '<span style="font-weight:bold">' + Ext.util.Format.htmlEncode(v || '-') + '</span>';
+                    return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + Ext.util.Format.htmlEncode(v || '-') + '</span>';
                 }
             },
             {
                 id: 'rabDeleteCol', header: '', dataIndex: 'material_id', width: 32, align: 'center', fixed: true,
                 renderer: function () {
-                    return '<span class="rabDeleteBtn" style="cursor:pointer;font-weight:bold;font-size:14px" title="Hapus baris">&#10005;</span>';
+                    return '<span class="rabDeleteBtn" style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus baris">&#10005;</span>';
                 }
             }
         ],
@@ -325,7 +325,7 @@ Ext.onReady(function () {
         if (gridEditorContainer && !document.getElementById('lblRabTotal')) {
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
-            totalsDiv.innerHTML = 'Total Budget RAB: <span id="lblRabTotal" >0.00</span>';
+            totalsDiv.innerHTML = 'Total Budget RAB: <span id="lblRabTotal" style="color:#ffffff !important;">0.00</span>';
             gridEditorContainer.parentNode.insertBefore(totalsDiv, gridEditorContainer.nextSibling);
 
             var btn = document.createElement('button');
@@ -354,7 +354,7 @@ Ext.onReady(function () {
         if (el) {
             var html = Ext.util.Format.number(total, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(rabCur.code);
             if (!rabCur.isBase) {
-                html += ' <span style="font-weight:normal">&asymp; ' + Ext.util.Format.htmlEncode(rabCur.baseCode) + ' ' +
+                html += ' <span style="color:#9fc3d1; font-weight:normal;">&asymp; ' + Ext.util.Format.htmlEncode(rabCur.baseCode) + ' ' +
                         Ext.util.Format.number(total * (parseFloat(rabCur.rate) || 1), '0,000.00') + '</span>';
             }
             el.innerHTML = html;
@@ -401,13 +401,13 @@ Ext.onReady(function () {
         fRateInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 150, items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 150, bodyStyle: 'background:transparent;', items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'rabHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'padding:4px 2px',
+            bodyStyle: 'background:transparent; padding:4px 2px;',
             items: [col(0.30, [fCur, fRateDate]), col(0.30, [fRate]), col(0.40, [fRateInfo])]
         });
     }
@@ -431,7 +431,7 @@ Ext.onReady(function () {
         var cid = fCur.getValue(), dt = fRateDate.getValue();
         if (!cid || !dt) return;
         var token = ++rateReq;
-        //fRateInfo.setValue('<span >memuat kurs...</span>');
+        //fRateInfo.setValue('<span style="color:#668894;">memuat kurs...</span>');
         Ext.Ajax.request({
             url: '../php-crud/rabCRD.php', method: 'POST',
             params: { task: 'get_exchange_rate', currency_id: cid, date: dt.format('Y-m-d') },
@@ -439,20 +439,20 @@ Ext.onReady(function () {
                 if (token !== rateReq) return;
                 var res;
                 try { res = Ext.util.JSON.decode(response.responseText); } catch (e) { return; }
-                if (!res.success) { fRateInfo.setValue('<span >' + Ext.util.Format.htmlEncode(res.message || 'Gagal memuat kurs.') + '</span>'); return; }
+                if (!res.success) { fRateInfo.setValue('<span style="color:#c0392b;">' + Ext.util.Format.htmlEncode(res.message || 'Gagal memuat kurs.') + '</span>'); return; }
                 var d = res.data || {}, enc = Ext.util.Format.htmlEncode;
                 rabCur.isBase = (d.source === 'BASE');
                 fRate.setReadOnly(rabCur.isBase);
                 if (d.rate) { fRate.setValue(d.rate); rabCur.rate = d.rate; }
                 if (d.source === 'BASE') {
-                    fRateInfo.setValue('<span >Mata uang dasar (kurs 1)</span>');
+                    fRateInfo.setValue('<span style="color:#668894;">Mata uang dasar (kurs 1)</span>');
                 } else if (d.source === 'periode') {
-                    fRateInfo.setValue('<span >KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
+                    fRateInfo.setValue('<span style="color:#2e9e4f;">KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
                 } else if (d.source === 'terakhir') {
-                    fRateInfo.setValue('<span >Belum ada kurs untuk tanggal ini, memakai kurs terakhir: KMK ' +
+                    fRateInfo.setValue('<span style="color:#e6a817;">Belum ada kurs untuk tanggal ini, memakai kurs terakhir: KMK ' +
                                        enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
                 } else {
-                    fRateInfo.setValue('<span >Data kurs mata uang ini belum tersedia, isi manual.</span>');
+                    fRateInfo.setValue('<span style="color:#e6a817;">Data kurs mata uang ini belum tersedia, isi manual.</span>');
                 }
                 updateRabTotalLabel();
             }
@@ -472,9 +472,9 @@ Ext.onReady(function () {
         rateManual = true;                                   // kurs tersimpan tidak ditimpa otomatis
         fCur.setDisabled(!!rabCur.locked);
         fRateInfo.setValue(rabCur.locked
-            ? '<span >&#128274; Mata uang anggaran terkunci. ' + Ext.util.Format.htmlEncode(rabCur.locked) + ' Kurs tetap bisa diperbarui.</span>'
-            : (rabCur.isBase ? '<span >Mata uang dasar (kurs 1)</span>'
-                             : '<span >Kurs tersimpan pada RAB. Ganti mata uang untuk mengambil kurs baru.</span>'));
+            ? '<span style="color:#e6a817;">&#128274; Mata uang anggaran terkunci. ' + Ext.util.Format.htmlEncode(rabCur.locked) + ' Kurs tetap bisa diperbarui.</span>'
+            : (rabCur.isBase ? '<span style="color:#668894;">Mata uang dasar (kurs 1)</span>'
+                             : '<span style="color:#668894;">Kurs tersimpan pada RAB. Ganti mata uang untuk mengambil kurs baru.</span>'));
         applyCurrencyHeaders();
         itemGrid.getView().refresh();
         updateRabTotalLabel();
