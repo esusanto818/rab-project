@@ -154,11 +154,11 @@ Ext.onReady(function () {
         if (!v) return '';
         if (!/^(https?:\/\/|\/)/i.test(v)) return enc(v);
         var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(v) ? 'Foto' : (/\.pdf(\?.*)?$/i.test(v) ? 'PDF' : 'Link');
-        return '<a href="' + enc(v) + '" target="_blank" onclick="event.stopPropagation();" style="color:#2bc1e2;">' + label + '</a>';
+        return '<a href="' + enc(v) + '" target="_blank" onclick="event.stopPropagation();" >' + label + '</a>';
     }
     function evidenceRenderer(v) {
-        if (!v) return '<span style="color:#668894;cursor:pointer;">+ Foto / Link</span>';
-        return evidenceLink(v) + ' <span style="color:#668894;cursor:pointer;" title="Ubah bukti">&#9998;</span>';
+        if (!v) return '<span style="cursor:pointer">+ Foto / Link</span>';
+        return evidenceLink(v) + ' <span style="cursor:pointer" title="Ubah bukti">&#9998;</span>';
     }
 
     // Window isi bukti: tempel link ATAU unggah foto/PDF (maks 5 MB) -> URL tersimpan di kolom bukti baris tsb
@@ -186,7 +186,7 @@ Ext.onReady(function () {
                 try { o = Ext.decode(xhr.responseText); } catch (e) { info.setValue(''); showErr('Respon server tidak valid (cek error_log PHP).'); return; }
                 if (!o.success) { info.setValue(''); showErr(o.message || 'Unggah gagal.'); return; }
                 fUrl.setValue(o.url);
-                info.setValue('<span style="color:#2e9e4f;">Terunggah: ' + enc(o.name) + '</span>');
+                info.setValue('<span >Terunggah: ' + enc(o.name) + '</span>');
             };
             xhr.onerror = function () { info.setValue(''); showErr('Koneksi ke server gagal saat mengunggah.'); };
             xhr.send(fd);
@@ -194,7 +194,7 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Bukti Retur - ' + rec.get('material_name'), width: 520, height: 210, modal: true, layout: 'fit', cls: 'rtDarkWin',      // [FIX-UI] cls
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 50, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 50, bodyStyle: 'padding:12px',
                 items: [fUrl,
                         { xtype: 'button', text: 'Pilih Foto / PDF dari komputer...', handler: function () { fileInput.click(); } },
                         { xtype: 'spacer', height: 8 }, info]
@@ -239,7 +239,7 @@ Ext.onReady(function () {
     function loadDetailPanel(rec) {
         ajax({ action: 'detail', id: rec.id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
@@ -279,8 +279,8 @@ Ext.onReady(function () {
                   '.items th,.items td{border:1px solid #000;padding:5px 6px;}.items th{background:#eee;}' +
                   '.c{text-align:center;}.r{text-align:right;}.sign td{width:33%;text-align:center;padding-top:6px;}' +
                   '.sign .box{height:70px;}hr{border:0;border-top:2px solid #000;margin:8px 0;}';
-        var html = '<html><head><meta charset="utf-8"><title>Surat Jalan ' + enc(h.issue_ref_no) + '</title><style>' + css + '</style></head><body>' +
-                   (COMPANY_NAME ? '<div style="font-size:15px;font-weight:bold;text-align:center;">' + enc(COMPANY_NAME) + '</div>' : '') +
+        var html = '<html><head><meta charset="utf-8"><title>Surat Jalan ' + enc(h.issue_ref_no) + '</title></head><body>' +
+                   (COMPANY_NAME ? '<div style="font-size:15px;font-weight:bold;text-align:center">' + enc(COMPANY_NAME) + '</div>' : '') +
                    (COMPANY_ADDR ? '<div class="sub">' + enc(COMPANY_ADDR) + '</div>' : '') +
                    '<hr/><h1>SURAT JALAN RETUR PEMBELIAN</h1><div class="sub">Pengembalian barang cacat / rusak ke supplier</div>' +
                    '<table class="meta"><tr>' +
@@ -295,12 +295,12 @@ Ext.onReady(function () {
                    '<td>Kurir / Penerima</td><td colspan="3">: ' + enc(h.carrier || '-') + '</td></tr></table>' +
                    '<br/><table class="items"><thead><tr><th width="4%">No</th><th width="12%">Kode</th><th>Material</th><th width="10%">Qty</th>' +
                    '<th width="8%">Sat</th><th width="18%">Jenis Cacat</th><th width="20%">Keterangan</th></tr></thead><tbody>' + rows +
-                   '</tbody></table><div style="margin-top:6px;">Total item: <b>' + totalLine + '</b>' +
+                   '</tbody></table><div style="margin-top:6px">Total item: <b>' + totalLine + '</b>' +
                    (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div><br/>' +
                    '<table class="sign"><tr><td>Dibuat oleh<br/>(Gudang)</td><td>Pengirim / Kurir</td><td>Diterima oleh<br/>(Supplier)</td></tr>' +
                    '<tr><td class="box"></td><td class="box"></td><td class="box"></td></tr>' +
                    '<tr><td>(................................)</td><td>(................................)</td><td>(................................)</td></tr></table>' +
-                   '<div style="margin-top:14px;font-size:10px;color:#444;">Dicetak: ' + fmtDmy(ymd(new Date())) + '</div></body></html>';
+                   '<div style="margin-top:14px;font-size:10px">Dicetak: ' + fmtDmy(ymd(new Date())) + '</div></body></html>';
         w.document.open('text/html','replace');
         w.document.write(html);
         w.document.close();
@@ -317,7 +317,7 @@ Ext.onReady(function () {
             if (!u) { continue; }
             if (!/^(https?:\/\/|\/)/i.test(u)) { out.push(enc(u)); continue; }
             var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(u) ? 'Foto' : (/\.pdf(\?.*)?$/i.test(u) ? 'PDF' : 'Link');
-            out.push('<a href="' + enc(u) + '" target="_blank" style="color:#7fe0a0;">' + label + ' ' + (out.length + 1) + '</a>');
+            out.push('<a href="' + enc(u) + '" target="_blank" >' + label + ' ' + (out.length + 1) + '</a>');
         }
         return out.join(' &nbsp;|&nbsp; ');
     }
@@ -325,7 +325,7 @@ Ext.onReady(function () {
     // [NEW] Banner status pengiriman dari W/H di panel detail retur (read-only; aksi gudang ada di Warehouse Issuing)
     function dispatchBanner(h) {
         function box(bg, border, fg, inner) {
-            return '<div style="margin:0 2px 8px 2px; padding:8px 12px; background:' + bg + '; border-left:4px solid ' + border + '; color:' + fg + ';">' + inner + '</div>';
+            return '<div style="margin:0 2px 8px 2px; padding:8px 12px; border-left:4px solid ' + border + '">' + inner + '</div>';
         }
         if (h.status === 'Diperintahkan') {
             return box('#4a3a0b', '#e6a817', '#ffe9a8', '<b>Perintah issue W/H sudah dibuat</b> (' + enc(h.issue_ref_no || '-') +
@@ -336,7 +336,7 @@ Ext.onReady(function () {
                 ', ' + enc(h.prepared_at || '-') + ') &mdash; menunggu konfirmasi pengiriman. Stok belum keluar.');
         }
         if (h.issue_ref_no && (h.status === 'Dikirim' || h.status === 'Diganti' || h.status === 'Kredit')) {
-            return box('#0f3d2a', '#2e9e4f', '#c9f2d9', '<b style="color:#4be08a;">&#10004; Barang sudah dikirim dari W/H</b> &nbsp;|&nbsp; Issue W/H: <b>' + enc(h.issue_ref_no) + '</b>' +
+            return box('#0f3d2a', '#2e9e4f', '#c9f2d9', '<b >&#10004; Barang sudah dikirim dari W/H</b> &nbsp;|&nbsp; Issue W/H: <b>' + enc(h.issue_ref_no) + '</b>' +
                 ' &nbsp;|&nbsp; Tgl kirim: <b>' + enc(h.sent_date || '-') + '</b> &nbsp;|&nbsp; Kurir / Kendaraan: <b>' + enc(h.carrier || '-') + '</b>' +
                 ' &nbsp;|&nbsp; Penerima: <b>' + enc(h.delivery_receiver || '-') + '</b> &nbsp;|&nbsp; No. Surat Jalan: <b>' + enc(h.delivery_note_no || '-') + '</b>' +
                 (h.delivery_proof ? '<br>Bukti pengiriman: ' + proofLinks(h.delivery_proof) : ''));      // [NEW] foto / PDF dari gudang
@@ -354,7 +354,7 @@ Ext.onReady(function () {
         else if (h.issue_ref_no) { actions = [['print', 'Cetak Surat Jalan', '#2e6da4']]; }      // [NEW] Diganti / Kredit: surat jalan tetap bisa dicetak ulang
         var actHtml = '';
         if (actions.length) {
-            actHtml = '<div style="float:right; margin:2px 4px 0 0;">';
+            actHtml = '<div style="float:right; margin:2px 4px 0 0">';
             Ext.each(actions, function (a) {
                 actHtml += '<button type="button" class="rtActionBtn" data-act="' + a[0] + '" style="margin-left:8px; padding:8px 16px; background:' + a[2] +
                            '; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">' + enc(a[1]) + '</button>';
@@ -362,9 +362,9 @@ Ext.onReady(function () {
             actHtml += '</div>';
         }
         var html = actHtml + '<h3 class="detail-title">Detail Retur: ' + enc(h.ref_no) +
-                   ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
+                   ' <span >(' + enc(h.status) + ')</span></h3>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">Tanggal: <b>' + enc(h.return_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
+                   '<div style="padding:4px 2px 10px 2px">Tanggal: <b>' + enc(h.return_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Gudang: <b>' + enc(h.warehouse_name) + '</b> &nbsp;|&nbsp; Supplier: <b>' + enc(h.supplier_name) +
                    '</b> &nbsp;|&nbsp; PO: <b>' + enc(h.po_number || '-') + '</b> &nbsp;|&nbsp; DO Asal: <b>' + enc(h.supplier_do_no || '-') + '</b>' +
                    (h.issue_ref_no ? ' &nbsp;|&nbsp; Issue W/H: <b>' + enc(h.issue_ref_no) + '</b> (' + enc(h.sent_date) + ', ' + enc(h.carrier || '-') + ')' : '') +
@@ -379,13 +379,13 @@ Ext.onReady(function () {
                    '<th align="right">Nilai</th><th align="left">Jenis Cacat</th><th align="left">Keterangan</th><th align="left">Bukti</th>' +
                    '</tr></thead><tbody>';
         if (!items.length) {
-            html += '<tr><td colspan="7" style="padding:15px; text-align:center; color:#557982;">Belum ada item.</td></tr>';
+            html += '<tr><td colspan="7" style="padding:15px; text-align:center">Belum ada item.</td></tr>';
         }
         Ext.each(items, function (i) {
             var amt = parseFloat(i.amount) || 0;
             grand += amt;
             html += '<tr class="data-row">' +
-                    '<td align="left">' + enc(i.material_name) + ' <span style="color:#668894;">(' + enc(i.material_code || '') + ')</span></td>' +
+                    '<td align="left">' + enc(i.material_name) + ' <span >(' + enc(i.material_code || '') + ')</span></td>' +
                     '<td align="right">' + fmtQty(i.qty_claim) + ' ' + enc(i.unit || '') + '</td>' +
                     '<td align="right">' + fmtAmt(i.unit_cost) + '</td>' +
                     '<td align="right" class="subtotal-val">' + fmtAmt(amt) + '</td>' +
@@ -435,7 +435,7 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Perintahkan W/H untuk Retur ' + rec.ref_no, width: 460, height: 190, modal: true, layout: 'fit', cls: 'rtDarkWin',      // [FIX-UI] cls
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 120, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 120, bodyStyle: 'padding:12px',
                 items: [{ xtype: 'displayfield', hideLabel: true,
                           value: 'Dokumen issue W/H dibuat berstatus pending. Stok BELUM keluar sampai gudang menyiapkan barang dan mengonfirmasi pengiriman di Warehouse Issuing.' },
                         wDate]
@@ -473,10 +473,10 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Selesaikan Retur ' + rec.ref_no, width: 460, height: 290, modal: true, layout: 'fit', cls: 'rtDarkWin',      // [FIX-UI] cls
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 110, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 110, bodyStyle: 'padding:12px',
                 items: [wType, wDate, wCnNo, wCnAmt, wNote,
                         { xtype: 'displayfield', hideLabel: true,
-                          value: '<span style="color:#888;">Ganti Barang: barang pengganti diterima lewat RCV biasa.</span>' }]
+                          value: '<span >Ganti Barang: barang pengganti diterima lewat RCV biasa.</span>' }]
             }),
             buttons: [
                 { text: 'Simpan', handler: function () {
@@ -554,7 +554,7 @@ Ext.onReady(function () {
             { header: 'Penyelesaian', dataIndex: 'resolution_type', width: 100,
               renderer: function (v, m, r) { return v ? enc(v) + (r.get('credit_amount') ? ' (' + fmtAmt(r.get('credit_amount')) + ')' : '') : '-'; } },
             { header: 'Status', dataIndex: 'status', width: 85, align: 'center',
-              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
+              renderer: function (v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; } }
         ],
         viewConfig: { forceFit: true },
         loadMask: true,
@@ -657,13 +657,13 @@ Ext.onReady(function () {
         fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 95, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 95, items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'rtHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(1, [fRcv]),
                     col(0.34, [fProjInfo, fWhInfo, fDate]),
                     col(0.33, [fSupInfo, fPoInfo]),
@@ -676,7 +676,7 @@ Ext.onReady(function () {
         fProjInfo.setValue(rec ? '<b>' + enc(rec.get('project_name')) + '</b>' : '-');
         fWhInfo.setValue(rec ? '<b>' + enc(rec.get('warehouse_name')) + '</b>' : '-');
         fSupInfo.setValue(rec ? '<b>' + enc(rec.get('supplier_name') || '-') + '</b>' : '-');
-        fPoInfo.setValue(rec ? '<b style="color:#e2e8f0;">' + enc(rec.get('po_number')) + '</b> / <b style="color:#e2e8f0;">' + enc(rec.get('grn_no') || '-') + '</b>' : '-');      // [FIX-UI] GRN dibuat bold + warna terang
+        fPoInfo.setValue(rec ? '<b >' + enc(rec.get('po_number')) + '</b> / <b >' + enc(rec.get('grn_no') || '-') + '</b>' : '-');      // [FIX-UI] GRN dibuat bold + warna terang
     }
 
     // Muat item RCV + qty yang masih boleh diretur; cb dipanggil setelah selesai

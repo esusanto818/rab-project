@@ -81,12 +81,12 @@ Ext.onReady(function () {
         renderTo: 'tbFilterBar',
         layout: 'column',
         border: false,
-        bodyStyle: 'background:transparent; padding:8px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
+        bodyStyle: 'padding:8px 0',
+        defaults: { border: false,  },
         items: [
             { columnWidth: 0.25, layout: 'form', labelWidth: 60, items: fldPeriod },
-            { columnWidth: 0.25, style: 'padding-top:6px;', items: fldHideZero },
-            { columnWidth: 0.15, style: 'padding-top:2px;', items: btnShow }
+            { columnWidth: 0.25, style: 'padding-top:6px', items: fldHideZero },
+            { columnWidth: 0.15, style: 'padding-top:2px', items: btnShow }
         ]
     });
 
@@ -130,7 +130,7 @@ Ext.onReady(function () {
                     '<b>Periode:</b> ' + res.period_name + ' (per ' + res.as_of_date + ')' +
                     ' &nbsp;|&nbsp; <b>Total Debit:</b> ' + Ext.util.Format.number(res.total_debit, '0,000.00') +
                     ' &nbsp;|&nbsp; <b>Total Kredit:</b> ' + Ext.util.Format.number(res.total_credit, '0,000.00') +
-                    ' &nbsp;|&nbsp; <b style="color:' + balanceColor + ';">' + balanceText + '</b>';
+                    ' &nbsp;|&nbsp; <b >' + balanceText + '</b>';
                 fitGrid();     // [FIT-GRID] summary mengubah posisi grid -> sesuaikan tinggi
             }
         });

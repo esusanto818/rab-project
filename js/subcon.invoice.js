@@ -126,8 +126,8 @@ Ext.onReady(function () {
             { header: 'No. Prestasi', dataIndex: 'progress_ref_no', width: 110 },
             { header: 'Total Invoice', dataIndex: 'total_amount', width: 120, align: 'right', renderer: function(v) { return '<b>' + fmtAmt(v) + '</b>'; } },
             { header: 'Sudah Dibayar', dataIndex: 'paid_amount', width: 120, align: 'right', renderer: fmtAmt },
-            { header: 'Sisa Hutang', dataIndex: 'unpaid_amount', width: 120, align: 'right', renderer: function(v) { return '<span style="color:' + (v > 0 ? '#e6a817' : '#27ae60') + ';">' + fmtAmt(v) + '</span>'; } },
-            { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function(v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } },
+            { header: 'Sisa Hutang', dataIndex: 'unpaid_amount', width: 120, align: 'right', renderer: function(v) { return '<span >' + fmtAmt(v) + '</span>'; } },
+            { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function(v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; } },
             { header: 'Dibuat Oleh', dataIndex: 'created_by_name', width: 120 }
         ],
         viewConfig: { forceFit: true }, loadMask: true,
@@ -165,7 +165,7 @@ Ext.onReady(function () {
     function loadDetailPanel(invoiceId) {
         ajax({ task: 'load_invoice', id: invoiceId }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
@@ -174,16 +174,16 @@ Ext.onReady(function () {
     }
     
     function renderDetail(inv, payments) {
-        var html = '<h3 class="detail-title">Invoice: ' + enc(inv.invoice_no) + ' <span style="color:' + statusColor(inv.status) + ';">(' + enc(inv.status) + ')</span></h3>' +
+        var html = '<h3 class="detail-title">Invoice: ' + enc(inv.invoice_no) + ' <span >(' + enc(inv.status) + ')</span></h3>' +
             '<hr class="detail-hr" />' +
-            '<div style="padding:4px 2px 10px 2px;">SPK: <b>' + enc(inv.spk_no) + '</b> | Subkon: <b>' + enc(inv.subcontractor_name) + '</b>' +
+            '<div style="padding:4px 2px 10px 2px">SPK: <b>' + enc(inv.spk_no) + '</b> | Subkon: <b>' + enc(inv.subcontractor_name) + '</b>' +
             (inv.npwp_no ? ' (NPWP ' + enc(inv.npwp_no) + ')' : '') + ' | Tanggal: <b>' + enc(inv.invoice_date) + '</b>' +
             (inv.due_date ? ' | Jatuh Tempo: <b>' + enc(inv.due_date) + '</b>' : '') + '</div>' +
-            '<div style="padding:0 2px 10px 2px;color:#9fc3d1;">Total: <b>' + fmtAmt(inv.total_amount) + '</b> | Dibayar: <b>' + fmtAmt(inv.paid_amount) + '</b> | Sisa: <b>' + fmtAmt(inv.unpaid_amount) + '</b></div>';
+            '<div style="padding:0 2px 10px 2px">Total: <b>' + fmtAmt(inv.total_amount) + '</b> | Dibayar: <b>' + fmtAmt(inv.paid_amount) + '</b> | Sisa: <b>' + fmtAmt(inv.unpaid_amount) + '</b></div>';
         
         // Detail prestasi (jika ada)
         if (inv.progress_id) {
-            html += '<h4 style="margin:14px 0 4px 0;">Detail Prestasi</h4>' +
+            html += '<h4 style="margin:14px 0 4px 0">Detail Prestasi</h4>' +
                 '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><tbody>' +
                 '<tr><td>Nilai (DPP)</td><td align="right">' + fmtAmt(inv.gross_amount) + '</td></tr>' +
                 '<tr><td>PPN</td><td align="right">' + fmtAmt(inv.ppn_amount) + '</td></tr>' +
@@ -195,13 +195,13 @@ Ext.onReady(function () {
         }
         
         // Pembayaran
-        html += '<h4 style="margin:14px 0 4px 0;">Pembayaran</h4>' +
+        html += '<h4 style="margin:14px 0 4px 0">Pembayaran</h4>' +
             '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             '<th>No. Bayar</th><th>Tanggal</th><th>Akun</th><th>Metode</th><th>Jumlah</th><th>Status</th><th></th>' +
             '</tr></thead><tbody>';
         
         if (!payments.length) {
-            html += '<tr><td colspan="7" style="padding:12px;text-align:center;color:#557982;">Belum ada pembayaran.</td></tr>';
+            html += '<tr><td colspan="7" style="padding:12px;text-align:center">Belum ada pembayaran.</td></tr>';
         } else {
             Ext.each(payments, function (p) {
                 // [FIX] Tombol Batal pembayaran pakai uiBtn (sama dengan subcon.js)
@@ -211,7 +211,7 @@ Ext.onReady(function () {
                 html += '<tr class="data-row"><td>' + enc(p.payment_no) + '</td><td>' + enc(p.payment_date) + '</td>' +
                     '<td>' + enc(p.account_code + ' ' + p.account_name) + '</td><td>' + enc(p.payment_method) + '</td>' +
                     '<td align="right">' + fmtAmt(p.amount) + '</td>' +
-                    '<td><span style="color:' + statusColor(p.status) + ';font-weight:bold;">' + enc(p.status) + '</span></td>' +
+                    '<td><span style="font-weight:bold">' + enc(p.status) + '</span></td>' +
                     '<td>' + cancelBtn + '</td></tr>';
             });
         }
@@ -229,7 +229,7 @@ Ext.onReady(function () {
             btns += uiBtn('scInvActBtn', 'Bayar', GREY, 'data-act="pay_invoice" data-id="' + inv.id + '"');
         }
         
-        if (btns) html += '<div style="margin-top:15px;text-align:right;">' + btns + '</div>';
+        if (btns) html += '<div style="margin-top:15px;text-align:right">' + btns + '</div>';
         
         dtlDiv.innerHTML = html;
         dtlDiv.style.display = 'block';
@@ -315,9 +315,9 @@ Ext.onReady(function () {
             title: winTitle,
             width: 600, height: 450, modal: true, layout: 'fit',
             // [FIX] headerCfg untuk paksa font-size 14px di title window
-            headerCfg: { tag: 'div', cls: 'x-window-header', style: 'font-size:16px;font-weight:bold;' },
+            headerCfg: { tag: 'div', cls: 'x-window-header', style: 'font-size:16px;font-weight:bold' },
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 130, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 130, bodyStyle: 'padding:12px',
                 items: [fContract, fProgress, fInvDate, fDueDate, fAmount, fRef, fNotes]
             }),
             // [FIX] bbar pakai uiBtn (sama dengan subcon.js)
@@ -404,9 +404,9 @@ Ext.onReady(function () {
                 title: winTitle,
                 width: 500, height: 380, modal: true, layout: 'fit',
                 // [FIX] headerCfg untuk paksa font-size 14px
-                headerCfg: { tag: 'div', cls: 'x-window-header', style: 'font-size:14px;font-weight:bold;' },
+                headerCfg: { tag: 'div', cls: 'x-window-header', style: 'font-size:14px;font-weight:bold' },
                 items: new Ext.form.FormPanel({
-                    border: false, labelWidth: 130, bodyStyle: 'padding:12px;',
+                    border: false, labelWidth: 130, bodyStyle: 'padding:12px',
                     items: [{ xtype: 'displayfield', hideLabel: true, value: 'Sisa hutang: <b>' + fmtAmt(inv.unpaid_amount) + '</b>' },
                         fPayDate, fAccount, fMethod, fAmount, fRef, fNotes]
                 }),

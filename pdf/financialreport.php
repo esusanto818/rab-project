@@ -109,7 +109,7 @@ pr_open('Financial Report - ' . $period['period_name'], 'FINANCIAL REPORT',
     ['Periode: ' . pr_e($period['period_name']) . ' (' . pr_e(pr_date($s)) . ' s/d ' . pr_e(pr_date($e)) . ')'],
     '[ NERACA: ' . ($balanced ? 'BALANCE' : 'TIDAK BALANCE (selisih ' . pr_n($tA - $tL - $tQ) . ')') . ' ]', $balanced);
 ?>
-<h2 style="font-size:15px; margin:10px 0 0 0;">NERACA (per <?php echo pr_e(pr_date($e)); ?>)</h2>
+<h2 style="font-size:15px; margin:10px 0 0 0">NERACA (per <?php echo pr_e(pr_date($e)); ?>)</h2>
 <?php
 echo pr_section('ASET', $A, 'TOTAL ASET', $tA);
 echo pr_section('LIABILITAS', $L, 'TOTAL LIABILITAS', $tL);
@@ -117,15 +117,15 @@ echo pr_section('EKUITAS', $Q, 'TOTAL EKUITAS', $tQ);
 ?>
 <div class="grand"><span>TOTAL LIABILITAS &amp; EKUITAS</span><span><?php echo pr_n($tL + $tQ); ?></span></div>
 
-<h2 style="font-size:15px; margin:22px 0 0 0;">LAPORAN LABA RUGI (<?php echo pr_e(pr_date($s)); ?> s/d <?php echo pr_e(pr_date($e)); ?> | YTD: <?php echo pr_e(pr_date($ytdStart)); ?> s/d <?php echo pr_e(pr_date($e)); ?>)</h2>
+<h2 style="font-size:15px; margin:22px 0 0 0">LAPORAN LABA RUGI (<?php echo pr_e(pr_date($s)); ?> s/d <?php echo pr_e(pr_date($e)); ?> | YTD: <?php echo pr_e(pr_date($ytdStart)); ?> s/d <?php echo pr_e(pr_date($e)); ?>)</h2>
 <?php
 echo fr_is_section('PENDAPATAN', $R, 'TOTAL PENDAPATAN', $tR, $tRc);
 echo fr_is_section('BEBAN / BIAYA', $X, 'TOTAL BEBAN', $tX, $tXc);
 ?>
 <!-- [YTD] Laba bersih sebagai tabel dengan kolom sama (Periode Ini | YTD) -->
-<table class="rpt fx" style="margin-top:14px; border-top:2px solid #000; border-bottom:2px solid #000;">
+<table class="rpt fx" style="margin-top:14px; border-top:2px solid #000; border-bottom:2px solid #000">
     <?php echo FR_COLS; ?>
-    <tr style="font-size:14px; font-weight:bold;">
+    <tr style="font-size:14px; font-weight:bold">
         <td colspan="2"><?php echo $netP >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH'; ?></td>
         <td class="r"><?php echo pr_n($netP); ?></td>
         <td class="r"><?php echo pr_n($netC); ?></td>

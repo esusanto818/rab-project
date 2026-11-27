@@ -109,7 +109,7 @@ Ext.onReady(function () {
         if (!v) return '-';
         if (!/^(https?:\/\/|\/)/i.test(v)) return enc(v);
         var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(v) ? 'Foto Evidens' : (/\.pdf(\?.*)?$/i.test(v) ? 'PDF Berita Acara' : 'Link Dokumen');
-        return '<a href="' + enc(v) + '" target="_blank" onclick="event.stopPropagation();" style="color:#2bc1e2;font-weight:bold;">' + label + '</a>';
+        return '<a href="' + enc(v) + '" target="_blank" onclick="event.stopPropagation();" style="font-weight:bold">' + label + '</a>';
     }
 
     function doAction(params, okTitle) {
@@ -159,7 +159,7 @@ Ext.onReady(function () {
     function loadDetailPanel(rec) {
         ajax({ action: 'detail', id: rec.id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
@@ -177,7 +177,7 @@ Ext.onReady(function () {
 
         var actHtml = '';
         if (actions.length) {
-            actHtml = '<div style="float:right; margin:2px 4px 0 0;">';
+            actHtml = '<div style="float:right; margin:2px 4px 0 0">';
             Ext.each(actions, function (a) {
                 actHtml += '<button type="button" class="rtActionBtn" data-act="' + a[0] + '" style="margin-left:8px; padding:8px 16px; background:' + a[2] +
                            '; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">' + enc(a[1]) + '</button>';
@@ -186,14 +186,14 @@ Ext.onReady(function () {
         }
 
         var html = actHtml + '<h3 class="detail-title">Detail Laporan Progress: Proyek ' + enc(h.project_name) +
-                   ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
+                   ' <span >(' + enc(h.status) + ')</span></h3>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">Tgl Cut-Off: <b>' + enc(h.period_date) + '</b> &nbsp;|&nbsp; Cumulative Progress: <b style="color:#2bc1e2;">' + fmtPct(h.progress_pct) +
-                   '</b> &nbsp;|&nbsp; Kenaikan (Delta): <b style="color:#00ff4c;">+' + fmtPct(h.progress_delta) +
+                   '<div style="padding:4px 2px 10px 2px">Tgl Cut-Off: <b>' + enc(h.period_date) + '</b> &nbsp;|&nbsp; Cumulative Progress: <b >' + fmtPct(h.progress_pct) +
+                   '</b> &nbsp;|&nbsp; Kenaikan (Delta): <b >+' + fmtPct(h.progress_delta) +
                    '</b> &nbsp;|&nbsp; Pelapor: <b>' + enc(h.reported_by_name || '-') +
                    '</b> &nbsp;|&nbsp; Dokumen BA: ' + evidenceLink(h.ba_document_url) +
                    (h.verified_by_name ? ' &nbsp;|&nbsp; Verifikator HO: <b>' + enc(h.verified_by_name) + '</b> (' + enc(h.verified_at || '-') + ')' : '') +
-                   (h.rejection_note ? ' &nbsp;|&nbsp; <span style="color:#f87171;">Catatan Penolakan: ' + enc(h.rejection_note) + '</span>' : '') + '</div>' +
+                   (h.rejection_note ? ' &nbsp;|&nbsp; <span >Catatan Penolakan: ' + enc(h.rejection_note) + '</span>' : '') + '</div>' +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0">' +
                    '<thead><tr class="header-row">' +
                    '<th align="left">Kode Pekerjaan</th><th align="left">Nama Item Pekerjaan (RAB)</th><th align="right">Qty RAB (Plan)</th>' +
@@ -201,15 +201,15 @@ Ext.onReady(function () {
                    '</tr></thead><tbody>';
 
         if (!items.length) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#557982;">Belum ada item rincian pekerjaan.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center">Belum ada item rincian pekerjaan.</td></tr>';
         }
 
         Ext.each(items, function (i) {
             html += '<tr class="data-row">' +
-                    '<td align="left"><span style="color:#668894;">' + enc(i.item_code || '-') + '</span></td>' +
+                    '<td align="left"><span >' + enc(i.item_code || '-') + '</span></td>' +
                     '<td align="left"><b>' + enc(i.item_name) + '</b></td>' +
                     '<td align="right">' + fmtQty(i.qty_plan) + ' ' + enc(i.unit || '') + '</td>' +
-                    '<td align="right" style="color:#2bc1e2;"><b>' + fmtQty(i.qty_installed) + ' ' + enc(i.unit || '') + '</b></td>' +
+                    '<td align="right" ><b>' + fmtQty(i.qty_installed) + ' ' + enc(i.unit || '') + '</b></td>' +
                     '<td align="right" class="subtotal-val"><b>' + fmtPct(i.installed_pct) + '</b></td>' +
                     '<td align="left">' + enc(i.notes || '-') + '</td></tr>';
         });
@@ -285,14 +285,14 @@ Ext.onReady(function () {
             { header: 'Proyek', dataIndex: 'project_name', width: 200, renderer: CellWrap },
             { header: 'Tgl Cut-Off', dataIndex: 'period_date', width: 90, align: 'center' },
             { header: 'Cum. Progress (%)', dataIndex: 'progress_pct', width: 110, align: 'right',
-              renderer: function (v) { return '<b style="color:#2bc1e2;">' + fmtPct(v) + '</b>'; } },
+              renderer: function (v) { return '<b >' + fmtPct(v) + '</b>'; } },
             { header: 'Delta (+%)', dataIndex: 'progress_delta', width: 90, align: 'right',
-              renderer: function (v) { return '<span style="color:#00ff4c;">+' + fmtPct(v) + '</span>'; } },
+              renderer: function (v) { return '<span >+' + fmtPct(v) + '</span>'; } },
             { header: 'Pelapor', dataIndex: 'reported_by_name', width: 120 },
             { header: 'Bukti BA / Photo', dataIndex: 'ba_document_url', width: 120, renderer: evidenceLink },
             { header: 'Verifikator HO', dataIndex: 'verified_by_name', width: 120, renderer: function (v) { return v || '-'; } },
             { header: 'Status', dataIndex: 'status', width: 95, align: 'center',
-              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
+              renderer: function (v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; } }
         ],
         viewConfig: { forceFit: true },
         loadMask: true,
@@ -339,7 +339,7 @@ Ext.onReady(function () {
               editor: new myNumberField({ decimalPrecision: 2 }),
               renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
             { sortable: false, menuDisabled: true, header: '% Terpasang', dataIndex: 'installed_pct', width: 85, align: 'right',
-              renderer: function (v) { return '<b style="color:#2bc1e2;">' + fmtPct(v) + '</b>'; } },
+              renderer: function (v) { return '<b >' + fmtPct(v) + '</b>'; } },
             { sortable: false, menuDisabled: true, header: 'Keterangan Field', dataIndex: 'notes', width: 160, editor: new myTextField(), renderer: function (v) { return enc(v); } }
         ],
         listeners: {
@@ -396,7 +396,7 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Upload Berita Acara / Evidens', width: 450, height: 160, modal: true, layout: 'fit', cls: 'rtDarkWin',
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 80, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 80, bodyStyle: 'padding:12px',
                 items: [fUrl, { xtype: 'button', text: 'Pilih File dari Komputer...', handler: function () { fileInput.click(); } }]
             }),
             buttons: [
@@ -421,22 +421,22 @@ Ext.onReady(function () {
         fProjInfo = new Ext.form.DisplayField({ fieldLabel: 'Info Proyek', value: '-', anchor: '95%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, , items: items };
         };
 
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'prgHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            bodyStyle: 'padding:4px 2px 0 2px',
             items: [
                 col(0.5, [fProject, fPeriodDate]),
                 col(0.5, [
                     {
-                        layout: 'column', border: false, bodyStyle: 'background:transparent;',
+                        layout: 'column', border: false, ,
                         items: [
-                            { columnWidth: 0.8, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: [fBaDoc] },
-                            { columnWidth: 0.2, layout: 'form', border: false, bodyStyle: 'background:transparent;', items: [
+                            { columnWidth: 0.8, layout: 'form', border: false, labelWidth: 110, , items: [fBaDoc] },
+                            { columnWidth: 0.2, layout: 'form', border: false, , items: [
                                 { xtype: 'button', text: 'Upload...', handler: openBaUploadWin }
                             ]}
                         ]
@@ -449,7 +449,7 @@ Ext.onReady(function () {
 
     function onProjectSelected(rec) {
         if (!rec) { fProjInfo.setValue('-'); itemDs.removeAll(); return; }
-        fProjInfo.setValue('Progress Saat Ini: <b style="color:#2bc1e2;">' + fmtPct(rec.get('current_progress')) + '</b> | Budget: <b>Rp ' + fmtQty(rec.get('budget')) + '</b>');
+        fProjInfo.setValue('Progress Saat Ini: <b >' + fmtPct(rec.get('current_progress')) + '</b> | Budget: <b>Rp ' + fmtQty(rec.get('budget')) + '</b>');
         loadProjectRabItems(rec.get('id'));
     }
 

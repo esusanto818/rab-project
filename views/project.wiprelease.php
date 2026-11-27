@@ -18,10 +18,7 @@
         <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/header.black.css" />
         <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/grddetail.css" />
         <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/frm.css" />
-        <style>
-            #editorForm { top: 50%; width: 70%; height: 55%; }
-            #addForm { top: 50%; width: 70%; height: 55%; }
-        </style>
+        
     </head>
     <body>
     </body>

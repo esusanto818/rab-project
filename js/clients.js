@@ -57,7 +57,7 @@ Ext.onReady(function () {
             {
                 header: 'Jml Proyek', dataIndex: 'project_count', width: 100, align: 'center',
                 renderer: function (v) {
-                    return '<span style="font-weight:bold;">' + (v || 0) + '</span>';
+                    return '<span style="font-weight:bold">' + (v || 0) + '</span>';
                 }
             }
         ],

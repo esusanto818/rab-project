@@ -82,13 +82,13 @@ Ext.onReady(function () {
 
     function loadDetailPanel(id) {
         ajax({ action: 'detail', id: id }, function (res) {
-            if (!res.success) { dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail SPK.') + '</div>'; dtlDiv.style.display = 'block'; return; }
+            if (!res.success) { dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail SPK.') + '</div>'; dtlDiv.style.display = 'block'; return; }
             renderDetailPanel(res);
         });
     }
 
     function actionBtn(id, label, bg) {
-        return '<button type="button" id="' + id + '" style="margin-left:8px; padding:8px 16px; background:' + bg + '; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">' + label + '</button>';
+        return '<button type="button" id="' + id + '" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">' + label + '</button>';
     }
 
     function renderDetailPanel(d) {
@@ -102,20 +102,20 @@ Ext.onReady(function () {
         var typeLine = '';
         if (isSub) {
             var sb = d.subcontractor, ct = d.contract;
-            typeLine = '<div style="padding:6px 10px;margin:6px 0;background:#2b2412;border-radius:3px;">' +
-                       '<b style="color:#e6a817;">SPK SUBKON</b> &nbsp;|&nbsp; Subkontraktor: <b>' + enc(sb ? sb.name : '-') + '</b>' +
+            typeLine = '<div style="padding:6px 10px;margin:6px 0;">' +
+                       '<b >SPK SUBKON</b> &nbsp;|&nbsp; Subkontraktor: <b>' + enc(sb ? sb.name : '-') + '</b>' +
                        (h.work_start_date || h.work_end_date ? ' &nbsp;|&nbsp; Jadwal kerja: <b>' + enc(h.work_start_date || '-') + ' s/d ' + enc(h.work_end_date || '-') + '</b>' : '') +
                        ' &nbsp;|&nbsp; Kontrak subkon: ' + (ct ? '<b>' + enc(ct.contract_no) + '</b> (' + enc(ct.status) + ', nilai ' + fmtAmt(ct.contract_value) + ')'
-                                                              : '<span style="color:#e6a817;">belum terhubung</span>') + '</div>';
+                                                              : '<span >belum terhubung</span>') + '</div>';
         }
         var wiHtml = '';
         if (isSub) {
             var wis = d.work_items || [], wiTotal = 0;
-            wiHtml = '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;">' +
-                     '<div style="float:right;">' + (h.status === 'Draft' ? actionBtn('spkWorkBtn', 'Atur Lingkup Pekerjaan', '#066b78') : '') + '</div>' +
-                     '<b>Lingkup Pekerjaan (dasar klaim, inspeksi &amp; pembayaran subkon)</b><div style="clear:both;"></div>';
+            wiHtml = '<div style="padding:6px 10px;margin:6px 0;">' +
+                     '<div style="float:right">' + (h.status === 'Draft' ? actionBtn('spkWorkBtn', 'Atur Lingkup Pekerjaan', '#066b78') : '') + '</div>' +
+                     '<b>Lingkup Pekerjaan (dasar klaim, inspeksi &amp; pembayaran subkon)</b><div style="clear:both"></div>';
             if (!wis.length) {
-                wiHtml += '<div style="padding:10px 2px;color:#e6a817;">Belum ada lingkup pekerjaan' + (h.status === 'Draft' ? '. Klik "Atur Lingkup Pekerjaan" untuk mengisi uraian, qty, dan harga satuan.' : '.') + '</div>';
+                wiHtml += '<div style="padding:10px 2px">Belum ada lingkup pekerjaan' + (h.status === 'Draft' ? '. Klik "Atur Lingkup Pekerjaan" untuk mengisi uraian, qty, dan harga satuan.' : '.') + '</div>';
             } else {
                 wiHtml += '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                           '<th align="left">Kode</th><th align="left">Uraian</th><th align="left">Task</th><th align="right">Qty</th><th align="left">Sat.</th>' +
@@ -129,7 +129,7 @@ Ext.onReady(function () {
                 });
                 wiHtml += '<tr class="data-row"><td colspan="6" align="right"><b>Total lingkup</b></td><td align="right"><b>' + fmtAmt(wiTotal) + '</b></td><td></td></tr></tbody></table>';
                 if (d.contract && Math.abs(parseFloat(d.contract.contract_value) - wiTotal) > 0.005) {
-                    wiHtml += '<div style="padding:6px 2px;color:#e6a817;">Total lingkup berbeda dari nilai kontrak subkon (' + fmtAmt(d.contract.contract_value) + ').</div>';
+                    wiHtml += '<div style="padding:6px 2px">Total lingkup berbeda dari nilai kontrak subkon (' + fmtAmt(d.contract.contract_value) + ').</div>';
                 }
             }
             wiHtml += '</div>';
@@ -144,41 +144,41 @@ Ext.onReady(function () {
                 if (!groups[k]) { groups[k] = { name: m.task_id ? (m.task_name || 'Task') : 'Umum (tidak terkait task tertentu)', rows: [] }; order.push(k); }
                 groups[k].rows.push(m);
             });
-            planHtml = '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;"><b>Material per Task</b>';
+            planHtml = '<div style="padding:6px 10px;margin:6px 0;"><b>Material per Task</b>';
             Ext.each(order, function (k) {
                 var g = groups[k];
                 if (!g.rows.length && k === 't0') { return; }
-                planHtml += '<div style="margin:10px 0 3px 0;color:#9fd0e6;font-weight:bold;">' + enc(g.name) + '</div>';
-                if (!g.rows.length) { planHtml += '<div style="color:#668894;padding:2px 0 4px 0;">Belum ada material untuk task ini.</div>'; return; }
+                planHtml += '<div style="margin:10px 0 3px 0;font-weight:bold">' + enc(g.name) + '</div>';
+                if (!g.rows.length) { planHtml += '<div style="padding:2px 0 4px 0">Belum ada material untuk task ini.</div>'; return; }
                 planHtml += '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row"><th align="left">Material</th><th align="right">Qty</th><th align="left">Sat.</th><th align="left">Sumber</th><th align="left">Catatan</th></tr></thead><tbody>';
                 Ext.each(g.rows, function (m) {
                     planHtml += '<tr class="data-row"><td align="left">' + enc(m.material_code) + ' - ' + enc(m.material_name) + '</td><td align="right"><b>' + fmtQty(m.qty) + '</b></td><td align="left">' + enc(m.unit) + '</td>' +
-                                '<td align="left">' + (m.supply_source === 'SUBCON' ? '<span style="color:#e6a817;font-weight:bold;">Subkon (dibawa subkon)</span>' : 'Perusahaan (stok gudang)') + '</td><td align="left">' + enc(m.notes || '') + '</td></tr>';
+                                '<td align="left">' + (m.supply_source === 'SUBCON' ? '<span style="font-weight:bold">Subkon (dibawa subkon)</span>' : 'Perusahaan (stok gudang)') + '</td><td align="left">' + enc(m.notes || '') + '</td></tr>';
                 });
                 planHtml += '</tbody></table>';
             });
             planHtml += '</div>';
         }
-        var html = '<div style="float:right; margin:2px 4px 0 0;">' + btns + '</div>' +
-                   '<h3 class="detail-title">Detail SPK: ' + enc(h.spk_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
+        var html = '<div style="float:right; margin:2px 4px 0 0">' + btns + '</div>' +
+                   '<h3 class="detail-title">Detail SPK: ' + enc(h.spk_no) + ' <span >(' + enc(h.status) + ')</span></h3>' +
                    '<hr class="detail-hr" />' + typeLine + wiHtml + planHtml +
-                   '<div style="padding:4px 2px 6px 2px;">Tanggal: <b>' + enc(h.spk_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
+                   '<div style="padding:4px 2px 6px 2px">Tanggal: <b>' + enc(h.spk_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Klien: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Mandor: <b>' + enc(h.foreman || '-') + '</b>' +
                    (h.description ? ' &nbsp;|&nbsp; Uraian: ' + enc(h.description) : '') + '</div>' +
-                   '<div style="padding:6px 10px;margin:6px 0;background:#172936;border-radius:3px;"><b>Task Proyek dalam SPK</b><ul style="margin:6px 0 2px 18px;">' +
-                   (tasks.length ? tasks.map(function(t){ return '<li>' + enc(t.task_name) + ' <span style="color:#9fc3d1;">(' + enc(t.status || 'Belum Mulai') + ')</span></li>'; }).join('') : '<li>Belum ada task terhubung.</li>') +
+                   '<div style="padding:6px 10px;margin:6px 0;"><b>Task Proyek dalam SPK</b><ul style="margin:6px 0 2px 18px">' +
+                   (tasks.length ? tasks.map(function(t){ return '<li>' + enc(t.task_name) + ' <span >(' + enc(t.status || 'Belum Mulai') + ')</span></li>'; }).join('') : '<li>Belum ada task terhubung.</li>') +
                    '</ul></div>' +
-                   ((isSub && !items.length) ? '' : '<div style="padding:4px 10px; margin-bottom:8px; background:rgba(15,113,194,0.18); border-radius:3px;">Pembayaran proyek: <b>' + fmtAmt(pay.paid_amount) +
+                   ((isSub && !items.length) ? '' : '<div style="padding:4px 10px; margin-bottom:8px;">Pembayaran proyek: <b>' + fmtAmt(pay.paid_amount) +
                    '</b> dari kontrak <b>' + fmtAmt(pay.contract_value) + '</b> (<b>' + fmtPct(pay.paid_pct) + '</b>) &rarr; batas material saat ini <b>' + fmtPct(pay.allowed_pct) +
                    '</b> dari qty RAB (dibayar x 2).</div>') +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                    '<th align="left">Material</th><th align="right">Qty SPK</th><th align="right">Terpakai (issue)</th><th align="right">Sisa Jatah</th><th align="left">Catatan</th></tr></thead><tbody>';
-        if (!items.length) { html += '<tr><td colspan="5" style="padding:15px; text-align:center; color:#557982;">' + (isSub ? 'SPK subkon tanpa material gudang (pekerjaan murni).' : 'Belum ada item.') + '</td></tr>'; }
+        if (!items.length) { html += '<tr><td colspan="5" style="padding:15px; text-align:center">' + (isSub ? 'SPK subkon tanpa material gudang (pekerjaan murni).' : 'Belum ada item.') + '</td></tr>'; }
         Ext.each(items, function (i) {
             var color = i.remaining <= EPS ? '#2e9e4f' : (i.used > 0 ? '#e6a817' : '#668894');
-            html += '<tr class="data-row"><td align="left">' + enc(i.material_name) + ' <span style="color:#668894;">(' + enc(i.material_code) + ')</span></td>' +
+            html += '<tr class="data-row"><td align="left">' + enc(i.material_name) + ' <span >(' + enc(i.material_code) + ')</span></td>' +
                     '<td align="right">' + fmtQty(i.qty) + ' ' + enc(i.unit) + '</td>' +
-                    '<td align="right" style="color:' + color + ';">' + fmtQty(i.used) + '</td>' +
+                    '<td align="right" >' + fmtQty(i.used) + '</td>' +
                     '<td align="right"><b>' + fmtQty(i.remaining) + '</b></td><td align="left">' + enc(i.notes || '') + '</td></tr>';
         });
         html += '</tbody></table>';
@@ -212,7 +212,7 @@ Ext.onReady(function () {
         if (!rows.length) { rows.push(blank()); }
 
         function btn(id, label, bg) {
-            return '<button type="button" id="' + id + '" style="margin-left:8px;padding:8px 20px;background:' + bg + ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;font-size:14px;">' + label + '</button>';
+            return '<button type="button" id="' + id + '" style="margin-left:8px;padding:8px 20px;;;cursor:pointer;font-weight:bold;font-size:14px">' + label + '</button>';
         }
         function taskOpts(sel) {
             var o = '<option value="0">- (tanpa task) -</option>';
@@ -229,15 +229,15 @@ Ext.onReady(function () {
 
         function draw() {
             var box = document.getElementById('wiBox');
-            var h2 = '<div style="margin-bottom:10px;color:#9fc3d1;font-size:14px;">Isi pekerjaan yang diukur (qty), harga satuan, dan task proyek terkait. Jumlah dihitung otomatis. ' +
+            var h2 = '<div style="margin-bottom:10px;font-size:14px">Isi pekerjaan yang diukur (qty), harga satuan, dan task proyek terkait. Jumlah dihitung otomatis. ' +
                      'Item yang sudah dipakai kontrak / klaim subkon dikunci dan tidak bisa dihapus.</div>' +
-                     '<table width="100%" cellSpacing="0" cellPadding="4" style="font-size:14px;color:#fff;border-collapse:collapse;"><thead><tr style="background:#172936;">' +
+                     '<table width="100%" cellSpacing="0" cellPadding="4" style="font-size:14px;border-collapse:collapse"><thead><tr >' +
                      '<th align="left" width="28">#</th><th align="left" width="90">Kode</th><th align="left">Uraian pekerjaan</th><th align="left" width="190">Task proyek</th>' +
                      '<th align="left" width="90">Qty</th><th align="left" width="70">Satuan</th><th align="left" width="120">Harga satuan</th>' +
                      '<th align="right" width="130">Jumlah</th><th align="left" width="105">Material</th><th width="60"></th></tr></thead><tbody>';
             Ext.each(rows, function (r, i) {
                 var dis = r.locked ? ' disabled title="Sudah dipakai kontrak / klaim"' : '';
-                h2 += '<tr style="border-bottom:1px solid #1d3a52;">' +
+                h2 += '<tr style="border-bottom:1px solid #1d3a52">' +
                       '<td>' + (i + 1) + '</td>' +
                       '<td><input style="' + INP + '" data-i="' + i + '" data-f="work_code" value="' + enc(r.work_code) + '"/></td>' +
                       '<td><input style="' + INP + '" data-i="' + i + '" data-f="description" value="' + enc(r.description) + '"/></td>' +
@@ -247,18 +247,18 @@ Ext.onReady(function () {
                       '<td><input type="number" min="0" step="any" style="' + INP + '" data-i="' + i + '" data-f="unit_price" value="' + (r.unit_price || '') + '"' + dis + '/></td>' +
                       '<td align="right" id="wiAmt' + i + '"><b>' + fmtAmt(amountOf(r)) + '</b></td>' +
                       '<td><select style="' + INP + '" data-i="' + i + '" data-f="material_supply">' + supplyOpts(r.material_supply) + '</select></td>' +
-                      '<td align="center"><button type="button" data-del="' + i + '" style="padding:6px 10px;background:' + BURG + ';color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:bold;"' + dis + '>Hapus</button></td></tr>';
+                      '<td align="center"><button type="button" data-del="' + i + '" style="padding:6px 10px;;;cursor:pointer;font-weight:bold"' + dis + '>Hapus</button></td></tr>';
             });
-            h2 += '</tbody><tfoot><tr><td colspan="7" align="right" style="padding-top:10px;font-size:15px;"><b>Total lingkup</b></td>' +
-                  '<td align="right" style="padding-top:10px;font-size:15px;" id="wiTotal"><b>' + fmtAmt(totalOf()) + '</b></td><td colspan="2"></td></tr></tfoot></table>' +
-                  '<div style="margin-top:12px;">' + btn('wiAdd', '+ Tambah Baris', '#2e6da4') + '</div>';
+            h2 += '</tbody><tfoot><tr><td colspan="7" align="right" style="padding-top:10px;font-size:15px"><b>Total lingkup</b></td>' +
+                  '<td align="right" style="padding-top:10px;font-size:15px" id="wiTotal"><b>' + fmtAmt(totalOf()) + '</b></td><td colspan="2"></td></tr></tfoot></table>' +
+                  '<div style="margin-top:12px">' + btn('wiAdd', '+ Tambah Baris', '#2e6da4') + '</div>';
             box.innerHTML = h2;
         }
 
         var win = new Ext.Window({
             title: 'Lingkup Pekerjaan - ' + h.spk_no, modal: true, layout: 'fit', maximizable: true,
             width: Math.min(1240, Ext.getBody().getViewSize().width - 30), height: Math.min(640, Ext.getBody().getViewSize().height - 30),
-            items: new Ext.Panel({ border: false, autoScroll: true, html: '<div id="wiBox" style="padding:12px;"></div>' }),
+            items: new Ext.Panel({ border: false, autoScroll: true, html: '<div id="wiBox" style="padding:12px"></div>' }),
             bbar: ['->', { xtype: 'tbtext', text: btn('wiSave', 'Simpan Lingkup', TEAL) + btn('wiCancel', 'Batal', BURG) }]
         });
         win.show();
@@ -366,7 +366,7 @@ Ext.onReady(function () {
             { header: 'Proyek', dataIndex: 'project_name', width: 230, renderer: CellWrap },
             { header: 'Tipe', dataIndex: 'spk_type', width: 150,
               renderer: function (v, m, r) {
-                  if (v === 'SUBCON') { return CellWrap('<b style="color:#e6a817;">Subkon</b>: ' + enc(r.get('subcontractor_name') || '-')); }
+                  if (v === 'SUBCON') { return CellWrap('<b >Subkon</b>: ' + enc(r.get('subcontractor_name') || '-')); }
                   return 'Internal';
               } },
             { header: 'Mandor', dataIndex: 'foreman', width: 130, renderer: function (v) { return CellWrap(v || '-'); } },
@@ -374,7 +374,7 @@ Ext.onReady(function () {
             { header: 'Item', dataIndex: 'item_count', width: 50, align: 'center' },
             { header: 'Terpakai', dataIndex: 'used_pct', width: 80, align: 'right', renderer: function (v) { return fmtPct(v); } },
             { header: 'Status', dataIndex: 'status', width: 100, align: 'center',
-              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v) + '</span>'; } }
+              renderer: function (v) { return '<span style="font-weight:bold">' + enc(v) + '</span>'; } }
         ],
         viewConfig: { forceFit: true },
         loadMask: true,
@@ -425,10 +425,10 @@ Ext.onReady(function () {
                       var row = itemGrid.getSelectionModel().getSelected();
                       if (row) { row.set('task_name', parseInt(rec.get('id'), 10) ? rec.get('name') : ''); }
                   } } }),
-              renderer: function (v, m, r) { return r.get('task_name') ? enc(r.get('task_name')) : '<i style="color:#8aa8b4;">(umum / semua task)</i>'; } },
+              renderer: function (v, m, r) { return r.get('task_name') ? enc(r.get('task_name')) : '<i >(umum / semua task)</i>'; } },
             { sortable: false, menuDisabled: true, header: 'Sumber', dataIndex: 'supply_source', width: 95,
               editor: new Ext.form.ComboBox({ store: [['COMPANY', 'Perusahaan'], ['SUBCON', 'Subkon']], mode: 'local', triggerAction: 'all', editable: false, forceSelection: true }),
-              renderer: function (v) { return v === 'SUBCON' ? '<b style="color:#e6a817;">Subkon</b>' : 'Perusahaan'; } },
+              renderer: function (v) { return v === 'SUBCON' ? '<b >Subkon</b>' : 'Perusahaan'; } },
             { sortable: false, menuDisabled: true, header: 'Sat', dataIndex: 'unit', width: 50, align: 'center' },
             { sortable: false, menuDisabled: true, header: 'Qty RAB', dataIndex: 'rab_qty', width: 90, align: 'right', renderer: function (v) { return fmtQty(v); } },
             { sortable: false, menuDisabled: true, header: 'Kuota Saat Ini', dataIndex: 'cap_qty', width: 100, align: 'right', renderer: function (v, m, r) { return r.get('supply_source') === 'SUBCON' ? '-' : fmtQty(v); } },
@@ -436,8 +436,8 @@ Ext.onReady(function () {
             { sortable: false, menuDisabled: true, header: 'Qty SPK', dataIndex: 'qty', width: 90, align: 'right',
               editor: new myNumberField({ decimalPrecision: 4 }), renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
             { sortable: false, menuDisabled: true, header: 'Catatan', dataIndex: 'notes', width: 140, editor: new myTextField({}) },
-            { id: 'spkDeleteCol', sortable: false, menuDisabled: true, header: '<span style="color:#e53935;font-size:15px;" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>', dataIndex: 'material_id', width: 34, align: 'center', fixed: true,
-              renderer: function () { return '<span style="color:#e53935;cursor:pointer;font-size:15px;" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>'; } }
+            { id: 'spkDeleteCol', sortable: false, menuDisabled: true, header: '<span style="font-size:15px" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>', dataIndex: 'material_id', width: 34, align: 'center', fixed: true,
+              renderer: function () { return '<span style="cursor:pointer;font-size:15px" title="Hapus baris"><i class="fa fa-trash" aria-hidden="true"></i></span>'; } }
         ],
         listeners: {
             beforeedit: function (e) {
@@ -480,7 +480,7 @@ Ext.onReady(function () {
             var hdr = document.createElement('div'); hdr.id = 'spkHdrForm'; hdr.style.cssText = 'margin-bottom:2px;';
             g.parentNode.insertBefore(hdr, g);
             var taskBox = document.createElement('div'); taskBox.id = 'spkTaskBox'; taskBox.style.cssText = 'margin:8px 4px;padding:10px;background:#172936;border:1px solid #29495b;border-radius:4px;color:#dcebf0;';
-            taskBox.innerHTML = '<b>Task Proyek (wajib)</b><div style="margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><select id="spkTaskSelect" style="min-width:320px;max-width:70%;padding:6px;background:#fff;color:#222;"><option value="">Pilih proyek terlebih dahulu...</option></select><button type="button" id="spkAddTask" style="padding:6px 12px;">+ Tambah Task</button></div><div id="spkTaskList"></div>';
+            taskBox.innerHTML = '<b>Task Proyek (wajib)</b><div style="margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select id="spkTaskSelect" style="min-width:320px;max-width:70%;padding:6px;"><option value="">Pilih proyek terlebih dahulu...</option></select><button type="button" id="spkAddTask" style="padding:6px 12px">+ Tambah Task</button></div><div id="spkTaskList"></div>';
             g.parentNode.insertBefore(taskBox, g);
             var q = document.createElement('div'); q.id = 'spkQuotaInfo'; q.style.cssText = 'margin:2px 4px 6px 4px;';
             g.parentNode.insertBefore(q, g);
@@ -506,9 +506,9 @@ Ext.onReady(function () {
 
     function renderSelectedTasks() {
         if (!taskListDiv) return;
-        if (!selectedTasks.length) { taskListDiv.innerHTML = '<div style="color:#e6a817;">Belum ada task dipilih.</div>'; return; }
-        var html = '<table style="width:100%;border-collapse:collapse;"><thead><tr style="text-align:left;border-bottom:1px solid #365567;"><th style="padding:5px;">Task</th><th style="padding:5px;">Jadwal</th><th style="padding:5px;">Status</th><th></th></tr></thead><tbody>';
-        selectedTasks.forEach(function(t, idx) { html += '<tr style="border-bottom:1px solid #29495b;"><td style="padding:6px;">' + enc(t.task_name) + '</td><td style="padding:6px;white-space:nowrap;">' + enc(t.start_date || '-') + ' - ' + enc(t.end_date || '-') + '</td><td style="padding:6px;">' + enc(t.status || 'Belum Mulai') + '</td><td><button type="button" data-spk-task-index="' + idx + '" style="color:#c0392b;">Hapus</button></td></tr>'; });
+        if (!selectedTasks.length) { taskListDiv.innerHTML = '<div >Belum ada task dipilih.</div>'; return; }
+        var html = '<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;border-bottom:1px solid #365567"><th style="padding:5px">Task</th><th style="padding:5px">Jadwal</th><th style="padding:5px">Status</th><th></th></tr></thead><tbody>';
+        selectedTasks.forEach(function(t, idx) { html += '<tr style="border-bottom:1px solid #29495b"><td style="padding:6px">' + enc(t.task_name) + '</td><td style="padding:6px;white-space:nowrap">' + enc(t.start_date || '-') + ' - ' + enc(t.end_date || '-') + '</td><td style="padding:6px">' + enc(t.status || 'Belum Mulai') + '</td><td><button type="button" data-spk-task-index="' + idx + '" >Hapus</button></td></tr>'; });
         taskListDiv.innerHTML = html + '</tbody></table>';
         var buttons = taskListDiv.querySelectorAll('button[data-spk-task-index]');
         for (var i=0;i<buttons.length;i++) buttons[i].onclick = function(){
@@ -549,14 +549,14 @@ Ext.onReady(function () {
         fSubcon = new myComboField({
             fieldLabel: 'Subkontraktor', store: subconDs, displayField: 'name', valueField: 'id', mode: 'remote',
             queryParam: 'query', minChars: 0, triggerAction: 'all', forceSelection: true, allowBlank: true, anchor: '95%',
-            tpl: '<tpl for="."><div class="x-combo-list-item">{name} <span style="color:#9fc3d1;">{code}</span></div></tpl>'
+            tpl: '<tpl for="."><div class="x-combo-list-item">{name} <span >{code}</span></div></tpl>'
         });
         fStart = new Ext.form.DateField({ fieldLabel: 'Mulai Kerja', format: 'd/m/Y', width: 120 });
         fEnd = new Ext.form.DateField({ fieldLabel: 'Selesai Kerja', format: 'd/m/Y', width: 120 });
 
-        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 120, bodyStyle: 'background:transparent;', items: items }; };
+        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 120, items: items }; };
         hdrForm = new Ext.form.FormPanel({
-            renderTo: 'spkHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            renderTo: 'spkHdrForm', border: false, layout: 'column', bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.5, [fDate, fType, fProject, fStart, fEnd]), col(0.5, [fSubcon, fForeman, fDesc, fRemark])]
         });
 
@@ -577,12 +577,12 @@ Ext.onReady(function () {
 
 
         matBar = new Ext.Panel({
-            renderTo: 'spkMatBar', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:2px; border-radius:20px;',
+            renderTo: 'spkMatBar', border: false, layout: 'column', bodyStyle: 'padding:2px',
             items: [
-                { columnWidth: 0.45, layout: 'form', border: false, hideLabels: true, bodyStyle: 'background:transparent;', items: [fMat] },
-                { width: 150, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '<span style="color:#ffffff; font-size:13px; font-weight:400; padding: 10 10;">+ Tambah Material</span>', style: 'background:#087f8c; border-radius:20px;', handler: addMaterial })] },
-                { width: 210, border: false, bodyStyle: 'background:transparent; padding-left:6px;', items: [new Ext.Button({ text: '<span style="color:#ffffff; font-weight:400; font-size:13px; padding: 10 10;">+ Semua Material (Qty Maks)</span>', style: 'background:#087f8c; border-radius:20px;', handler: addAllMaterials })] },     
-                { columnWidth: 0.4, border: false, bodyStyle: 'background:transparent; padding:6px 0 0 8px; color:#9fc3d1; font-size:11px;',
+                { columnWidth: 0.45, layout: 'form', border: false, hideLabels: true, items: [fMat] },
+                { width: 150, border: false, bodyStyle: 'padding-left:6px', items: [new Ext.Button({ text: '<span style="font-size:13px; font-weight:400; padding: 10 10">+ Tambah Material</span>' , handler: addMaterial })] },
+                { width: 210, border: false, bodyStyle: 'padding-left:6px', items: [new Ext.Button({ text: '<span style="font-weight:400; font-size:13px; padding: 10 10">+ Semua Material (Qty Maks)</span>' , handler: addAllMaterials })] },     
+                { columnWidth: 0.4, border: false, bodyStyle: 'padding:6px 0 0 8px; font-size:11px',
                   html: 'Qty SPK otomatis = kuota tersedia (maksimum), bisa dikurangi. Kuota = qty RAB x (% kontrak dibayar x 2).' }
             ]
         });
@@ -609,10 +609,10 @@ Ext.onReady(function () {
     function loadQuotaInfo() {
         if (!fProject || !fProject.getValue()) { quotaDiv.innerHTML = ''; return; }
         ajax({ action: 'quota', project_id: fProject.getValue() }, function (res) {
-            if (!res.success) { quotaDiv.innerHTML = '<span style="color:#e6a817;">' + enc(res.message || '') + '</span>'; return; }
+            if (!res.success) { quotaDiv.innerHTML = '<span >' + enc(res.message || '') + '</span>'; return; }
             var p = res.data;
             var ok = p.paid_amount > 0;
-            quotaDiv.innerHTML = '<div style="padding:6px 10px; background:#1f2d3a; border-radius:4px; color:' + (ok ? '#9fc3d1' : '#e6a817') + ';">' +
+            quotaDiv.innerHTML = '<div style="padding:6px 10px;">' +
                 'Pembayaran diterima: <b>' + fmtAmt(p.paid_amount) + '</b> dari kontrak <b>' + fmtAmt(p.contract_value) + '</b> (<b>' + fmtPct(p.paid_pct) +
                 '</b>) &rarr; batas material saat ini <b>' + fmtPct(p.allowed_pct) + '</b> dari qty RAB.' +
                 (ok ? '' : ' <b>Belum ada pembayaran termin: SPK dapat disimpan sebagai Draft tetapi belum dapat diterbitkan.</b>') + '</div>';

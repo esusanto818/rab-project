@@ -70,7 +70,7 @@ Ext.ux.Spinner = Ext.extend(Ext.util.Observable, {
         this.splitter = this.wrap.createChild({
             tag: 'div',
             cls: this.splitterClass,
-            style: 'width:13px; height:2px;'
+            style: 'width:13px; height:2px'
         });
         this.splitter.setRight((Ext.isIE) ? 1 : 2).setTop(10).show();
 

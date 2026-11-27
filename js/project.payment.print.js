@@ -174,7 +174,7 @@
 
                     htmlByProject[projectId] = '<div class="ai-project">' +
                         '<div class="ai-project-heading"><b>AI Cost &amp; Schedule Variance Analysis</b>' +
-                        '<span class="ai-risk" style="color:' + color + '">RISK: ' + esc(risk) + '</span></div>' +
+                        '<span class="ai-risk" >RISK: ' + esc(risk) + '</span></div>' +
                         '<div class="ai-summary"><b>Ringkasan Eksekutif:</b><p>' + esc(d.ai_summary || '-') + '</p></div>' +
                         '<div class="ai-mitigations"><b>Rekomendasi Mitigasi:</b>' + recHtml + '</div>' +
                         '<div class="muted">Analisis terakhir: ' + esc(dateId(d.created_at)) + '</div>' +

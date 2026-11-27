@@ -14,11 +14,7 @@
 ?>
 </html>
     <head>
-      <style>
-        #editorForm {top: 50%; width: 98%; height: 85%;}
-        #addForm {top: 50%; width: 90%; height: 80%;}
-        #addFormHeaderMenu, #addFormHeaderSearch, #addFormHeaderText {width: 32%;}
-      </style>
+      
       <title id="page-title">Form Name</title>
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />

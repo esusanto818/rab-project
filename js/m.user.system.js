@@ -416,7 +416,7 @@ Ext.onReady(function() {
     var editorDeleter = new Extensive.grid.ItemDeleter({
         header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" ' +
                 'fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
-                'style="vertical-align:middle;">' +
+                'style="vertical-align:middle">' +
                 '<polyline points="3 6 5 6 21 6"/>' +
                 '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
                 '<path d="M10 11v6M14 11v6"/>' +
@@ -468,7 +468,7 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 5px;',
+                style: 'margin-bottom: 5px',
                 items: [
                     {
                         columnWidth: 0.2,
@@ -536,7 +536,7 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 5px;',
+                style: 'margin-bottom: 5px',
                 items: [
                     {
                         columnWidth: 0.4,
@@ -622,18 +622,18 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'form',
                 baseCls: 'x-plain',
-                style: 'margin-top:10px; margin-bottom:8px;',
+                style: 'margin-top:10px; margin-bottom:8px',
                 items: [{
                     xtype: 'container',
                     layout: { type: 'hbox', defaultAlign: 'middle' },
-                    style: 'padding:0 4px;',
+                    style: 'padding:0 4px',
                     items: [
                         {
                             xtype: 'label',
                             text: 'Form Access',
                             cls: 'fsa-label',  // [FIX #2] custom cls, BUKAN my-label-GroupLbl
                             flex: 1,
-                            style: 'background:transparent !important; border:none !important; box-shadow:none !important;' +
+                            style: 'box-shadow:none !important' +
                                    ' padding:4px 0 !important; margin:0 !important; width:auto !important;' +
                                    ' font-weight:800 !important; font-size:13px !important; color:#22d3ee !important;' +
                                    ' letter-spacing:.5px; text-transform:uppercase;'
@@ -643,7 +643,7 @@ Ext.onReady(function() {
                             text: '➕ Add Form',
                             id: 'btnAddItem',
                             cls: 'field-button grey-field-button',
-                            style: 'background:#475569 !important; color:#fff !important; border:1px solid #64748b !important;' +
+                             +
                                    ' border-radius:6px !important; padding:6px 14px !important; font-size:12px !important;' +
                                    ' font-weight:600 !important; height:32px !important;',
                             listeners: {
@@ -667,7 +667,7 @@ Ext.onReady(function() {
                             text: '🎭 Apply Role',
                             id: 'btnApplyRole',
                             cls: 'field-button grey-field-button',
-                            style: 'background:#10B981 !important; color:#fff !important; border:1px solid #059669 !important;' +
+                             +
                                    ' border-radius:6px !important; padding:6px 14px !important; font-size:12px !important;' +
                                    ' font-weight:600 !important; height:32px !important; margin-left:8px !important;',
                             listeners: {
@@ -724,7 +724,7 @@ Ext.onReady(function() {
     });
     var addCheckColumn = new Ext.grid.CheckColumn({
         id: 'addCheckColumn',
-        header: '<img class="header-icon-grid" style="vertical-align:middle;" src="../img/icon/add_check.png"/>',
+        header: '<img class="header-icon-grid" style="vertical-align:middle" src="../img/icon/add_check.png"/>',
         dataIndex: 'active',
         width: 30,
         fixed: true,

@@ -13,9 +13,7 @@
     <head>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
-        <style>
-            #editorForm { top: 30%; width: 65%; }
-        </style>
+        
         <title id="page-title">Kurs Pajak (KMK)</title>
     </head>
     <body>

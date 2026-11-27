@@ -45,7 +45,7 @@ foreach ($heads as $h) {
     $sd = 0.0; $sk = 0.0;
     echo '<div class="jv"><div class="jvh"><span>' . pr_e($h['ref_no']) . ' &nbsp;|&nbsp; ' . pr_e(pr_date($h['journal_date'])) .
          ' &nbsp;|&nbsp; ' . pr_e($h['period_name'] ?: '-') . '</span><span>' . pr_e(strtoupper($h['status'])) . ' &middot; ' . pr_e($h['reference_type']) . '</span></div>' .
-         '<div style="padding:3px 6px;">' . pr_e($h['description']) . '</div>' .
+         '<div style="padding:3px 6px">' . pr_e($h['description']) . '</div>' .
          '<table class="rpt"><tr><th>Kode</th><th>Nama Akun</th><th>Keterangan</th><th class="r">Debit</th><th class="r">Kredit</th></tr>';
     $i = 0;
     foreach ($lines as $l) {

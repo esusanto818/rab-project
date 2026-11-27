@@ -56,31 +56,7 @@ function methodLabel($v) {
 <head>
 <meta charset="UTF-8">
 <title>Daftar Pembayaran Supplier</title>
-<style>
-    @page { size: A4 landscape; margin: 12mm; }
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 11px; color: #1f2937; margin: 0; padding: 15px; }
-    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f766e; padding-bottom: 8px; margin-bottom: 12px; }
-    .hdr .l .co-name { font-size: 16px; font-weight: bold; color: #0f766e; }
-    .hdr .l .co-addr { font-size: 10px; color: #6b7280; }
-    .hdr .r { text-align: right; }
-    .hdr .r b { font-size: 13px; color: #0f766e; }
-    .title { text-align: center; font-size: 16px; font-weight: bold; color: #0f766e; margin: 10px 0; }
-    .items { width: 100%; border-collapse: collapse; }
-    .items th { background: #0f766e; color: white; padding: 6px; text-align: left; font-size: 10px; }
-    .items th.r-al, .items td.r-al { text-align: right; }
-    .items td { padding: 5px 6px; border-bottom: 1px solid #e5e7eb; }
-    .items tfoot td { background: #f3f4f6; font-weight: bold; padding: 6px; }
-    .items tfoot td.r-al { text-align: right; }
-    .btn-bar { text-align: right; margin-bottom: 8px; }
-    .btn-bar button { padding: 6px 14px; margin-left: 6px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 11px; }
-    .btn-print { background: #0f766e; color: white; }
-    .btn-close { background: #6b7280; color: white; }
-    @media print {
-        .btn-bar { display: none; }
-        body { padding: 0; }
-    }
-</style>
+
 </head>
 <body>
 
@@ -103,7 +79,7 @@ function methodLabel($v) {
 <h1 class="title">REKAP PEMBAYARAN SUPPLIER</h1>
 
 <?php if (empty($data)): ?>
-    <p style="text-align:center; color:#6b7280;">Belum ada data pembayaran supplier.</p>
+    <p style="text-align:center">Belum ada data pembayaran supplier.</p>
 <?php else:
     $grandTotal = 0;
 ?>
@@ -150,7 +126,7 @@ function methodLabel($v) {
 </table>
 <?php endif; ?>
 
-<div class="footer" style="margin-top:20px; text-align:center; font-size:10px; color:#9ca3af; border-top:1px dashed #d1d5db; padding-top:6px;">
+<div class="footer" style="margin-top:20px; text-align:center; font-size:10px; border-top:1px dashed #d1d5db; padding-top:6px">
     Dokumen dihasilkan oleh RAB-Monitor &middot; Dicetak: <?= date('d/m/Y H:i') ?>
 </div>
 

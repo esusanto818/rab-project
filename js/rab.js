@@ -52,13 +52,13 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    rabDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal memuat detail RAB.</div>';
+                    rabDtlDiv.innerHTML = '<div style="padding:10px">Gagal memuat detail RAB.</div>';
                     rabDtlDiv.style.display = 'block'; return;
                 }
                 renderRabDetailPanel(res.data.items || [], projectName, res.data.currency, res.data.plafon);
             },
             failure: function () {
-                rabDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
+                rabDtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
                 rabDtlDiv.style.display = 'block';
             }
         });
@@ -79,31 +79,31 @@ Ext.onReady(function () {
             byCategory[cat].push(r);
         });
         
-        var curLine = '<div style="padding:0 2px 10px 2px;">Mata uang: <b>' + Ext.util.Format.htmlEncode(code) + '</b></div>';
+        var curLine = '<div style="padding:0 2px 10px 2px">Mata uang: <b>' + Ext.util.Format.htmlEncode(code) + '</b></div>';
         var plafonLine = '';
         if (pf) {
             var base = (cur && cur.base_code) || 'IDR';
             var noContract = !(pf.contract_value > 0);
             var low = pf.reserve_total > 0 && pf.reserve_remaining < pf.reserve_total * 0.1;
             var remColor = noContract ? '#ff6b5e' : (pf.reserve_remaining <= 0 ? '#ff6b5e' : (low ? '#e6a817' : '#7fe0a0'));
-            plafonLine = '<div style="padding:6px 10px; margin:0 2px 10px 2px; background:#1f2d3a; border-radius:4px; line-height:1.7;">' +
-                (noContract ? '<span style="color:#ff6b5e;">Nilai Kontrak belum diisi.</span>' :
+            plafonLine = '<div style="padding:6px 10px; margin:0 2px 10px 2px; ; line-height:1.7">' +
+                (noContract ? '<span >Nilai Kontrak belum diisi.</span>' :
                 'Nilai Kontrak: <b>' + base + ' ' + fmtAmt(pf.contract_value) + '</b> | Budget: <b>' + fmtAmt(pf.budget_base) + '</b> | Cadangan: <b>' + fmtAmt(pf.reserve_total) + '</b>') +
-                '<br>Total RAB: <b>' + fmtAmt(pf.rab_total_base) + '</b> | Terpakai: <b>' + fmtAmt(pf.reserve_used) + '</b> | <span style="color:' + remColor + ';">Sisa: <b>' + fmtAmt(pf.reserve_remaining) + '</b></span></div>';
+                '<br>Total RAB: <b>' + fmtAmt(pf.rab_total_base) + '</b> | Terpakai: <b>' + fmtAmt(pf.reserve_used) + '</b> | <span >Sisa: <b>' + fmtAmt(pf.reserve_remaining) + '</b></span></div>';
         }
         
         // Category tabs
-        var tabsHtml = '<div style="display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap;">';
+        var tabsHtml = '<div style="display:flex; gap:4px; margin-bottom:10px; flex-wrap:wrap">';
         Ext.each(CATEGORIES, function(cat) {
             var count = byCategory[cat] ? byCategory[cat].length : 0;
             var active = cat === currentCategory ? 'background:#22d3ee; color:#020c1b;' : 'background:#1f2d3a; color:#22d3ee;';
-            tabsHtml += '<button onclick="switchRabCategory(\'' + cat + '\')" style="padding:6px 12px; border:1px solid #22d3ee; border-radius:4px; cursor:pointer; font-weight:bold; ' + active + '">' +
+            tabsHtml += '<button onclick="switchRabCategory(\'' + cat + '\')" style="padding:6px 12px; ; cursor:pointer; font-weight:bold; ' + active + '">' +
                 CATEGORY_ICONS[cat] + ' ' + cat + ' (' + count + ')</button>';
         });
         tabsHtml += '</div>';
         
         var html = '<h3 class="detail-title">RAB: ' + Ext.util.Format.htmlEncode(projectName || '') + '</h3><hr class="detail-hr" />' + curLine + plafonLine + tabsHtml;
-        html += '<div id="rabDtlScroll" style="overflow-y: auto; overflow-x: auto;">';
+        html += '<div id="rabDtlScroll" style="overflow-y: auto; overflow-x: auto">';
         
         var catRows = byCategory[currentCategory] || [];
         var isMaterial = currentCategory === 'Material';
@@ -118,14 +118,14 @@ Ext.onReady(function () {
         html += '<th align="center">Status</th></tr></thead><tbody>';
         
         if (catRows.length === 0) {
-            html += '<tr><td colspan="' + (isMaterial ? 7 : 5) + '" style="padding:15px; text-align:center; color:#557982;">Belum ada data ' + currentCategory + '.</td></tr>';
+            html += '<tr><td colspan="' + (isMaterial ? 7 : 5) + '" style="padding:15px; text-align:center">Belum ada data ' + currentCategory + '.</td></tr>';
         } else {
             var grandTotal = 0;
             Ext.each(catRows, function (r) {
                 var totalBudget = (parseFloat(r.budget_qty) || 0) * (parseFloat(r.unit_price) || 0);
                 grandTotal += totalBudget;
                 html += '<tr class="data-row"><td align="left">' + Ext.util.Format.htmlEncode(r.material_name || r.category || '-') +
-                    (r.is_addendum ? ' <span style="color:#e6a817;">[TAMBAHAN]</span>' : '') + '</td>';
+                    (r.is_addendum ? ' <span >[TAMBAHAN]</span>' : '') + '</td>';
                 if (isMaterial) {
                     html += '<td align="right">' + fmtQty(r.budget_qty) + ' ' + Ext.util.Format.htmlEncode(r.unit || '') + '</td>' +
                         '<td align="right">' + fmtAmt(r.unit_price) + '</td><td align="right" class="subtotal-val">' + fmtAmt(totalBudget) + '</td>' +
@@ -135,10 +135,10 @@ Ext.onReady(function () {
                     var pct = totalBudget > 0 ? (actual / totalBudget * 100) : 0;
                     var sisa = totalBudget - actual;
                     html += '<td align="right">' + fmtAmt(totalBudget) + '</td><td align="right">' + fmtAmt(actual) + '</td>' +
-                        '<td align="right" style="color:' + (sisa < 0 ? '#c0392b' : '#27ae60') + ';">' + fmtAmt(sisa) + '</td>' +
+                        '<td align="right" >' + fmtAmt(sisa) + '</td>' +
                         '<td align="right">' + fmtPct(pct) + '</td>';
                 }
-                html += '<td align="center" style="font-weight:bold; color:' + statusColor(r.status) + ';">' + Ext.util.Format.htmlEncode(r.status || '-') + '</td></tr>';
+                html += '<td align="center" style="font-weight:bold">' + Ext.util.Format.htmlEncode(r.status || '-') + '</td></tr>';
             });
             html += '<tr class="data-row"><td colspan="' + (isMaterial ? 3 : 1) + '" align="right"><b>Total ' + currentCategory + '</b></td>' +
                 '<td align="right" class="subtotal-val"><b>' + fmtAmt(grandTotal) + '</b></td>' +
@@ -244,8 +244,8 @@ Ext.onReady(function () {
             { header: 'Budget Material', dataIndex: 'total_budget_cost', width: 120, align: 'right', renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             { header: 'Budget Biaya', dataIndex: 'expense_budget', width: 120, align: 'right', renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             { header: 'Terpakai Biaya', dataIndex: 'expense_actual', width: 120, align: 'right', renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
-            { header: 'Nilai Kontrak', dataIndex: 'contract_value', width: 120, align: 'right', renderer: function (v) { return v > 0 ? Ext.util.Format.number(v, '0,000.00') : '<span style="color:#ff6b5e;">-</span>'; } },
-            { header: 'Status RAB', dataIndex: 'rab_status', width: 100, align: 'center', renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + Ext.util.Format.htmlEncode(v || '-') + '</span>'; } }
+            { header: 'Nilai Kontrak', dataIndex: 'contract_value', width: 120, align: 'right', renderer: function (v) { return v > 0 ? Ext.util.Format.number(v, '0,000.00') : '<span >-</span>'; } },
+            { header: 'Status RAB', dataIndex: 'rab_status', width: 100, align: 'center', renderer: function (v) { return '<span style="font-weight:bold">' + Ext.util.Format.htmlEncode(v || '-') + '</span>'; } }
         ],
         viewConfig: { forceFit: true }, loadMask: true,
         listeners: {
@@ -320,11 +320,11 @@ Ext.onReady(function () {
                                     Ext.util.Format.htmlEncode(ex.get('expense_code') + ' - ' + ex.get('expense_name')) + '</option>';
                             }
                         });
-                        return '<select class="rab-expense-select" data-row="' + record.id + '" style="width:100%;max-width:100%;background:#0d2133;color:#fff;border:1px solid #1a4f5c;border-radius:3px;padding:3px;">' + options + '</select>';
+                        return '<select class="rab-expense-select" data-row="' + record.id + '" style="width:100%;max-width:100%;;;padding:3px">' + options + '</select>';
                     }
                     var rec = materialDs.getById(v);
                     if (rec) return Ext.util.Format.htmlEncode(rec.get('material_name'));
-                    if (record && record.get('material_name')) return '<span style="color:#e6a817;">' + Ext.util.Format.htmlEncode(record.get('material_name')) + '</span>';
+                    if (record && record.get('material_name')) return '<span >' + Ext.util.Format.htmlEncode(record.get('material_name')) + '</span>';
                     return '<i>-- pilih material --</i>';
                 }
             },
@@ -343,10 +343,10 @@ Ext.onReady(function () {
                     }
                 }),
                 renderer: function (v, meta, record) {
-                    if (record.get('category') !== 'Material') return '<span style="color:#668894;">-</span>';
+                    if (record.get('category') !== 'Material') return '<span >-</span>';
                     var lbl = srcLabel(v || 'COMPANY');
                     return v === 'CLIENT_SUPPLIED'
-                        ? '<span style="color:#2e9e4f;font-weight:bold;">' + Ext.util.Format.htmlEncode(lbl) + '</span>'
+                        ? '<span style="font-weight:bold">' + Ext.util.Format.htmlEncode(lbl) + '</span>'
                         : Ext.util.Format.htmlEncode(lbl);
                 }
             },
@@ -354,23 +354,23 @@ Ext.onReady(function () {
             { header: 'Qty / Amount', dataIndex: 'budget_qty', width: 100, align: 'right', editor: new myNumberField({ decimalPrecision: 4 }), renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             // [AI-BOQ] Rentang harga dari MASTER (read-only). Harga Satuan = default MAX; boleh diubah selama di antara Min dan Max.
             { header: 'Harga Min (master)', dataIndex: 'master_min', width: 105, align: 'right', renderer: function (v, meta, record) {
-                var l = rabLimits(record); return l ? '<span style="color:#9fc3d1;">' + Ext.util.Format.number(l.min / curRate(), '0,000.00') + '</span>' : '<span style="color:#668894;">-</span>';
+                var l = rabLimits(record); return l ? '<span >' + Ext.util.Format.number(l.min / curRate(), '0,000.00') + '</span>' : '<span >-</span>';
             } },
             { header: 'Harga Max (master)', dataIndex: 'master_max', width: 105, align: 'right', renderer: function (v, meta, record) {
-                var l = rabLimits(record); return l ? '<span style="color:#9fc3d1;">' + Ext.util.Format.number(l.max / curRate(), '0,000.00') + '</span>' : '<span style="color:#668894;">-</span>';
+                var l = rabLimits(record); return l ? '<span >' + Ext.util.Format.number(l.max / curRate(), '0,000.00') + '</span>' : '<span >-</span>';
             } },
             { header: 'Harga Satuan', dataIndex: 'unit_price', width: 110, align: 'right', editor: new myNumberField({ decimalPrecision: 2 }), renderer: function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); } },
             { header: 'Total', dataIndex: 'budget_qty', width: 120, align: 'right', renderer: function (v, meta, record) { var total = (parseFloat(record.get('budget_qty')) || 0) * (parseFloat(record.get('unit_price')) || 0); return '<b>' + Ext.util.Format.number(total, '0,000.00') + '</b>'; } },
-            { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + Ext.util.Format.htmlEncode(v || '-') + '</span>'; } },
+            { header: 'Status', dataIndex: 'status', width: 90, align: 'center', renderer: function (v) { return '<span style="font-weight:bold">' + Ext.util.Format.htmlEncode(v || '-') + '</span>'; } },
            {
                 id: 'rabDeleteCol',
-                header: '<span title="Hapus Baris" style="display:inline-block;vertical-align:middle;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span>',
+                header: '<span title="Hapus Baris" style="display:inline-block;vertical-align:middle"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span>',
                 dataIndex: 'material_id',
                 width: 42,
                 align: 'center',
                 fixed: true,
                 renderer: function () {
-                    return '<span class="rabDeleteBtn" style="cursor:pointer;display:inline-block;vertical-align:middle;" title="Hapus baris"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span>';
+                    return '<span class="rabDeleteBtn" style="cursor:pointer;display:inline-block;vertical-align:middle" title="Hapus baris"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></span>';
                 }
             }
         ],
@@ -428,7 +428,7 @@ Ext.onReady(function () {
         if (g && !document.getElementById('lblRabTotal')) {
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
-            totalsDiv.innerHTML = 'Total RAB: <span id="lblRabTotal" style="color:#ffffff !important;">0.00</span><div id="lblRabPlafon" style="font-size:12px; font-weight:normal; margin-top:4px;"></div>';
+            totalsDiv.innerHTML = 'Total RAB: <span id="lblRabTotal" >0.00</span><div id="lblRabPlafon" style="font-size:12px; font-weight:normal; margin-top:4px"></div>';
             g.parentNode.insertBefore(totalsDiv, g.nextSibling);
             var btn = document.createElement('button');
             btn.id = 'btnAddRabRow'; btn.type = 'button'; btn.innerHTML = '+ Tambah Item';
@@ -481,10 +481,10 @@ Ext.onReady(function () {
         if (!el || !plafon) { if (el) el.innerHTML = ''; return; }
         var f = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
         var rate = curRate(), totalBase = total * rate, budgetBase = (plafon.budget || 0) * rate, contract = plafon.contract_value || 0;
-        if (contract <= 0) { el.innerHTML = '<span style="color:#ff6b5e;">Nilai Kontrak belum diisi.</span>'; return; }
+        if (contract <= 0) { el.innerHTML = '<span >Nilai Kontrak belum diisi.</span>'; return; }
         var chk = plafonCheck(total);
         var color = chk.block ? '#ff6b5e' : (chk.usesReserve ? '#e6a817' : '#7fe0a0');
-        el.innerHTML = '<span style="color:' + color + ';">Kontrak ' + f(contract) + ' | Budget ' + f(budgetBase) + ' | Cadangan ' + f(Math.max(contract - budgetBase, 0)) + ' | RAB ' + f(totalBase) + ' | Sisa ' + f(contract - totalBase) + (chk.block ? ' (MELEBIHI)' : (chk.usesReserve ? ' (PAKAI CADANGAN)' : '')) + '</span>';
+        el.innerHTML = '<span >Kontrak ' + f(contract) + ' | Budget ' + f(budgetBase) + ' | Cadangan ' + f(Math.max(contract - budgetBase, 0)) + ' | RAB ' + f(totalBase) + ' | Sisa ' + f(contract - totalBase) + (chk.block ? ' (MELEBIHI)' : (chk.usesReserve ? ' (PAKAI CADANGAN)' : '')) + '</span>';
     }
     
     function baseCurrencyCode() {
@@ -505,8 +505,8 @@ Ext.onReady(function () {
         fRateDate = new Ext.form.DateField({ fieldLabel: 'Tanggal Kurs', format: 'd/m/Y', value: new Date(), width: 120, listeners: { select: function () { if (!rateManual) refreshRate(); }, change: function () { if (!rateManual) refreshRate(); } } });
         fRate = new myNumberField({ fieldLabel: 'Kurs', decimalPrecision: 4, value: 1, width: 130, listeners: { change: function () { rateManual = true; rabCur.rate = fRate.getValue() || 1; updateRabTotalLabel(); } } });
         fRateInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
-        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 150, bodyStyle: 'background:transparent;', items: items }; };
-        hdrForm = new Ext.form.FormPanel({ renderTo: 'rabHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent; padding:4px 2px;', items: [col(0.30, [fCur, fRateDate]), col(0.30, [fRate]), col(0.40, [fRateInfo])] });
+        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 150, items: items }; };
+        hdrForm = new Ext.form.FormPanel({ renderTo: 'rabHdrForm', border: false, layout: 'column', bodyStyle: 'padding:4px 2px', items: [col(0.30, [fCur, fRateDate]), col(0.30, [fRate]), col(0.40, [fRateInfo])] });
     }
     
     function onCurrencyChange() {
@@ -525,11 +525,11 @@ Ext.onReady(function () {
             success: function (response) {
                 if (token !== rateReq) return;
                 var res; try { res = Ext.util.JSON.decode(response.responseText); } catch (e) { return; }
-                if (!res.success) { fRateInfo.setValue('<span style="color:#c0392b;">' + Ext.util.Format.htmlEncode(res.message || 'Gagal.') + '</span>'); return; }
+                if (!res.success) { fRateInfo.setValue('<span >' + Ext.util.Format.htmlEncode(res.message || 'Gagal.') + '</span>'); return; }
                 var d = res.data || {}, enc = Ext.util.Format.htmlEncode;
                 rabCur.isBase = (d.source === 'BASE'); fRate.setReadOnly(rabCur.isBase);
                 if (d.rate) { fRate.setValue(d.rate); rabCur.rate = d.rate; }
-                fRateInfo.setValue(d.source === 'BASE' ? '<span style="color:#668894;">Mata uang dasar (kurs 1)</span>' : '<span style="color:#2e9e4f;">KMK ' + enc(d.kmk_no) + '</span>');
+                fRateInfo.setValue(d.source === 'BASE' ? '<span >Mata uang dasar (kurs 1)</span>' : '<span >KMK ' + enc(d.kmk_no) + '</span>');
                 updateRabTotalLabel();
             }
         });
@@ -541,7 +541,7 @@ Ext.onReady(function () {
         fCur.setValue(c.id); fRate.setValue(rabCur.rate); fRate.setReadOnly(rabCur.isBase);
         fRateDate.setValue((c.rate_date && Date.parseDate(c.rate_date, 'Y-m-d')) || new Date());
         rateManual = true; fCur.setDisabled(!!rabCur.locked);
-        fRateInfo.setValue(rabCur.locked ? '<span style="color:#e6a817;">Mata uang terkunci.</span>' : (rabCur.isBase ? '<span style="color:#668894;">Mata uang dasar.</span>' : '<span style="color:#668894;">Kurs tersimpan.</span>'));
+        fRateInfo.setValue(rabCur.locked ? '<span >Mata uang terkunci.</span>' : (rabCur.isBase ? '<span >Mata uang dasar.</span>' : '<span >Kurs tersimpan.</span>'));
         applyCurrencyHeaders(); itemGrid.getView().refresh(); updateRabTotalLabel();
     }
     

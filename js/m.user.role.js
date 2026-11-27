@@ -237,7 +237,7 @@ Ext.onReady(function() {
         { header: "Role Code", dataIndex: 'role_code', width: 140, sortable: true },
         { header: "Role Name", dataIndex: 'role_name', width: 180, sortable: true },
         { id: 'colDesc', header: "Description", dataIndex: 'description', width: 280, sortable: true, renderer: CellWrap },
-        { header: "Active", dataIndex: 'is_active', width: 70, align: 'center', renderer: function(v) { return v ? '<span style="color:green;font-weight:bold;">YES</span>' : '<span style="color:red;">NO</span>'; } },
+        { header: "Active", dataIndex: 'is_active', width: 70, align: 'center', renderer: function(v) { return v ? '<span style="font-weight:bold">YES</span>' : '<span >NO</span>'; } },
         { header: "Users", dataIndex: 'user_count', width: 70, align: 'center' },
         { header: "Forms", dataIndex: 'form_count', width: 70, align: 'center' },
         { header: "Updated At", dataIndex: 'updated_at', width: 140, align: 'center' }
@@ -369,7 +369,7 @@ Ext.onReady(function() {
                 css: cssGridEditColumn
             },
             {
-                header: '<img src="' + TRASH_SVG + '" style="vertical-align:middle;width:16px;height:16px;" title="Hapus baris"/>',
+                header: '<img src="' + TRASH_SVG + '" style="vertical-align:middle;width:16px;height:16px" title="Hapus baris"/>',
                 dataIndex: 'form_id',
                 width: 40,
                 fixed: true,
@@ -377,7 +377,7 @@ Ext.onReady(function() {
                 menuDisabled: true,
                 align: 'center',
                 renderer: function() {
-                    return '<img class="role-row-del" src="' + TRASH_SVG + '" style="cursor:pointer;width:16px;height:16px;vertical-align:middle;" title="Hapus baris"/>';
+                    return '<img class="role-row-del" src="' + TRASH_SVG + '" style="cursor:pointer;width:16px;height:16px;vertical-align:middle" title="Hapus baris"/>';
                 }
             }
         ],
@@ -503,12 +503,12 @@ Ext.onReady(function() {
             w.style.cssText = 'display:none;position:fixed;top:70px;left:8%;width:84%;height:calc(100% - 140px);z-index:5000;'
                 + 'background:#0b1623;border:1px solid #1e3a52;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6);overflow:hidden;';
             w.innerHTML =
-                '<div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #1e3a52;">' +
-                    '<div style="font-weight:bold;font-size:18px;color:#38BDF8;">Add Form to Role</div>' +
+                '<div style="height:52px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #1e3a52">' +
+                    '<div style="font-weight:bold;font-size:18px">Add Form to Role</div>' +
                     '<div>' +
-                        '<input id="roleAddFormSearch" type="text" placeholder="Search form..." autocomplete="off" style="margin-right:12px;padding:6px 10px;width:220px;background:#0f1f2e;color:#cbd5e1;border:1px solid #1e3a52;border-radius:4px;"/>' +
-                        '<button id="roleAddFormOk" class="field-button grey-field-button" style="margin-right:8px;background:#1f6fa8;color:#fff;padding:6px 16px;cursor:pointer;font-weight:bold;">Add Selected</button>' +
-                        '<button id="roleAddFormClose" class="field-button grey-field-button" style="background:#64748B;color:#fff;padding:6px 14px;cursor:pointer;">Close</button>' +
+                        '<input id="roleAddFormSearch" type="text" placeholder="Search form..." autocomplete="off" style="margin-right:12px;padding:6px 10px;width:220px;;"/>' +
+                        '<button id="roleAddFormOk" class="field-button grey-field-button" style="margin-right:8px;;padding:6px 16px;cursor:pointer;font-weight:bold">Add Selected</button>' +
+                        '<button id="roleAddFormClose" class="field-button grey-field-button" style="padding:6px 14px;cursor:pointer">Close</button>' +
                     '</div>' +
                 '</div>' +
                 '<div id="roleAddFormGrid"></div>';
@@ -564,7 +564,7 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 10px;',
+                style: 'margin-bottom: 10px',
                 items: [
                     {
                         columnWidth: 0.3,
@@ -618,7 +618,7 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 5px;',
+                style: 'margin-bottom: 5px',
                 items: [
                     {
                         columnWidth: 1.0,
@@ -642,13 +642,13 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-top: 10px;',
+                style: 'margin-top: 10px',
                 items: [
                     {
                         columnWidth: 1.0,
                         layout: 'column',
                         baseCls: 'x-plain',
-                        style: 'margin-bottom: 5px;',
+                        style: 'margin-bottom: 5px',
                         items: [
                             {
                                 columnWidth: 0.2,
@@ -666,7 +666,7 @@ Ext.onReady(function() {
                                 columnWidth: 0.14,
                                 layout: 'form',
                                 baseCls: 'x-plain',
-                                style: 'text-align: right;',
+                                style: 'text-align: right',
                                 items: [{
                                     xtype: 'button',
                                     text: 'Copy From',
@@ -680,7 +680,7 @@ Ext.onReady(function() {
                                 columnWidth: 0.14,
                                 layout: 'form',
                                 baseCls: 'x-plain',
-                                style: 'text-align: right;',
+                                style: 'text-align: right',
                                 items: [{
                                     xtype: 'button',
                                     text: 'Add',
@@ -743,11 +743,11 @@ Ext.onReady(function() {
 
     function renderLevelName(val) {
         switch(val) {
-            case 1: return '<span style="color:blue;">Read</span>';
-            case 2: return '<span style="color:darkgreen;">Read/Create</span>';
-            case 3: return '<span style="color:purple;">Read/Create/Update</span>';
-            case 4: return '<span style="color:darkred;font-weight:bold;">Full Access</span>';
-            default: return '<span style="color:gray;">No Access</span>';
+            case 1: return '<span >Read</span>';
+            case 2: return '<span >Read/Create</span>';
+            case 3: return '<span >Read/Create/Update</span>';
+            case 4: return '<span style="font-weight:bold">Full Access</span>';
+            default: return '<span >No Access</span>';
         }
     }
 
@@ -810,16 +810,16 @@ Ext.onReady(function() {
     }
     detailHost.style.cssText = 'margin:14px 0 0 0;border:1px solid #1e3a52;border-radius:6px;overflow:hidden;';
     detailHost.innerHTML =
-        '<div id="matrixHeader" style="height:' + DETAIL_BAR_H + 'px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #1e3a52;">' +
-            '<div id="matrixTitle" style="font-weight:bold;font-size:18px;color:#38BDF8;"></div>' +
-            '<div id="matrixButtons" style="display:none;">' +
-                '<button id="matrixEditInfo" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Edit Info</button>' +
-                '<button id="matrixCopy" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Copy From...</button>' +
-                '<button id="matrixSelectAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Select All &#9662;</button>' +
-                '<button id="matrixClearAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer;">Clear All</button>' +
-                '<button id="matrixSave" class="field-button grey-field-button" style="margin-right:8px;background:#1f6fa8;color:#fff;padding:6px 16px;cursor:pointer;font-weight:bold;">Save Matrix</button>' +
-                '<button id="matrixSync" class="field-button grey-field-button" style="margin-right:8px;background:#0f9d74;color:#fff;padding:6px 16px;cursor:pointer;font-weight:bold;" title="Sync this role matrix to all assigned users">Sync to Users</button>' +
-                '<button id="matrixExit" class="field-button grey-field-button" style="background:#64748B;color:#fff;padding:6px 14px;cursor:pointer;">Exit Edit</button>' +
+        '<div id="matrixHeader" style="height:' + DETAIL_BAR_H + 'px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #1e3a52">' +
+            '<div id="matrixTitle" style="font-weight:bold;font-size:18px"></div>' +
+            '<div id="matrixButtons" style="display:none">' +
+                '<button id="matrixEditInfo" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer">Edit Info</button>' +
+                '<button id="matrixCopy" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer">Copy From...</button>' +
+                '<button id="matrixSelectAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer">Select All &#9662;</button>' +
+                '<button id="matrixClearAll" class="field-button grey-field-button" style="margin-right:8px;padding:6px 14px;cursor:pointer">Clear All</button>' +
+                '<button id="matrixSave" class="field-button grey-field-button" style="margin-right:8px;;padding:6px 16px;cursor:pointer;font-weight:bold">Save Matrix</button>' +
+                '<button id="matrixSync" class="field-button grey-field-button" style="margin-right:8px;;padding:6px 16px;cursor:pointer;font-weight:bold" title="Sync this role matrix to all assigned users">Sync to Users</button>' +
+                '<button id="matrixExit" class="field-button grey-field-button" style="padding:6px 14px;cursor:pointer">Exit Edit</button>' +
             '</div>' +
         '</div>' +
         '<div id="matrixMainPanel"></div>';
@@ -833,8 +833,8 @@ Ext.onReady(function() {
         var t = document.getElementById('matrixTitle');
         if (!activeRoleId) { t.innerHTML = 'Access Matrix: pilih role di atas'; return; }
         var badge = matrixEditMode
-            ? ' <span style="font-size:12px;font-weight:normal;color:#F59E0B;border:1px solid #F59E0B;border-radius:10px;padding:1px 9px;margin-left:8px;">EDITING</span>'
-            : ' <span style="font-size:12px;font-weight:normal;color:#94A3B8;border:1px solid #475569;border-radius:10px;padding:1px 9px;margin-left:8px;">VIEW ONLY</span>';
+            ? ' <span style="font-size:12px;font-weight:normal;;padding:1px 9px;margin-left:8px">EDITING</span>'
+            : ' <span style="font-size:12px;font-weight:normal;;padding:1px 9px;margin-left:8px">VIEW ONLY</span>';
         t.innerHTML = 'Access Matrix: ' + Ext.util.Format.htmlEncode(activeRoleName) + ' (' + Ext.util.Format.htmlEncode(activeRoleCode) + ')' + badge;
     }
 

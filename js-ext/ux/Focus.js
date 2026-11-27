@@ -42,7 +42,7 @@ Ext.a11y.Frame = Ext.extend(Object, {
             for (i = 0; i < 4; i++) {
                 s = Ext.DomHelper.append(this.ct, {
                     cls: 'x-a11y-focusframe-side',
-                    style: 'background-color: #' + this.color
+                     + this.color
                 }, true);
                 s.visibilityMode = Ext.Element.DISPLAY;
                 this.sides.push(s);

@@ -64,7 +64,7 @@ Ext.onReady(function() {
         if (!pwd) {
             bar.style.width = '0%';
             bar.style.background = 'transparent';
-            label.innerHTML = '<span style="color:#64748b;">Masukkan password baru</span>';
+            label.innerHTML = '<span >Masukkan password baru</span>';
             checklist.style.display = 'none';
             return;
         }
@@ -74,7 +74,7 @@ Ext.onReady(function() {
         
         bar.style.width = pct + '%';
         bar.style.background = result.color;
-        label.innerHTML = '<span style="color:' + result.color + ';font-weight:bold;">' + result.label + '</span> <span style="color:#64748b;">(' + Math.round(pct) + '%)</span>';
+        label.innerHTML = '<span style="font-weight:bold">' + result.label + '</span> <span >(' + Math.round(pct) + '%)</span>';
         
         var items = [
             { text: 'Minimal 8 karakter', met: result.checks.length },
@@ -84,13 +84,13 @@ Ext.onReady(function() {
             { text: 'Minimal 1 simbol (!@#$...)', met: result.checks.special }
         ];
         
-        var html = '<div style="margin-top:8px;"><div style="font-size:11px;color:#94a3b8;margin-bottom:6px;font-weight:600;">Syarat Password:</div>';
+        var html = '<div style="margin-top:8px"><div style="font-size:11px;margin-bottom:6px;font-weight:600">Syarat Password:</div>';
         items.forEach(function(item) {
             var icon = item.met ? '✓' : '✗';
             var color = item.met ? '#10b981' : '#ef4444';
             var weight = item.met ? 'normal' : 'bold';
-            html += '<div style="font-size:11px;color:' + color + ';font-weight:' + weight + ';margin-bottom:3px;display:flex;align-items:center;gap:6px;">';
-            html += '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:' + color + ';color:#fff;text-align:center;line-height:14px;font-size:10px;">' + icon + '</span>';
+            html += '<div style="font-size:11px;font-weight:' + weight + ';margin-bottom:3px;display:flex;align-items:center;gap:6px">';
+            html += '<span style="display:inline-block;width:14px;height:14px;;text-align:center;line-height:14px;font-size:10px">' + icon + '</span>';
             html += '<span>' + item.text + '</span></div>';
         });
         html += '</div>';
@@ -294,7 +294,7 @@ Ext.onReady(function() {
                 items: [
                     {
                         xtype: 'textfield',
-                        fieldLabel: 'New Password <span style="color:red">*</span>',
+                        fieldLabel: 'New Password <span >*</span>',
                         id: 'newpwd',
                         name: 'password',
                         inputType: 'password',
@@ -326,7 +326,7 @@ Ext.onReady(function() {
                 items: [
                     {
                         xtype: 'textfield',
-                        fieldLabel: 'Confirm Password <span style="color:red">*</span>',
+                        fieldLabel: 'Confirm Password <span >*</span>',
                         id: 'confpwd',
                         name: 'confirm_password',
                         inputType: 'password',
@@ -364,15 +364,15 @@ Ext.onReady(function() {
             // PASSWORD STRENGTH INDICATOR + CHECKLIST
             {
                 columnWidth: 1,
-                html: '<div id="pwd-indicator-container" style="margin: 0 0 20px 0; padding: 12px; background: rgba(5, 21, 37, 0.6); border: 1px solid rgba(34, 211, 238, 0.15); border-radius: 8px;">' +
-                      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
-                      '<div style="font-size:11px;color:#94a3b8;font-weight:600;min-width:80px;">Kekuatan:</div>' +
-                      '<div style="flex:1;height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;">' +
-                      '<div id="pwd-strength-bar" style="height:100%;width:0%;background:transparent;transition:all 0.3s ease;border-radius:4px;"></div>' +
+                html: '<div id="pwd-indicator-container" style="margin: 0 0 20px 0; padding: 12px;">' +
+                      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+                      '<div style="font-size:11px;font-weight:600;min-width:80px">Kekuatan:</div>' +
+                      '<div style="flex:1;height:8px;;overflow:hidden">' +
+                      '<div id="pwd-strength-bar" style="height:100%;width:0%;transition:all 0.3s ease"></div>' +
                       '</div>' +
-                      '<div id="pwd-strength-label" style="font-size:11px;color:#64748b;min-width:120px;text-align:right;">Masukkan password baru</div>' +
+                      '<div id="pwd-strength-label" style="font-size:11px;min-width:120px;text-align:right">Masukkan password baru</div>' +
                       '</div>' +
-                      '<div id="pwd-checklist" style="display:none;"></div>' +
+                      '<div id="pwd-checklist" style="display:none"></div>' +
                       '</div>'
             },
             

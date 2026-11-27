@@ -11,10 +11,7 @@
 ?>
 <html>
     <head>
-        <style>
-            #editorForm {top: 50%; width: 90%; height: 75%;}
-            #addForm {top: 50%; width: 85%; height: 70%;}
-        </style>
+        
         <title id="page-title">Stock Transfer</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <script type="text/javascript">

@@ -13,9 +13,7 @@
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="../css/header.black.css"/>
-    <style>
-      #editorForm {top: 50%; width: 98%;}
-    </style>
+    
     <title id="page-title">Location Name</title>
   </head>
   <script type="text/javascript" src="../js-ext/ux/CheckColumn.js"></script>

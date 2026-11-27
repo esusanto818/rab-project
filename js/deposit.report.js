@@ -58,10 +58,10 @@ Ext.onReady(function () {
         renderTo: 'depFilterBar',
         layout: 'column',
         border: false,
-        bodyStyle: 'background:transparent; padding:8px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
+        bodyStyle: 'padding:8px 0',
+        defaults: { border: false,  },
         items: [
-            { columnWidth: 0.18, style: 'padding-right:8px;', items: btnCustomer },
+            { columnWidth: 0.18, style: 'padding-right:8px', items: btnCustomer },
             { columnWidth: 0.18, items: btnSupplier }
         ]
     });
@@ -97,17 +97,17 @@ Ext.onReady(function () {
             { header: 'Nama', dataIndex: 'party_name', width: 220, renderer: CellWrap },
             {
                 header: 'Total Masuk (Lifetime)', dataIndex: 'total_in', width: 150, align: 'right',
-                renderer: function (v) { return '<span style="color:#2e9e4f;">' + Ext.util.Format.number(v || 0, '0,000.00') + '</span>'; }
+                renderer: function (v) { return '<span >' + Ext.util.Format.number(v || 0, '0,000.00') + '</span>'; }
             },
             {
                 header: 'Total Terpakai (Lifetime)', dataIndex: 'total_out', width: 150, align: 'right',
-                renderer: function (v) { return '<span style="color:#c0392b;">' + Ext.util.Format.number(v || 0, '0,000.00') + '</span>'; }
+                renderer: function (v) { return '<span >' + Ext.util.Format.number(v || 0, '0,000.00') + '</span>'; }
             },
             {
                 header: 'Saldo Saat Ini', dataIndex: 'current_balance', width: 140, align: 'right',
                 renderer: function (v) {
                     var color = v > 0.01 ? '#f39c12' : '#888';
-                    return '<b style="color:' + color + ';">' + Ext.util.Format.number(v || 0, '0,000.00') + '</b>';
+                    return '<b >' + Ext.util.Format.number(v || 0, '0,000.00') + '</b>';
                 }
             },
             { header: 'Mutasi Terakhir', dataIndex: 'last_movement_date', width: 120 }
@@ -157,7 +157,7 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    mutationDiv.innerHTML = '<div style="color:yellow;">Gagal memuat mutasi.</div>';
+                    mutationDiv.innerHTML = '<div >Gagal memuat mutasi.</div>';
                     mutationDiv.style.display = 'block';
                     return;
                 }
@@ -169,32 +169,32 @@ Ext.onReady(function () {
     function renderMutationView(rows) {
         var fmt = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
 
-        var html = '<h3 style="margin-top:0;">Mutasi Deposit: ' + currentPartyName + '</h3>' +
-                   '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.15); margin:10px 0 15px;" />' +
-                   '<table width="100%" style="border-collapse:collapse; font-size:13px;">' +
-                   '<tr style="border-bottom:1px solid rgba(255,255,255,0.2); color:#bbb; text-align:left;">' +
-                   '<td style="padding:6px;">Tanggal</td>' +
-                   '<td style="padding:6px;">No. Jurnal</td>' +
-                   '<td style="padding:6px;">Keterangan</td>' +
-                   '<td style="padding:6px;" align="right">Masuk</td>' +
-                   '<td style="padding:6px;" align="right">Terpakai</td>' +
-                   '<td style="padding:6px;" align="right">Saldo Berjalan</td>' +
+        var html = '<h3 style="margin-top:0">Mutasi Deposit: ' + currentPartyName + '</h3>' +
+                   '<hr style="border-top:1px solid rgba(255,255,255,0.15); margin:10px 0 15px" />' +
+                   '<table width="100%" style="border-collapse:collapse; font-size:13px">' +
+                   '<tr style="border-bottom:1px solid rgba(255,255,255,0.2); text-align:left">' +
+                   '<td style="padding:6px">Tanggal</td>' +
+                   '<td style="padding:6px">No. Jurnal</td>' +
+                   '<td style="padding:6px">Keterangan</td>' +
+                   '<td style="padding:6px" align="right">Masuk</td>' +
+                   '<td style="padding:6px" align="right">Terpakai</td>' +
+                   '<td style="padding:6px" align="right">Saldo Berjalan</td>' +
                    '</tr>';
 
         if (!rows || rows.length === 0) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#888;">Belum ada mutasi.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center">Belum ada mutasi.</td></tr>';
         } else {
             Ext.each(rows, function (r) {
                 var movement = parseFloat(r.movement) || 0;
                 var masuk = movement > 0 ? fmt(movement) : '-';
                 var keluar = movement < 0 ? fmt(-movement) : '-';
-                html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.08);">' +
-                        '<td style="padding:6px;">' + r.journal_date + '</td>' +
-                        '<td style="padding:6px;">' + r.ref_no + '</td>' +
-                        '<td style="padding:6px;">' + (r.description || '') + '</td>' +
-                        '<td style="padding:6px;" align="right" style="color:#2e9e4f;">' + masuk + '</td>' +
-                        '<td style="padding:6px;" align="right" style="color:#c0392b;">' + keluar + '</td>' +
-                        '<td style="padding:6px;" align="right"><b>' + fmt(r.running_balance) + '</b></td>' +
+                html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.08)">' +
+                        '<td style="padding:6px">' + r.journal_date + '</td>' +
+                        '<td style="padding:6px">' + r.ref_no + '</td>' +
+                        '<td style="padding:6px">' + (r.description || '') + '</td>' +
+                        '<td style="padding:6px" align="right" >' + masuk + '</td>' +
+                        '<td style="padding:6px" align="right" >' + keluar + '</td>' +
+                        '<td style="padding:6px" align="right"><b>' + fmt(r.running_balance) + '</b></td>' +
                         '</tr>';
             });
         }

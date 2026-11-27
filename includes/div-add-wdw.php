@@ -1,4 +1,4 @@
-<div id="addWdw" class="clsModalWdw" style="z-index:200; display:none;">
+<div id="addWdw" class="clsModalWdw" style="z-index:200; display:none">
   <div id="black_overlay"></div>
   <div id="addForm">
     <div id="addFormHeader">
@@ -11,7 +11,7 @@
           <button type="button" id="addSaveEdit" class="form-button green-form-button">OK</button>
         </div>
       </div>
-      <div id="addFormHeaderSearch" style="display:none;">
+      <div id="addFormHeaderSearch" style="display:none">
         <input id="qAdd" name="qAdd" type="text" onkeydown="replaceEnterKeyWithTab()" size="40" placeholder="Search..."/>
       </div>
       <div id="addFormHeaderText"></div>

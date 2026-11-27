@@ -60,40 +60,7 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             }
         }
     </script>
-    <style>
-        /* 1. MATIKAN SEMUA SCROLLBAR SECARA MUTLAK */
-        html, body {
-            background-color: transparent !important;
-            overflow: hidden !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        ::-webkit-scrollbar {
-            display: none !important;
-            width: 0px !important;
-            height: 0px !important;
-        }
-
-        * {
-            -ms-overflow-style: none !important;  /* IE & Edge */
-            scrollbar-width: none !important;  /* Firefox */
-        }
-
-        /* 2. HOVER DROPDOWN ANIMATION */
-        .nav-item:hover .dropdown-menu {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-        
-        .dropdown-menu {
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-6px);
-            transition: all 0.2s ease-in-out;
-        }
-    </style>
+    
 </head>
 <body class="font-body text-slate-200 antialiased select-none">
 

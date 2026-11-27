@@ -1,4 +1,4 @@
-<div id="prnWdw" class="clsModalWdw" style="z-index:400; display:none;">
+<div id="prnWdw" class="clsModalWdw" style="z-index:400; display:none">
   <div id="black_overlay"></div>
   <div id="prnForm">
     <div id="prnFormHeader">

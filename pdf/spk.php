@@ -39,7 +39,7 @@ function q4($v) { return number_format((float)$v, 4, '.', ','); }
 pr_open('SPK ' . $s['spk_no'], 'SURAT PERINTAH KERJA (SPK)',
     ['No. SPK: <b>' . pr_e($s['spk_no']) . '</b> &nbsp;|&nbsp; Tanggal: <b>' . pr_e(pr_date($s['spk_date'])) . '</b> &nbsp;|&nbsp; Status: <b>' . pr_e($s['status']) . '</b>']);
 ?>
-<table class="rpt fx" style="margin-top:8px;">
+<table class="rpt fx" style="margin-top:8px">
     <colgroup><col style="width:150px"><col></colgroup>
     <tr><td><b>Proyek</b></td><td><?php echo pr_e($s['project_name']); ?></td></tr>
     <tr class="z"><td><b>Klien</b></td><td><?php echo pr_e($s['client_name'] ?: '-'); ?></td></tr>
@@ -66,10 +66,10 @@ if (!count($items)) echo '<tr><td colspan="8" class="muted">Tidak ada item.</td>
 ?>
 </table>
 
-<table class="fx" style="width:100%; margin-top:40px; border-collapse:collapse; text-align:center;">
+<table class="fx" style="width:100%; margin-top:40px; border-collapse:collapse; text-align:center">
     <colgroup><col><col><col></colgroup>
     <tr><td>Dibuat oleh</td><td>Disetujui oleh</td><td>Diterima oleh (Mandor)</td></tr>
-    <tr><td style="height:80px;"></td><td></td><td></td></tr>
+    <tr><td style="height:80px"></td><td></td><td></td></tr>
     <tr><td>( ........................ )</td><td>( ........................ )</td><td>( <?php echo pr_e($s['foreman'] ?: '........................'); ?> )</td></tr>
 </table>
 <?php pr_close(); ?>

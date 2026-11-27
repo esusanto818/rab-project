@@ -36,7 +36,7 @@ try {
         if ($updateStmt->rowCount() > 0) {
             echo "<h3>Berhasil! Password untuk user <b>'" . htmlspecialchars($actual_username) . "'</b> telah diperbarui menjadi <b>" . htmlspecialchars($new_password) . "</b>.</h3>";
             echo "<p>Hasil enkripsi yang masuk ke database: <code>" . htmlspecialchars($encrypted_password) . "</code></p>";
-            echo "<p style='color:red;'><b>PENTING:</b> Silakan hapus file ini demi keamanan setelah selesai digunakan.</p>";
+            echo "<p ><b>PENTING:</b> Silakan hapus file ini demi keamanan setelah selesai digunakan.</p>";
         } else {
             echo "<h3>Informasi: Query berhasil dijalankan, namun password tidak berubah.</h3>";
             echo "<p>Hal ini terjadi kemungkinan karena password baru yang Anda input (setelah dienkripsi) <b>sama persis</b> dengan password lama yang sudah ada di database.</p>";

@@ -103,26 +103,7 @@ function section($title, $items, $totalLabel, $total) {
 <head>
 <meta charset="utf-8">
 <title>Neraca Keuangan - <?php echo e($period['period_name']); ?></title>
-<style>
-    @page { size: A4 portrait; margin: 15mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; font-size: 12px; margin: 0; padding: 16px; }
-    h1 { text-align: center; font-size: 18px; margin: 0 0 4px 0; }
-    .sub { text-align: center; color: #333; margin-bottom: 4px; }
-    .status { text-align: center; font-weight: bold; margin: 6px 0 14px 0; color: <?php echo $balanced ? '#1b7a3a' : '#b00020'; ?>; }
-    h3 { font-size: 14px; margin: 16px 0 6px 0; border-bottom: 2px solid #000; padding-bottom: 3px; }
-    table.rpt { width: 100%; border-collapse: collapse; }
-    table.rpt td { padding: 4px 6px; }
-    table.rpt tr:nth-child(even) td { background: #f1f1f1; }          /* zebra, tetap terlihat saat cetak */
-    table.rpt tr.tot td { font-weight: bold; border-top: 1px solid #000; background: #fff; }
-    td.c { width: 70px; } td.r { text-align: right; white-space: nowrap; }
-    .muted { color: #777; font-style: italic; }
-    .grand { margin-top: 18px; padding: 8px 6px; border-top: 2px solid #000; border-bottom: 2px solid #000; font-size: 14px; font-weight: bold; display: flex; justify-content: space-between; }
-    .foot { margin-top: 16px; font-size: 10px; color: #555; }
-    .noprint { margin-bottom: 12px; text-align: right; }
-    .noprint button { padding: 6px 14px; cursor: pointer; }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @media print { .noprint { display: none; } body { padding: 0; } }
-</style>
+
 </head>
 <body>
 <div class="noprint"><button onclick="window.print()">Cetak / Simpan PDF</button></div>

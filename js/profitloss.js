@@ -63,7 +63,7 @@ Ext.onReady(function () {
                 }
             },
             exception: function () {
-                reportDiv.innerHTML = '<div style="color:yellow;">Gagal memuat daftar periode.</div>';
+                reportDiv.innerHTML = '<div >Gagal memuat daftar periode.</div>';
             }
         }
     });
@@ -79,11 +79,11 @@ Ext.onReady(function () {
         renderTo: 'plFilterBar',
         layout: 'column',
         border: false,
-        bodyStyle: 'background:transparent; padding:8px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
+        bodyStyle: 'padding:8px 0',
+        defaults: { border: false,  },
         items: [
             { columnWidth: 0.35, layout: 'form', labelWidth: 60, items: fldPeriod },
-            { columnWidth: 0.15, style: 'padding-top:2px;', items: btnShow }
+            { columnWidth: 0.15, style: 'padding-top:2px', items: btnShow }
         ]
     });
 
@@ -102,15 +102,15 @@ Ext.onReady(function () {
             success: function (response) {
                 var res;
                 try { res = Ext.util.JSON.decode(response.responseText); }
-                catch (e) { reportDiv.innerHTML = '<div style="color:yellow;">Respons server tidak valid.</div>'; return; }
+                catch (e) { reportDiv.innerHTML = '<div >Respons server tidak valid.</div>'; return; }
                 if (!res.success) {
-                    reportDiv.innerHTML = '<div style="color:yellow;">' + (res.message || 'Gagal memuat data.') + '</div>';
+                    reportDiv.innerHTML = '<div >' + (res.message || 'Gagal memuat data.') + '</div>';
                     return;
                 }
                 renderPLView(res);
             },
             failure: function () {
-                reportDiv.innerHTML = '<div style="color:yellow;">Gagal menghubungi server.</div>';
+                reportDiv.innerHTML = '<div >Gagal menghubungi server.</div>';
             }
         });
     }
@@ -126,9 +126,9 @@ Ext.onReady(function () {
         // satu blok seksi (pendapatan / beban) dengan dua kolom nilai
         function section(title, color, items, totalLabel, total, totalCum) {
             // [HEADER] judul seksi 18px; baris header kolom 14px, tebal, putih, berlatar agar terbaca jelas
-            var h = '<h3 style="color:' + color + '; margin:18px 0 8px 0; font-size:18px;">' + title + '</h3>' +
-                    '<table width="100%" style="border-collapse:collapse; color:' + color + ';">' +
-                    '<tr style="color:#ffffff; font-size:14px; font-weight:bold; background:rgba(255,255,255,0.10); border-bottom:1px solid rgba(255,255,255,0.35);">' +
+            var h = '<h3 style="margin:18px 0 8px 0; font-size:18px">' + title + '</h3>' +
+                    '<table width="100%" style="border-collapse:collapse">' +
+                    '<tr style="font-size:14px; font-weight:bold; border-bottom:1px solid rgba(255,255,255,0.35)">' +
                     '<td style="' + hdrCell + '" width="90">Kode</td><td style="' + hdrCell + '">Nama Akun</td>' +
                     '<td align="right" style="' + hdrCell + '" width="170">Periode Ini</td>' +
                     '<td align="right" style="' + hdrCell + '" width="190">Kumulatif s/d Periode</td></tr>';
@@ -139,34 +139,34 @@ Ext.onReady(function () {
                      '<td align="right" style="' + cellPad + '">' + fmt(a.amount) + '</td>' +
                      '<td align="right" style="' + cellPad + '">' + fmt(a.amount_cum) + '</td></tr>';
             });
-            h += '<tr style="font-weight:bold; font-size:15px; background:rgba(255,255,255,0.05); border-top:1px solid rgba(255,255,255,0.25);">' +
-                 '<td colspan="2" style="padding:8px 6px;">' + totalLabel + '</td>' +
-                 '<td align="right" style="padding:8px 6px;">' + fmt(total) + '</td>' +
-                 '<td align="right" style="padding:8px 6px;">' + fmt(totalCum) + '</td></tr></table>';
+            h += '<tr style="font-weight:bold; font-size:15px; border-top:1px solid rgba(255,255,255,0.25)">' +
+                 '<td colspan="2" style="padding:8px 6px">' + totalLabel + '</td>' +
+                 '<td align="right" style="padding:8px 6px">' + fmt(total) + '</td>' +
+                 '<td align="right" style="padding:8px 6px">' + fmt(totalCum) + '</td></tr></table>';
             return h;
         }
 
         var netColor = function (v) { return v >= 0 ? '#4ade80' : '#f87171'; };
 
-        var html = '<h2 style="text-align:center; margin-bottom:4px; font-weight:normal;">LAPORAN RUGI LABA</h2>' +
-                   '<h4 style="text-align:center; color:#bbb; margin-top:0; font-weight:normal;">Periode: ' + enc(res.period_name) +
+        var html = '<h2 style="text-align:center; margin-bottom:4px; font-weight:normal">LAPORAN RUGI LABA</h2>' +
+                   '<h4 style="text-align:center; margin-top:0; font-weight:normal">Periode: ' + enc(res.period_name) +
                    ' (' + enc(res.start_date) + ' s/d ' + enc(res.end_date) + ')</h4>' +
-                   '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.15); margin:15px 0;" />';
+                   '<hr style="border-top:1px solid rgba(255,255,255,0.15); margin:15px 0" />';
 
         // [CUM-CHECK] Bila server masih memakai profitlossCRD.php lama (tanpa amount_cum), beri tahu -- jangan tampil 0.00 yang menyesatkan
         if (res.total_revenue_cum === undefined) {
-            html += '<div style="padding:8px 10px; margin-bottom:8px; background:rgba(255,235,59,0.12); color:#ffeb3b; border-radius:3px;">' +
+            html += '<div style="padding:8px 10px; margin-bottom:8px;">' +
                     'Kolom kumulatif belum tersedia: file php-crud/profitlossCRD.php di server belum versi terbaru (tanpa field amount_cum).</div>';
         }
 
         html += section('PENDAPATAN', '#7cdc2f', res.revenues, 'TOTAL PENDAPATAN', res.total_revenue, res.total_revenue_cum);
         html += section('BEBAN / BIAYA', '#e8554a', res.expenses, 'TOTAL BEBAN', res.total_expense, res.total_expense_cum);
 
-        html += '<table width="100%" style="border-collapse:collapse; margin-top:20px;">' +
-                '<tr style="font-weight:bold; font-size:18px; color:#ffffff; border-top:2px solid rgba(255,255,255,0.3);">' +
-                '<td style="padding:10px 6px; color:#ffffff;">' + (res.net_profit_loss >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH') + '</td>' +
-                '<td align="right" style="padding:10px 6px; color:' + netColor(res.net_profit_loss) + ';" width="170">' + fmt(res.net_profit_loss) + '</td>' +
-                '<td align="right" style="padding:10px 6px; color:' + netColor(res.net_profit_loss_cum) + ';" width="190">' + fmt(res.net_profit_loss_cum) + '</td>' +
+        html += '<table width="100%" style="border-collapse:collapse; margin-top:20px">' +
+                '<tr style="font-weight:bold; font-size:18px; border-top:2px solid rgba(255,255,255,0.3)">' +
+                '<td style="padding:10px 6px">' + (res.net_profit_loss >= 0 ? 'LABA BERSIH' : 'RUGI BERSIH') + '</td>' +
+                '<td align="right" style="padding:10px 6px" width="170">' + fmt(res.net_profit_loss) + '</td>' +
+                '<td align="right" style="padding:10px 6px" width="190">' + fmt(res.net_profit_loss_cum) + '</td>' +
                 '</tr></table>';
 
         reportDiv.innerHTML = html;

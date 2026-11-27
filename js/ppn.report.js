@@ -104,7 +104,7 @@ Ext.onReady(function () {
             '<button type="button" class="btn exp" id="ppnExport">Export CSV (Excel)</button>' +
             '</div>';
     Ext.each(TABS, function (t) {
-        html += '<div class="ppn-panel" id="ppnPanel_' + t.key + '" style="display:none;">' +
+        html += '<div class="ppn-panel" id="ppnPanel_' + t.key + '" style="display:none">' +
                 (t.key === 'summary' ? '<div class="ppn-totals" id="ppnTotals">Pilih periode lalu klik Tampilkan.</div>' : '') +
                 '<div id="ppnGrid_' + t.key + '"></div></div>';
     });
@@ -130,14 +130,14 @@ Ext.onReady(function () {
     var amtCol = function (header, di, w) {
         return { header: header, dataIndex: di, width: w || 120, align: 'right', renderer: function (v) { return fmtAmt(v); } };
     };
-    var fakturRenderer = function (v) { return v ? enc(v) : '<span style="color:#e6a817;">belum diisi</span>'; };    // faktur wajib untuk kredit pajak masukan
+    var fakturRenderer = function (v) { return v ? enc(v) : '<span >belum diisi</span>'; };    // faktur wajib untuk kredit pajak masukan
     var netRenderer = function (v) {
         var n = parseFloat(v) || 0;
-        return '<span style="color:' + (n > 0 ? '#ff6b5e' : (n < 0 ? '#7fe0a0' : '#9fc3d1')) + ';font-weight:bold;">' + fmtAmt(n) + '</span>';
+        return '<span style="font-weight:bold">' + fmtAmt(n) + '</span>';
     };
     var rateRenderer = function (v) { return v + '%'; };
 
-    var EMPTY_TXT = '<div style="padding:16px;color:#9fc3d1;">Tidak ada transaksi ber-PPN pada periode ini (hanya termin / invoice dengan PPN &gt; 0 yang tampil; masa pajak mengikuti tanggal faktur, bila kosong tanggal invoice).</div>';
+    var EMPTY_TXT = '<div style="padding:16px">Tidak ada transaksi ber-PPN pada periode ini (hanya termin / invoice dengan PPN &gt; 0 yang tampil; masa pajak mengikuti tanggal faktur, bila kosong tanggal invoice).</div>';
     var gridHeight = 300;      // dihitung ulang setelah tab & filter terpasang
     function calcHeight() {
         var used = document.getElementById('ppnTabs').offsetHeight + document.getElementById('ppnFilter').offsetHeight + 20;
@@ -244,8 +244,8 @@ Ext.onReady(function () {
         var net = parseFloat(t.net_ppn) || 0;
         var label = net > 0 ? 'PPN KURANG BAYAR' : (net < 0 ? 'PPN LEBIH BAYAR (dapat dikompensasi)' : 'PPN NIHIL');
         var color = net > 0 ? '#ff6b5e' : '#7fe0a0';
-        el.innerHTML = 'PPN Keluaran <b style="color:#e6f1f8;">' + fmtAmt(t.keluaran_ppn) + '</b> &nbsp;-&nbsp; PPN Masukan <b style="color:#e6f1f8;">' +
-                       fmtAmt(t.masukan_ppn) + '</b> &nbsp;=&nbsp; <span style="color:' + color + ';font-weight:bold;">' +
+        el.innerHTML = 'PPN Keluaran <b >' + fmtAmt(t.keluaran_ppn) + '</b> &nbsp;-&nbsp; PPN Masukan <b >' +
+                       fmtAmt(t.masukan_ppn) + '</b> &nbsp;=&nbsp; <span style="font-weight:bold">' +
                        label + ' ' + fmtAmt(Math.abs(net)) + '</span>';
     });
 

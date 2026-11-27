@@ -22,7 +22,7 @@ Ext.ux.ClockController=function(config) {
 }
 Ext.extend(Ext.ux.ClockController, Ext.util.Observable, {
 	/**
-	 * @var Curly.Canvas Das für Zeichenvorgänge zu verwendende Canvas-Objekt.
+	 * @var Curly.Canvas Das fr Zeichenvorgnge zu verwendende Canvas-Objekt.
 	 */
 	canvas: null,
 	/**
@@ -34,7 +34,7 @@ Ext.extend(Ext.ux.ClockController, Ext.util.Observable, {
 	 */
 	y: 0,
 	/**
-	 * @var integer Größe der Uhr.
+	 * @var integer Gre der Uhr.
 	 */
 	size: 30,
 	/**
@@ -48,73 +48,73 @@ Ext.extend(Ext.ux.ClockController, Ext.util.Observable, {
 	autoClear: true,
 	/**
 	 * @var boolean Flag, ob dieses Objekt mit Hilfe eines Taskrunners
-	 * regelmäßig neu gerendert werden soll.
+	 * regelmig neu gerendert werden soll.
 	 */
 	runTask: true,
 	/**
-	 * @var Object Der im TaskRunner eingefügte Task.
+	 * @var Object Der im TaskRunner eingefgte Task.
 	 */
 	task: null,
 	/**
-	 * @var Object Ein Objekt der Form {h: H, m: M, s: S} für die zu rendernde Uhrzeit.
+	 * @var Object Ein Objekt der Form {h: H, m: M, s: S} fr die zu rendernde Uhrzeit.
 	 * Standardwert ist die jeweils aktuelle Uhrzeit.
 	 */
 	date: null,
 	/**
-	 * @var Object Canvas-Zustand während des Zeichnen des Außenkreises.
+	 * @var Object Canvas-Zustand whrend des Zeichnen des Auenkreises.
 	 */
 	outerArcState: {
 		strokeStyle:		'black',
 		lineWidth:			1
 	},
 	/**
-	 * @var Object Canvas-Zustand während des Zeichnen der Skala.
+	 * @var Object Canvas-Zustand whrend des Zeichnen der Skala.
 	 */
 	scaleState: {
 		lineWidth:			1
 	},
 	/**
-	 * @var integer Länge der Skalaangaben zu 3, 6, 9 und 12 Uhr im Verhältnis
-	 * zu der Gesamtgröße.
+	 * @var integer Lnge der Skalaangaben zu 3, 6, 9 und 12 Uhr im Verhltnis
+	 * zu der Gesamtgre.
 	 */
 	scaleInnerSize: 4,
 	/**
-	 * @var integer Länge der Skalaangaben zu 1, 2, 4, 5, 7, 8, 10 und 11 Uhr.
+	 * @var integer Lnge der Skalaangaben zu 1, 2, 4, 5, 7, 8, 10 und 11 Uhr.
 	 */
 	scaleOuterSize: 8,
 	/**
-	 * @var Object Canvas-Zustand während des Zeichnen des Stundenzeiger.
+	 * @var Object Canvas-Zustand whrend des Zeichnen des Stundenzeiger.
 	 */
 	hourIndicatorState: {
 		lineWidth:			3
 	},
 	/**
-	 * @var Object Canvas-Zustand während des Zeichnen des Minutenzeiger.
+	 * @var Object Canvas-Zustand whrend des Zeichnen des Minutenzeiger.
 	 */
 	minuteIndicatorState: {
 		lineWidth:			2
 	},
 	/**
-	 * @var Object Canvas-Zustand während des Zeichnen des Sekundenzeiger.
+	 * @var Object Canvas-Zustand whrend des Zeichnen des Sekundenzeiger.
 	 */
 	secondIndicatorState: {
 		lineWidth:			1
 	},
 	/**
-	 * @var integer Wert für die Berechnung des Stundenzeigers proportional zu
-	 * der size-Angabe. Die verwendete Zeigerlänge entspricht dem size-Wert
+	 * @var integer Wert fr die Berechnung des Stundenzeigers proportional zu
+	 * der size-Angabe. Die verwendete Zeigerlnge entspricht dem size-Wert
 	 * verringert um diesen Wert.
 	 */
 	hourIndicatorShorten: 10,
 	/**
-	 * @var integer Wert für die Berechnung des Minutenzeigers proportional zu
-	 * der size-Angabe. Die verwendete Zeigerlänge entspricht dem size-Wert
+	 * @var integer Wert fr die Berechnung des Minutenzeigers proportional zu
+	 * der size-Angabe. Die verwendete Zeigerlnge entspricht dem size-Wert
 	 * verringert um diesen Wert.
 	 */
 	minuteIndicatorShorten: 2,
 	/**
-	 * @var integer Wert für die Berechnung des Sekundenzeigers proportional zu
-	 * der size-Angabe. Die verwendete Zeigerlänge entspricht dem size-Wert
+	 * @var integer Wert fr die Berechnung des Sekundenzeigers proportional zu
+	 * der size-Angabe. Die verwendete Zeigerlnge entspricht dem size-Wert
 	 * verringert um diesen Wert.
 	 */
 	secondIndicatorShorten: 1,

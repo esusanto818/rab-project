@@ -134,7 +134,7 @@ Ext.onReady(function () {
             '<button type="button" class="btn exp" id="arExport">Export CSV (Excel)</button>' +
             '</div>';
     Ext.each(TABS, function (t) {
-        html += '<div class="ar-panel" id="arPanel_' + t.key + '" style="display:none;">' +
+        html += '<div class="ar-panel" id="arPanel_' + t.key + '" style="display:none">' +
                 (t.key === 'cards' ? '<div class="ar-totals" id="arTotals">Pilih periode lalu klik Tampilkan.</div>' : '') +
                 '<div id="arGrid_' + t.key + '"></div></div>';
     });
@@ -169,7 +169,7 @@ Ext.onReady(function () {
     var zeroRow = function (rec) { return (parseFloat(rec.get('sisa')) === 0 && parseFloat(rec.get('outstanding_all')) === 0) ? 'x-grid3-row-ar-zero' : ''; };
     var oldRow = function (rec) { return rec.get('bucket_90_plus') > 0 ? 'x-grid3-row-ar-old' : ''; };
 
-    var EMPTY_TXT = '<div style="padding:16px;color:#9fc3d1;">Tidak ada transaksi piutang pada periode ini (hanya tagihan resmi/released yang tampil).</div>';
+    var EMPTY_TXT = '<div style="padding:16px">Tidak ada transaksi piutang pada periode ini (hanya tagihan resmi/released yang tampil).</div>';
     var gridHeight = 300;      // dihitung ulang setelah tab & filter terpasang
     function calcHeight() {
         var used = document.getElementById('arTabs').offsetHeight + document.getElementById('arFilter').offsetHeight + 20;
@@ -219,7 +219,7 @@ Ext.onReady(function () {
                     { header: 'Tgl Invoice', dataIndex: 'invoice_date', width: 90, align: 'center' },
                     { header: 'Tgl Aging', dataIndex: 'aging_date', width: 90, align: 'center' },
                     { header: 'Tgl Jatuh Tempo', dataIndex: 'due_date', width: 100, align: 'center',
-                      renderer: function (v) { return v ? enc(v) : '<span style="color:#e6a817;">-</span>'; } },
+                      renderer: function (v) { return v ? enc(v) : '<span >-</span>'; } },
                     amtCol('Nilai', 'invoice_amount'),
                     amtCol('Dibayar', 'paid_amount'),
                     { header: 'Outstanding', dataIndex: 'outstanding', width: 130, align: 'right',
@@ -275,12 +275,12 @@ Ext.onReady(function () {
         var t = (store.reader.jsonData || {}).totals;
         if (!el) return;
         if (!t) { el.innerHTML = ''; return; }
-        el.innerHTML = 'Saldo awal: <b style="color:#e6f1f8;">' + fmtAmt(t.saldo_awal) + '</b>' +
-                       ' &nbsp;|&nbsp; Faktur: <b style="color:#e6f1f8;">' + fmtAmt(t.faktur) + '</b>' +
-                       ' &nbsp;|&nbsp; Pembayaran: <b style="color:#e6f1f8;">' + fmtAmt(t.pembayaran) + '</b>' +
-                       ' &nbsp;|&nbsp; Alokasi: <b style="color:#e6f1f8;">' + fmtAmt(t.alokasi) + '</b>' +
+        el.innerHTML = 'Saldo awal: <b >' + fmtAmt(t.saldo_awal) + '</b>' +
+                       ' &nbsp;|&nbsp; Faktur: <b >' + fmtAmt(t.faktur) + '</b>' +
+                       ' &nbsp;|&nbsp; Pembayaran: <b >' + fmtAmt(t.pembayaran) + '</b>' +
+                       ' &nbsp;|&nbsp; Alokasi: <b >' + fmtAmt(t.alokasi) + '</b>' +
                        ' &nbsp;|&nbsp; <b>Sisa: ' + fmtAmt(t.sisa) + '</b>' +
-                       ' &nbsp;|&nbsp; >90 hari: <span style="color:' + (t.bucket_90_plus > 0 ? '#ff6b5e' : '#7fe0a0') + ';font-weight:bold;">' + fmtAmt(t.bucket_90_plus) + '</span>';
+                       ' &nbsp;|&nbsp; >90 hari: <span style="font-weight:bold">' + fmtAmt(t.bucket_90_plus) + '</span>';
     });
 
     // Pencarian global template memuat ulang mainDs saja -> samakan query ke store detail

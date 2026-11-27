@@ -82,7 +82,7 @@ Ext.onReady(function () {
         loadMask: true,
         viewConfig: {
             forceFit: true,
-            emptyText: '<div style="padding:20px; text-align:center; color:#94a3b8;">Tidak ada data untuk ditampilkan.</div>' // [PERBAIKAN] Pesan jika data kosong
+            emptyText: '<div style="padding:20px; text-align:center">Tidak ada data untuk ditampilkan.</div>' // [PERBAIKAN] Pesan jika data kosong
         },
         columns: [
             { header: 'No. Invoice Internal', dataIndex: 'inv_no', sortable: true },
@@ -136,18 +136,18 @@ Ext.onReady(function () {
                 try {
                     var res = Ext.util.JSON.decode(response.responseText);
                     if (!res.success) {
-                        payDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal memuat detail invoice.</div>';
+                        payDtlDiv.innerHTML = '<div style="padding:10px">Gagal memuat detail invoice.</div>';
                         payDtlDiv.style.display = 'block';
                         return;
                     }
                     renderInvoiceDetailPanel(res.data || [], invoiceNo, invoiceId);   // [CHG] + invoiceId untuk tombol cetak
                 } catch (e) {
-                    payDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Error parsing data dari server.</div>';
+                    payDtlDiv.innerHTML = '<div style="padding:10px">Error parsing data dari server.</div>';
                     payDtlDiv.style.display = 'block';
                 }
             },
             failure: function () {
-                payDtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server backend.</div>';
+                payDtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server backend.</div>';
                 payDtlDiv.style.display = 'block';
             }
         });
@@ -188,7 +188,7 @@ Ext.onReady(function () {
             return;
         }
         w.document.open('text/html','replace');
-        w.document.write('<html><body style="font-family:Arial,sans-serif;padding:20px;">Memuat Tanda Terima Invoice...</body></html>');
+        w.document.write('<html><body style="padding:20px">Memuat Tanda Terima Invoice...</body></html>');
         w.document.close();
 
         Ext.Ajax.request({
@@ -226,7 +226,7 @@ Ext.onReady(function () {
 
         var sum = 0, rowsHtml = '';
         if (!items.length) {
-            rowsHtml = '<tr><td colspan="6" style="text-align:center;padding:14px;">Tidak ada GRN terhubung.</td></tr>';
+            rowsHtml = '<tr><td colspan="6" style="text-align:center;padding:14px">Tidak ada GRN terhubung.</td></tr>';
         }
         Ext.each(items, function (it, i) {
             var amt = parseFloat(it.matched_amount) || 0;
@@ -257,31 +257,7 @@ Ext.onReady(function () {
         var printedAt = fmtPrintNow();       // [FIX 2026-10-09]
 
         return '<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Tanda Terima Invoice ' + enc(h.inv_no) + '</title>' +
-            '<style>' +
-            '@page { size: A4; margin: 12mm; }' +
-            'body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; color: #000; margin: 0; }' +
-            '.kop { border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 10px; }' +
-            '.kop .nm { font-size: 17px; font-weight: bold; }' +
-            'h2 { text-align: center; margin: 8px 0 12px 0; font-size: 16px; letter-spacing: 1px; text-decoration: underline; }' +
-            'table.info { width: 100%; border-collapse: collapse; margin-bottom: 10px; }' +
-            'table.info td { padding: 2px 4px; vertical-align: top; }' +
-            'table.info td.lbl { width: 130px; } table.info td.sep { width: 10px; }' +
-            // [FIX 2026-10-09] Garis tabel: tiap sel bergaris kanan+bawah, tabel bergaris atas+kiri (border-collapse: separate),
-            // table-layout fixed -> kolom paling kanan (Sisa PO / Nominal) tidak lagi terpotong / tanpa garis.
-            // [FIX 2026-10-09 b] width: calc(100% - 2px) + border-box: garis kanan tabel sebelumnya tepat di tepi area cetak -> terpotong di PDF.
-            'table.items { box-sizing: border-box; width: calc(100% - 2px); table-layout: fixed; border-collapse: separate; border-spacing: 0; border-top: 1px solid #000; border-left: 1px solid #000; }' +
-            'table.items th, table.items td { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 4px 6px; word-wrap: break-word; overflow-wrap: break-word; }' +
-            'table.items th { background: #eee; text-align: center; }' +
-            'table.items tfoot td { font-weight: bold; background: #f5f5f5; }' +
-            '.c { text-align: center; } .r { text-align: right; }' +
-            '.note { margin-top: 8px; }' +
-            'table.sign { width: 100%; margin-top: 28px; border-collapse: collapse; page-break-inside: avoid; }' +
-            'table.sign td { width: 50%; text-align: center; vertical-align: top; }' +
-            '.sign .box { height: 70px; }' +
-            '.sign .line { display: inline-block; min-width: 170px; border-top: 1px solid #000; padding-top: 3px; }' +
-            '.foot { margin-top: 18px; font-size: 10px; color: #444; }' +
-            '.wm { text-align:center; color:#c0392b; font-size:20px; font-weight:bold; border:2px solid #c0392b; padding:4px; margin-bottom:8px; }' +
-            '</style></head><body>' +
+            '</head><body>' +
             '<div class="kop"><div class="nm">' + enc(PRINT_COMPANY.name) + '</div><div>' + enc(PRINT_COMPANY.address) + '</div></div>' +
             '<h2>TANDA TERIMA INVOICE</h2>' +
             (cancelled ? '<div class="wm">DIBATALKAN</div>' : '') +
@@ -297,8 +273,8 @@ Ext.onReady(function () {
                 (h.faktur_pajak_date ? ' (' + fmtPrintDate(h.faktur_pajak_date) + ')' : '') + '</td>' : '') +      // [PPN]
             '</tr></table>' +
             '<table class="items"><thead><tr>' +
-            '<th style="width:30px;">No</th><th style="width:110px;">No. GRN</th><th style="width:75px;">Tgl GRN</th>' +
-            '<th style="width:110px;">No. PO</th><th>Item</th><th style="width:120px;">Nominal Invoice</th>' +
+            '<th style="width:30px">No</th><th style="width:110px">No. GRN</th><th style="width:75px">Tgl GRN</th>' +
+            '<th style="width:110px">No. PO</th><th>Item</th><th style="width:120px">Nominal Invoice</th>' +
             '</tr></thead><tbody>' + rowsHtml + '</tbody>' +
             '<tfoot>' + tfootHtml + '</tfoot></table>' +
             (codeCount > 1 ? '<div class="note"><i>Catatan: GRN terhubung memakai mata uang berbeda; total hanya penjumlahan nominal.</i></div>' : '') +
@@ -315,15 +291,15 @@ Ext.onReady(function () {
         var fmtAmt = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
         var fmtQty = function (v) { return Ext.util.Format.number(v || 0, '0,000.00'); };
 
-        var html = '<h3 class="detail-title" style="margin:10px 0 5px 0; font-size:14px; color:#38bdf8;">Detail Match GRN / Item Invoice: ' +
+        var html = '<h3 class="detail-title" style="margin:10px 0 5px 0; font-size:14px">Detail Match GRN / Item Invoice: ' +
                    Ext.util.Format.htmlEncode(invoiceNo || '') +
                    // [BARU] tombol cetak tanda terima
-                   '<button type="button" id="btnPrintInvoice" style="float:right; padding:5px 14px; background:#2e6da4; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px;">&#128424; Cetak Tanda Terima</button>' +
+                   '<button type="button" id="btnPrintInvoice" style="float:right; padding:5px 14px; ; ; cursor:pointer; font-weight:bold; font-size:12px">&#128424; Cetak Tanda Terima</button>' +
                    '</h3>' +
-                   '<hr class="detail-hr" style="border:0; border-top:1px solid #334155; margin-bottom:10px;" />' +
-                   '<table id="payTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#f8fafc; font-size:12px;">' +
+                   '<hr class="detail-hr" style="border-top:1px solid #334155; margin-bottom:10px" />' +
+                   '<table id="payTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; font-size:12px">' +
                    '<thead>' +
-                   '<tr class="header-row" style="background-color:#1e293b; color:#94a3b8;">' +
+                   '<tr class="header-row" >' +
                    '<th align="left">No. Ref GRN</th>' +
                    '<th align="left">Item / Ref</th>' +
                    '<th align="right">Qty</th>' +
@@ -335,7 +311,7 @@ Ext.onReady(function () {
                    '<tbody>';
 
         if (!rows || rows.length === 0) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#94a3b8;">Belum ada rincian GRN/Item terhubung untuk invoice ini.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center">Belum ada rincian GRN/Item terhubung untuk invoice ini.</td></tr>';
         } else {
             var grandTotal = 0;
             Ext.each(rows, function (r) {
@@ -343,13 +319,13 @@ Ext.onReady(function () {
                 var grnTotal = parseFloat(r.grn_total || r.subtotal || 0);
                 grandTotal += matched;
 
-                html += '<tr class="data-row" style="border-bottom:1px solid #334155;">' +
+                html += '<tr class="data-row" style="border-bottom:1px solid #334155">' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.grn_ref_no || r.ref_no || '-') + '</td>' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.item_name || r.remark || '-') + '</td>' +
                         '<td align="right">' + fmtQty(r.qty_received) + '</td>' +
                         '<td align="right">' + fmtAmt(r.unit_cost) + '</td>' +
                         '<td align="right">' + fmtAmt(grnTotal) + '</td>' +
-                        '<td align="right" style="color:#38bdf8; font-weight:bold;">' + fmtAmt(matched) + '</td>' +
+                        '<td align="right" style="font-weight:bold">' + fmtAmt(matched) + '</td>' +
                         '</tr>';
             });
 
@@ -357,15 +333,15 @@ Ext.onReady(function () {
             var hd = (dataRecord && String(dataRecord.id) === String(invoiceId)) ? dataRecord : null;
             var hdPpn = hd ? (parseFloat(hd.ppn_amount) || 0) : 0;
             if (hdPpn > 0) {
-                html += '<tr class="footer-row" style="background-color:#0f172a;"><td colspan="5" align="right" style="padding:6px;">DPP:</td><td align="right">' + fmtAmt(grandTotal) + '</td></tr>' +
-                        '<tr class="footer-row" style="background-color:#0f172a;"><td colspan="5" align="right" style="padding:6px;">PPN Masukan ' + (parseFloat(hd.ppn_rate) || 0) + '%' +
+                html += '<tr class="footer-row" ><td colspan="5" align="right" style="padding:6px">DPP:</td><td align="right">' + fmtAmt(grandTotal) + '</td></tr>' +
+                        '<tr class="footer-row" ><td colspan="5" align="right" style="padding:6px">PPN Masukan ' + (parseFloat(hd.ppn_rate) || 0) + '%' +
                         (hd.faktur_pajak_no ? ' (Faktur ' + Ext.util.Format.htmlEncode(hd.faktur_pajak_no) + ')' : '') + ':</td><td align="right">' + fmtAmt(hdPpn) + '</td></tr>' +
-                        '<tr class="footer-row" style="background-color:#0f172a; font-weight:bold;"><td colspan="5" align="right" style="padding:8px;">TOTAL INVOICE (DPP + PPN):</td>' +
-                        '<td align="right" style="color:#22c55e;">' + fmtAmt(parseFloat(hd.total_amount) || (grandTotal + hdPpn)) + '</td></tr>';
+                        '<tr class="footer-row" style="font-weight:bold"><td colspan="5" align="right" style="padding:8px">TOTAL INVOICE (DPP + PPN):</td>' +
+                        '<td align="right" >' + fmtAmt(parseFloat(hd.total_amount) || (grandTotal + hdPpn)) + '</td></tr>';
             } else {
-            html += '<tr class="footer-row" style="background-color:#0f172a; font-weight:bold;">' +
-                    '<td colspan="5" align="right" style="padding:8px;">TOTAL INVOICE:</td>' +
-                    '<td align="right" style="color:#22c55e;">' + fmtAmt(grandTotal) + '</td>' +
+            html += '<tr class="footer-row" style="font-weight:bold">' +
+                    '<td colspan="5" align="right" style="padding:8px">TOTAL INVOICE:</td>' +
+                    '<td align="right" >' + fmtAmt(grandTotal) + '</td>' +
                     '</tr>';
             }
         }
@@ -471,14 +447,14 @@ Ext.onReady(function () {
         var ppn = calc, warn = '';
         if (calc > 0 && ppnAmtManual) {
             ppn = parseFloat(fldPpnAmt.getValue()) || 0;
-            if (Math.abs(ppn - calc) > 100) warn = ' <span style="color:#e6a817;">(beda dari hitungan PO ' + fmt(calc) + ' - server menolak selisih > Rp 100)</span>';
+            if (Math.abs(ppn - calc) > 100) warn = ' <span >(beda dari hitungan PO ' + fmt(calc) + ' - server menolak selisih > Rp 100)</span>';
         } else if (calc > 0) {
             fldPpnAmt.setValue(calc);
         } else {
             fldPpnAmt.setValue('');
         }
-        if (rateCount > 1) warn += ' <span style="color:#9fc3d1;">(tarif PO campur, ditampilkan tarif efektif)</span>';
-        fldPpnInfo.setValue('<span style="color:#9fc3d1;">DPP <b>' + fmt(dpp) + '</b> &nbsp;|&nbsp; PPN <b>' + fmt(ppn) + '</b> &nbsp;|&nbsp; Total hutang <b>' + fmt(dpp + ppn) + '</b>' + warn + '</span>');
+        if (rateCount > 1) warn += ' <span >(tarif PO campur, ditampilkan tarif efektif)</span>';
+        fldPpnInfo.setValue('<span >DPP <b>' + fmt(dpp) + '</b> &nbsp;|&nbsp; PPN <b>' + fmt(ppn) + '</b> &nbsp;|&nbsp; Total hutang <b>' + fmt(dpp + ppn) + '</b>' + warn + '</span>');
     }
 
     // [CHANGED] teks mode PPN PO untuk kolom grid
@@ -584,7 +560,7 @@ Ext.onReady(function () {
     gridEditorInvoiceDs.on('remove', recalcInvoicePpn);
     gridEditorInvoiceDs.on('update', recalcInvoicePpn);
 
-    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });   // [CHANGED] ikon trash di header kolom hapus (seperti Pembayaran Termin)
+    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });   // [CHANGED] ikon trash di header kolom hapus (seperti Pembayaran Termin)
 
     // Store daftar GRN yang bisa dipilih (untuk window picker "Add Item")
     var availableGrnDs = new Ext.data.Store({
@@ -614,7 +590,7 @@ Ext.onReady(function () {
         loadMask: true,
         viewConfig: {
             forceFit: true,
-            emptyText: '<div style="padding:20px; text-align:center; color:#94a3b8;">Tidak ada GRN yang tersedia untuk supplier ini.</div>'
+            emptyText: '<div style="padding:20px; text-align:center">Tidak ada GRN yang tersedia untuk supplier ini.</div>'
         },
         columns: [
             { header: 'No. Ref GRN', dataIndex: 'grn_ref_no', width: 100 },

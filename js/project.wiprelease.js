@@ -171,15 +171,15 @@ Ext.onReady(function () {
         fInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, items: items };
         };
         frm = new Ext.form.FormPanel({
             renderTo: 'editorFormGrid',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:6px 4px 0 4px;',
+            bodyStyle: 'padding:6px 4px 0 4px',
             items: [col(0.5, [fDate, fProject, fRemark]), col(0.5, [fMode, fPct]),
-                    { columnWidth: 1, layout: 'form', border: false, bodyStyle: 'background:transparent;', items: [fInfo] }]
+                    { columnWidth: 1, layout: 'form', border: false, items: [fInfo] }]
         });
     }
 
@@ -201,7 +201,7 @@ Ext.onReady(function () {
         fPct.setDisabled(false);
         fPct.setValue(0);
         fRemark.setValue('');
-        fInfo.setValue('<span style="color:#668894;">Pilih proyek untuk melihat perhitungan pelepasan WIP.</span>');
+        fInfo.setValue('<span >Pilih proyek untuk melihat perhitungan pelepasan WIP.</span>');
         previewOk = false;
     }
 
@@ -211,27 +211,27 @@ Ext.onReady(function () {
         previewOk = false;
         if (!pid) { fInfo.setValue(''); return; }
         var token = ++previewReq;
-        fInfo.setValue('<span style="color:#668894;">menghitung...</span>');
+        fInfo.setValue('<span >menghitung...</span>');
         ajax({
             task: 'preview', project_id: pid, mode: fMode.getValue(),
             progress_pct: fMode.getValue() === 'complete' ? 100 : (parseFloat(fPct.getValue()) || 0)
         }, function (res) {
             if (token !== previewReq) return;               // sudah ada permintaan yang lebih baru
             if (!res.success) {
-                fInfo.setValue('<span style="color:#e6a817;">' + enc(res.message || 'Gagal menghitung.') + '</span>');
+                fInfo.setValue('<span >' + enc(res.message || 'Gagal menghitung.') + '</span>');
                 return;
             }
             var d = res.data, ok = d.amount > 0.005;
             previewOk = ok;
-            var html = '<div style="padding:8px 10px; background:#1f2d3a; border-radius:4px; line-height:1.7;">' +
+            var html = '<div style="padding:8px 10px; ; line-height:1.7">' +
                 'Proyek: <b>' + enc(d.project_name) + '</b> (status ' + enc(d.project_status || '-') + ', progress sistem ' + fmtPct(d.project_progress) + ')<br/>' +
                 'WIP kumulatif (jurnal issue): <b>' + fmtAmt(d.wip_cumulative) + '</b><br/>' +
                 'Target dilepas @ ' + fmtPct(d.progress_pct) + ': <b>' + fmtAmt(d.target_released) + '</b>' +
                 ' &nbsp;|&nbsp; sudah dilepas sebelumnya: <b>' + fmtAmt(d.released_before) + '</b><br/>' +
-                '<span style="color:' + (ok ? '#7fe0a0' : '#ff6b5e') + ';">Nilai dilepas ke HPP sekarang: <b>' + fmtAmt(d.amount) + '</b>' +
+                '<span >Nilai dilepas ke HPP sekarang: <b>' + fmtAmt(d.amount) + '</b>' +
                 (ok ? '' : ' (tidak ada yang perlu dilepas)') + '</span>';
             if (d.unjournaled > 0.005) {
-                html += '<br/><span style="color:#e6a817;">Perhatian: ada issue material senilai ' + fmtAmt(d.unjournaled) +
+                html += '<br/><span >Perhatian: ada issue material senilai ' + fmtAmt(d.unjournaled) +
                         ' yang belum berjurnal; jalankan backfill jurnal issue agar WIP lengkap.</span>';
             }
             html += '</div>';

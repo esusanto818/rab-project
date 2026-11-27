@@ -17,7 +17,7 @@ require_once __DIR__ . '/../php-class/crudClass.php';
 
 $paymentId = intval($_GET['id'] ?? 0);
 if ($paymentId <= 0) {
-    echo '<!DOCTYPE html><html><body><h3 style="color:#e05353;padding:20px;">ID pembayaran tidak valid.</h3></body></html>';
+    echo '<!DOCTYPE html><html><body><h3 style="padding:20px">ID pembayaran tidak valid.</h3></body></html>';
     exit;
 }
 
@@ -43,7 +43,7 @@ $stmt->execute(['id' => $paymentId]);
 $header = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$header) {
-    echo '<!DOCTYPE html><html><body><h3 style="color:#e05353;padding:20px;">Data pembayaran tidak ditemukan.</h3></body></html>';
+    echo '<!DOCTYPE html><html><body><h3 style="padding:20px">Data pembayaran tidak ditemukan.</h3></body></html>';
     exit;
 }
 
@@ -87,41 +87,7 @@ $h = $header;
 <head>
 <meta charset="UTF-8">
 <title>Bukti Pembayaran Supplier - <?= esc($h['payment_no']) ?></title>
-<style>
-    @page { size: A4; margin: 15mm; }
-    * { box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; padding: 20px; }
-    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f766e; padding-bottom: 10px; margin-bottom: 15px; }
-    .hdr .l .co-name { font-size: 18px; font-weight: bold; color: #0f766e; }
-    .hdr .l .co-addr { font-size: 11px; color: #6b7280; }
-    .hdr .r { text-align: right; }
-    .hdr .r b { font-size: 14px; color: #0f766e; }
-    .title { text-align: center; font-size: 20px; font-weight: bold; color: #0f766e; margin: 15px 0; letter-spacing: 2px; }
-    .meta { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .meta td { padding: 4px 8px; vertical-align: top; }
-    .meta td.k { font-weight: bold; width: 160px; color: #374151; }
-    .meta td b { color: #111827; }
-    .items { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .items th { background: #0f766e; color: white; padding: 8px; text-align: left; font-size: 11px; }
-    .items th.r-al { text-align: right; }
-    .items td { padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
-    .items td.r-al { text-align: right; }
-    .items tfoot td { background: #f3f4f6; font-weight: bold; padding: 8px; }
-    .items tfoot td.r-al { text-align: right; }
-    .sign { display: flex; justify-content: space-between; margin-top: 40px; }
-    .sign > div { width: 45%; text-align: center; }
-    .sign .space { height: 70px; }
-    .sign .line { border-top: 1px solid #1f2937; padding-top: 4px; font-weight: bold; }
-    .footer { margin-top: 30px; text-align: center; font-size: 10px; color: #9ca3af; border-top: 1px dashed #d1d5db; padding-top: 8px; }
-    .btn-bar { text-align: right; margin-bottom: 10px; }
-    .btn-bar button { padding: 8px 16px; margin-left: 8px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-    .btn-print { background: #0f766e; color: white; }
-    .btn-close { background: #6b7280; color: white; }
-    @media print {
-        .btn-bar { display: none; }
-        body { padding: 0; }
-    }
-</style>
+
 </head>
 <body>
 
@@ -179,7 +145,7 @@ $h = $header;
     </thead>
     <tbody>
         <?php if (empty($items)): ?>
-        <tr><td colspan="6" style="text-align:center; padding:15px;">Tidak ada rincian alokasi invoice.</td></tr>
+        <tr><td colspan="6" style="text-align:center; padding:15px">Tidak ada rincian alokasi invoice.</td></tr>
         <?php else:
             $totalAlloc = 0;
             foreach ($items as $it):

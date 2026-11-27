@@ -180,7 +180,7 @@ Ext.onReady(function() {
                 columnWidth: 1.0,
                 layout: 'column',
                 baseCls: 'x-plain',
-                style: 'margin-bottom: 5px;',
+                style: 'margin-bottom: 5px',
                 items: [
                     {
                         columnWidth: 0.2,
@@ -236,8 +236,8 @@ Ext.onReady(function() {
                 header: "Status", dataIndex: 'active', width: 90, align: 'center', 
                 renderer: function(v) {
                     return (v === true || v === 'true' || v === 1 || v === '1')
-                        ? '<span style="color:#2e9e4f;font-weight:bold;">Aktif</span>'
-                        : '<span style="color:#c0392b;font-weight:bold;">Nonaktif</span>';
+                        ? '<span style="font-weight:bold">Aktif</span>'
+                        : '<span style="font-weight:bold">Nonaktif</span>';
                 } 
             },
             { dataIndex: 'id', hidden: true }

@@ -78,8 +78,8 @@ Ext.onReady(function () {
         } else if (res && res.status) {
             m += ' (HTTP ' + res.status + ')';
             var t = (res.responseText || '').replace(/^\s+|\s+$/g, '');
-            m += '<br/><br/><span style="font-size:11px;">Respons server: ' +
-                 (t ? '<pre style="white-space:pre-wrap;">' + enc(t.substr(0, 300)) + '</pre>' : '<i>(kosong - cek error_log PHP)</i>') + '</span>';
+            m += '<br/><br/><span style="font-size:11px">Respons server: ' +
+                 (t ? '<pre style="white-space:pre-wrap">' + enc(t.substr(0, 300)) + '</pre>' : '<i>(kosong - cek error_log PHP)</i>') + '</span>';
         }
         showErr(m);
     }
@@ -156,7 +156,7 @@ var fWh = new Ext.form.ComboBox({
         tpl: '<tpl for="."><div class="x-combo-list-item">' +
              '{material_code} - {material_name} ({unit})' +
              '<tpl if="qty_on_hand > 0">' +
-             ' <span style="color:#2e9e4f;font-weight:bold;">[Stok: {qty_on_hand}]</span>' +
+             ' <span style="font-weight:bold">[Stok: {qty_on_hand}]</span>' +
              '</tpl></div></tpl>',
         listeners: { 
             beforequery: function (q) { 

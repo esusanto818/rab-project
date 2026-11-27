@@ -252,7 +252,7 @@ Ext.onReady(function() {
     baseParams:{task: 'addform'},
     reader: new Ext.data.JsonReader({root: 'data', fields : FormField})
   });
-  var addCheckLink = new Ext.grid.CheckColumn({id: 'addCheckLink', header:'<img class="header-icon-grid" style="vertical-align:middle;" src="../img/icon/add_check.png"/>',dataIndex: 'active',width: 30, fixed: true, align: 'center'});
+  var addCheckLink = new Ext.grid.CheckColumn({id: 'addCheckLink', header:'<img class="header-icon-grid" style="vertical-align:middle" src="../img/icon/add_check.png"/>',dataIndex: 'active',width: 30, fixed: true, align: 'center'});
   var gridAddEditor = new stdGrid({
     store  : gridAddEditorDs,
     renderTo: 'addFormGrid',
@@ -280,7 +280,7 @@ Ext.onReady(function() {
       {id: 'gridCellRibbon', header: "Title", dataIndex: 'title', width: 100,
         renderer : function(value, meta, store) {
           if (store.data.tna==true) { meta.attr='style= "padding:4px 0px !important; text-align: center;"'; return '<div class="grid-ribbon ribbon-red-strip">'+value+'</div>'; }
-          else { return '<div style="white-space:normal !important;">'+value+'</div>'; }
+          else { return '<div style="white-space:normal !important">'+value+'</div>'; }
         }
       },
 			{header: "PHP URL", dataIndex: 'php_url', width: 100, renderer: CellWrap},
@@ -290,8 +290,8 @@ Ext.onReady(function() {
                 header: "Status", dataIndex: 'active', width: 90, align: 'center', 
                 renderer: function(v) {
                     return (v === true || v === 'true' || v === 1 || v === '1')
-                        ? '<span style="color:#2e9e4f;font-weight:bold;">Aktif</span>'
-                        : '<span style="color:#c0392b;font-weight:bold;">Nonaktif</span>';
+                        ? '<span style="font-weight:bold">Aktif</span>'
+                        : '<span style="font-weight:bold">Nonaktif</span>';
                 } 
             },
 		],

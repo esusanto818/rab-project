@@ -104,7 +104,7 @@ Ext.onReady(function () {
             if (!u) { continue; }
             if (!/^(https?:\/\/|\/)/i.test(u)) { out.push(enc(u)); continue; }
             var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(u) ? 'Foto' : (/\.pdf(\?.*)?$/i.test(u) ? 'PDF' : 'Link');
-            out.push('<a href="' + enc(u) + '" target="_blank" style="color:#7fe0a0;">' + label + ' ' + (out.length + 1) + '</a>');
+            out.push('<a href="' + enc(u) + '" target="_blank" >' + label + ' ' + (out.length + 1) + '</a>');
         }
         return out.length ? out.join(' &nbsp;|&nbsp; ') : '-';
     }
@@ -147,7 +147,7 @@ Ext.onReady(function () {
     function loadDetail(projectId) {
         ajax({ task: 'list_log', project_id: projectId }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat riwayat klaim.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat riwayat klaim.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
@@ -155,7 +155,7 @@ Ext.onReady(function () {
             allowSelfVerify = !!res.allow_self_verify;
             renderDetail(res.data || []);
         }, function () {
-            dtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
+            dtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
             dtlDiv.style.display = 'block';
         });
     }
@@ -165,30 +165,30 @@ Ext.onReady(function () {
         if (!d) { dtlDiv.style.display = 'none'; return; }
         var noBudget = !(d.budget_base > 0);
         var canReport = getFormAccess() >= ACCESS_REPORT && (d.status === 'Berjalan' || d.status === 'Tertunda');
-        var reportBar = '<div style="padding:2px 2px 8px 2px; text-align:right;">' +
+        var reportBar = '<div style="padding:2px 2px 8px 2px; text-align:right">' +
             (canReport
-                ? '<button type="button" id="pgReportBtn" style="padding:6px 16px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">+ Lapor Progress</button>'
-                : '<span style="color:#668894; font-size:11px;">' + (getFormAccess() < ACCESS_REPORT ? 'Anda tidak memiliki akses melapor progress.' : 'Proyek berstatus ' + enc(d.status) + ': progress tidak dapat dilaporkan.') + '</span>') +
+                ? '<button type="button" id="pgReportBtn" style="padding:6px 16px; ; ; cursor:pointer; font-weight:bold">+ Lapor Progress</button>'
+                : '<span style="font-size:11px">' + (getFormAccess() < ACCESS_REPORT ? 'Anda tidak memiliki akses melapor progress.' : 'Proyek berstatus ' + enc(d.status) + ': progress tidak dapat dilaporkan.') + '</span>') +
             '</div>';
         
-        var html = '<h3 class="detail-title">Progress: ' + enc(d.name) + ' <span style="color:' + cpiColor(d.cpi_status) + ';">(' + enc(d.cpi_status) + ')</span></h3>' +
+        var html = '<h3 class="detail-title">Progress: ' + enc(d.name) + ' <span >(' + enc(d.cpi_status) + ')</span></h3>' +
                    '<hr class="detail-hr" />' + reportBar +
-                   '<div style="padding:6px 10px; margin:0 2px 10px 2px; background:#1f2d3a; border-radius:4px; line-height:1.7;">' +
+                   '<div style="padding:6px 10px; margin:0 2px 10px 2px; ; line-height:1.7">' +
                    (noBudget
-                       ? '<span style="color:#ff6b5e;">Budget proyek belum diisi di Master Proyek - indeks biaya tidak dapat dihitung.</span><br>'
+                       ? '<span >Budget proyek belum diisi di Master Proyek - indeks biaya tidak dapat dihitung.</span><br>'
                        : 'Budget (setara): <b>' + fmtAmt(d.budget_base) + '</b> &nbsp;|&nbsp; Progress terverifikasi: <b>' + d.progress + '%</b>' +
                          ' &nbsp;|&nbsp; Nilai hasil: <b>' + fmtAmt(d.earned_value) + '</b><br>') +
                    'Biaya aktual: <b>' + fmtAmt(d.cost_actual) + '</b> (material ' + fmtAmt(d.cost_material) + ' + lain ' + fmtAmt(d.cost_other) + ')' +
                    (d.cost_pct !== null ? ' &nbsp;|&nbsp; Biaya / Budget: <b>' + fmtAmt(d.cost_pct) + '%</b>' : '') +
-                   ' &nbsp;|&nbsp; <span style="color:' + cpiColor(d.cpi_status) + ';">Indeks biaya: <b>' + fmtCpi(d.cpi) + '</b></span>' +
-                   '<br><span style="color:#668894; font-size:11px;">Indeks biaya = nilai hasil / biaya aktual. Di bawah ' + fmtCpi(thresholds.yellow) +
+                   ' &nbsp;|&nbsp; <span >Indeks biaya: <b>' + fmtCpi(d.cpi) + '</b></span>' +
+                   '<br><span style="font-size:11px">Indeks biaya = nilai hasil / biaya aktual. Di bawah ' + fmtCpi(thresholds.yellow) +
                    ' kuning, di bawah ' + fmtCpi(thresholds.red) + ' merah (biaya melaju lebih cepat dari pekerjaan).</span></div>' +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                    '<th align="left">Tanggal</th><th align="right">Klaim</th><th align="left">Pelapor</th><th align="left">Bukti</th>' +
                    '<th align="left">Catatan</th><th align="center">Status</th><th align="left">Verifikasi</th><th align="center">Aksi</th></tr></thead><tbody>';
         
         if (!rows.length) {
-            html += '<tr><td colspan="8" style="padding:15px; text-align:center; color:#557982;">Belum ada klaim progress. Klik "+ Lapor Progress" untuk mengajukan; verifikasi dilakukan pengguna lain (akses level 3).</td></tr>';
+            html += '<tr><td colspan="8" style="padding:15px; text-align:center">Belum ada klaim progress. Klik "+ Lapor Progress" untuk mengajukan; verifikasi dilakukan pengguna lain (akses level 3).</td></tr>';
         }
 
         // SVG Icons untuk tombol aksi
@@ -204,9 +204,9 @@ Ext.onReady(function () {
                     btnList.push('<button type="button" class="pgAct btn-act-icon btn-verify" data-act="verify" data-id="' + r.id + '" title="Verifikasi Progress">' + iconCheck + '</button>');
                     btnList.push('<button type="button" class="pgAct btn-act-icon btn-reject" data-act="reject" data-id="' + r.id + '" title="Tolak Klaim">' + iconCross + '</button>');
                 } else if (r.reported_by === currentUserId) {
-                    acts += '<span style="color:#e6a817; font-size:11px;">Anda pelapor: verifikasi oleh pengguna lain</span> ';
+                    acts += '<span style="font-size:11px">Anda pelapor: verifikasi oleh pengguna lain</span> ';
                 } else if (getFormAccess() < ACCESS_VERIFY) {
-                    acts += '<span style="color:#668894; font-size:11px;">menunggu verifikator</span> ';
+                    acts += '<span style="font-size:11px">menunggu verifikator</span> ';
                 }
                 
                 if (getFormAccess() >= ACCESS_REPORT && (r.reported_by === currentUserId || getFormAccess() >= ACCESS_VERIFY)) {
@@ -214,23 +214,23 @@ Ext.onReady(function () {
                 }
 
                 if (btnList.length > 0) {
-                    acts = '<div style="display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap;">' + btnList.join('') + '</div>';
+                    acts = '<div style="display:inline-flex; align-items:center; justify-content:center; gap:4px; white-space:nowrap">' + btnList.join('') + '</div>';
                 }
             }
 
-            var ver = r.verified_at ? enc(r.verifier_name || '-') + '<br><span style="color:#668894; font-size:11px;">' + enc(String(r.verified_at).substr(0, 16)) + '</span>' : '-';
-            if (r.verify_note) ver += '<br><span style="font-size:11px;">' + enc(r.verify_note) + '</span>';
-            if (r.snap_cpi !== null && r.snap_cpi !== undefined) ver += '<br><span style="color:#9fc3d1; font-size:11px;">indeks saat verifikasi ' + fmtCpi(r.snap_cpi) + '</span>';
+            var ver = r.verified_at ? enc(r.verifier_name || '-') + '<br><span style="font-size:11px">' + enc(String(r.verified_at).substr(0, 16)) + '</span>' : '-';
+            if (r.verify_note) ver += '<br><span style="font-size:11px">' + enc(r.verify_note) + '</span>';
+            if (r.snap_cpi !== null && r.snap_cpi !== undefined) ver += '<br><span style="font-size:11px">indeks saat verifikasi ' + fmtCpi(r.snap_cpi) + '</span>';
             
             html += '<tr class="data-row">' +
                     '<td align="left">' + enc(r.report_date) + '</td>' +
-                    '<td align="right"><b>' + r.percent_claimed + '%</b> <span style="color:#668894;">(dari ' + r.prev_percent + '%)</span></td>' +
+                    '<td align="right"><b>' + r.percent_claimed + '%</b> <span >(dari ' + r.prev_percent + '%)</span></td>' +
                     '<td align="left">' + enc(r.reporter_name || '-') + '</td>' +
                     '<td align="left">' + proofLinks(r.evidence_ref) + '</td>' +
                     '<td align="left">' + enc(r.note || '') + '</td>' +
-                    '<td align="center" style="color:' + claimColor(r.status) + ';font-weight:bold;">' + enc(r.status) + '</td>' +
+                    '<td align="center" style="font-weight:bold">' + enc(r.status) + '</td>' +
                     '<td align="left">' + ver + '</td>' +
-                    '<td align="center" style="white-space:nowrap;">' + acts + '</td></tr>';
+                    '<td align="center" style="white-space:nowrap">' + acts + '</td></tr>';
         });
         html += '</tbody></table>';
         dtlDiv.innerHTML = html;
@@ -296,11 +296,11 @@ Ext.onReady(function () {
             { header: 'Indeks Biaya', dataIndex: 'cpi', width: 85, align: 'right', renderer: function (v) { return fmtCpi(v); } },
             {
                 header: 'Indikator', dataIndex: 'cpi_status', width: 90, align: 'center',
-                renderer: function (v) { return '<span style="color:' + cpiColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; }
+                renderer: function (v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; }
             },
             {
                 header: 'Menunggu Verifikasi', dataIndex: 'pending_count', width: 110, align: 'center',
-                renderer: function (v) { return v > 0 ? '<span style="color:#e6a817;font-weight:bold;">' + v + ' klaim</span>' : '-'; }
+                renderer: function (v) { return v > 0 ? '<span style="font-weight:bold">' + v + ' klaim</span>' : '-'; }
             }
         ],
         viewConfig: { forceFit: true },
@@ -366,10 +366,10 @@ Ext.onReady(function () {
         function renderProofs() {
             var h = '';
             for (var i = 0; i < proofs.length; i++) {
-                h += '<div>' + (i + 1) + '. ' + proofLinks(proofs[i]) + ' &nbsp;<span style="color:#e05353;cursor:pointer;font-weight:bold;" title="Hapus" onclick="window.pgProofRemove(' + i + ');">&#10005;</span></div>';
+                h += '<div>' + (i + 1) + '. ' + proofLinks(proofs[i]) + ' &nbsp;<span style="cursor:pointer;font-weight:bold" title="Hapus" onclick="window.pgProofRemove(' + i + ');">&#10005;</span></div>';
             }
-            if (uploading > 0) { h += '<div style="color:#9fc3d1;">Mengunggah ' + uploading + ' file...</div>'; }
-            fProofList.setValue(h || '<span style="color:#668894;">Belum ada file</span>');
+            if (uploading > 0) { h += '<div >Mengunggah ' + uploading + ' file...</div>'; }
+            fProofList.setValue(h || '<span >Belum ada file</span>');
         }
         window.pgProofRemove = function (i) { proofs.splice(i, 1); renderProofs(); };
         var fileInput = document.createElement('input');
@@ -405,7 +405,7 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Lapor Progress - ' + proj.name, width: 520, height: 470, modal: true, layout: 'fit', cls: 'whDarkWin', minButtonWidth: 150,
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 150, bodyStyle: 'padding:12px; background:transparent;',
+                border: false, labelWidth: 150, bodyStyle: 'padding:12px',
                 items: [{ xtype: 'displayfield', hideLabel: true, value: 'Progress terverifikasi saat ini: <b>' + proj.progress + '%</b>. Klaim harus lebih besar dan akan diverifikasi oleh orang lain sebelum berlaku. Bukti wajib: unggah foto / PDF dan / atau isi no. BAP.' },
                         fDate, fPct, fProofList, fProofBtn, fEvid, fNote]
             }),
@@ -458,7 +458,7 @@ Ext.onReady(function () {
             var cpi = dataRecord.cost_actual > 0 ? ev / dataRecord.cost_actual : null;
             msg = 'Setujui progress <b>' + claim.percent_claimed + '%</b> (bukti: ' + proofLinks(claim.evidence_ref) + ')?<br>' +
                   'Pada progress ini: nilai hasil <b>' + fmtAmt(ev) + '</b>, biaya aktual <b>' + fmtAmt(dataRecord.cost_actual) + '</b>, indeks biaya <b>' + fmtCpi(cpi) + '</b>.' +
-                  (cpi !== null && cpi < thresholds.red ? '<br><span style="color:#ff6b5e;">Indeks MERAH - catatan verifikasi wajib bila tetap disetujui.</span>' : '') +
+                  (cpi !== null && cpi < thresholds.red ? '<br><span >Indeks MERAH - catatan verifikasi wajib bila tetap disetujui.</span>' : '') +
                   '<br>Catatan verifikasi:';
         } else {
             msg = 'Tolak klaim progress <b>' + claim.percent_claimed + '%</b>?<br>Alasan penolakan (wajib):';

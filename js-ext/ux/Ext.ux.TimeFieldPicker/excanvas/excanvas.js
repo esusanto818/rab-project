@@ -887,7 +887,7 @@ if (!document.createElement('canvas').getContext) {
 
     lineStr.push('<g_vml_:shape',
                  ' filled="', !!aFill, '"',
-                 ' style="position:absolute;width:', W, 'px;height:', H, 'px;"',
+                 ' style="position:absolute;width:', W, 'px;height:', H, 'px"',
                  ' coordorigin="0,0"',
                  ' coordsize="', Z * W, ',', Z * H, '"',
                  ' stroked="', !aFill, '"',
@@ -1269,7 +1269,7 @@ if (!document.createElement('canvas').getContext) {
     lineStr.push('<g_vml_:line from="', -left ,' 0" to="', right ,' 0.05" ',
                  ' coordsize="100 100" coordorigin="0 0"',
                  ' filled="', !stroke, '" stroked="', !!stroke,
-                 '" style="position:absolute;width:1px;height:1px;">');
+                 '" style="position:absolute;width:1px;height:1px">');
 
     if (stroke) {
       appendStroke(this, lineStr);

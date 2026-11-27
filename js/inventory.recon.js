@@ -108,14 +108,14 @@ Ext.onReady(function () {
         renderTo: 'irFilterBar',
         layout: 'column',
         border: false,
-        bodyStyle: 'background:transparent; padding:8px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
+        bodyStyle: 'padding:8px 0',
+        defaults: { border: false,  },
         items: [
             { columnWidth: 0.19, layout: 'form', labelWidth: 75, items: fldDate },
             { columnWidth: 0.30, layout: 'form', labelWidth: 110, items: fldAcc },
-            { columnWidth: 0.17, style: 'padding-top:6px;', items: fldOnlyIssue },
-            { columnWidth: 0.11, style: 'padding-top:2px;', items: btnShow },
-            { columnWidth: 0.23, style: 'padding-top:2px;', items: btnFix }
+            { columnWidth: 0.17, style: 'padding-top:6px', items: fldOnlyIssue },
+            { columnWidth: 0.11, style: 'padding-top:2px', items: btnShow },
+            { columnWidth: 0.23, style: 'padding-top:2px', items: btnFix }
         ]
     });
 
@@ -158,7 +158,7 @@ Ext.onReady(function () {
             },
             {
                 header: 'Status', dataIndex: 'status', width: 140, align: 'center',
-                renderer: function (v) { return '<b style="color:' + statusColor(v) + ' !important;">' + enc(v) + '</b>'; }
+                renderer: function (v) { return '<b >' + enc(v) + '</b>'; }
             }
         ]
     });
@@ -253,7 +253,7 @@ Ext.onReady(function () {
                 var res;
                 try { res = Ext.util.JSON.decode(response.responseText); }
                 catch (e) { summaryDiv.innerHTML = 'Respons server tidak valid (cek error_log PHP).'; return; }
-                if (!res.success) { summaryDiv.innerHTML = '<span style="color:#ffeb3b;">' + enc(res.message || 'Gagal memuat data.') + '</span>'; return; }
+                if (!res.success) { summaryDiv.innerHTML = '<span >' + enc(res.message || 'Gagal memuat data.') + '</span>'; return; }
                 var d = res.data, s = d.summary;
 
                 itemDs.loadData({ data: d.items, totalCount: d.items.length }, false);
@@ -263,12 +263,12 @@ Ext.onReady(function () {
 
                 var ok = (s.status === 'SESUAI');
                 var cell = function (label, val, color) {
-                    return '<td style="padding:4px 22px 4px 0;"><div style="color:#9fc3d1; font-size:13px;">' + label + '</div>' +
-                           '<div style="font-size:20px; font-weight:bold; color:' + (color || '#ffffff') + ';">' + fmtAmt(val) + '</div></td>';
+                    return '<td style="padding:4px 22px 4px 0"><div style="font-size:13px">' + label + '</div>' +
+                           '<div style="font-size:20px; font-weight:bold">' + fmtAmt(val) + '</div></td>';
                 };
-                var html = '<div style="margin-bottom:6px; font-size:15px;">Per <b>' + enc(s.as_of) + '</b> &nbsp;|&nbsp; Akun: <b>' + enc(s.account_label) + '</b> &nbsp;|&nbsp; ' +
-                           '<b style="color:' + (ok ? '#4ade80' : '#f87171') + ';">' + (ok ? 'SESUAI ✓' : 'ADA SELISIH ✗') + '</b></div>' +
-                           '<table style="border-collapse:collapse;"><tr>' +
+                var html = '<div style="margin-bottom:6px; font-size:15px">Per <b>' + enc(s.as_of) + '</b> &nbsp;|&nbsp; Akun: <b>' + enc(s.account_label) + '</b> &nbsp;|&nbsp; ' +
+                           '<b >' + (ok ? 'SESUAI ✓' : 'ADA SELISIH ✗') + '</b></div>' +
+                           '<table style="border-collapse:collapse"><tr>' +
                            cell('Nilai Buku (angka di pembukuan)', s.book_balance) +
                            cell('Nilai Stok (barang di gudang)', s.stock_value) +
                            cell('Selisih (Buku - Stok)', s.diff, ok ? '#4ade80' : '#f87171') +
@@ -278,7 +278,7 @@ Ext.onReady(function () {
                 var fixCount = s.fixable_count || 0, otherProblem = Math.max((s.docs_problem || 0) - fixCount, 0);
                 var msg = [];
                 if (ok) {
-                    msg.push('<span style="color:#4ade80;">Pembukuan dan gudang sudah cocok. <b>Tidak ada yang perlu dilakukan.</b></span> (' + s.docs_total + ' dokumen stok diperiksa)');
+                    msg.push('<span >Pembukuan dan gudang sudah cocok. <b>Tidak ada yang perlu dilakukan.</b></span> (' + s.docs_total + ' dokumen stok diperiksa)');
                 } else {
                     if (fixCount > 0) {
                         msg.push('<b>' + fixCount + ' dokumen</b> (nilai ' + fmtAmt(s.fixable_value) + ') sudah mengubah stok di gudang tetapi <b>belum dicatat di pembukuan</b>. ' +
@@ -292,15 +292,15 @@ Ext.onReady(function () {
                                  'Ini perlu diperiksa manual oleh bagian akuntansi, jangan disamakan dengan tombol otomatis.');
                     }
                 }
-                html += '<div style="margin-top:8px; font-size:14px; line-height:1.6;">' + msg.join('<br/>') + '</div>' +
-                        '<div style="margin-top:8px; color:#668894; font-size:12px;">Nilai Buku = jumlah persediaan menurut pembukuan. Nilai Stok = nilai barang yang ada di gudang menurut catatan stok. Keduanya seharusnya sama.</div>';
+                html += '<div style="margin-top:8px; font-size:14px; line-height:1.6">' + msg.join('<br/>') + '</div>' +
+                        '<div style="margin-top:8px; font-size:12px">Nilai Buku = jumlah persediaan menurut pembukuan. Nilai Stok = nilai barang yang ada di gudang menurut catatan stok. Keduanya seharusnya sama.</div>';
                 summaryDiv.innerHTML = html;
 
                 if (fixCount > 0) { btnFix.show(); } else { btnFix.hide(); }
                 fixInfo = { count: fixCount, value: s.fixable_value };
                 fitTabs();
             },
-            failure: function () { summaryDiv.innerHTML = '<span style="color:#ffeb3b;">Gagal menghubungi server.</span>'; }
+            failure: function () { summaryDiv.innerHTML = '<span >Gagal menghubungi server.</span>'; }
         });
     }
 

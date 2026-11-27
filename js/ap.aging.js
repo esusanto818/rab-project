@@ -134,7 +134,7 @@ Ext.onReady(function () {
             '<button type="button" class="btn exp" id="apExport">Export CSV (Excel)</button>' +
             '</div>';
     Ext.each(TABS, function (t) {
-        html += '<div class="ap-panel" id="apPanel_' + t.key + '" style="display:none;">' +
+        html += '<div class="ap-panel" id="apPanel_' + t.key + '" style="display:none">' +
                 (t.key === 'cards' ? '<div class="ap-totals" id="apTotals">Pilih periode lalu klik Tampilkan.</div>' : '') +
                 '<div id="apGrid_' + t.key + '"></div></div>';
     });
@@ -169,7 +169,7 @@ Ext.onReady(function () {
     var zeroRow = function (rec) { return (parseFloat(rec.get('sisa')) === 0 && parseFloat(rec.get('outstanding_all')) === 0) ? 'x-grid3-row-ap-zero' : ''; };
     var oldRow = function (rec) { return rec.get('bucket_90_plus') > 0 ? 'x-grid3-row-ap-old' : ''; };
 
-    var EMPTY_TXT = '<div style="padding:16px;color:#9fc3d1;">Tidak ada transaksi hutang pada periode ini (hanya invoice supplier aktif yang tampil).</div>';
+    var EMPTY_TXT = '<div style="padding:16px">Tidak ada transaksi hutang pada periode ini (hanya invoice supplier aktif yang tampil).</div>';
     var gridHeight = 300;      // dihitung ulang setelah tab & filter terpasang
     function calcHeight() {
         var used = document.getElementById('apTabs').offsetHeight + document.getElementById('apFilter').offsetHeight + 20;
@@ -272,12 +272,12 @@ Ext.onReady(function () {
         var t = (store.reader.jsonData || {}).totals;
         if (!el) return;
         if (!t) { el.innerHTML = ''; return; }
-        el.innerHTML = 'Saldo awal: <b style="color:#e6f1f8;">' + fmtAmt(t.saldo_awal) + '</b>' +
-                       ' &nbsp;|&nbsp; Faktur: <b style="color:#e6f1f8;">' + fmtAmt(t.faktur) + '</b>' +
-                       ' &nbsp;|&nbsp; Pembayaran: <b style="color:#e6f1f8;">' + fmtAmt(t.pembayaran) + '</b>' +
-                       ' &nbsp;|&nbsp; Alokasi: <b style="color:#e6f1f8;">' + fmtAmt(t.alokasi) + '</b>' +
+        el.innerHTML = 'Saldo awal: <b >' + fmtAmt(t.saldo_awal) + '</b>' +
+                       ' &nbsp;|&nbsp; Faktur: <b >' + fmtAmt(t.faktur) + '</b>' +
+                       ' &nbsp;|&nbsp; Pembayaran: <b >' + fmtAmt(t.pembayaran) + '</b>' +
+                       ' &nbsp;|&nbsp; Alokasi: <b >' + fmtAmt(t.alokasi) + '</b>' +
                        ' &nbsp;|&nbsp; <b>Sisa: ' + fmtAmt(t.sisa) + '</b>' +
-                       ' &nbsp;|&nbsp; >90 hari: <span style="color:' + (t.bucket_90_plus > 0 ? '#ff6b5e' : '#7fe0a0') + ';font-weight:bold;">' + fmtAmt(t.bucket_90_plus) + '</span>';
+                       ' &nbsp;|&nbsp; >90 hari: <span style="font-weight:bold">' + fmtAmt(t.bucket_90_plus) + '</span>';
     });
 
     // Pencarian global template memuat ulang mainDs saja -> samakan query ke store detail

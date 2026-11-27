@@ -10,9 +10,7 @@
 ?>
 <html>
     <head>
-        <style>
-            #editorForm {top: 30%; width: 70%; height: auto;}
-        </style>
+        
         <title id="page-title">Bin Location</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <script type="text/javascript">

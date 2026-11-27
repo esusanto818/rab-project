@@ -64,7 +64,7 @@ Ext.onReady(function() {
     }
 
     function loadKursDetailPanel(hdrId, kmkNo) {
-        kursDtlDiv.innerHTML = '<div style="padding:15px;color:#94a3b8;text-align:center;">Memuat rincian kurs...</div>';
+        kursDtlDiv.innerHTML = '<div style="padding:15px;text-align:center">Memuat rincian kurs...</div>';
         kursDtlDiv.style.display = 'block';
 
         Ext.Ajax.request({
@@ -74,14 +74,14 @@ Ext.onReady(function() {
             success: function(response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    kursDtlDiv.innerHTML = '<div style="color:#ef4444; padding:15px; text-align:center;">Gagal memuat rincian kurs.</div>';
+                    kursDtlDiv.innerHTML = '<div style="padding:15px; text-align:center">Gagal memuat rincian kurs.</div>';
                     kursDtlDiv.style.display = 'block';
                     return;
                 }
                 renderKursDetailPanel(res.data || [], kmkNo);
             },
             failure: function() {
-                kursDtlDiv.innerHTML = '<div style="color:#ef4444; padding:15px; text-align:center;">Gagal terhubung ke server.</div>';
+                kursDtlDiv.innerHTML = '<div style="padding:15px; text-align:center">Gagal terhubung ke server.</div>';
                 kursDtlDiv.style.display = 'block';
             }
         });
@@ -107,16 +107,16 @@ Ext.onReady(function() {
                    '<tbody>';
 
         if (!rows || rows.length === 0) {
-            html += '<tr><td colspan="6" style="padding:20px; text-align:center; color:#94a3b8;">Belum ada rincian kurs untuk periode ini.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:20px; text-align:center">Belum ada rincian kurs untuk periode ini.</td></tr>';
         } else {
             Ext.each(rows, function(r) {
                 var chgHtml;
                 if (r.change_direction === 'UP') {
-                    chgHtml = '<span style="color:#22c55e;font-weight:bold;">&#9650; +' + renderMoneyVal(r.change_amount) + '</span>';
+                    chgHtml = '<span style="font-weight:bold">&#9650; +' + renderMoneyVal(r.change_amount) + '</span>';
                 } else if (r.change_direction === 'DOWN') {
-                    chgHtml = '<span style="color:#ef4444;font-weight:bold;">&#9660; -' + renderMoneyVal(r.change_amount) + '</span>';
+                    chgHtml = '<span style="font-weight:bold">&#9660; -' + renderMoneyVal(r.change_amount) + '</span>';
                 } else {
-                    chgHtml = '<span style="color:#94a3b8;">&#9644; Tetap</span>';
+                    chgHtml = '<span >&#9644; Tetap</span>';
                 }
 
                 html += '<tr class="data-row">' +
@@ -274,7 +274,7 @@ Ext.onReady(function() {
             {
                 header: "Salinan KMK (PDF)", dataIndex: 'file_url', width: 250,
                 renderer: function(v) {
-                    return v ? '<a href="' + v + '" target="_blank" style="color:#38bdf8;text-decoration:underline;">📥 Download File KMK</a>' : '-';
+                    return v ? '<a href="' + v + '" target="_blank" style="text-decoration:underline">📥 Download File KMK</a>' : '-';
                 }
             },
             { id: 'colRemark', header: "Remark", dataIndex: 'remark', width: 200 },

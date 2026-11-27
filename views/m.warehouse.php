@@ -12,7 +12,7 @@
 ?>
 <html>
     <head>
-      <style>#editorForm {top: 40%; width: 85%;}</style>
+      
       <title id="page-title">Warehouse</title>
       <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/ext-3.4.1/resources/css/ext-all.css" />
       <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/mainCSS.css" />

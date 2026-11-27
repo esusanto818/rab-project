@@ -168,7 +168,7 @@
         else if (!canReportStatus(cur)) blocked = 'Proyek berstatus ' + esc(cur.status) + ': progress tidak dapat dilaporkan.';
         else if (cur.progress >= 100) blocked = 'Progress sudah 100%.';
         else if (cur.pending_count > 0) blocked = 'Masih ada klaim yang menunggu verifikasi. Tunggu office memverifikasi atau batalkan klaim tersebut.';
-        $('projInfo').innerHTML = info + (blocked ? '<br><span style="color:#e6a817;">' + blocked + '</span>' : '');
+        $('projInfo').innerHTML = info + (blocked ? '<br><span >' + blocked + '</span>' : '');
         $('frmCard').className = (blocked && cur.pending_count === 0) ? 'card hidden' : 'card';
         $('btnSave').disabled = !!blocked;
         if (!blocked) { var cp = parseInt($('fPct').value, 10); if (isNaN(cp) || cp <= cur.progress) setPct(Math.min(100, cur.progress + 1)); }
@@ -350,7 +350,7 @@
                 var n = (it.photos || []).length + (it.urls || []).length;
                 h += '<div class="card"><b>' + esc(it.percent) + '%</b> &middot; ' + esc(it.report_date) + ' &middot; ' + n + ' foto' +
                      (cur ? '' : ' &middot; ' + esc(it.project_name)) +
-                     '<div style="color:' + (it.error ? '#ff8a7d' : '#e6a817') + ';font-size:13px;">' +
+                     '<div style="font-size:13px">' +
                      (it.error ? 'DITOLAK: ' + esc(it.error) : 'Menunggu dikirim...') + '</div>' +
                      (it.error ? '<div class="row" style="margin-top:8px"><button class="sec" data-retry="' + escA(it.uuid) + '">Kirim ulang</button>' +
                                  '<button class="danger" data-del="' + escA(it.uuid) + '">Hapus</button></div>' : '') + '</div>';
@@ -393,7 +393,7 @@
 
             if (!/^(https?:\/\/|\/)/i.test(l)) { texts.push(esc(l)); return; }
             if (/\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(l)) out += '<a href="' + escA(l) + '" target="_blank"><img loading="lazy" src="' + escA(l) + '"></a>';
-            else texts.push('<a href="' + escA(l) + '" target="_blank" style="color:#7fe0a0;">Berkas</a>');
+            else texts.push('<a href="' + escA(l) + '" target="_blank" >Berkas</a>');
         });
         return (texts.length ? '<div class="meta">Bukti: ' + texts.join(' | ') + '</div>' : '') + (out ? '<div class="thumbs">' + out + '</div>' : '');
     }
@@ -404,11 +404,11 @@
             if (!res.success) { $('hist').innerHTML = '<div class="card">' + esc(res.message || 'Gagal memuat riwayat.') + '</div>'; return; }
             var h = '';
             res.data.forEach(function (r) {
-                h += '<div class="card hist"><span class="st" style="color:' + statusColor(r.status) + ';">' + esc(r.status) + '</span>' +
+                h += '<div class="card hist"><span class="st" >' + esc(r.status) + '</span>' +
                      '<span class="pct">' + esc(r.percent_claimed) + '%</span> <span class="meta">(dari ' + esc(r.prev_percent) + '%) &middot; ' + esc(r.report_date) +
                      ' &middot; ' + esc(r.reporter_name || '-') + '</span>' +
                      (r.note ? '<div>' + esc(r.note) + '</div>' : '') + renderEvidence(r.evidence_ref) +
-                     (r.verified_at ? '<div class="meta" style="margin-top:6px;">' + esc(r.status) + ' oleh ' + esc(r.verifier_name || '-') +
+                     (r.verified_at ? '<div class="meta" style="margin-top:6px">' + esc(r.status) + ' oleh ' + esc(r.verifier_name || '-') +
                                       (r.verify_note ? ': ' + esc(r.verify_note) : '') + '</div>' : '');
                 if (r.status === 'Diajukan' && r.reported_by === res.user_id && window.formAccess >= ACCESS_REPORT) {
                     h += '<div style="margin-top:8px"><button class="danger" data-cancel="' + r.id + '">Batalkan klaim</button></div>';

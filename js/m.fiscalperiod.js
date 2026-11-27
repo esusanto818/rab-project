@@ -82,7 +82,7 @@ Ext.onReady(function () {
             { header: 'Selesai', dataIndex: 'end_date', width: 100, renderer: Ext.util.Format.dateRenderer('d M Y') },
             {
                 header: 'Status', dataIndex: 'is_closed', width: 100, align: 'center',
-                renderer: function (v) { return v ? '<span style="color:#c0392b;font-weight:bold;">Closed</span>' : '<span style="color:#2e9e4f;">Open</span>'; }
+                renderer: function (v) { return v ? '<span style="font-weight:bold">Closed</span>' : '<span >Open</span>'; }
             }
         ],
         listeners: {

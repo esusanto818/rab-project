@@ -38,8 +38,8 @@ Ext.onReady(function () {
     // batang progres: lebar = persen (maks 100), warna per jenis
     function bar(pct, color) {
         var w = Math.max(0, Math.min(100, pct || 0));
-        return '<div style="background:rgba(255,255,255,0.12); height:12px; border-radius:6px; overflow:hidden;">' +
-               '<div style="width:' + w + '%; height:12px; background:' + color + ';"></div></div>';
+        return '<div style="height:12px; overflow:hidden">' +
+               '<div style="width:' + w + '%; height:12px"></div></div>';
     }
 
     // ============================================================
@@ -65,9 +65,9 @@ Ext.onReady(function () {
     fbar.style.padding = '0 10px';
     if (gridContainer && gridContainer.parentNode) { gridContainer.parentNode.insertBefore(fbar, topDiv); }
     new Ext.Panel({
-        renderTo: fbar, layout: 'column', border: false, bodyStyle: 'background:transparent; padding:6px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
-        items: [{ columnWidth: 0.3, style: 'padding-top:6px;', items: onlyActive }, { columnWidth: 0.2, items: btnShow }]
+        renderTo: fbar, layout: 'column', border: false, bodyStyle: 'padding:6px 0',
+        defaults: { border: false,  },
+        items: [{ columnWidth: 0.3, style: 'padding-top:6px', items: onlyActive }, { columnWidth: 0.2, items: btnShow }]
     });
 
     // ============================================================
@@ -92,12 +92,12 @@ Ext.onReady(function () {
             { header: 'Pemakaian Material', dataIndex: 'usage_pct', width: 160,
               renderer: function (v, m, r) { return (v === null ? '-' : fmtPct(parseFloat(v)) + bar(parseFloat(v), flagColor(r.get('flag')))); } },
             { header: 'Selisih (poin)', dataIndex: 'gap_pts', width: 100, align: 'right',
-              renderer: function (v, m, r) { return v === null ? '-' : '<b style="color:' + flagColor(r.get('flag')) + ' !important;">' + (parseFloat(v) > 0 ? '+' : '') + Ext.util.Format.number(parseFloat(v), '0,000.0') + '</b>'; } },
+              renderer: function (v, m, r) { return v === null ? '-' : '<b >' + (parseFloat(v) > 0 ? '+' : '') + Ext.util.Format.number(parseFloat(v), '0,000.0') + '</b>'; } },
             { header: 'Nilai RAB Material', dataIndex: 'rab_value', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             { header: 'Material Terpakai', dataIndex: 'used_value', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             { header: 'Status Proyek', dataIndex: 'project_status', width: 100, align: 'center' },
             { header: 'Tanda', dataIndex: 'flag', width: 90, align: 'center',
-              renderer: function (v) { return '<b style="color:' + flagColor(v) + ' !important;">' + enc(v) + '</b>'; } }
+              renderer: function (v) { return '<b >' + enc(v) + '</b>'; } }
         ],
         listeners: {
             rowclick: function (grid, rowIndex) {
@@ -117,9 +117,9 @@ Ext.onReady(function () {
                 if (!res.success) { showMsg('Gagal', res.message || 'Gagal memuat data.'); return; }
                 mainDs.loadData(res.data, false);
                 var c = res.data.counts;
-                topDiv.innerHTML = '<b style="color:#e8554a;">' + c['KRITIS'] + ' kritis</b> &nbsp;|&nbsp; <b style="color:#e6a817;">' + c['WASPADA'] + ' waspada</b> &nbsp;|&nbsp; ' +
-                    '<b style="color:#2e9e4f;">' + c['NORMAL'] + ' normal</b> &nbsp;|&nbsp; <span style="color:#999;">' + c['TANPA RAB'] + ' tanpa RAB</span>' +
-                    '<div style="margin-top:4px; color:#9fc3d1; font-size:12px;">Selisih = % pemakaian material (nilai issue / nilai RAB) dikurangi % progres. ' +
+                topDiv.innerHTML = '<b >' + c['KRITIS'] + ' kritis</b> &nbsp;|&nbsp; <b >' + c['WASPADA'] + ' waspada</b> &nbsp;|&nbsp; ' +
+                    '<b >' + c['NORMAL'] + ' normal</b> &nbsp;|&nbsp; <span >' + c['TANPA RAB'] + ' tanpa RAB</span>' +
+                    '<div style="margin-top:4px; font-size:12px">Selisih = % pemakaian material (nilai issue / nilai RAB) dikurangi % progres. ' +
                     'Lebih dari 10 poin = waspada, lebih dari 20 poin = kritis: material keluar jauh lebih cepat dari pekerjaan yang selesai (periksa pemborosan, ' +
                     'material tidak terpasang, atau progres yang belum diperbarui).</div>';
                 dtlDiv.style.display = 'none';
@@ -139,19 +139,19 @@ Ext.onReady(function () {
                 try { res = Ext.util.JSON.decode(response.responseText); }
                 catch (e) { showMsg('Gagal', 'Respons server tidak valid.'); return; }
                 if (!res.success) { showMsg('Gagal', res.message || 'Gagal memuat rincian.'); return; }
-                var html = '<h3 class="detail-title">Rincian per material: ' + enc(p.project_name) + ' <span style="color:#9fc3d1;">(progres ' + fmtPct(p.progress_pct) + ')</span></h3>' +
+                var html = '<h3 class="detail-title">Rincian per material: ' + enc(p.project_name) + ' <span >(progres ' + fmtPct(p.progress_pct) + ')</span></h3>' +
                            '<hr class="detail-hr" />' +
                            '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                            '<th align="left">Material</th><th align="right">Qty RAB</th><th align="right">Qty Terpakai</th><th align="left" width="150">% Pemakaian</th>' +
                            '<th align="right">Selisih (poin)</th><th align="right">Nilai Terpakai</th><th align="center">Tanda</th></tr></thead><tbody>';
-                if (!res.data.length) { html += '<tr><td colspan="7" style="padding:15px; text-align:center; color:#557982;">Proyek ini belum punya material di RAB.</td></tr>'; }
+                if (!res.data.length) { html += '<tr><td colspan="7" style="padding:15px; text-align:center">Proyek ini belum punya material di RAB.</td></tr>'; }
                 Ext.each(res.data, function (m) {
-                    html += '<tr class="data-row"><td align="left">' + enc(m.material_name) + ' <span style="color:#668894;">(' + enc(m.material_code) + ')</span></td>' +
+                    html += '<tr class="data-row"><td align="left">' + enc(m.material_name) + ' <span >(' + enc(m.material_code) + ')</span></td>' +
                             '<td align="right">' + fmtQty(m.rab_qty) + ' ' + enc(m.unit) + '</td><td align="right">' + fmtQty(m.used_qty) + '</td>' +
                             '<td align="left">' + fmtPct(m.usage_pct) + bar(m.usage_pct, flagColor(m.flag)) + '</td>' +
-                            '<td align="right"><b style="color:' + flagColor(m.flag) + ';">' + (m.gap_pts === null ? '-' : (m.gap_pts > 0 ? '+' : '') + Ext.util.Format.number(m.gap_pts, '0,000.0')) + '</b></td>' +
+                            '<td align="right"><b >' + (m.gap_pts === null ? '-' : (m.gap_pts > 0 ? '+' : '') + Ext.util.Format.number(m.gap_pts, '0,000.0')) + '</b></td>' +
                             '<td align="right">' + fmtAmt(m.used_value) + '</td>' +
-                            '<td align="center"><b style="color:' + flagColor(m.flag) + ';">' + enc(m.flag) + '</b></td></tr>';
+                            '<td align="center"><b >' + enc(m.flag) + '</b></td></tr>';
                 });
                 html += '</tbody></table>';
                 dtlDiv.innerHTML = html;

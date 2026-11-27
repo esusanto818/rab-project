@@ -69,7 +69,7 @@ Ext.onReady(function () {
         updateInvoiceTotal();
 
         panel.style.display = 'block';
-        panel.innerHTML = '<div style="font-size:12px; color:#2e9e4f;">✓ ' + soItemDs.getCount() + ' item dari Sales Order ini sudah otomatis ditambahkan ke daftar item invoice di bawah.</div>';
+        panel.innerHTML = '<div style="font-size:12px">✓ ' + soItemDs.getCount() + ' item dari Sales Order ini sudah otomatis ditambahkan ke daftar item invoice di bawah.</div>';
     }
 
     // ============================================================
@@ -143,8 +143,8 @@ Ext.onReady(function () {
 
     function statusRenderer(v) {
         return v === 'final'
-            ? '<span style="color:#2e9e4f;font-weight:bold;">Final</span>'
-            : '<span style="color:#e08e0b;">Draft</span>';
+            ? '<span style="font-weight:bold">Final</span>'
+            : '<span >Draft</span>';
     }
     let mainHeight=(maxGridHeight(document.getElementById('divMainGrid')));
 

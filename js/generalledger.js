@@ -85,13 +85,13 @@ Ext.onReady(function () {
         renderTo: 'glFilterBar',
         layout: 'column',
         border: false,
-        bodyStyle: 'background:transparent; padding:8px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
+        bodyStyle: 'padding:8px 0',
+        defaults: { border: false,  },
         items: [
             { columnWidth: 0.35, layout: 'form', labelWidth: 60, items: fldAccount },
             { columnWidth: 0.25, layout: 'form', labelWidth: 60, items: fldPeriod },
-            { columnWidth: 0.15, style: 'padding-top:2px;', items: btnShow },
-            { columnWidth: 0.1, style: 'padding-top:2px;', items: btnClearFilter }
+            { columnWidth: 0.15, style: 'padding-top:2px', items: btnShow },
+            { columnWidth: 0.1, style: 'padding-top:2px', items: btnClearFilter }
         ]
     });
 

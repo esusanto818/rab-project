@@ -16,7 +16,7 @@
 </html>
   <head>
     <link rel="stylesheet" type="text/css" href="../css/header.black.css"/>
-    <style> #editorForm {top: 30%; width: 60%;} </style>
+    
     <title id="page-title">Color</title>
   </head>
   <body>

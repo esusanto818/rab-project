@@ -14,10 +14,7 @@
 ?>
 <html>
 	<head>
-		<style>
-			#editorForm {top: 50%; width: 90%;}
-			#addForm {top: 40%; width: 80%;}
-		</style>
+		
 		<title id="page-title">Supplier List</title>
     <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
 	</head>

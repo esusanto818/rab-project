@@ -22,21 +22,7 @@ $username=$_SESSION["username"];
     <link rel="stylesheet" type="text/css" href="../css/myFonts.css"/>
     <link rel="stylesheet" type="text/css" href="../css/mainCSS.css"/>
     <link rel="stylesheet" type="text/css" href="../css/menu.css" />
-    <style>
-      .button-menu {
-        height          : 80%;
-        width           : 95%;
-        padding         : 10px 0px;
-        border-radius   : 10px;
-        border-color    : transparent;
-        background-color: rgba(149, 57, 152, .8);
-        color           : #fff;
-        border-width    : 1px;
-        cursor          : pointer;
-        text-align      : center;
-        font            : 300 1.2rem bri;
-      }
-    </style>
+    
     <title id="page-title">Menu</title>
   </head>
   <body>
@@ -56,19 +42,19 @@ $username=$_SESSION["username"];
       </div>
       <div id="content-area">
         <div id="content">
-          <div class="mainSubBoxBlock" style="height: 175px; width: 90%; text-align: center; display: flex; overflow: auto;">
+          <div class="mainSubBoxBlock" style="height: 175px; width: 90%; text-align: center; display: flex; overflow: auto">
             <c0>
               <div class="mainSubBox backColorBlack" style="height: 120px">
                 <p class="headerInfo">Trimming&nbsp;&nbsp; ~ in pcs</p>
-                <a style="font-family: Bri, Arial, Helvetica, sans-serif; font-size: .8rem; color: #fff;"><?php echo $periodTrimming; ?></a>
+                <a style="font-size: .8rem"><?php echo $periodTrimming; ?></a>
                 <table class="infoTable">
                   <tbody>
-                    <tr style="height: 27px; font-size: 1rem; color: #ffff00;">
+                    <tr style="height: 27px; font-size: 1rem">
                       <td ><?php echo $trimmingDay; ?></td>
                       <td ><?php echo $trimmingMonth; ?></td>
                       <td ><?php echo $trimmingTotal; ?></td>
                     </tr>
-                    <tr style="height: 25px; font-size: .8rem;"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
+                    <tr style="height: 25px; font-size: .8rem"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -76,15 +62,15 @@ $username=$_SESSION["username"];
             <c0>
               <div class="mainSubBox backColorBlack" style="height: 120px">
                 <p class="headerInfo">RoundUp&nbsp;&nbsp; ~ in pcs</p>
-                <a style="font-family: Bri, Arial, Helvetica, sans-serif; font-size: .8rem; color: #fff;"><?php echo $periodRoundUp; ?></a>
+                <a style="font-size: .8rem"><?php echo $periodRoundUp; ?></a>
                 <table class="infoTable">
                   <tbody>
-                    <tr style="height: 27px; font-size: 1rem; color: #ffff00;">
+                    <tr style="height: 27px; font-size: 1rem">
                       <td><?php echo $roundupDay; ?></td>
                       <td><?php echo $roundupMonth; ?></td>
                       <td><?php echo $roundupTotal; ?></td>
                     </tr>
-                    <tr style="height: 26px; font-size: .8rem;"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
+                    <tr style="height: 26px; font-size: .8rem"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -92,15 +78,15 @@ $username=$_SESSION["username"];
             <c0>
               <div class="mainSubBox backColorBlack" style="height: 120px">
                 <p class="headerInfo">Peeling (&#8709 45 up)&nbsp;&nbsp; ~ in pcs</p>
-                <a style="font-family: Bri, Arial, Helvetica, sans-serif; font-size: .8rem; color: #fff;"><?php echo $periodPeeling; ?></a>
+                <a style="font-size: .8rem"><?php echo $periodPeeling; ?></a>
                 <table class="infoTable">
                   <tbody>
-                    <tr style="height: 27px; font-size: 1rem; color: #ffff00;">
+                    <tr style="height: 27px; font-size: 1rem">
                       <td><?php echo $peelingDay; ?></td>
                       <td><?php echo $peelingMonth; ?></td>
                       <td><?php echo $peelingTotal; ?></td>
                     </tr>
-                    <tr style="height: 26px; font-size: .8rem;"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
+                    <tr style="height: 26px; font-size: .8rem"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -108,15 +94,15 @@ $username=$_SESSION["username"];
             <c0>
               <div class="mainSubBox backColorBlack" style="height:120px">
                 <p class="headerInfo">Clipper&nbsp;&nbsp; ~ in M3</p>
-                <a style="font-family: Bri, Arial, Helvetica, sans-serif; font-size: .8rem; color: #fff;"><?php echo $periodClipper; ?></a>
+                <a style="font-size: .8rem"><?php echo $periodClipper; ?></a>
                 <table class="infoTable">
                   <tbody>
-                    <tr style="height: 27px; font-size: 1rem; color: #ffff00;">
+                    <tr style="height: 27px; font-size: 1rem">
                       <td><?php echo $clipperDay; ?></td>
                       <td><?php echo $clipperMonth; ?></td>
                       <td><?php echo $clipperTotal; ?></td>
                     </tr>
-                    <tr style="height: 26px; font-size: .8rem;"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
+                    <tr style="height: 26px; font-size: .8rem"><td>Daily</td><td>Monthly</td><td>Total</td></tr>
                   </tbody>
                 </table>
               </div>
@@ -125,21 +111,21 @@ $username=$_SESSION["username"];
 
           <div id="infoLogSupplier" class="infoSupplierLog"></div>
           <!-- <div class="chart-containerProduct"> -->
-          <div class="mainSubBoxBlock" style="height: 200px; width: 90%; text-align: center; display: flex; overflow: auto;">
+          <div class="mainSubBoxBlock" style="height: 200px; width: 90%; text-align: center; display: flex; overflow: auto">
             <c0 style="width: 20%"><div class="mainSubBox backColorGreen" style="height: 160px">
-              <canvas id="prodChart01" style="margin-left:auto; margin-right:auto; border-radius: 5px;"></canvas>
+              <canvas id="prodChart01" style="margin-left:auto; margin-right:auto"></canvas>
             </div></c0>
             <c0 style="width: 20%"><div class="mainSubBox backColorOrange" style="height: 160px">
-              <canvas id="prodChart02" style="margin-left:auto; margin-right:auto; border-radius: 5px;"></canvas>
+              <canvas id="prodChart02" style="margin-left:auto; margin-right:auto"></canvas>
             </div></c0>
             <c0 style="width: 20%"><div class="mainSubBox backColorPurple" style="height: 160px">
-              <canvas id="prodChart03" style="margin-left:auto; margin-right:auto; border-radius: 5px;"></canvas>
+              <canvas id="prodChart03" style="margin-left:auto; margin-right:auto"></canvas>
             </div></c0>
             <c0 style="width: 20%"><div class="mainSubBox backColorRed" style="height: 160px">
-              <canvas id="prodChart04" style="margin-left:auto; margin-right:auto; border-radius: 5px;"></canvas>
+              <canvas id="prodChart04" style="margin-left:auto; margin-right:auto"></canvas>
             </div></c0>
             <c0 style="width: 20%"><div class="mainSubBox backColorBlue" style="height: 160px">
-              <canvas id="prodChart05" style="margin-left:auto; margin-right:auto; border-radius: 5px;"></canvas>
+              <canvas id="prodChart05" style="margin-left:auto; margin-right:auto"></canvas>
             </div></c0>
           </div>
 
@@ -148,13 +134,13 @@ $username=$_SESSION["username"];
             <div id="schPlywoodData" class="schPlywoodData"></div>
           </div>
 
-          <div class="mainSubBoxBlock" style="height: 175px; text-align: center; display: flex; overflow: auto;">
+          <div class="mainSubBoxBlock" style="height: 175px; text-align: center; display: flex; overflow: auto">
             <c0>
               <div class="mainSubBox backColorGreen">
                 <div class="mainSubBoxHdrInfo">
                   <div class="mainSubBoxHdrInfoText">
                     <a >Order&nbsp;&nbsp; ~ in Pcs</a>
-                    <a style="font-size: 13px; padding-top: 4px;"><?php echo $salesPeriod; ?></a>
+                    <a style="font-size: 13px; padding-top: 4px"><?php echo $salesPeriod; ?></a>
                   </div >
                   <div class="mainSubBoxHdrInfoIcon"><i class="material-icons md-28 white">add_shopping_cart</i></div>
                 </div>
@@ -166,7 +152,7 @@ $username=$_SESSION["username"];
                 <div class="mainSubBoxHdrInfo">
                   <div class="mainSubBoxHdrInfoText">
                     <a >Delivery&nbsp;&nbsp; ~ in Pcs</a>
-                    <a style="font-size: 13px; padding-top: 4px;"><?php echo $salesPeriod; ?></a>
+                    <a style="font-size: 13px; padding-top: 4px"><?php echo $salesPeriod; ?></a>
                   </div >
                   <div class="mainSubBoxHdrInfoIcon"><i class="material-icons md-28 white">airport_shuttle</i></div>
                 </div>
@@ -178,7 +164,7 @@ $username=$_SESSION["username"];
                 <div class="mainSubBoxHdrInfo">
                   <div class="mainSubBoxHdrInfoText">
                     <a >Outstanding&nbsp;&nbsp; ~ in Pcs</a>
-                    <a style="font-size: 13px; padding-top: 4px;"><?php echo $salesPeriod; ?></a>
+                    <a style="font-size: 13px; padding-top: 4px"><?php echo $salesPeriod; ?></a>
                   </div >
                   <div class="mainSubBoxHdrInfoIcon"><i class="material-icons md-28 white">business</i></div>
                 </div>
@@ -190,7 +176,7 @@ $username=$_SESSION["username"];
                 <div class="mainSubBoxHdrInfo">
                   <div class="mainSubBoxHdrInfoText">
                     <a >Cancel&nbsp;&nbsp; ~ in Pcs</a>
-                    <a style="font-size: 13px; padding-top: 4px;"><?php echo $salesPeriod; ?></a>
+                    <a style="font-size: 13px; padding-top: 4px"><?php echo $salesPeriod; ?></a>
                   </div >
                   <div class="mainSubBoxHdrInfoIcon"><i class="material-icons md-28 white">remove_shopping_cart</i></div>
                 </div>
@@ -200,12 +186,12 @@ $username=$_SESSION["username"];
           </div>
 
           <div class="chart-containerTop">
-            <div class="left"><canvas id="myChart01" style="margin-left:auto; margin-right:auto;"></canvas></div>
-            <div class="right"><canvas id="myChart02" style="margin-left:auto; margin-right:auto;"></canvas></div>
+            <div class="left"><canvas id="myChart01" style="margin-left:auto; margin-right:auto"></canvas></div>
+            <div class="right"><canvas id="myChart02" style="margin-left:auto; margin-right:auto"></canvas></div>
           </div>
 
-          <!-- <div class="schPlywoodHeader" style="padding-top: 10px; padding-bottom: 0px; background-color: rgba(0, 0, 0, .4); border-top-left-radius: 10px; border-top-right-radius: 10px;">Sales vs Production</div> -->
-          <div class="mainSubBoxBlock" style="height: 50px; width: 90%; text-align: center; display: flex; overflow: auto; background-color: rgba(0, 0, 0, .4); border-top-left-radius: 10px; border-top-right-radius: 10px; backdrop-filter: blur(5px) contrast(1); -webkit-backdrop-filter: blur(5px) contrast(1);">
+          <!-- <div class="schPlywoodHeader" style="padding-top: 10px; padding-bottom: 0px; border-top-left-radius: 10px; border-top-right-radius: 10px">Sales vs Production</div> -->
+          <div class="mainSubBoxBlock" style="height: 50px; width: 90%; text-align: center; display: flex; overflow: auto; border-top-left-radius: 10px; border-top-right-radius: 10px; backdrop-filter: blur(5px) contrast(1); -webkit-backdrop-filter: blur(5px) contrast(1)">
             <c0 style="width: 16.66%"><div class="mainSubBox"><button class="button-menu" id="0" type="button" >Sales/Production</button></div></c0>
             <c0 style="width: 16.66%"><div class="mainSubBox"><button class="button-menu" id="1" type="button" >Sales/Delivery</button></div></c0>
             <c0 style="width: 16.66%"><div class="mainSubBox"></div></c0>
@@ -215,7 +201,7 @@ $username=$_SESSION["username"];
           </div>
 
           <div class="chart-containerBot">
-            <div><canvas id="divSalesvsProduction" style="margin-left:auto; margin-right:auto;"></canvas></div>
+            <div><canvas id="divSalesvsProduction" style="margin-left:auto; margin-right:auto"></canvas></div>
           </div>
         </div>
       </div>

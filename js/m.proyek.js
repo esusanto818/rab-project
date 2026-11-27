@@ -29,11 +29,11 @@ Ext.onReady(function () {
         var nf = function (v) { return Ext.util.Format.number(v || 0, '0,000'); }, en = Ext.util.Format.htmlEncode;
         var col = { danger: ['#3b1212', '#ff6b5e', '#ffb4ab'], warning: ['#3a2c08', '#e6a817', '#ffe08a'], ok: ['#0f2f22', '#2e9e4f', '#a5e8bd'] }[sm.severity] || ['#132330', '#1c3648', '#ffffff'];
         var title = sm.severity === 'ok' ? '&#10003; Anggaran aman' : ('&#9888; ' + (sm.severity === 'danger' ? 'PERINGATAN ANGGARAN' : 'PERHATIAN ANGGARAN'));
-        var h = '<div style="background:' + col[0] + ';border:2px solid ' + col[1] + ';border-radius:5px;padding:10px;margin-bottom:12px;font-size:15px;line-height:1.6;">' +
-            '<b style="color:' + col[1] + ';">' + title + '</b><br><span style="color:#d5e3ec;">Total RAB Rp <b>' + nf(sm.rab_after_idr) + '</b> | Estimasi seluruh task (max) Rp <b>' + nf(sm.task_total_max_idr) + '</b>' +
+        var h = '<div style=";padding:10px;margin-bottom:12px;font-size:15px;line-height:1.6">' +
+            '<b >' + title + '</b><br><span >Total RAB Rp <b>' + nf(sm.rab_after_idr) + '</b> | Estimasi seluruh task (max) Rp <b>' + nf(sm.task_total_max_idr) + '</b>' +
             (sm.budget_idr > 0 ? ' | Budget Rp <b>' + nf(sm.budget_idr) + '</b>' : '') + (sm.contract_idr > 0 ? ' | Nilai kontrak Rp <b>' + nf(sm.contract_idr) + '</b>' : '') + '</span>';
         Ext.each(sm.warnings || [], function (w) {
-            h += '<div style="color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:3px;">&bull; ' + en(w.text) + '</div>';
+            h += '<div style="margin-top:3px">&bull; ' + en(w.text) + '</div>';
         });
         return h + '</div>';
     }
@@ -43,8 +43,8 @@ Ext.onReady(function () {
         Ext.each(items || [], function (it) {
             if (it.kind !== kind) return;
             var pr = (parseFloat(it.pmin) === parseFloat(it.pmax)) ? nf(it.pmax) : nf(it.pmin) + ' - ' + nf(it.pmax);
-            out.push('<div style="margin-bottom:6px;"><b>' + Ext.util.Format.htmlEncode(it.name) + '</b>: ' + fmtQty3(it.qty) + ' ' +
-                     Ext.util.Format.htmlEncode(it.unit) + '<div style="color:#8fb3c0;font-size:13px;">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + (parseFloat(it.pmin) === parseFloat(it.pmax) ? ' (rentang master belum diisi)' : ' (min - max)') + '</div></div>');
+            out.push('<div style="margin-bottom:6px"><b>' + Ext.util.Format.htmlEncode(it.name) + '</b>: ' + fmtQty3(it.qty) + ' ' +
+                     Ext.util.Format.htmlEncode(it.unit) + '<div style="font-size:13px">@ ' + pr + ' / ' + Ext.util.Format.htmlEncode(it.unit) + (parseFloat(it.pmin) === parseFloat(it.pmax) ? ' (rentang master belum diisi)' : ' (min - max)') + '</div></div>');
         });
         return out.length ? out.join('') : '-';
     }
@@ -55,9 +55,9 @@ Ext.onReady(function () {
         var td = 'padding:7px 10px; border-bottom:1px solid #2a485d; vertical-align:top;';
         var nw = td + 'white-space:nowrap;';
         var h = '';
-        if (analysis) h += '<div style="margin-bottom:12px; text-align:left; line-height:20px;"><b>Analisis AI:</b> ' + Ext.util.Format.htmlEncode(analysis) + '</div>';
-        h += '<table style="border-collapse:collapse; font-size:15px; width:100%; text-align:left; table-layout:auto;">' +
-             '<tr style="font-weight:bold; color:#00bcd4;">' +
+        if (analysis) h += '<div style="margin-bottom:12px; text-align:left; line-height:20px"><b>Analisis AI:</b> ' + Ext.util.Format.htmlEncode(analysis) + '</div>';
+        h += '<table style="border-collapse:collapse; font-size:15px; width:100%; text-align:left; table-layout:auto">' +
+             '<tr style="font-weight:bold">' +
              '<td style="' + nw + '">Tagihan</td><td align="right" style="' + nw + '">%</td><td align="right" style="' + nw + '">Total (DPP+PPN)</td>' +
              '<td style="' + nw + '">Tgl Invoice</td><td style="' + nw + '">Jatuh Tempo</td><td style="' + td + '">Task Pemicu</td><td style="' + nw + '">Aksi</td></tr>';
         Ext.each(rows || [], function (r) {
@@ -106,10 +106,10 @@ Ext.onReady(function () {
         var h = Math.min(950, Math.round((window.innerHeight || 800) * 0.94));
         var uid = 'planWin' + (++planWinSeq);
         var btnBase = 'padding:11px 28px; color:#fff; border:0; border-radius:5px; cursor:pointer; font-weight:bold; font-size:15px; margin-left:12px;';   // [UI-READABLE] tombol lebih besar
-        var btnHtml = '<div style="text-align:right; padding:6px 4px;">' +
-            (onYes ? '<button type="button" id="' + uid + 'No" style="' + btnBase + 'background:#800020;">Batal</button>' +        // burgundy
-                     '<button type="button" id="' + uid + 'Yes" style="' + btnBase + 'background:#066b78;">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
-                   : '<button type="button" id="' + uid + 'No" style="' + btnBase + 'background:#066b78;">Tutup</button>') +
+        var btnHtml = '<div style="text-align:right; padding:6px 4px">' +
+            (onYes ? '<button type="button" id="' + uid + 'No" style="' + btnBase + '">Batal</button>' +        // burgundy
+                     '<button type="button" id="' + uid + 'Yes" style="' + btnBase + '">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
+                   : '<button type="button" id="' + uid + 'No" style="' + btnBase + '">Tutup</button>') +
             '</div>';
         if (!document.getElementById('aiPlanWinCss')) {      // [UI-READABLE] judul jendela 20px (default Ext 11px terlalu kecil)
             Ext.util.CSS.createStyleSheet('.aiPlanWin .x-window-header-text{font-size:20px !important;font-weight:bold;line-height:30px;} ' +
@@ -118,9 +118,9 @@ Ext.onReady(function () {
         }
         var win = new Ext.Window({
             cls: 'aiPlanWin', title: title, width: w, height: h, modal: true, layout: 'auto', autoScroll: true, closeAction: 'close',
-            bodyStyle: 'padding:14px;', html: html,
+            bodyStyle: 'padding:14px', html: html,
             bbar: new Ext.Toolbar({
-                style: 'background:transparent; border:0; padding:6px 10px;',
+                style: 'padding:6px 10px',
                 items: ['->', { xtype: 'box', autoEl: { tag: 'div', html: btnHtml } }]
             })
         });
@@ -305,73 +305,73 @@ Ext.onReady(function () {
         if (!dataRecord) return;
         var scopeTxt = dataRecord.project_scope || 'Belum ada spesifikasi teknis.';
         
-        var html = '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px;">' +
-                   '<h3 style="margin:0; font-size:18px; color:#00bcd4;">Detail & Sub-Task Proyek AI: ' + Ext.util.Format.htmlEncode(dataRecord.name) + '</h3>' +
-                   '<span style="color:#a1c4d0; font-size:14px; white-space:nowrap;">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:8px">' +
+                   '<h3 style="margin:0; font-size:18px">Detail & Sub-Task Proyek AI: ' + Ext.util.Format.htmlEncode(dataRecord.name) + '</h3>' +
+                   '<span style="font-size:14px; white-space:nowrap">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
                    '</div>' +
-                   '<div style="text-align:left; margin:0 0 12px 0;">' +
-                   '<button type="button" id="btnPrintProjectTasks" style="padding:7px 14px; background:#087f8c; color:#fff; border:0; border-radius:4px; cursor:pointer; font-weight:bold;">Print Task</button>' +
+                   '<div style="text-align:left; margin:0 0 12px 0">' +
+                   '<button type="button" id="btnPrintProjectTasks" style="padding:7px 14px; ; ; cursor:pointer; font-weight:bold">Print Task</button>' +
                    '</div>' +
-                   '<div style="background:#132330; padding:10px; border-radius:4px; margin-bottom:12px; border:1px solid #1c3648;">' +
-                   '<b style="color:#00bcd4; font-size:15px;">Definisi / Lingkup Proyek:</b>' +
-                   '<div style="color:#ffffff; font-size:15px; margin-top:4px; line-height:18px;">' + Ext.util.Format.htmlEncode(scopeTxt) + '</div>' +
+                   '<div style="padding:10px; margin-bottom:12px">' +
+                   '<b style="font-size:15px">Definisi / Lingkup Proyek:</b>' +
+                   '<div style="font-size:15px; margin-top:4px; line-height:18px">' + Ext.util.Format.htmlEncode(scopeTxt) + '</div>' +
                    '</div>' +
                    plafonBanner() +
-                   '<table class="proyek-dtl-table" width="100%" cellSpacing="0" cellPadding="8" style="border-collapse:collapse; font-size:13.5px; table-layout:fixed;">' +
+                   '<table class="proyek-dtl-table" width="100%" cellSpacing="0" cellPadding="8" style="border-collapse:collapse; font-size:13.5px; table-layout:fixed">' +
                    '<thead><tr>' +
-                   '<th style="width:16%; text-align:left;">Nama Sub-Task (WBS)</th>' +
-                   '<th style="width:24%; text-align:left;">Deskripsi Pekerjaan</th>' +
-                   '<th style="width:14%; text-align:left;">Material Task</th>' +
-                   '<th style="width:11%; text-align:left;">Biaya / Jasa</th>' +
-                   '<th style="width:11%; text-align:right;">Estimasi (Max)</th>' +
-                   '<th style="width:8%; text-align:center; white-space:nowrap;">Tgl Mulai</th>' +
-                   '<th style="width:8%; text-align:center; white-space:nowrap;">Tgl Selesai</th>' +
-                   '<th style="width:8%; text-align:center; white-space:nowrap;">Status</th>' +
+                   '<th style="width:16%; text-align:left">Nama Sub-Task (WBS)</th>' +
+                   '<th style="width:24%; text-align:left">Deskripsi Pekerjaan</th>' +
+                   '<th style="width:14%; text-align:left">Material Task</th>' +
+                   '<th style="width:11%; text-align:left">Biaya / Jasa</th>' +
+                   '<th style="width:11%; text-align:right">Estimasi (Max)</th>' +
+                   '<th style="width:8%; text-align:center; white-space:nowrap">Tgl Mulai</th>' +
+                   '<th style="width:8%; text-align:center; white-space:nowrap">Tgl Selesai</th>' +
+                   '<th style="width:8%; text-align:center; white-space:nowrap">Status</th>' +
                    '</tr></thead><tbody>';
 
         if (!records || !records.length) {
-            html += '<tr><td colspan="8" style="padding:15px; text-align:center; opacity:0.7;">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
+            html += '<tr><td colspan="8" style="padding:15px; text-align:center; opacity:0.7">Belum ada analisis sub-task AI untuk proyek ini. Klik <b>Edit</b> untuk membuat rincian task.</td></tr>';
         } else {
             Ext.each(records, function (r) {
                 var d = r.data;
                 html += '<tr>' +
-                        '<td style="font-weight:600; vertical-align:top; word-wrap:break-word;">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
-                        '<td style="vertical-align:top; word-wrap:break-word; line-height:1.45;">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
-                        '<td style="vertical-align:top; word-wrap:break-word; font-size:13px;">' + fmtTaskItems(d.items, 'M') + '</td>' +
-                        '<td style="vertical-align:top; word-wrap:break-word; font-size:13px;">' + fmtTaskItems(d.items, 'E') + '</td>' +
-                        '<td align="right" style="vertical-align:top; white-space:nowrap; font-weight:600;">' + Ext.util.Format.number(d.total_max || 0, '0,000') +
-                        '<div style="opacity:0.75; font-size:12px; font-weight:normal;">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
-                        '<td align="center" style="vertical-align:top; white-space:nowrap;">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
-                        '<td align="center" style="vertical-align:top; white-space:nowrap;">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
-                        '<td align="center" style="vertical-align:top; white-space:nowrap;"><span class="proyek-status-badge">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
+                        '<td style="font-weight:600; vertical-align:top; word-wrap:break-word">' + Ext.util.Format.htmlEncode(d.task_name) + '</td>' +
+                        '<td style="vertical-align:top; word-wrap:break-word; line-height:1.45">' + Ext.util.Format.htmlEncode(d.description) + '</td>' +
+                        '<td style="vertical-align:top; word-wrap:break-word; font-size:13px">' + fmtTaskItems(d.items, 'M') + '</td>' +
+                        '<td style="vertical-align:top; word-wrap:break-word; font-size:13px">' + fmtTaskItems(d.items, 'E') + '</td>' +
+                        '<td align="right" style="vertical-align:top; white-space:nowrap; font-weight:600">' + Ext.util.Format.number(d.total_max || 0, '0,000') +
+                        '<div style="opacity:0.75; font-size:12px; font-weight:normal">min ' + Ext.util.Format.number(d.total_min || 0, '0,000') + '</div></td>' +
+                        '<td align="center" style="vertical-align:top; white-space:nowrap">' + Ext.util.Format.htmlEncode(d.start_date) + '</td>' +
+                        '<td align="center" style="vertical-align:top; white-space:nowrap">' + Ext.util.Format.htmlEncode(d.end_date) + '</td>' +
+                        '<td align="center" style="vertical-align:top; white-space:nowrap"><span class="proyek-status-badge">' + Ext.util.Format.htmlEncode(d.status) + '</span></td>' +
                         '</tr>';
             });
         }
         html += '</tbody></table>';
 
         // [AUTO-INV][NEW] tabel tagihan ke klien
-        html += '<h3 style="margin:16px 0 8px 0; font-size:17px; color:#00bcd4;">Tagihan ke Klien</h3>' +
-                '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#fff; font-size:15px;">' +
-                '<thead><tr style="background:#1a2f40; color:#00bcd4; text-align:left; font-weight:bold;">' +
-                '<th style="padding:8px;">No. Invoice</th><th style="padding:8px;">Termin</th>' +
-                '<th align="center" style="padding:8px;">Tgl Invoice</th><th align="center" style="padding:8px;">Jatuh Tempo</th>' +
-                '<th align="right" style="padding:8px;">Nilai</th><th align="right" style="padding:8px;">Terbayar</th>' +
-                '<th align="center" style="padding:8px;">Status</th><th style="padding:8px;">Task Pemicu</th></tr></thead><tbody>';
+        html += '<h3 style="margin:16px 0 8px 0; font-size:17px">Tagihan ke Klien</h3>' +
+                '<table width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; font-size:15px">' +
+                '<thead><tr style="text-align:left; font-weight:bold">' +
+                '<th style="padding:8px">No. Invoice</th><th style="padding:8px">Termin</th>' +
+                '<th align="center" style="padding:8px">Tgl Invoice</th><th align="center" style="padding:8px">Jatuh Tempo</th>' +
+                '<th align="right" style="padding:8px">Nilai</th><th align="right" style="padding:8px">Terbayar</th>' +
+                '<th align="center" style="padding:8px">Status</th><th style="padding:8px">Task Pemicu</th></tr></thead><tbody>';
         if (!invoices || !invoices.length) {
-            html += '<tr><td colspan="8" style="padding:15px; text-align:center; color:#688998;">Belum ada tagihan. Jalankan <b>ANALISIS & BAGI TASK (AI)</b> atau <b>TERBITKAN TAGIHAN OTOMATIS</b> di jendela Edit.</td></tr>';
+            html += '<tr><td colspan="8" style="padding:15px; text-align:center">Belum ada tagihan. Jalankan <b>ANALISIS & BAGI TASK (AI)</b> atau <b>TERBITKAN TAGIHAN OTOMATIS</b> di jendela Edit.</td></tr>';
         } else {
             Ext.each(invoices, function (iv) {
                 var amt = parseFloat(iv.amount) || 0, pd = parseFloat(iv.paid_amount) || 0;
                 var st = pd >= amt - 0.005 ? ['Lunas', '#80cbc4'] : (pd > 0 ? ['Sebagian', '#ffd54f'] : ['Belum bayar', '#ff8a80']);
-                html += '<tr style="border-bottom:1px solid #182e3e;">' +
-                        '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.inv_no) + (iv.auto_generated ? ' <span style="color:#00bcd4;font-size:13px;">AUTO</span>' : '') + '</td>' +
-                        '<td style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.termin_name) + '</td>' +
-                        '<td align="center" style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.invoice_date || '-') + '</td>' +
-                        '<td align="center" style="padding:8px;">' + Ext.util.Format.htmlEncode(iv.due_date || '-') + '</td>' +
-                        '<td align="right" style="padding:8px;">' + fmtRp(amt) + '</td>' +
-                        '<td align="right" style="padding:8px;">' + fmtRp(pd) + '</td>' +
-                        '<td align="center" style="padding:8px; color:' + st[1] + ';">' + st[0] + '</td>' +
-                        '<td style="padding:8px; color:#b0bec5;">' + Ext.util.Format.htmlEncode(iv.task_name || '-') + '</td></tr>';
+                html += '<tr style="border-bottom:1px solid #182e3e">' +
+                        '<td style="padding:8px">' + Ext.util.Format.htmlEncode(iv.inv_no) + (iv.auto_generated ? ' <span style="font-size:13px">AUTO</span>' : '') + '</td>' +
+                        '<td style="padding:8px">' + Ext.util.Format.htmlEncode(iv.termin_name) + '</td>' +
+                        '<td align="center" style="padding:8px">' + Ext.util.Format.htmlEncode(iv.invoice_date || '-') + '</td>' +
+                        '<td align="center" style="padding:8px">' + Ext.util.Format.htmlEncode(iv.due_date || '-') + '</td>' +
+                        '<td align="right" style="padding:8px">' + fmtRp(amt) + '</td>' +
+                        '<td align="right" style="padding:8px">' + fmtRp(pd) + '</td>' +
+                        '<td align="center" style="padding:8px">' + st[0] + '</td>' +
+                        '<td style="padding:8px">' + Ext.util.Format.htmlEncode(iv.task_name || '-') + '</td></tr>';
             });
         }
         html += '</tbody></table>';
@@ -417,12 +417,12 @@ Ext.onReady(function () {
 
     var btnAiPanel = new Ext.Panel({
         border: false,
-        bodyStyle: 'background:transparent; padding:10px 0;',
-        html: '<div style="text-align: left;"><button type="button" id="customAiBtn" style="background:transparent; border:1px solid #00bcd4; color:#00bcd4; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; transition:all 0.3s;">ANALISIS & BAGI TASK (AI)</button>' +
+        bodyStyle: 'padding:10px 0',
+        html: '<div style="text-align: left"><button type="button" id="customAiBtn" style="; padding:8px 24px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; transition:all 0.3s">ANALISIS & BAGI TASK (AI)</button>' +
               // [EDIT-SAVED][NEW] edit task / material yang sudah tersimpan tanpa analisis ulang
-              ' <button type="button" id="customEditBtn" style="background:transparent; border:1px solid #80cbc4; color:#80cbc4; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px;">EDIT TASK & MATERIAL</button>' +
+              ' <button type="button" id="customEditBtn" style="; padding:8px 24px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px">EDIT TASK & MATERIAL</button>' +
               // [AUTO-INV][NEW] tombol terbitkan tagihan otomatis (analisis AI + preview + terbitkan)
-              ' <button type="button" id="customInvBtn" style="background:transparent; border:1px solid #ffd54f; color:#ffd54f; padding:8px 24px; border-radius:20px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px;">TERBITKAN TAGIHAN OTOMATIS</button></div>',
+              ' <button type="button" id="customInvBtn" style="; padding:8px 24px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px">TERBITKAN TAGIHAN OTOMATIS</button></div>',
         listeners: {
             afterrender: function() {
                 // [EDIT-SAVED] Jendela review dipakai bersama: hasil AI (editMode=false) dan edit task TERSIMPAN tanpa AI (editMode=true)
@@ -493,20 +493,20 @@ Ext.onReady(function () {
                                 return s;
                             }
                             function taskTotalMax(task) { return taskSub(task, 'materials')[0] + taskSub(task, 'expenses')[0]; }
-                            function totCell(m) { return '<b style="font-size:17px;color:#fff;">' + fmtIdr(lnMax(m)) + '</b><div style="color:#9ec3d1;font-size:13px;">min ' + fmtIdr(lnMin(m)) + '</div>'; }
-                            function subCell(s) { return '<b style="font-size:16px;color:#fff;">' + fmtIdr(s[0]) + '</b> <span style="color:#9ec3d1;font-size:13px;">(min ' + fmtIdr(s[1]) + ')</span>'; }
+                            function totCell(m) { return '<b style="font-size:17px">' + fmtIdr(lnMax(m)) + '</b><div style="font-size:13px">min ' + fmtIdr(lnMin(m)) + '</div>'; }
+                            function subCell(s) { return '<b style="font-size:16px">' + fmtIdr(s[0]) + '</b> <span style="font-size:13px">(min ' + fmtIdr(s[1]) + ')</span>'; }
 
                             // ---------- komponen kecil ----------
                             function btn(cls, ti, kind, label, bg) {
                                 return '<button type="button" class="' + cls + '" data-task="' + ti + '"' + (kind ? ' data-kind="' + kind + '"' : '') +
-                                    ' style="padding:9px 18px;background:' + bg + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">' + label + '</button>';
+                                    ' style="padding:9px 18px;;;cursor:pointer;font-weight:bold;font-size:14px">' + label + '</button>';
                             }
                             function chip(text, color, bg) {
-                                return '<span style="display:inline-block;padding:3px 11px;border-radius:13px;font-size:13px;font-weight:bold;color:' + color + ';background:' + (bg || 'transparent') + ';border:1px solid ' + color + ';white-space:nowrap;">' + text + '</span>';
+                                return '<span style="display:inline-block;padding:3px 11px;font-size:13px;font-weight:bold;;white-space:nowrap">' + text + '</span>';
                             }
                             function fld(label, inner, wrapStyle) { return '<div style="' + (wrapStyle || '') + '"><span style="' + LBL + '">' + label + '</span>' + inner + '</div>'; }
                             function roBox(txt, w, right) {
-                                return '<div style="' + IN + 'width:' + w + ';background:#0a1a27;border-color:#2c4a5e;color:#e0f7fa;display:flex;align-items:center;' + (right ? 'justify-content:flex-end;' : '') + '">' + txt + '</div>';
+                                return '<div style="' + IN + 'width:' + w + ';;display:flex;align-items:center;' + (right ? 'justify-content:flex-end;' : '') + '">' + txt + '</div>';
                             }
                             function mfld(ti, kind, li, field, val, w, type, ph) {
                                 return '<input type="' + (type || 'text') + '" class="aiEdit" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" data-field="' + field + '" value="' +
@@ -524,24 +524,24 @@ Ext.onReady(function () {
                             // [DEDUP] Info hasil cek 'hampir sama' (tanpa pilihan manual): task yang namanya mirip task lama akan DITIMPA, sisanya disimpan baru
                             function modeHtml() {
                                 if (editMode) {          // [EDIT-SAVED]
-                                    return '<div style="background:#0b2a2a;border:1px solid #80cbc4;border-radius:8px;padding:14px;margin-bottom:14px;font-size:15px;color:#e6f2f7;line-height:1.7;">' +
-                                        '<b style="color:#80cbc4;">MODE EDIT &mdash; data yang SUDAH TERSIMPAN (tanpa analisis AI).</b><br>' +
+                                    return '<div style=";padding:14px;margin-bottom:14px;font-size:15px;line-height:1.7">' +
+                                        '<b >MODE EDIT &mdash; data yang SUDAH TERSIMPAN (tanpa analisis AI).</b><br>' +
                                         'Perubahan baru berlaku setelah klik <b>Simpan Perubahan</b>. <b>Hapus</b> task / baris hanya diizinkan bila belum dipakai SPK, PO, kontrak subkon atau issue gudang; ' +
                                         'yang bertanda &#128274; <b>Terkunci</b> tidak bisa dihapus (qty tetap bisa diubah). Item RAB yang tidak lagi dipakai task mana pun ikut dihapus dari RAB.<br>' +
-                                        '<span style="color:#b0cad6;font-size:14px;">Nama, satuan dan harga item yang sudah di RAB mengikuti RAB / master (ubah harga di modul RAB). Qty RAB hanya dinaikkan bila total alokasi melebihi qty RAB; tidak pernah diturunkan otomatis.</span></div>';
+                                        '<span style="font-size:14px">Nama, satuan dan harga item yang sudah di RAB mengikuti RAB / master (ubah harga di modul RAB). Qty RAB hanya dinaikkan bila total alokasi melebihi qty RAB; tidak pernah diturunkan otomatis.</span></div>';
                                 }
                                 if (!existing.total) return '';
                                 var tm = meta.task_matches || [], ov = tm.length, nw = Math.max(0, plan.tasks.length - ov);
-                                var h = '<div style="background:#0b1b28;border:1px solid #52758b;border-radius:8px;padding:14px;margin-bottom:14px;font-size:15px;color:#e6f2f7;line-height:1.7;">' +
+                                var h = '<div style=";padding:14px;margin-bottom:14px;font-size:15px;line-height:1.7">' +
                                     '<b>Proyek ini sudah punya ' + existing.total + ' task.</b> Saat disimpan, setiap task, material dan biaya dicek dulu: ' +
                                     'bila namanya <b>hampir sama</b> dengan data lama maka data lama <b>ditimpa</b> / dipakai ulang (tidak dobel); bila belum ada maka <b>disimpan baru</b>.<br>' +
-                                    '<b>Task: <span style="color:#ffb74d;">' + ov + ' akan menimpa task lama</span>, <span style="color:#7fe0a0;">' + nw + ' disimpan baru</span>.</b>';
+                                    '<b>Task: <span >' + ov + ' akan menimpa task lama</span>, <span >' + nw + ' disimpan baru</span>.</b>';
                                 if (ov) {
-                                    h += '<div style="margin-top:6px;color:#c4dde8;font-size:14px;">';
+                                    h += '<div style="margin-top:6px;font-size:14px">';
                                     Ext.each(tm, function (x) { h += '&bull; ' + enc(x.task_name) + ' &rarr; menimpa <b>' + enc(x.match_task_name) + '</b> (kemiripan ' + Math.round(x.score * 100) + '%)<br>'; });
                                     h += '</div>';
                                 }
-                                h += '<div style="margin-top:6px;color:#b0cad6;font-size:14px;">Task lama yang sudah berjalan hanya diperbarui deskripsi &amp; alokasinya (nama / tanggal tidak diubah). Klik <b>Hitung Ulang</b> setelah mengubah nama task agar daftar ini diperbarui.</div>';
+                                h += '<div style="margin-top:6px;font-size:14px">Task lama yang sudah berjalan hanya diperbarui deskripsi &amp; alokasinya (nama / tanggal tidak diubah). Klik <b>Hitung Ulang</b> setelah mengubah nama task agar daftar ini diperbarui.</div>';
                                 return h + '</div>';
                             }
                             var EXP_CATS = ['Upah', 'Peralatan', 'Transport', 'Konsumsi', 'Lain-lain'];     // = kategori biaya di modul RAB
@@ -556,71 +556,71 @@ Ext.onReady(function () {
                             function stickyBar() {
                                 var t = calcTotals(), sev = meta.severity || 'ok';
                                 var C = { danger: ['#ff6b5e', 'Melebihi plafon / budget'], warning: ['#e6a817', 'Perhatian anggaran'], ok: ['#2e9e4f', 'Anggaran aman'] }[sev] || ['#2e9e4f', 'Anggaran aman'];
-                                var stat = function (label, valHtml) { return '<div><span style="display:block;font-size:13px;color:#9ec3d1;">' + label + '</span>' + valHtml + '</div>'; };
-                                return '<div id="aiSticky" style="position:sticky;top:-14px;z-index:6;background:#0b1b28;border:1px solid #3b6078;border-radius:8px;padding:12px 16px;margin:0 0 14px 0;box-shadow:0 4px 12px rgba(0,0,0,.5);">' +
-                                    '<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:center;">' +
-                                    stat('Task', '<b style="font-size:20px;color:#fff;">' + plan.tasks.length + '</b>') +
-                                    stat('Baris item', '<b style="font-size:20px;color:#fff;">' + t.lines + '</b>') +
-                                    stat('Material baru', '<b style="font-size:20px;color:#ffb74d;">' + t.newCount + '</b>') +
-                                    stat('Material (Rp)', '<b id="aiSumMat" style="font-size:18px;color:#fff;">' + fmtIdr(t.mat) + '</b>') +
-                                    stat('Biaya (Rp)', '<b id="aiSumExp" style="font-size:18px;color:#fff;">' + fmtIdr(t.exp) + '</b>') +
-                                    stat('TOTAL harga MAX (Rp) - dipakai di RAB', '<b id="aiSumMax" style="font-size:22px;color:' + (meta.over_budget || meta.over_contract ? '#ff6b5e' : '#7fe0a0') + ';">' + fmtIdr(t.max) + '</b>') +
-                                    stat('Total harga MIN (Rp)', '<b id="aiSumMin" style="font-size:18px;color:#c4dde8;">' + fmtIdr(t.min) + '</b>') +
+                                var stat = function (label, valHtml) { return '<div><span style="display:block;font-size:13px">' + label + '</span>' + valHtml + '</div>'; };
+                                return '<div id="aiSticky" style="position:sticky;top:-14px;z-index:6;;padding:12px 16px;margin:0 0 14px 0;box-shadow:0 4px 12px rgba(0,0,0,.5)">' +
+                                    '<div style="display:flex;flex-wrap:wrap;gap:22px;align-items:center">' +
+                                    stat('Task', '<b style="font-size:20px">' + plan.tasks.length + '</b>') +
+                                    stat('Baris item', '<b style="font-size:20px">' + t.lines + '</b>') +
+                                    stat('Material baru', '<b style="font-size:20px">' + t.newCount + '</b>') +
+                                    stat('Material (Rp)', '<b id="aiSumMat" style="font-size:18px">' + fmtIdr(t.mat) + '</b>') +
+                                    stat('Biaya (Rp)', '<b id="aiSumExp" style="font-size:18px">' + fmtIdr(t.exp) + '</b>') +
+                                    stat('TOTAL harga MAX (Rp) - dipakai di RAB', '<b id="aiSumMax" style="font-size:22px">' + fmtIdr(t.max) + '</b>') +
+                                    stat('Total harga MIN (Rp)', '<b id="aiSumMin" style="font-size:18px">' + fmtIdr(t.min) + '</b>') +
                                     '<div>' + chip((sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[1], C[0], 'rgba(0,0,0,.25)') + '</div>' +
                                     '</div>' +
-                                    '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px;">' +
+                                    '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px">' +
                                     btn('aiRecalc', '', '', '&#8635; Hitung Ulang &amp; Cek Status', '#0a7d8c') + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) +
                                     btn('aiExpandAll', '', '', 'Buka Semua Task', '#2c4a5e') + btn('aiCollapseAll', '', '', 'Tutup Semua Task', '#2c4a5e') +
-                                    (recalcAt ? '<span style="font-size:14px;color:#7fe0a0;">&#10003; Dihitung ulang ' + recalcAt + '</span>' : '') +
-                                    '<span id="aiStale" style="display:none;font-size:14px;color:#ffe08a;"><i>Qty / harga berubah: klik "Hitung Ulang" agar status &amp; plafon dicek ulang.</i></span>' +
+                                    (recalcAt ? '<span style="font-size:14px">&#10003; Dihitung ulang ' + recalcAt + '</span>' : '') +
+                                    '<span id="aiStale" style="display:none;font-size:14px"><i>Qty / harga berubah: klik "Hitung Ulang" agar status &amp; plafon dicek ulang.</i></span>' +
                                     '</div></div>';
                             }
                             // Kotak penanda: hasil analisis LEBIH BESAR dari budget / nilai kontrak (merah = ditolak / RAB menolak, kuning = pakai cadangan)
                             function alertHtml() {
                                 var sev = meta.severity || 'ok';
                                 var C = { danger: ['#3b1212', '#ff6b5e', 'PERINGATAN ANGGARAN'], warning: ['#3a2c08', '#e6a817', 'PERHATIAN ANGGARAN'], ok: ['#0f2f22', '#2e9e4f', 'Anggaran aman'] }[sev] || ['#0f2f22', '#2e9e4f', 'Anggaran aman'];
-                                var h = '<div id="aiAlert" style="background:' + C[0] + ';border:2px solid ' + C[1] + ';border-radius:8px;padding:14px;margin-bottom:14px;">' +
-                                    '<div style="font-size:17px;font-weight:bold;color:' + C[1] + ';margin-bottom:4px;">' + (sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[2] + '</div>';
+                                var h = '<div id="aiAlert" style=";padding:14px;margin-bottom:14px">' +
+                                    '<div style="font-size:17px;font-weight:bold;margin-bottom:4px">' + (sev === 'ok' ? '&#10003; ' : '&#9888; ') + C[2] + '</div>';
                                 if (sev === 'ok' && num(meta.budget_idr) > 0) {
-                                    h += '<div style="color:#a5e8bd;font-size:15px;">Total RAB setelah disimpan Rp ' + fmtIdr(meta.rab_after_idr) + ' masih dalam budget Rp ' + fmtIdr(meta.budget_idr) +
+                                    h += '<div style="font-size:15px">Total RAB setelah disimpan Rp ' + fmtIdr(meta.rab_after_idr) + ' masih dalam budget Rp ' + fmtIdr(meta.budget_idr) +
                                          ' (sisa Rp ' + fmtIdr(num(meta.budget_idr) - num(meta.rab_after_idr)) + ').</div>';
                                 }
                                 Ext.each(meta.warnings || [], function (w) {
-                                    h += '<div style="font-size:15px;line-height:1.55;color:' + (w.level === 'danger' ? '#ffb4ab' : '#ffe08a') + ';margin-top:5px;">&bull; ' + enc(w.text) + '</div>';
+                                    h += '<div style="font-size:15px;line-height:1.55;margin-top:5px">&bull; ' + enc(w.text) + '</div>';
                                 });
                                 // [FORM-LIVE] ubah Budget / Nilai Kontrak LANGSUNG di sini: Enter / pindah kolom -> form proyek ikut terisi & total dihitung ulang
                                 // (tanpa menutup jendela, tanpa analisis AI ulang, tanpa Simpan proyek dulu)
                                 var bf = Ext.getCmp('budget'), cf = Ext.getCmp('contract_value');
                                 var bin = function (field, label, val) {
                                     return '<div><span style="' + LBL + '">' + label + '</span><input type="number" min="0" step="any" inputmode="decimal" class="aiBudIn" data-field="' + field + '" value="' +
-                                        enc(val === undefined || val === null ? '' : val) + '" style="' + IN + 'width:190px;text-align:right;"></div>';
+                                        enc(val === undefined || val === null ? '' : val) + '" style="' + IN + 'width:190px;text-align:right"></div>';
                                 };
-                                h += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end;">' +
+                                h += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.2);display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">' +
                                      bin('budget', 'Budget', bf ? bf.getValue() : '') + bin('contract_value', 'Nilai Kontrak (Plafon)', cf ? cf.getValue() : '') +
-                                     '<div style="font-size:14px;color:#d5e3ec;max-width:480px;line-height:1.55;">Ubah angka di sini lalu tekan <b>Enter</b>: total langsung dihitung ulang dan form proyek ikut terisi. ' +
+                                     '<div style="font-size:14px;max-width:480px;line-height:1.55">Ubah angka di sini lalu tekan <b>Enter</b>: total langsung dihitung ulang dan form proyek ikut terisi. ' +
                                      'Tidak perlu menutup jendela atau analisis ulang.<br>' +
-                                     (meta.form_live ? '<span style="color:#7fe0a0;">&#10003; Dihitung memakai angka dari form (Budget Rp ' + fmtIdr(meta.budget_idr) + ', Kontrak Rp ' + fmtIdr(meta.contract_idr) + ').</span>'
-                                                     : '<span style="color:#ffe08a;">Dihitung memakai angka tersimpan di database (Budget Rp ' + fmtIdr(meta.budget_idr) + ', Kontrak Rp ' + fmtIdr(meta.contract_idr) + '). Bila Anda sudah mengubahnya di form dan angkanya belum berubah, muat ulang halaman (Ctrl+F5) agar file terbaru terpakai.</span>') +
+                                     (meta.form_live ? '<span >&#10003; Dihitung memakai angka dari form (Budget Rp ' + fmtIdr(meta.budget_idr) + ', Kontrak Rp ' + fmtIdr(meta.contract_idr) + ').</span>'
+                                                     : '<span >Dihitung memakai angka tersimpan di database (Budget Rp ' + fmtIdr(meta.budget_idr) + ', Kontrak Rp ' + fmtIdr(meta.contract_idr) + '). Bila Anda sudah mengubahnya di form dan angkanya belum berubah, muat ulang halaman (Ctrl+F5) agar file terbaru terpakai.</span>') +
                                      ((bf && cf && parseFloat(cf.getValue()) > 0 && parseFloat(bf.getValue()) > parseFloat(cf.getValue()) + 0.01)
-                                         ? '<br><span style="color:#ff9e91;">&#9888; Budget lebih besar dari Nilai Kontrak: proyek tidak akan bisa disimpan sampai angkanya diperbaiki.</span>' : '') +
+                                         ? '<br><span >&#9888; Budget lebih besar dari Nilai Kontrak: proyek tidak akan bisa disimpan sampai angkanya diperbaiki.</span>' : '') +
                                      '</div></div>';
                                 return h + '</div>';
                             }
                             function metaHtml() {
-                                return '<div style="font-size:15px;color:#c4dde8;line-height:1.7;">RAB proyek saat ini <b>Rp ' + fmtIdr(meta.rab_existing_idr) + '</b>' +
+                                return '<div style="font-size:15px;line-height:1.7">RAB proyek saat ini <b>Rp ' + fmtIdr(meta.rab_existing_idr) + '</b>' +
                                     ' &nbsp;|&nbsp; tambahan bila disimpan <b>Rp ' + fmtIdr((meta.rab_after_idr || 0) - (meta.rab_existing_idr || 0)) + '</b>' +
                                     ' &nbsp;|&nbsp; <b>total RAB Rp ' + fmtIdr(meta.rab_after_idr) + '</b>' +
                                     (num(meta.budget_idr) > 0 ? ' &nbsp;|&nbsp; budget Rp ' + fmtIdr(meta.budget_idr) : '') +
                                     (num(meta.contract_idr) > 0 ? ' &nbsp;|&nbsp; nilai kontrak (plafon) Rp ' + fmtIdr(meta.contract_idr) : '') + '</div>';
                             }
                             function helpHtml() {
-                                var h = '<div style="margin-bottom:14px;">' + btn('aiToggleHelp', '', '', (openHelp ? '&#9650; Sembunyikan cara pakai' : '&#9660; Cara pakai &amp; catatan'), '#2c4a5e');
+                                var h = '<div style="margin-bottom:14px">' + btn('aiToggleHelp', '', '', (openHelp ? '&#9650; Sembunyikan cara pakai' : '&#9660; Cara pakai &amp; catatan'), '#2c4a5e');
                                 if (openHelp) {
-                                    h += '<div style="font-size:15px;line-height:1.75;color:#d5e3ec;background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-top:8px;">' +
+                                    h += '<div style="font-size:15px;line-height:1.75;;;padding:14px;margin-top:8px">' +
                                         (editMode ? '<b>Ini mengedit data TERSIMPAN.</b> Klik <b>Simpan Perubahan</b> di bagian bawah jendela bila sudah sesuai.<br>' : '<b>Ini DRAFT, belum tersimpan.</b> Klik <b>Simpan ke Master, RAB &amp; Task</b> di bagian bawah jendela bila sudah sesuai.<br>') +
                                         '&bull; Klik judul task untuk membuka / menutup isinya.<br>' +
                                         '&bull; Ubah qty / harga langsung di kotak; total dihitung otomatis. Klik <b>Hitung Ulang</b> setelah mengubah nama atau qty agar status dan plafon dicek ulang.<br>' +
-                                        '&bull; <b>Harga satuan RAB = harga MAX.</b> Item <span style="color:#80cbc4;">Sudah di RAB</span> / <span style="color:#4fc3f7;">Masuk RAB</span> mengikuti RAB / master (tidak diubah di sini); item <span style="color:#ffb74d;">Baru</span> dibuat dulu di master lengkap min-max.<br>' +
+                                        '&bull; <b>Harga satuan RAB = harga MAX.</b> Item <span >Sudah di RAB</span> / <span >Masuk RAB</span> mengikuti RAB / master (tidak diubah di sini); item <span >Baru</span> dibuat dulu di master lengkap min-max.<br>' +
                                         '&bull; Nama yang <b>hampir sama</b> dengan data lama akan menimpa / dipakai ulang, bukan digandakan.</div>';
                                 }
                                 return h + '</div>';
@@ -633,30 +633,30 @@ Ext.onReady(function () {
                             function lineRow(ti, kind, m, li) {
                                 var st = STATUS_LBL[m.status] || ['Cek ulang', '#b0bec5', 'Klik Hitung Ulang untuk memeriksa status item ini.'], fixed = isFixed(m), nameCell;
                                 if (fixed) {
-                                    nameCell = '<div style="font-weight:bold;line-height:1.35;">' + enc(m.material_name) + '</div>' +
-                                        (m.spec ? '<div style="font-size:13px;color:#c4dde8;margin-top:2px;line-height:1.4;">' + enc(m.spec) + '</div>' : '') +
-                                        (kind === 'expenses' ? '<div style="font-size:13px;color:#9ec3d1;margin-top:2px;">Kategori: ' + enc(m.category || '-') + '</div>' : '');
+                                    nameCell = '<div style="font-weight:bold;line-height:1.35">' + enc(m.material_name) + '</div>' +
+                                        (m.spec ? '<div style="font-size:13px;margin-top:2px;line-height:1.4">' + enc(m.spec) + '</div>' : '') +
+                                        (kind === 'expenses' ? '<div style="font-size:13px;margin-top:2px">Kategori: ' + enc(m.category || '-') + '</div>' : '');
                                 } else {
                                     nameCell = mfld(ti, kind, li, 'material_name', m.material_name, '100%', 'text', KIND[kind].ph) +
-                                        '<div style="height:4px;"></div>' + mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan') +
-                                        (kind === 'expenses' ? '<div style="height:4px;"></div>' + catSelect('', ti, kind, li, m.category, 'width:100%;height:36px;padding:5px 8px;') : '');
+                                        '<div style="height:4px"></div>' + mfld(ti, kind, li, 'spec', m.spec, '100%', 'text', 'Spesifikasi / keterangan') +
+                                        (kind === 'expenses' ? '<div style="height:4px"></div>' + catSelect('', ti, kind, li, m.category, 'width:100%;height:36px;padding:5px 8px;') : '');
                                 }
                                 var tip = st[2] + (m.reason ? ' Alasan AI: ' + m.reason : '') + (m.lock_reason ? ' TERKUNCI (tidak bisa dihapus): ' + m.lock_reason + '.' : '') +
                                     ((fixed && pMin(m) === pMax(m) && num(m.ai_min) > 0 && num(m.ai_min) < pMax(m)) ? ' Min master akan diisi: ' + fmtIdr(m.ai_min) + '.' : '');
                                 var ro = function (txt, right) { return '<div style="padding:7px 8px;' + (right ? 'text-align:right;' : '') + '">' + txt + '</div>'; };
-                                return '<tr style="background:' + (li % 2 ? '#0f2436' : '#0c1e2e') + ';">' +
-                                    '<td align="center" style="' + TD + 'color:#9ec3d1;border-left:5px solid ' + st[1] + ';">' + (li + 1) + '</td>' +
+                                return '<tr >' +
+                                    '<td align="center" style="' + TD + ';border-left:5px solid ' + st[1] + '">' + (li + 1) + '</td>' +
                                     '<td style="' + TD + '">' + nameCell + '</td>' +
                                     '<td style="' + TD + '">' + (fixed ? ro(enc(m.unit || '-')) : mfld(ti, kind, li, 'unit', m.unit, '100%', 'text', 'satuan')) + '</td>' +
                                     '<td style="' + TD + '">' + mfld(ti, kind, li, 'qty_estimate', m.qty_estimate, '100%', 'number') + '</td>' +
                                     '<td style="' + TD + '">' + (fixed ? ro(fmtIdr(pMin(m)), true) : mfld(ti, kind, li, 'price_min', m.price_min, '100%', 'number')) + '</td>' +
                                     '<td style="' + TD + '">' + (fixed ? ro(fmtIdr(pMax(m)), true) : mfld(ti, kind, li, 'price_max', m.price_max, '100%', 'number')) + '</td>' +
-                                    '<td align="right" id="aiTot_' + ti + '_' + kind + '_' + li + '" style="' + TD + 'white-space:nowrap;">' + totCell(m) + '</td>' +
-                                    '<td style="' + TD + '"><span title="' + enc(tip) + '" style="cursor:help;">' + chip(st[0], st[1]) + '</span></td>' +
+                                    '<td align="right" id="aiTot_' + ti + '_' + kind + '_' + li + '" style="' + TD + 'white-space:nowrap">' + totCell(m) + '</td>' +
+                                    '<td style="' + TD + '"><span title="' + enc(tip) + '" style="cursor:help">' + chip(st[0], st[1]) + '</span></td>' +
                                     '<td align="center" style="' + TD + '">' + (m.lock_reason
-                                        ? '<span title="Tidak bisa dihapus: ' + enc(m.lock_reason) + '" style="cursor:help;font-size:13px;font-weight:bold;color:#ef9a9a;">&#128274; Terkunci<br><span style="font-weight:normal;">' + enc(m.lock_reason) + '</span></span>'
+                                        ? '<span title="Tidak bisa dihapus: ' + enc(m.lock_reason) + '" style="cursor:help;font-size:13px;font-weight:bold">&#128274; Terkunci<br><span style="font-weight:normal">' + enc(m.lock_reason) + '</span></span>'
                                         : '<button type="button" class="aiRemoveLine" data-task="' + ti + '" data-kind="' + kind + '" data-line="' + li + '" ' +
-                                          'style="padding:7px 12px;background:' + BURG + ';color:#fff;border:0;border-radius:5px;cursor:pointer;font-weight:bold;font-size:14px;">Hapus</button>') + '</td></tr>';
+                                          'style="padding:7px 12px;;;cursor:pointer;font-weight:bold;font-size:14px">Hapus</button>') + '</td></tr>';
                             }
 
                             // Baris tambah item: dua baris yang kolomnya sejajar dengan grid (A = dari RAB, B = buat baru)
@@ -664,7 +664,7 @@ Ext.onReady(function () {
                                 var K = KIND[kind], list = (kind === 'materials') ? availableMaterials : availableExpenses, id = ti + '_' + kind;
                                 var ad = 'padding:10px 8px;vertical-align:top;border-bottom:1px solid #2a485d;background:#123350;font-size:15px;color:#fff;';
                                 var lb = 'font-size:13px;font-weight:bold;color:#80deea;margin-bottom:4px;';
-                                var sel = '<select id="aiSel_' + id + '" style="' + ING + 'width:100%;"><option value="">-- pilih dari RAB --</option>';
+                                var sel = '<select id="aiSel_' + id + '" style="' + ING + 'width:100%"><option value="">-- pilih dari RAB --</option>';
                                 Ext.each(list, function (a) {
                                     var already = false;
                                     Ext.each(plan.tasks[ti][kind] || [], function (x) { if (parseInt(x.budget_item_id, 10) === parseInt(a.budget_item_id, 10)) already = true; });
@@ -672,72 +672,72 @@ Ext.onReady(function () {
                                            enc(a.material_name + ' | sisa RAB: ' + fmtQty3(a.qty_remaining) + ' ' + a.unit) + '</option>';
                                 });
                                 sel += '</select>';
-                                var h = '<tr><td align="center" style="' + ad + 'font-weight:bold;color:#80deea;">A</td>' +
+                                var h = '<tr><td align="center" style="' + ad + 'font-weight:bold">A</td>' +
                                     '<td style="' + ad + '"><div style="' + lb + '">' + K.rabLbl + '</div>' + sel + '</td>' +
                                     '<td style="' + ad + '"></td>' +
-                                    '<td style="' + ad + '"><div style="' + lb + '">Qty</div><input id="aiSelQty_' + id + '" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" style="' + ING + 'width:100%;text-align:right;"></td>' +
-                                    '<td colspan="5" style="' + ad + 'vertical-align:bottom;">' + btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) + '</td></tr>';
-                                h += '<tr><td align="center" style="' + ad + 'font-weight:bold;color:#80deea;">B</td>' +
+                                    '<td style="' + ad + '"><div style="' + lb + '">Qty</div><input id="aiSelQty_' + id + '" type="number" min="0" step="any" inputmode="decimal" placeholder="Qty" style="' + ING + 'width:100%;text-align:right"></td>' +
+                                    '<td colspan="5" style="' + ad + 'vertical-align:bottom">' + btn('aiAddRab', ti, kind, 'Tambah dari RAB', TEAL) + '</td></tr>';
+                                h += '<tr><td align="center" style="' + ad + 'font-weight:bold">B</td>' +
                                     '<td style="' + ad + '"><div style="' + lb + '">Atau buat baru (harga min &amp; max per satuan, Rp)</div>' +
-                                    nfld(id, ti, kind, 'name', K.ph, '100%') + '<div style="height:4px;"></div>' + nfld(id, ti, kind, 'spec', 'Spesifikasi / keterangan', '100%') +
-                                    (kind === 'expenses' ? '<div style="height:4px;"></div>' + catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:100%;height:36px;padding:5px 8px;') : '') + '</td>' +
+                                    nfld(id, ti, kind, 'name', K.ph, '100%') + '<div style="height:4px"></div>' + nfld(id, ti, kind, 'spec', 'Spesifikasi / keterangan', '100%') +
+                                    (kind === 'expenses' ? '<div style="height:4px"></div>' + catSelect('aiNew_' + id + '_cat', ti, kind, 0, 'Lain-lain', 'width:100%;height:36px;padding:5px 8px;') : '') + '</td>' +
                                     '<td style="' + ad + '"><div style="' + lb + '">Satuan</div>' + nfld(id, ti, kind, 'unit', 'satuan', '100%') + '</td>' +
                                     '<td style="' + ad + '"><div style="' + lb + '">Qty</div>' + nfld(id, ti, kind, 'qty', 'Qty', '100%', 'number') + '</td>' +
                                     '<td style="' + ad + '"><div style="' + lb + '">Harga Min</div>' + nfld(id, ti, kind, 'pmin', 'Min', '100%', 'number') + '</td>' +
                                     '<td style="' + ad + '"><div style="' + lb + '">Harga Max</div>' + nfld(id, ti, kind, 'pmax', 'Max', '100%', 'number') + '</td>' +
-                                    '<td colspan="3" style="' + ad + 'vertical-align:bottom;">' + btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</td></tr>';
+                                    '<td colspan="3" style="' + ad + 'vertical-align:bottom">' + btn('aiAddNew', ti, kind, K.btnNew, TEAL) + '</td></tr>';
                                 return h;
                             }
 
                             function kindBlock(ti, kind) {
                                 var K = KIND[kind], lines = plan.tasks[ti][kind] || [], key = ti + '_' + kind, isAddOpen = !!openAdd[key];
-                                var h = '<div style="margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid #2c4a5e;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;">' +
-                                    '<span style="font-size:18px;font-weight:bold;color:' + (kind === 'materials' ? '#80deea' : '#ffcc80') + ';">' + K.title + ' (' + lines.length + ')</span>' +
-                                    '<span style="margin-left:auto;font-size:14px;color:#9ec3d1;">Subtotal (Max): <span id="aiSub_' + key + '">' + subCell(taskSub(plan.tasks[ti], kind)) + '</span></span></div>';
-                                h += '<div style="overflow-x:auto;"><table style="width:100%;min-width:1000px;border-collapse:collapse;table-layout:fixed;">' +
-                                    '<colgroup><col style="width:48px;"><col><col style="width:90px;"><col style="width:110px;"><col style="width:140px;"><col style="width:140px;"><col style="width:150px;"><col style="width:150px;"><col style="width:90px;"></colgroup>' +
-                                    '<thead><tr><th style="' + TH + 'text-align:center;">No</th><th style="' + TH + 'text-align:left;">' + (kind === 'materials' ? 'Material / Spesifikasi' : 'Biaya / Keterangan') + '</th>' +
-                                    '<th style="' + TH + 'text-align:left;">Satuan</th><th style="' + TH + 'text-align:right;">Qty</th>' +
-                                    '<th style="' + TH + 'text-align:right;">Harga Min (Rp)</th><th style="' + TH + 'text-align:right;">Harga Max (Rp)</th>' +
-                                    '<th style="' + TH + 'text-align:right;">Total (Max)</th><th style="' + TH + 'text-align:left;">Status</th><th style="' + TH + 'text-align:center;">Aksi</th></tr></thead><tbody>';
+                                var h = '<div style="margin:18px 0 8px;padding-bottom:6px;border-bottom:2px solid #2c4a5e;display:flex;flex-wrap:wrap;gap:12px;align-items:baseline">' +
+                                    '<span style="font-size:18px;font-weight:bold">' + K.title + ' (' + lines.length + ')</span>' +
+                                    '<span style="margin-left:auto;font-size:14px">Subtotal (Max): <span id="aiSub_' + key + '">' + subCell(taskSub(plan.tasks[ti], kind)) + '</span></span></div>';
+                                h += '<div style="overflow-x:auto"><table style="width:100%;min-width:1000px;border-collapse:collapse;table-layout:fixed">' +
+                                    '<colgroup><col style="width:48px"><col><col style="width:90px"><col style="width:110px"><col style="width:140px"><col style="width:140px"><col style="width:150px"><col style="width:150px"><col style="width:90px"></colgroup>' +
+                                    '<thead><tr><th style="' + TH + 'text-align:center">No</th><th style="' + TH + 'text-align:left">' + (kind === 'materials' ? 'Material / Spesifikasi' : 'Biaya / Keterangan') + '</th>' +
+                                    '<th style="' + TH + 'text-align:left">Satuan</th><th style="' + TH + 'text-align:right">Qty</th>' +
+                                    '<th style="' + TH + 'text-align:right">Harga Min (Rp)</th><th style="' + TH + 'text-align:right">Harga Max (Rp)</th>' +
+                                    '<th style="' + TH + 'text-align:right">Total (Max)</th><th style="' + TH + 'text-align:left">Status</th><th style="' + TH + 'text-align:center">Aksi</th></tr></thead><tbody>';
                                 if (lines.length) {
                                     Ext.each(lines, function (m, li) { h += lineRow(ti, kind, m, li); });
                                 } else {
-                                    h += '<tr><td colspan="9" style="padding:14px;font-size:15px;color:#ffcc80;border-bottom:1px solid #2a485d;">' + K.empty + '</td></tr>';
+                                    h += '<tr><td colspan="9" style="padding:14px;font-size:15px;border-bottom:1px solid #2a485d">' + K.empty + '</td></tr>';
                                 }
                                 if (isAddOpen) h += addRows(ti, kind);
                                 h += '</tbody></table></div>';
-                                h += '<div style="margin-top:10px;">' + btn('aiToggleAdd', ti, kind, isAddOpen ? '&minus; Tutup form tambah' : K.addLbl, isAddOpen ? '#2c4a5e' : TEAL) + '</div>';
+                                h += '<div style="margin-top:10px">' + btn('aiToggleAdd', ti, kind, isAddOpen ? '&minus; Tutup form tambah' : K.addLbl, isAddOpen ? '#2c4a5e' : TEAL) + '</div>';
                                 return h;
                             }
 
                             function taskCard(ti) {
                                 var t = plan.tasks[ti], mats = t.materials || [], exps = t.expenses || [], empty = !mats.length && !exps.length, isOpen = !!openTask[ti];
                                 var ov = null; Ext.each(meta.task_matches || [], function (x) { if (x.index === ti) ov = x; });
-                                var h = '<div style="border:2px solid ' + (empty ? '#b26a00' : '#3b6078') + ';border-radius:9px;margin:0 0 16px 0;background:#102638;overflow:hidden;">' +
-                                    '<div class="aiToggleTask" data-task="' + ti + '" title="Klik untuk ' + (isOpen ? 'menutup' : 'membuka') + '" style="cursor:pointer;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px;background:#16344a;">' +
-                                    '<span style="font-size:18px;color:#40d7ed;width:20px;">' + (isOpen ? '&#9660;' : '&#9654;') + '</span>' +
-                                    '<span style="font-size:20px;font-weight:bold;color:#40d7ed;">' + (ti + 1) + '.</span>' +
-                                    '<span id="aiHdrName_' + ti + '" style="flex:1;min-width:220px;font-size:18px;font-weight:bold;color:#fff;line-height:1.35;">' + enc(t.task_name || '(tanpa nama)') + '</span>' +
-                                    '<span style="font-size:14px;color:#c4dde8;">' + mats.length + ' material &bull; ' + exps.length + ' biaya</span>' +
-                                    '<span style="font-size:14px;color:#80deea;white-space:nowrap;">' + enc(t.start_date || '-') + ' s/d ' + enc(t.end_date || '-') + '</span>' +
+                                var h = '<div style="margin:0 0 16px 0;overflow:hidden">' +
+                                    '<div class="aiToggleTask" data-task="' + ti + '" title="Klik untuk ' + (isOpen ? 'menutup' : 'membuka') + '" style="cursor:pointer;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:14px 16px">' +
+                                    '<span style="font-size:18px;width:20px">' + (isOpen ? '&#9660;' : '&#9654;') + '</span>' +
+                                    '<span style="font-size:20px;font-weight:bold">' + (ti + 1) + '.</span>' +
+                                    '<span id="aiHdrName_' + ti + '" style="flex:1;min-width:220px;font-size:18px;font-weight:bold;line-height:1.35">' + enc(t.task_name || '(tanpa nama)') + '</span>' +
+                                    '<span style="font-size:14px">' + mats.length + ' material &bull; ' + exps.length + ' biaya</span>' +
+                                    '<span style="font-size:14px;white-space:nowrap">' + enc(t.start_date || '-') + ' s/d ' + enc(t.end_date || '-') + '</span>' +
                                     (ov ? chip('Menimpa: ' + enc(ov.match_task_name), '#ffb74d') : '') +
                                     (t.task_status ? chip(enc(t.task_status), '#9ec3d1') : '') +
                                     (t.lock_reason ? chip('&#128274; Terkunci', '#ef9a9a') : '') +
                                     (empty ? chip('Belum ada item', '#ffcc80') : '') +
-                                    '<span style="font-size:13px;color:#9ec3d1;">Total (Max) Rp <b id="aiHdrSub_' + ti + '" style="font-size:17px;color:#fff;">' + fmtIdr(taskTotalMax(t)) + '</b></span></div>';
+                                    '<span style="font-size:13px">Total (Max) Rp <b id="aiHdrSub_' + ti + '" style="font-size:17px">' + fmtIdr(taskTotalMax(t)) + '</b></span></div>';
                                 if (isOpen) {
-                                    h += '<div style="padding:16px;">' +
-                                        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">' +
+                                    h += '<div style="padding:16px">' +
+                                        '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">' +
                                         fld('Nama Task', tfld(ti, 'task_name', t.task_name, 'width:100%;font-size:16px;font-weight:bold;', 'text', 'Nama task'), 'flex:3;min-width:280px;') +
                                         fld('Mulai', tfld(ti, 'start_date', t.start_date, 'width:160px;', 'date')) +
                                         fld('Selesai', tfld(ti, 'end_date', t.end_date, 'width:160px;', 'date')) +
                                         '<div>' + (t.lock_reason
-                                            ? '<div style="font-size:14px;color:#ef9a9a;max-width:260px;line-height:1.4;">&#128274; Task tidak bisa dihapus: ' + enc(t.lock_reason) + '</div>'
+                                            ? '<div style="font-size:14px;max-width:260px;line-height:1.4">&#128274; Task tidak bisa dihapus: ' + enc(t.lock_reason) + '</div>'
                                             : btn('aiRemoveTask', ti, '', 'Hapus Task', BURG)) + '</div></div>' +
-                                        '<div style="margin-top:12px;">' + fld('Deskripsi pekerjaan', tfld(ti, 'description', t.description, 'width:100%;', 'text', 'Deskripsi pekerjaan')) + '</div>' +
-                                        (t.assumption ? '<div style="font-size:14px;color:#c4dde8;margin-top:10px;line-height:1.55;background:#0b1b28;border:1px solid #31536a;border-radius:6px;padding:10px;"><b>Asumsi perhitungan:</b> ' + enc(t.assumption) + '</div>' : '') +
-                                        (empty ? '<div style="font-size:15px;color:#ffcc80;margin-top:12px;">Task ini belum punya material maupun biaya. Tambahkan minimal satu (biasanya biaya jasa / upah / sewa alat).</div>' : '') +
+                                        '<div style="margin-top:12px">' + fld('Deskripsi pekerjaan', tfld(ti, 'description', t.description, 'width:100%;', 'text', 'Deskripsi pekerjaan')) + '</div>' +
+                                        (t.assumption ? '<div style="font-size:14px;margin-top:10px;line-height:1.55;;padding:10px"><b>Asumsi perhitungan:</b> ' + enc(t.assumption) + '</div>' : '') +
+                                        (empty ? '<div style="font-size:15px;margin-top:12px">Task ini belum punya material maupun biaya. Tambahkan minimal satu (biasanya biaya jasa / upah / sewa alat).</div>' : '') +
                                         kindBlock(ti, 'materials') + kindBlock(ti, 'expenses') + '</div>';
                                 }
                                 return h + '</div>';
@@ -746,14 +746,14 @@ Ext.onReady(function () {
                             function renderTaskPlan() {
                                 var html = stickyBar() + alertHtml() + modeHtml();
                                 if (res.analysis) {
-                                    html += '<div style="font-size:15px;line-height:1.65;color:#d5e3ec;background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-bottom:14px;"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
+                                    html += '<div style="font-size:15px;line-height:1.65;;;padding:14px;margin-bottom:14px"><b>Analisis AI:</b> ' + enc(res.analysis) + '</div>';
                                 }
                                 if (res.notes && res.notes.length) {
-                                    html += '<div style="font-size:15px;color:#ffcc80;margin-bottom:14px;line-height:1.6;">' + enc(res.notes.join(' ')) + '</div>';
+                                    html += '<div style="font-size:15px;margin-bottom:14px;line-height:1.6">' + enc(res.notes.join(' ')) + '</div>';
                                 }
-                                html += '<div id="aiMetaBox" style="background:#0b1b28;border:1px solid #31536a;border-radius:8px;padding:14px;margin-bottom:14px;">' + metaHtml() + '</div>' + helpHtml();
+                                html += '<div id="aiMetaBox" style=";padding:14px;margin-bottom:14px">' + metaHtml() + '</div>' + helpHtml();
                                 Ext.each(plan.tasks, function (t, ti) { html += taskCard(ti); });
-                                return html + '<div style="margin:4px 0 8px;">' + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) + '</div>';
+                                return html + '<div style="margin:4px 0 8px">' + btn('aiAddTask', '', '', '+ Tambah Task', TEAL) + '</div>';
                             }
 
                             // Hanya angka (tanpa membangun ulang tabel) agar fokus input tidak hilang saat mengetik
@@ -1026,8 +1026,8 @@ Ext.onReady(function () {
                                             }
                                             if (meta.severity === 'danger' || meta.severity === 'warning') {
                                                 var li = '';
-                                                Ext.each(meta.warnings || [], function (w) { li += '<li style="margin-bottom:6px;">' + enc(w.text) + '</li>'; });
-                                                Ext.Msg.confirm('Periksa peringatan sebelum menyimpan', '<ul style="margin:0 0 0 16px;padding:0;">' + li + '</ul><br>Tetap simpan ke master, RAB dan Task?',
+                                                Ext.each(meta.warnings || [], function (w) { li += '<li style="margin-bottom:6px">' + enc(w.text) + '</li>'; });
+                                                Ext.Msg.confirm('Periksa peringatan sebelum menyimpan', '<ul style="margin:0 0 0 16px;padding:0">' + li + '</ul><br>Tetap simpan ke master, RAB dan Task?',
                                                     function (b) { if (b === 'yes') { cb(); } else { aiSaving = false; } });          // [DEDUP]
                                             } else { cb(); }
                                         },
@@ -1152,7 +1152,7 @@ Ext.onReady(function () {
                                 return;
                             }
                             showPlanWin('Terbitkan Tagihan Otomatis?',
-                                planHtml(res.data, res.analysis) + '<div style="margin-top:14px;">Terbitkan <b>' + res.new_count + '</b> tagihan baru dan sesuaikan <b>' + res.sync_count + '</b> tagihan?</div>',
+                                planHtml(res.data, res.analysis) + '<div style="margin-top:14px">Terbitkan <b>' + res.new_count + '</b> tagihan baru dan sesuaikan <b>' + res.sync_count + '</b> tagihan?</div>',
                                 'Terbitkan',
                                 function () {
                                     Ext.Ajax.request({
@@ -1222,9 +1222,9 @@ Ext.onReady(function () {
 
     function updateReserve() {
         var b = parseFloat(fldBudget.getValue()) || 0, c = parseFloat(fldContract.getValue()) || 0, bb = b * curRate;
-        if (c <= 0) { fldReserve.setValue('<span style="color:#e6a817;">isi Nilai Kontrak</span>'); return; }
+        if (c <= 0) { fldReserve.setValue('<span >isi Nilai Kontrak</span>'); return; }
         var r = c - bb;
-        fldReserve.setValue(r < 0 ? '<span style="color:#ff6b5e;">Budget melebihi Nilai Kontrak (' + fmtRp(-r) + ')</span>'
+        fldReserve.setValue(r < 0 ? '<span >Budget melebihi Nilai Kontrak (' + fmtRp(-r) + ')</span>'
                                   : '<b>' + fmtRp(r) + '</b>');
     }
 
@@ -1237,7 +1237,7 @@ Ext.onReady(function () {
         labelWidth: 130,
         autoScroll: true,
         height: Math.round(screenH * 0.90),
-        bodyStyle: 'padding: 10px; overflow-y: auto;',
+        bodyStyle: 'padding: 10px; overflow-y: auto',
         defaults: { xtype: 'container', layout: 'form', columnWidth: 0.5, baseCls: 'x-plain' },
         items: [
             { items: [fldId, fldName, fldClient, fldPic, fldLocation, dateContainer, fldStatus, fldNotes] },

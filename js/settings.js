@@ -128,7 +128,7 @@ Ext.onReady(function () {
 
     var companyForm = new Ext.form.FormPanel({
         labelWidth: 150, border: false, autoScroll: true,
-        bodyStyle: 'background:transparent; padding:16px;',
+        bodyStyle: 'padding:16px',
         defaults: { anchor: '60%' },
         items: [
             { xtype: 'box', html: '<div class="set-note">Data ini dipakai sebagai <b>kop dokumen</b> (PO, invoice, laporan) dan header laporan keuangan.</div>' },
@@ -160,7 +160,7 @@ Ext.onReady(function () {
                '<h4>' + title + '</h4><div class="hint">' + hint + '</div>' +
                '<div class="logo-box"><img id="logoImg_' + type + '" style="display:none" alt="" />' +
                '<span class="none" id="logoNone_' + type + '">Belum ada logo</span></div>' +
-               '<input type="file" id="logoFile_' + type + '" accept="image/png,image/jpeg,image/webp" ' + (canWrite ? '' : 'disabled') + ' style="color:#9fc3d1;margin-bottom:10px;" /><br />' +
+               '<input type="file" id="logoFile_' + type + '" accept="image/png,image/jpeg,image/webp" ' + (canWrite ? '' : 'disabled') + ' style="margin-bottom:10px" /><br />' +
                '<button type="button" class="btn-up" id="logoUp_' + type + '"' + (canWrite ? '' : ' disabled') + '>Unggah</button>' +
                '<button type="button" class="btn-del" id="logoDel_' + type + '"' + (canWrite ? '' : ' disabled') + '>Hapus</button>' +
                '</div>';
@@ -210,7 +210,7 @@ Ext.onReady(function () {
 
     var logoPanel = new Ext.Panel({
         border: false, autoScroll: true,
-        bodyStyle: 'background:transparent; padding:16px;',
+        bodyStyle: 'padding:16px',
         html: '<div class="set-note">Format <b>PNG / JPEG / WEBP</b>, maksimal <b>1 MB</b> dan 4000 x 4000 piksel. PNG berlatar transparan paling cocok. SVG tidak didukung.</div>' +
               logoCard('document', 'Logo Dokumen', 'Tampil di kop PO, invoice, dan laporan cetak. Disarankan landscape / persegi, lebar minimal 400 px.') +
               logoCard('app', 'Logo Aplikasi', 'Dipakai di header aplikasi / halaman login. Disarankan persegi.'),
@@ -232,7 +232,7 @@ Ext.onReady(function () {
 
     var financeForm = new Ext.form.FormPanel({
         labelWidth: 230, border: false, autoScroll: true,
-        bodyStyle: 'background:transparent; padding:16px;',
+        bodyStyle: 'padding:16px',
         defaults: { anchor: '60%' },
         items: [
             { xtype: 'box', html: '<div class="set-note">Transaksi (RAB, PO, penerimaan, dst) <b>boleh memakai banyak mata uang</b>. ' +
@@ -240,7 +240,7 @@ Ext.onReady(function () {
                 '<b>laporan keuangan final mengacu ke pengaturan ini</b>: ditampilkan dalam <b>mata uang laporan</b> memakai jenis dan dasar kurs di bawah. ' +
                 'Bila mata uang laporan sama dengan mata uang dasar, tidak ada penjabaran kurs.</div>' },
             fBase, fLockInfo, fReport, fRateType, fBasisPl,
-            { xtype: 'box', html: '<div class="set-note" style="margin-top:2px;">Neraca selalu memakai <b>kurs akhir periode</b>. ' +
+            { xtype: 'box', html: '<div class="set-note" style="margin-top:2px">Neraca selalu memakai <b>kurs akhir periode</b>. ' +
                 'Pilihan kurs untuk pembukuan (KMK atau BI) sebaiknya dipastikan dengan akuntan / konsultan pajak. ' +
                 'Kurs otomatis di PO saat ini bersumber dari kurs pajak KMK dan mengasumsikan mata uang dasar IDR.</div>' },
             fMonth, fDecimals
@@ -296,12 +296,12 @@ Ext.onReady(function () {
 
     var docForm = new Ext.form.FormPanel({
         labelWidth: 170, border: false, autoScroll: true,
-        bodyStyle: 'background:transparent; padding:16px;',
+        bodyStyle: 'padding:16px',
         defaults: { anchor: '60%' },
         items: [
             { xtype: 'box', html: '<div class="set-note">Pelengkap dokumen cetak. Pratinjau kop di bawah memakai profil perusahaan dan logo dokumen.</div>' },
             fFooter, fSignName, fSignTitle,
-            { xtype: 'box', html: '<div style="margin:14px 0 6px 0;color:#38bdf8;font-weight:bold;">Pratinjau Kop Dokumen</div>' },
+            { xtype: 'box', html: '<div style="margin:14px 0 6px 0;font-weight:bold">Pratinjau Kop Dokumen</div>' },
             previewBox
         ],
         buttons: [{
@@ -352,7 +352,7 @@ Ext.onReady(function () {
         layout: 'card',
         activeItem: 0,
         layoutConfig: { deferredRender: false, layoutOnCardChange: true },
-        bodyStyle: 'background:transparent;',
+        ,
         height: Math.max(320, totalH - 78),
         items: [companyForm, logoPanel, financeForm, docForm]
     });

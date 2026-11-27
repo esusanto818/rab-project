@@ -186,8 +186,8 @@ Ext.onReady(function () {
             {
                 header: 'Status', dataIndex: 'status', width: 90, align: 'center',
                 renderer: function (v) {
-                    if (v === 'reversed') return '<span style="color:#c0392b;font-weight:bold;">Reversed</span>';
-                    return '<span style="color:#2e9e4f;font-weight:bold;">Posted</span>';
+                    if (v === 'reversed') return '<span style="font-weight:bold">Reversed</span>';
+                    return '<span style="font-weight:bold">Posted</span>';
                 }
             }
         ],
@@ -225,14 +225,14 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    whrcvDtlDiv.innerHTML = '<div style="color:yellow;">Gagal memuat detail.</div>';
+                    whrcvDtlDiv.innerHTML = '<div >Gagal memuat detail.</div>';
                     whrcvDtlDiv.style.display = 'block';
                     return;
                 }
                 renderWhrcvDetailView(res.data.items || [], refNo, res.data.currency_code);
             },
             failure: function () {
-                whrcvDtlDiv.innerHTML = '<div style="color:red;">Gagal terhubung ke server.</div>';
+                whrcvDtlDiv.innerHTML = '<div >Gagal terhubung ke server.</div>';
                 whrcvDtlDiv.style.display = 'block';
             }
         });
@@ -249,7 +249,7 @@ Ext.onReady(function () {
                    '<thead>' +
                    '<tr class="header-row">' +
                    '<th align="left">Nama Item</th>' +
-                   '<th style="text-align:right;">Qty Diterima</th>' +
+                   '<th style="text-align:right">Qty Diterima</th>' +
                    '<th align="left">Lot No</th>' +
                    '<th align="left">Bin</th>' +
                    '<th align="right">Harga Asal' + (code ? ' (' + Ext.util.Format.htmlEncode(code) + ')' : '') + '</th>' +
@@ -273,10 +273,10 @@ Ext.onReady(function () {
 
                 html += '<tr class="data-row">' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.item_name || '-') + '</td>' +
-                        '<td align="right" style="color:#4ade80; font-weight:bold;">' + fmtQty(qty) + '</td>' +
+                        '<td align="right" style="font-weight:bold">' + fmtQty(qty) + '</td>' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.lot_no || '-') + '</td>' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.bin_code || '-') + '</td>' +
-                        '<td align="right" style="color:#9fc3d1;">' + fmtAmt(costTxn) + '</td>' +
+                        '<td align="right" >' + fmtAmt(costTxn) + '</td>' +
                         '<td align="right">' + fmtAmt(cost) + '</td>' +
                         '<td align="right" class="subtotal-val">' + fmtAmt(subtotal) + '</td>' +
                         '</tr>';
@@ -310,7 +310,7 @@ Ext.onReady(function () {
                 header: 'Item', dataIndex: 'item_name', width: 180,
                 renderer: function (v, meta, record) {
                     if (record && record.get('is_split')) {
-                        return '<span style="color:#9fc3d1; padding-left:14px;">&#8627; ' + Ext.util.Format.htmlEncode(v || '') + '</span>';
+                        return '<span style="padding-left:14px">&#8627; ' + Ext.util.Format.htmlEncode(v || '') + '</span>';
                     }
                     return CellWrap.apply(this, arguments);
                 }
@@ -326,13 +326,13 @@ Ext.onReady(function () {
                 header: 'Sisa Belum Diterima', dataIndex: 'qty_remaining', width: 110, align: 'right',
                 renderer: function (v, meta, record) {
                     if (record && record.get('is_split')) return '';
-                    return '<b style="color:#38bdf8;">' + Ext.util.Format.number(v || 0, '0,000.0000') + '</b>';
+                    return '<b >' + Ext.util.Format.number(v || 0, '0,000.0000') + '</b>';
                 }
             },
             {
                 header: 'Qty Diterima Skrg', dataIndex: 'qty_input', width: 120, align: 'right',
                 editor: new myNumberField({ decimalPrecision: 4 }),
-                renderer: function (v) { return '<b style="color:#2e9e4f;">' + Ext.util.Format.number(v || 0, '0,000.0000') + '</b>'; }
+                renderer: function (v) { return '<b >' + Ext.util.Format.number(v || 0, '0,000.0000') + '</b>'; }
             },
             {
                 header: 'Lot No', dataIndex: 'lot_no', width: 100,
@@ -352,7 +352,7 @@ Ext.onReady(function () {
             },
             {
                 header: 'Harga Asal', dataIndex: 'unit_cost', width: 100, align: 'right',
-                renderer: function (v) { return '<span style="color:#9fc3d1;">' + Ext.util.Format.number(v || 0, '0,000.00') + '</span>'; }
+                renderer: function (v) { return '<span >' + Ext.util.Format.number(v || 0, '0,000.00') + '</span>'; }
             },
             {
                 header: 'Harga Dasar', dataIndex: 'unit_cost_base', width: 100, align: 'right',
@@ -368,9 +368,9 @@ Ext.onReady(function () {
             {
                 id: 'whSplitCol', header: 'Split Bin', dataIndex: 'is_split', width: 90, align: 'center', fixed: true,
                 renderer: function (v, meta, record) {
-                    var html = '<span class="whSplitBtn" title="Pecah qty item ini ke bin lain" style="cursor:pointer; color:#38bdf8; font-weight:bold;">&#10697; Split</span>';
+                    var html = '<span class="whSplitBtn" title="Pecah qty item ini ke bin lain" style="cursor:pointer; font-weight:bold">&#10697; Split</span>';
                     if (record && record.get('is_split')) {
-                        html += ' <span class="whSplitDel" title="Hapus baris ini (qty kembali ke baris induk)" style="cursor:pointer; color:#e05353; font-weight:bold; margin-left:6px;">&#10005;</span>';
+                        html += ' <span class="whSplitDel" title="Hapus baris ini (qty kembali ke baris induk)" style="cursor:pointer; font-weight:bold; margin-left:6px">&#10005;</span>';
                     }
                     return html;
                 }
@@ -495,7 +495,7 @@ Ext.onReady(function () {
         if (el) {
             var html = Ext.util.Format.number(total, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(whCur.base);
             if (whCur.code !== whCur.base) {
-                html += ' <span style="color:#9fc3d1; font-weight:normal;">(asal ' + Ext.util.Format.number(totalTxn, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(whCur.code) + ')</span>';
+                html += ' <span style="font-weight:normal">(asal ' + Ext.util.Format.number(totalTxn, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(whCur.code) + ')</span>';
             }
             el.innerHTML = html;
         }

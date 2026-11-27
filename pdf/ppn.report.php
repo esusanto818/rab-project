@@ -18,25 +18,7 @@ $qs = http_build_query(['year' => $year, 'month' => $month, 'project_id' => $pid
 <head>
 <meta charset="utf-8" />
 <title>Laporan PPN <?php echo sprintf('%04d-%02d', $year, $month); ?></title>
-<style>
-    @page { size: A4 landscape; margin: 12mm; }
-    body { font: 12px Arial, sans-serif; color: #000; margin: 0; padding: 12px 16px; }
-    .toolbar { margin-bottom: 12px; }
-    .toolbar button { padding: 6px 16px; font-weight: bold; cursor: pointer; }
-    h1 { text-align: center; font-size: 18px; margin: 0 0 2px 0; }
-    .sub { text-align: center; color: #444; margin-bottom: 14px; }
-    h2 { font-size: 14px; margin: 18px 0 6px 0; border-bottom: 1px solid #000; padding-bottom: 2px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
-    th, td { border: 1px solid #888; padding: 3px 6px; }
-    th { background: #e8e8e8; text-align: left; }
-    td.r, th.r { text-align: right; }
-    td.c { text-align: center; }
-    tfoot td { font-weight: bold; background: #f3f3f3; }
-    .net { margin: 8px 0; font-size: 14px; font-weight: bold; }
-    .warn { color: #b36b00; }
-    .muted { color: #666; font-style: italic; }
-    @media print { .toolbar { display: none; } body { padding: 0; } h2 { page-break-after: avoid; } tr { page-break-inside: avoid; } }
-</style>
+
 </head>
 <body>
 <div class="toolbar"><button type="button" onclick="window.print()">Cetak / Simpan PDF</button></div>

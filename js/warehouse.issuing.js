@@ -151,7 +151,7 @@ Ext.onReady(function () {
     function loadDetailPanel(rec) {
         ajax({ action: 'detail', id: rec.id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
@@ -167,13 +167,13 @@ Ext.onReady(function () {
             if (!u) { continue; }
             if (!/^(https?:\/\/|\/)/i.test(u)) { out.push(enc(u)); continue; }
             var label = /\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(u) ? 'Foto' : (/\.pdf(\?.*)?$/i.test(u) ? 'PDF' : 'Link');
-            out.push('<a href="' + enc(u) + '" target="_blank" style="color:#7fe0a0;">' + label + ' ' + (out.length + 1) + '</a>');
+            out.push('<a href="' + enc(u) + '" target="_blank" >' + label + ' ' + (out.length + 1) + '</a>');
         }
         return out.join(' &nbsp;|&nbsp; ');
     }
 
     function box(bg, border, fg, inner) {
-        return '<div style="margin:0 2px 8px 2px; padding:8px 12px; background:' + bg + '; border-left:4px solid ' + border + '; color:' + fg + ';">' + inner + '</div>';
+        return '<div style="margin:0 2px 8px 2px; padding:8px 12px; border-left:4px solid ' + border + '">' + inner + '</div>';
     }
     function returnInfoBanner(h) {
         var ref = h.return_ref_no ? ' &nbsp;|&nbsp; No. Retur: <b>' + enc(h.return_ref_no) + '</b> (' + enc(h.return_status || '-') + ')' : '';
@@ -190,12 +190,12 @@ Ext.onReady(function () {
         }
         if (h.status === 'posted') {
             return box('#0f3d2a', '#2e9e4f', '#c9f2d9',
-                '<b style="color:#4be08a;">&#10004; Barang sudah dikirim dari W/H</b> &nbsp;|&nbsp; Tgl kirim: <b>' + enc(h.delivery_date || h.sent_date || h.issue_date) + '</b>' +
+                '<b >&#10004; Barang sudah dikirim dari W/H</b> &nbsp;|&nbsp; Tgl kirim: <b>' + enc(h.delivery_date || h.sent_date || h.issue_date) + '</b>' +
                 ' &nbsp;|&nbsp; Kurir / Kendaraan: <b>' + enc(h.received_by_mandor || h.carrier || '-') + '</b>' +
                 ' &nbsp;|&nbsp; Penerima: <b>' + enc(h.delivery_receiver || '-') + '</b>' +
                 ' &nbsp;|&nbsp; No. Surat Jalan: <b>' + enc(h.delivery_note_no || '-') + '</b>' + sup + ref +
                 (h.delivery_proof ? '<br>Bukti pengiriman: ' + proofLinks(h.delivery_proof) : '') +
-                '<br><span style="color:#9fc3d1;">Pembatalan lewat Batal Kirim di modul Retur Pembelian.</span>');
+                '<br><span >Pembatalan lewat Batal Kirim di modul Retur Pembelian.</span>');
         }
         return box('#4a3a0b', '#e6a817', '#ffe9a8', '<b>' + (h.status === 'cancelled' ? 'Perintah dibatalkan' : 'Pengiriman dibatalkan') +
             '</b> &mdash; ' + (h.status === 'cancelled' ? 'perintah issue dibatalkan oleh Pembelian.' : 'issue di-reverse dan stok sudah kembali ke gudang.'));
@@ -244,9 +244,9 @@ Ext.onReady(function () {
                   '.wm{position:fixed;top:38%;left:0;width:100%;text-align:center;font-size:120px;font-weight:bold;letter-spacing:10px;' +
                   'color:rgba(0,0,0,0.10);transform:rotate(-30deg);z-index:0;pointer-events:none;}' +
                   'body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}';
-        var html = '<html><head><meta charset="utf-8"><title>Surat Jalan ' + enc(h.delivery_note_no || h.ref_no) + ' - ' + enc(mark) + '</title><style>' + css + '</style></head><body>' +
+        var html = '<html><head><meta charset="utf-8"><title>Surat Jalan ' + enc(h.delivery_note_no || h.ref_no) + ' - ' + enc(mark) + '</title></head><body>' +
                    '<div class="wm">' + enc(mark) + '</div>' +
-                   (COMPANY_NAME ? '<div style="font-size:15px;font-weight:bold;text-align:center;">' + enc(COMPANY_NAME) + '</div>' : '') +
+                   (COMPANY_NAME ? '<div style="font-size:15px;font-weight:bold;text-align:center">' + enc(COMPANY_NAME) + '</div>' : '') +
                    (COMPANY_ADDR ? '<div class="sub">' + enc(COMPANY_ADDR) + '</div>' : '') +
                    '<hr/><h1>SURAT JALAN RETUR PEMBELIAN</h1><div class="sub">Pengembalian barang cacat / rusak ke supplier</div>' +
                    '<table class="meta"><tr>' +
@@ -261,12 +261,12 @@ Ext.onReady(function () {
                    '</table>' +
                    '<br/><table class="items"><thead><tr><th width="4%">No</th><th width="14%">Kode</th><th>Material</th><th width="12%">Qty</th>' +
                    '<th width="8%">Sat</th><th width="28%">Keterangan</th></tr></thead><tbody>' + rows +
-                   '</tbody></table><div style="margin-top:6px;">Total item: <b>' + agg.length + '</b>' +
+                   '</tbody></table><div style="margin-top:6px">Total item: <b>' + agg.length + '</b>' +
                    (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div><br/>' +
                    '<table class="sign"><tr><td>Dibuat oleh<br/>(Gudang)</td><td>Pengirim / Kurir</td><td>Diterima oleh<br/>(Supplier)</td></tr>' +
                    '<tr><td class="box"></td><td class="box"></td><td class="box"></td></tr>' +
                    '<tr><td>(................................)</td><td>(................................)</td><td>(................................)</td></tr></table>' +
-                   '<div style="margin-top:14px;font-size:10px;color:#444;">Dicetak: ' + fmtDmy(ymd(new Date())) + '</div></body></html>';
+                   '<div style="margin-top:14px;font-size:10px">Dicetak: ' + fmtDmy(ymd(new Date())) + '</div></body></html>';
         w.document.open('text/html','replace');
         w.document.write(html);
         w.document.close();
@@ -279,25 +279,25 @@ Ext.onReady(function () {
         var isReturn = (h.issue_type === 'SUPPLIER_RETURN');
         var actHtml = '';
         if (h.status === 'posted' && !isReturn) {
-            actHtml = '<div style="float:right; margin:2px 4px 0 0;">' +
-                      '<button type="button" id="whReverseBtn" style="padding:8px 16px; background:#8e2b22; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Reverse Issue</button></div>';
+            actHtml = '<div style="float:right; margin:2px 4px 0 0">' +
+                      '<button type="button" id="whReverseBtn" style="padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Reverse Issue</button></div>';
         }
         if (isReturn && (h.status === 'pending' || h.status === 'prepared' || h.status === 'posted')) {
             var bs = 'padding:8px 16px; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; margin-left:6px;';
             var rb2 = '';
             if (h.status === 'posted') {
-                rb2 += '<button type="button" id="whPrintBtn" style="' + bs + ' background:#2e6da4;">Cetak Ulang Surat Jalan (COPY)</button>';
+                rb2 += '<button type="button" id="whPrintBtn" style="' + bs + '">Cetak Ulang Surat Jalan (COPY)</button>';
             }
             if (h.status === 'pending' || h.status === 'prepared') {
-                rb2 += '<button type="button" id="whRetBtn" style="' + bs + ' background:' + (h.status === 'pending' ? '#2e6da4' : '#03615e') + ';">' +
+                rb2 += '<button type="button" id="whRetBtn" style="' + bs + '">' +
                        (h.status === 'pending' ? 'Siap Kirim (Barang Sudah Disiapkan)' : 'Konfirmasi Dikirim') + '</button>';
             }
-            actHtml = '<div style="float:right; margin:2px 4px 0 0;">' + rb2 + '</div>';
+            actHtml = '<div style="float:right; margin:2px 4px 0 0">' + rb2 + '</div>';
         }
         var html = actHtml + '<h3 class="detail-title">Detail Issue: ' + enc(h.ref_no) +
-                   ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
+                   ' <span >(' + enc(h.status) + ')</span></h3>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">Tanggal: <b>' + enc(h.issue_date) + '</b> &nbsp;|&nbsp; Jenis: <b>' +
+                   '<div style="padding:4px 2px 10px 2px">Tanggal: <b>' + enc(h.issue_date) + '</b> &nbsp;|&nbsp; Jenis: <b>' +
                    (isReturn ? 'Retur Supplier' : 'Proyek') + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Gudang: <b>' + enc(h.warehouse_name) + '</b> &nbsp;|&nbsp; Mandor / Penerima: <b>' + enc(h.received_by_mandor || '-') + '</b>' +
                    (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div>' +
@@ -307,13 +307,13 @@ Ext.onReady(function () {
                    '<th align="left">Material</th><th align="right">Qty</th><th align="right">Biaya Satuan (FIFO)</th>' +
                    '<th align="right">Nilai</th><th align="left">Catatan</th></tr></thead><tbody>';
         if (!items.length) {
-            html += '<tr><td colspan="5" style="padding:15px; text-align:center; color:#557982;">Belum ada item.</td></tr>';
+            html += '<tr><td colspan="5" style="padding:15px; text-align:center">Belum ada item.</td></tr>';
         }
         Ext.each(items, function (i) {
             var amt = parseFloat(i.amount) || 0;
             grand += amt;
             html += '<tr class="data-row">' +
-                    '<td align="left">' + enc(i.material_name) + ' <span style="color:#668894;">(' + enc(i.material_code || '') + ')</span></td>' +
+                    '<td align="left">' + enc(i.material_name) + ' <span >(' + enc(i.material_code || '') + ')</span></td>' +
                     '<td align="right">' + fmtQty(i.qty_out) + ' ' + enc(i.unit || '') + '</td>' +
                     '<td align="right">' + fmtAmt(i.unit_cost) + '</td>' +
                     '<td align="right" class="subtotal-val">' + fmtAmt(amt) + '</td>' +
@@ -346,11 +346,11 @@ Ext.onReady(function () {
             minButtonWidth: 120,
             items: new Ext.form.FormPanel({
                 border: false,
-                bodyStyle: 'padding:15px; background:transparent;',
+                bodyStyle: 'padding:15px',
                 items: [{
                     xtype: 'displayfield',
                     hideLabel: true,
-                    value: '<span style="font-size:13px; color:#e2e8f0;">' + msg + '</span>'
+                    value: '<span style="font-size:13px">' + msg + '</span>'
                 }]
             }),
             buttons: [
@@ -417,11 +417,11 @@ Ext.onReady(function () {
             minButtonWidth: 120,
             items: new Ext.form.FormPanel({
                 border: false,
-                bodyStyle: 'padding:15px; background:transparent;',
+                bodyStyle: 'padding:15px',
                 items: [{
                     xtype: 'displayfield',
                     hideLabel: true,
-                    value: '<span style="color:#e6a817; font-size:13px;">Tandai barang pada <b>' + enc(rec.ref_no) + '</b> sudah disiapkan (Siap Kirim)?</span>'
+                    value: '<span style="font-size:13px">Tandai barang pada <b>' + enc(rec.ref_no) + '</b> sudah disiapkan (Siap Kirim)?</span>'
                 }]
             }),
             buttons: [
@@ -447,16 +447,16 @@ Ext.onReady(function () {
         var wCarrier = new Ext.form.TextField({ fieldLabel: 'Kurir / Kendaraan', anchor: '95%', allowBlank: false });
         var wReceiver = new Ext.form.TextField({ fieldLabel: 'Nama Penerima', anchor: '95%', allowBlank: false });
         var wNote = new Ext.form.DisplayField({ fieldLabel: 'No. Surat Jalan', anchor: '95%',
-            value: rec.delivery_note_no ? '<b>' + enc(rec.delivery_note_no) + '</b>' : '<span style="color:#9fc3d1;">Dibuat otomatis oleh sistem</span>' });
+            value: rec.delivery_note_no ? '<b>' + enc(rec.delivery_note_no) + '</b>' : '<span >Dibuat otomatis oleh sistem</span>' });
         var proofs = [], uploading = 0;
         var wProofList = new Ext.form.DisplayField({ fieldLabel: 'Bukti', anchor: '95%', value: '' });
         function renderProofs() {
             var h = '';
             for (var i = 0; i < proofs.length; i++) {
-                h += '<div>' + (i + 1) + '. ' + proofLinks(proofs[i]) + ' &nbsp;<span style="color:#e05353;cursor:pointer;font-weight:bold;" title="Hapus" onclick="window.whProofRemove(' + i + ');">&#10005;</span></div>';
+                h += '<div>' + (i + 1) + '. ' + proofLinks(proofs[i]) + ' &nbsp;<span style="cursor:pointer;font-weight:bold" title="Hapus" onclick="window.whProofRemove(' + i + ');">&#10005;</span></div>';
             }
-            if (uploading > 0) { h += '<div style="color:#9fc3d1;">Mengunggah ' + uploading + ' file...</div>'; }
-            wProofList.setValue(h || '<span style="color:#668894;">Belum ada file (opsional)</span>');
+            if (uploading > 0) { h += '<div >Mengunggah ' + uploading + ' file...</div>'; }
+            wProofList.setValue(h || '<span >Belum ada file (opsional)</span>');
         }
         window.whProofRemove = function (i) { proofs.splice(i, 1); renderProofs(); };
         var fileInput = document.createElement('input');
@@ -491,9 +491,9 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Konfirmasi Dikirim ' + rec.ref_no, width: 500, height: 400, modal: true, layout: 'fit', cls: 'whDarkWin', minButtonWidth: 150,
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 120, bodyStyle: 'padding:12px; background:transparent;',
+                border: false, labelWidth: 120, bodyStyle: 'padding:12px',
                 items: [{ xtype: 'displayfield', hideLabel: true,
-                          value: '<span style="color:#e6a817;">Setelah dikonfirmasi, stok keluar dari gudang (FIFO) dan jurnal dibuat. Pastikan barang benar-benar sudah dikirim.</span>' },
+                          value: '<span >Setelah dikonfirmasi, stok keluar dari gudang (FIFO) dan jurnal dibuat. Pastikan barang benar-benar sudah dikirim.</span>' },
                         wDate, wCarrier, wReceiver, wNote, wProofList, wProofBtn]
             }),
             buttons: [
@@ -592,7 +592,7 @@ Ext.onReady(function () {
             { header: 'No. Issue', dataIndex: 'ref_no', width: 110 },
             { header: 'Tanggal', dataIndex: 'issue_date', width: 85, align: 'center' },
             { header: 'Jenis', dataIndex: 'issue_type', width: 95, align: 'center',
-              renderer: function (v) { return v === 'SUPPLIER_RETURN' ? '<span style="color:#2bc1e2;font-weight:bold;">Retur Supplier</span>' : 'Proyek'; } },
+              renderer: function (v) { return v === 'SUPPLIER_RETURN' ? '<span style="font-weight:bold">Retur Supplier</span>' : 'Proyek'; } },
             { header: 'Proyek', dataIndex: 'project_name', width: 200, renderer: CellWrap },
             { header: 'SPK', dataIndex: 'spk_no', width: 115, align: 'center', renderer: function (v) { return enc(v || '-'); } },     // [SPK][NEW]
             { header: 'Gudang', dataIndex: 'warehouse_name', width: 140, renderer: CellWrap },
@@ -600,24 +600,24 @@ Ext.onReady(function () {
             { header: 'Item', dataIndex: 'line_count', width: 50, align: 'center' },
             { header: 'Nilai (FIFO)', dataIndex: 'total_amount', width: 110, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             { header: 'Allowance', dataIndex: 'has_overbudget', width: 80, align: 'center',
-              renderer: function (v) { return (v === true || v === 'true') ? '<span style="color:#e6a817;font-weight:bold;">+5%</span>' : '-'; } },
+              renderer: function (v) { return (v === true || v === 'true') ? '<span style="font-weight:bold">+5%</span>' : '-'; } },
             { header: 'Pengiriman', dataIndex: 'return_ref_no', width: 200, align: 'center',
               renderer: function (v, meta, rec) {
                   if (rec.get('issue_type') !== 'SUPPLIER_RETURN') { return '-'; }
                   var st = rec.get('status'), sj = rec.get('delivery_note_no');
-                  var sub = v ? '<br><span style="color:#9fc3d1;font-size:11px;">' + enc(v) + '</span>' : '';
-                  var sjLine = sj ? '<br><span style="color:#e2e8f0;font-size:11px;">SJ: <b>' + enc(sj) + '</b></span>' : '';
-                  if (st === 'pending') { return '<span style="color:#e6a817;font-weight:bold;">Menunggu disiapkan</span>' + sub; }
-                  if (st === 'prepared') { return '<span style="color:#2bc1e2;font-weight:bold;">Siap kirim</span>' + sjLine + sub; }
+                  var sub = v ? '<br><span style="font-size:11px">' + enc(v) + '</span>' : '';
+                  var sjLine = sj ? '<br><span style="font-size:11px">SJ: <b>' + enc(sj) + '</b></span>' : '';
+                  if (st === 'pending') { return '<span style="font-weight:bold">Menunggu disiapkan</span>' + sub; }
+                  if (st === 'prepared') { return '<span style="font-weight:bold">Siap kirim</span>' + sjLine + sub; }
                   if (st === 'posted') {
-                      return '<span style="color:#2e9e4f;font-weight:bold;">Terkirim ' + enc(rec.get('delivery_date') || rec.get('sent_date') || rec.get('issue_date') || '') + '</span>' +
-                             sjLine + '<br><span style="color:#9fc3d1;font-size:11px;">' + enc(rec.get('received_by_mandor') || rec.get('carrier') || '-') +
+                      return '<span style="font-weight:bold">Terkirim ' + enc(rec.get('delivery_date') || rec.get('sent_date') || rec.get('issue_date') || '') + '</span>' +
+                             sjLine + '<br><span style="font-size:11px">' + enc(rec.get('received_by_mandor') || rec.get('carrier') || '-') +
                              ' &rarr; ' + enc(rec.get('delivery_receiver') || '-') + '</span>' + sub;
                   }
-                  return '<span style="color:#e6a817;">Dibatalkan</span>';
+                  return '<span >Dibatalkan</span>';
               } },
             { header: 'Status', dataIndex: 'status', width: 80, align: 'center',
-              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
+              renderer: function (v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; } }
         ],
         stripeRows : true,
         // [GRID-WRAP 2026-11-17] forceFit:true -> false agar kolom Proyek/Gudang/Pengiriman wrap, bukan terpotong "...".
@@ -669,7 +669,7 @@ Ext.onReady(function () {
               editor: new myNumberField({ decimalPrecision: 4 }),
               renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
             { id: 'whDeleteCol', sortable: false, menuDisabled: true, header: '', dataIndex: 'material_id', width: 30, align: 'center', fixed: true,
-              renderer: function () { return '<span style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus baris">&#10005;</span>'; } }
+              renderer: function () { return '<span style="cursor:pointer;font-weight:bold;font-size:14px" title="Hapus baris">&#10005;</span>'; } }
         ],
         listeners: {
             validateedit: function (e) {
@@ -731,13 +731,13 @@ Ext.onReady(function () {
         fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'whHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.5, [fProject, fSpk, fWh]), col(0.5, [fDate, fMandor, fRemark])]
         });
 
@@ -761,12 +761,12 @@ Ext.onReady(function () {
             renderTo: 'whMatBar',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:2px;',
+            bodyStyle: 'padding:2px',
             items: [
-                { columnWidth: 0.4, layout: 'form', border: false, hideLabels: true, bodyStyle: 'background:transparent;', items: [fMat] },
-                { width: 150, border: false, bodyStyle: 'background:transparent; padding-left:6px;',
+                { columnWidth: 0.4, layout: 'form', border: false, hideLabels: true, items: [fMat] },
+                { width: 150, border: false, bodyStyle: 'padding-left:6px',
                   items: [new Ext.Button({ text: '+ Tambah Material', handler: addMaterial })] },
-                { columnWidth: 0.6, border: false, bodyStyle: 'background:transparent; padding:6px 0 0 8px; color:#9fc3d1; font-size:11px;',
+                { columnWidth: 0.6, border: false, bodyStyle: 'padding:6px 0 0 8px; font-size:11px',
                   html: 'Batas issue = min(stok gudang, RAB +5% - sudah di-issue). Qty melewati RAB (tapi masih +5%) ditandai allowance.' }
             ]
         });

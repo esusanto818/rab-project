@@ -105,9 +105,9 @@ Ext.onReady(function () {
     mainDs.load();
 
     function statusRenderer(v) {
-        if (v === 'posted') return '<span style="color:#2e9e4f;font-weight:bold;">Posted</span>';
-        if (v === 'reversed') return '<span style="color:#8e44ad;font-weight:bold;">Reversed</span>';
-        return '<span style="color:#e08e0b;">Draft</span>';
+        if (v === 'posted') return '<span style="font-weight:bold">Posted</span>';
+        if (v === 'reversed') return '<span style="font-weight:bold">Reversed</span>';
+        return '<span >Draft</span>';
     }
 
     // ------------------------------------------------------------
@@ -172,14 +172,14 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    journalDtlDiv.innerHTML = '<div style="color:yellow;">Gagal memuat detail jurnal.</div>';
+                    journalDtlDiv.innerHTML = '<div >Gagal memuat detail jurnal.</div>';
                     journalDtlDiv.style.display = 'block';
                     return;
                 }
                 renderJournalDetailView(res.data || [], refNo, journalId);     // [PRINT-JV] + journalId
             },
             failure: function() {
-                journalDtlDiv.innerHTML = '<div style="color:red;">Gagal terhubung ke server.</div>';
+                journalDtlDiv.innerHTML = '<div >Gagal terhubung ke server.</div>';
                 journalDtlDiv.style.display = 'block';
             }
         });
@@ -190,8 +190,8 @@ Ext.onReady(function () {
         var totalDebit = 0, totalCredit = 0;
 
         // [PRINT-JV][NEW] judul detail + tombol Print (cetak jurnal ini saja)
-        var html = '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-                   '<h3 class="detail-title" style="margin:0;">Detail Baris Jurnal: ' + Ext.util.Format.htmlEncode(refNo || '') + '</h3>' +
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center">' +
+                   '<h3 class="detail-title" style="margin:0">Detail Baris Jurnal: ' + Ext.util.Format.htmlEncode(refNo || '') + '</h3>' +
                    // [PRINT-JV] gaya disamakan dengan tombol toolbar utama: latar transparan, ikon & teks putih (bukan tombol abu-abu terang)
                    '<button id="btnPrintJournalDtl" type="button" ' +
                    'style="display:inline-flex; align-items:center; gap:6px; background:transparent; color:#ffffff; font-family:inherit; font-size:13px; ' +
@@ -225,8 +225,8 @@ Ext.onReady(function () {
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.account_code || '-') + '</td>' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.account_name || '-') + '</td>' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.description || '-') + '</td>' +
-                        '<td align="right" style="color:#4ade80; font-weight:bold;">' + (debit ? fmtAmt(debit) : '-') + '</td>' +
-                        '<td align="right" style="color:#f87171; font-weight:bold;">' + (credit ? fmtAmt(credit) : '-') + '</td>' +
+                        '<td align="right" style="font-weight:bold">' + (debit ? fmtAmt(debit) : '-') + '</td>' +
+                        '<td align="right" style="font-weight:bold">' + (credit ? fmtAmt(credit) : '-') + '</td>' +
                         '</tr>';
             });
         }
@@ -235,8 +235,8 @@ Ext.onReady(function () {
                 '<tfoot>' +
                 '<tr class="total-row">' +
                 '<td colspan="3" align="right" class="total-label">TOTAL:</td>' +
-                '<td align="right" style="color:#4ade80; font-weight:bold;">' + fmtAmt(totalDebit) + '</td>' +
-                '<td align="right" style="color:#f87171; font-weight:bold;">' + fmtAmt(totalCredit) + '</td>' +
+                '<td align="right" style="font-weight:bold">' + fmtAmt(totalDebit) + '</td>' +
+                '<td align="right" style="font-weight:bold">' + fmtAmt(totalCredit) + '</td>' +
                 '</tr>' +
                 '</tfoot>' +
                 '</table>';

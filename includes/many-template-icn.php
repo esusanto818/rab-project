@@ -40,7 +40,7 @@ $favVer = date('YmdHis');
     <?php include BASE_PATH . "/includes/div-log.php"; ?>
     <?php include BASE_PATH . "/includes/div-chart.php"; ?>
     <?php include BASE_PATH . "/includes/div-loading-wdw.php"; ?>
-    <div id="linksOverlay" style="display:none;"></div>
+    <div id="linksOverlay" style="display:none"></div>
   </div>
   <?php include BASE_PATH . "/includes/div-links-menu.php"; ?>
 </div>
@@ -58,7 +58,7 @@ $favVer = date('YmdHis');
   function capitalizeEachWord(str) {return str.replace(/\w\S*/g, function(txt) {return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});}
   function periodName(val, x, store){
     if (val==0) {pName='Daily';} else if (val==1) {pName='Weekly';} else if (val==2) {pName='Monthly';} else {pName='Yearly';}
-    return '<div style="white-space:normal !important;">'+pName+'</div>';
+    return '<div style="white-space:normal !important">'+pName+'</div>';
   }
   Ext.EventManager.addListener(Ext.getBody(), 'keydown', function(e){
     if(e.getTarget().type != 'text' && e.getTarget().type != 'textarea' && e.getTarget().type != 'password' && e.getKey() == '8' ){e.preventDefault();}

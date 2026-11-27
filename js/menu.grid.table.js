@@ -8,9 +8,9 @@ Ext.onReady(function() {
     function MergeCellSupplier(val, x, store) {
         if (CellSupplier == '' || CellSupplier != val) {
             CellSupplier = val;
-            return '<div style="white-space:normal !important;">' + val + '</div>';
+            return '<div style="white-space:normal !important">' + val + '</div>';
         } else {
-            return '<div style="white-space:normal !important;">-</div>';
+            return '<div style="white-space:normal !important">-</div>';
         }
     }
     let txField = [

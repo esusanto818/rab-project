@@ -50,7 +50,6 @@ if [[ "$TARGET_FILE" == *.js ]]; then
 
   # 3b. Deteksi kata nyasar / bare identifier berdiri sendiri (misal: role, assistant, user)
   STRAY_LINES=$(grep -nE '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*;?[[:space:]]*$' "$TARGET_FILE" \
-
     | grep -vE '^[0-9]+:[[:space:]]*(debugger|return|break|continue)[[:space:]]*;?[[:space:]]*$' || true)
 
   if [[ -n "$STRAY_LINES" ]]; then
@@ -60,7 +59,7 @@ if [[ "$TARGET_FILE" == *.js ]]; then
   fi
 
   # 3c. Deteksi sisa markdown code fence (```) di dalam file JS
-  FENCE_LINES=\$(grep -n '```' "$TARGET_FILE" || true)
+  FENCE_LINES=$(grep -n '```' "$TARGET_FILE" || true)
   if [[ -n "$FENCE_LINES" ]]; then
     echo "[FAIL] Terdeteksi artefak markdown (\`\`\`) di dalam $TARGET_FILE:"
     echo "$FENCE_LINES"

@@ -20,7 +20,7 @@ require_once '../php-func/user.valid.php';
     <div id="mainHeader">
         <h2 id="mainHeaderText">Progress <em>Subkontraktor</em></h2>
     </div>
-    <div id="divMainGrid" style="margin: 10px;"></div>
-    <div id="editorWdw" style="display:none;"></div>
+    <div id="divMainGrid" style="margin: 10px"></div>
+    <div id="editorWdw" style="display:none"></div>
 </body>
 </html>

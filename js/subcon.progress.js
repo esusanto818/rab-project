@@ -21,6 +21,7 @@ Ext.onReady(function () {
         store: progressStore,
         renderTo: 'divMainGrid',
         height: 500,
+        cls: 'x-grid3-gridEditor',
         columns: [
             { header: 'No. Inspeksi', dataIndex: 'inspection_no', width: 120 },
             { header: 'Tanggal', dataIndex: 'inspection_date', width: 100 },

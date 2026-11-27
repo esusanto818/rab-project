@@ -28,42 +28,7 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-<style>
-body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8f0; }
-.font-orbitron { font-family: 'Orbitron', sans-serif; }
-.font-rajdhani { font-family: 'Rajdhani', sans-serif; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-.nav-item { position: static; }
-.nav-item:hover .dropdown-menu, .nav-item:focus-within .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
-.dropdown-menu {
-position: absolute; top: 100%; left: 0;
-width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
-max-height: calc(100vh - 80px); overflow-y: auto;
-opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s ease-in-out;
-}
-.dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
-.menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
-.menu-column h3 { font-size: 20px; font-weight: 500; color: #22d3ee; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #008afb; padding-bottom: 0.5rem; margin-bottom: 0.5rem; }
-.menu-column ul { list-style: none; padding: 0; margin: 0; }
-.menu-column ul li { margin-bottom: 0.25rem; }
-.menu-column ul li a { display: block; padding: 0.2rem 0.4rem; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 300; transition: all 0.2s; border-radius: 0.25rem; }
-.menu-column ul li a:hover { color: #ee2222; background: rgba(252, 253, 253, 0.61); transform: translateX(2px); }
-.tab-btn { background:#1f2d3a; color:#ffffff; font-weight:700; font-size:15px; padding:8px 20px; border:none; border-radius:4px; cursor:pointer; transition:background .15s; }
-.tab-btn:hover { background:#2b3f52; }
-.tab-btn.active { background:#066b78; }
-.tab-btn:focus-visible { outline:2px solid #22d3ee; outline-offset:2px; }
-.tab-panel { display:none; }
-.tab-panel.active { display:block; }
-@media (max-width: 768px) {
-.desktop-menu { display: none !important; }
-.hamburger-btn { display: flex !important; }
-.user-info-desktop { display: none; }
-.user-info-mobile { display: flex !important; }
-section h2 { font-size: 1.25rem !important; }
-}
-html, body { overflow-x: hidden; max-width: 100vw; }
-</style>
+
 </head>
 <?php $favVer = date('YmdHis'); ?>
 <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">

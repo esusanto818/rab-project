@@ -88,8 +88,8 @@ Ext.onReady(function () {
     html += '</div><div class="lo-filter" id="loFilter"><label>Proyek</label><select id="loProject"><option value="0">(Semua proyek)</option></select>' +
             '<button type="button" class="btn" id="loGo">Tampilkan</button></div>';
     Ext.each(TABS, function (t) {
-        html += '<div class="lo-panel" id="loPanel_' + t.key + '" style="display:none;"><div id="loGrid_' + t.key + '"></div>' +
-                (t.key === 'docs' ? '<div id="loDtl" class="detail-panel-container" style="display:none;overflow-y:auto;margin-top:8px;"></div>' : '') + '</div>';
+        html += '<div class="lo-panel" id="loPanel_' + t.key + '" style="display:none"><div id="loGrid_' + t.key + '"></div>' +
+                (t.key === 'docs' ? '<div id="loDtl" class="detail-panel-container" style="display:none;overflow-y:auto;margin-top:8px"></div>' : '') + '</div>';
     });
     host.innerHTML = html;
 
@@ -123,13 +123,13 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     var h = Math.max(Math.round(maxGridHeight(host)) - 120, 260);
     var statusRenderer = function (v) {
-        return '<span style="color:' + (v === 'posted' ? '#2e9e4f' : '#c0392b') + ' !important;font-weight:bold;">' + enc(v) + '</span>';
+        return '<span style="font-weight:bold">' + enc(v) + '</span>';
     };
     var builders = {
         docs: function () {
             return new Ext.grid.GridPanel({
                 renderTo: 'loGrid_docs', height: Math.round(h * 0.55), store: mainDs, loadMask: true, stripeRows: true,
-                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada retur sisa material. Klik Add untuk mengembalikan sisa material proyek ke gudang.</div>' },
+                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px">Belum ada retur sisa material. Klik Add untuk mengembalikan sisa material proyek ke gudang.</div>' },
                 columns: [
                     { header: 'No. Dokumen', dataIndex: 'ref_no', width: 120 },
                     { header: 'Tanggal', dataIndex: 'doc_date', width: 85, align: 'center' },
@@ -153,7 +153,7 @@ Ext.onReady(function () {
         pos: function () {
             return new Ext.grid.GridPanel({
                 renderTo: 'loGrid_pos', height: h, store: posDs, loadMask: true, stripeRows: true,
-                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada material yang di-issue ke proyek.</div>' },
+                viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:16px">Belum ada material yang di-issue ke proyek.</div>' },
                 columns: [
                     { header: 'Proyek', dataIndex: 'project_name', width: 190, renderer: CellWrap },
                     { header: 'Kode', dataIndex: 'material_code', width: 80 },
@@ -161,10 +161,10 @@ Ext.onReady(function () {
                     { header: 'Sat', dataIndex: 'unit', width: 45, align: 'center' },
                     { header: 'RAB', dataIndex: 'rab_qty', width: 85, align: 'right', renderer: fmtQty },
                     { header: 'Di-issue', dataIndex: 'issued_qty', width: 90, align: 'right', renderer: fmtQty },
-                    { header: 'Retur Sisa', dataIndex: 'lo_qty', width: 90, align: 'right', renderer: function (v) { return v > EPS ? '<span style="color:#2bc1e2;">' + fmtQty(v) + '</span>' : '-'; } },
+                    { header: 'Retur Sisa', dataIndex: 'lo_qty', width: 90, align: 'right', renderer: function (v) { return v > EPS ? '<span >' + fmtQty(v) + '</span>' : '-'; } },
                     { header: 'Terpakai Bersih', dataIndex: 'net_qty', width: 100, align: 'right', renderer: function (v) { return '<b>' + fmtQty(v) + '</b>'; } },
                     { header: '% RAB', dataIndex: 'used_pct', width: 65, align: 'right',
-                      renderer: function (v) { return v === null || v === undefined ? '-' : '<span style="color:' + (v > 105 ? '#ff6b5e' : '#e6f1f8') + ';">' + v + '%</span>'; } },
+                      renderer: function (v) { return v === null || v === undefined ? '-' : '<span >' + v + '%</span>'; } },
                     { header: 'Nilai Di-issue', dataIndex: 'issued_amt', width: 110, align: 'right', renderer: fmtAmt },
                     { header: 'Nilai Retur Sisa', dataIndex: 'lo_amt', width: 110, align: 'right', renderer: function (v) { return v > 0 ? fmtAmt(v) : '-'; } },
                     { header: 'Nilai Bersih (WIP)', dataIndex: 'net_amt', width: 120, align: 'right', renderer: function (v) { return '<b>' + fmtAmt(v) + '</b>'; } }
@@ -195,14 +195,14 @@ Ext.onReady(function () {
     function loadDetail(rec) {
         var el = document.getElementById('loDtl');
         ajax({ task: 'detail', id: rec.id }, function (res) {
-            if (!res.success) { el.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message) + '</div>'; el.style.display = 'block'; return; }
+            if (!res.success) { el.innerHTML = '<div style="padding:10px">' + enc(res.message) + '</div>'; el.style.display = 'block'; return; }
             var tot = 0;
-            var t = '<h3 class="detail-title">Dokumen: ' + enc(rec.ref_no) + ' <span style="font-weight:normal;">(' + enc(rec.project_name) + ' &rarr; ' + enc(rec.warehouse_name) + ')</span></h3><hr class="detail-hr" />' +
+            var t = '<h3 class="detail-title">Dokumen: ' + enc(rec.ref_no) + ' <span style="font-weight:normal">(' + enc(rec.project_name) + ' &rarr; ' + enc(rec.warehouse_name) + ')</span></h3><hr class="detail-hr" />' +
                     '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row"><th align="left">Material</th>' +
                     '<th align="right">Qty</th><th align="right">Biaya Satuan</th><th align="right">Nilai</th><th align="left">Catatan</th></tr></thead><tbody>';
             Ext.each(res.data, function (r) {
                 tot += r.amount;
-                t += '<tr class="data-row"><td>' + enc(r.material_name) + ' <span style="color:#668894;">(' + enc(r.material_code) + ')</span></td><td align="right">' + fmtQty(r.qty) + ' ' + enc(r.unit) +
+                t += '<tr class="data-row"><td>' + enc(r.material_name) + ' <span >(' + enc(r.material_code) + ')</span></td><td align="right">' + fmtQty(r.qty) + ' ' + enc(r.unit) +
                      '</td><td align="right">' + fmtAmt(r.unit_cost) + '</td><td align="right">' + fmtAmt(r.amount) + '</td><td>' + enc(r.notes || '') + '</td></tr>';
             });
             t += '<tr class="data-row"><td colspan="3" align="right"><b>Total</b></td><td align="right" class="subtotal-val"><b>' + fmtAmt(tot) + '</b></td><td></td></tr></tbody></table>';
@@ -266,7 +266,7 @@ Ext.onReady(function () {
                 { header: 'Nilai', dataIndex: 'qty', width: 110, align: 'right', renderer: function (v, m, r) { return fmtAmt(Math.round(v * r.get('avg_cost') * 100) / 100); } },
                 { header: 'Catatan', dataIndex: 'notes', width: 150, editor: new Ext.form.TextField() },
                 { header: '', dataIndex: 'material_id', width: 30, align: 'center', fixed: true,
-                  renderer: function () { return '<span style="color:#e05353;cursor:pointer;font-weight:bold;">&#10005;</span>'; } }
+                  renderer: function () { return '<span style="cursor:pointer;font-weight:bold">&#10005;</span>'; } }
             ],
             listeners: {
                 validateedit: function (e) {
@@ -279,7 +279,7 @@ Ext.onReady(function () {
             }
         });
         var form = new Ext.form.FormPanel({
-            region: 'north', height: 110, border: false, layout: 'column', bodyStyle: 'padding:8px 6px 0 6px;',
+            region: 'north', height: 110, border: false, layout: 'column', bodyStyle: 'padding:8px 6px 0 6px',
             items: [
                 { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 110, items: [fProject, fWh, fDate] },
                 { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 110, items: [fRemark] }

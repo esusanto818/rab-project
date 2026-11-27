@@ -54,7 +54,7 @@ try {
     }
 
     echo "<br><b>Selesai! Total {$count} password berhasil diperbarui.</b>";
-    echo "<br><span style='color:red;'><b>PENTING:</b> Segera hapus file migrasi ini setelah selesai demi keamanan!</span>";
+    echo "<br><span ><b>PENTING:</b> Segera hapus file migrasi ini setelah selesai demi keamanan!</span>";
 
 } catch (PDOException $e) {
     echo "Terjadi kesalahan database: " . $e->getMessage();

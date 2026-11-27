@@ -343,7 +343,7 @@ $formItems = $fStmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <div class="flex items-center space-x-3 text-base">
 <!-- [FIX] Button theme: label = theme AKTIF (tidak terbalik), ikon dinamis -->
 <button id="theme_toggle_btn" type="button" onclick="toggleTheme()" class="theme-toggle-btn" title="Ganti tema">
-<span id="theme_icon">🌙</span>
+<span id="theme_icon">☀️</span>
 <span id="theme_lbl">(Light/Dark)</span>
 </button>
 <span class="hidden sm:inline" style="color: var(--text-sub);">User: <strong style="color: var(--accent);"><?= htmlspecialchars($_SESSION['username'] ?? 'Administrator'); ?></strong></span>
@@ -610,8 +610,8 @@ function updateThemeUI(theme) {
   const lbl = document.getElementById('theme_lbl');
   if (!icon || !lbl) return;
   // Ikon menunjukkan tema AKTIF, label tetap "Ganti Tema (Light / Dark)"
-  if (theme === 'light') { icon.textContent = '☀️'; }
-  else { icon.textContent = '🌙'; }
+  if (theme === 'light') { icon.textContent = '🌙'; }
+  else { icon.textContent = '☀️'; }
   // Label tidak berubah, tetap "Ganti Tema (Light / Dark)"
 }
 */
@@ -629,8 +629,8 @@ function updateThemeUI(theme) {
   const lbl = document.getElementById('theme_lbl');
   if (!icon || !lbl) return;
   // Ikon menunjukkan tema AKTIF, label tetap "Ganti Tema (Light / Dark)"
-  if (theme === 'light') { icon.textContent = '☀️'; }
-  else { icon.textContent = '🌙'; }
+  if (theme === 'light') { icon.textContent = '🌙'; }
+  else { icon.textContent = '☀️'; }
   // Label tidak berubah, tetap "Ganti Tema (Light / Dark)"
 }
 function rethemeCharts() {

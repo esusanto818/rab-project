@@ -44,7 +44,7 @@ $info = [
     // [RELEASE-LAYER] nomor dokumen tagihan yang diserahkan ke client; DRAFT = belum diterbitkan
     (strtoupper((string)$inv['release_status']) === 'RELEASED' && $inv['release_no'])
         ? 'No. Dokumen Tagihan: ' . pr_e($inv['release_no']) . ($inv['release_date'] ? ' &nbsp;|&nbsp; Tgl Terbit: ' . pr_e(pr_date($inv['release_date'])) : '')
-        : '<span style="color:#b3541e;">STATUS: DRAFT - dokumen tagihan belum diterbitkan ke client</span>',
+        : '<span >STATUS: DRAFT - dokumen tagihan belum diterbitkan ke client</span>',
     // [RELEASE-LAYER] catatan penerbitan (opsional) tampil bila ada
     (strtoupper((string)$inv['release_status']) === 'RELEASED' && !empty($inv['release_note']))
         ? 'Catatan Terbit: ' . pr_e($inv['release_note'])
@@ -56,22 +56,7 @@ $info = array_values(array_filter($info, function ($x) { return $x !== ''; })); 
 $isReleased = strtoupper((string)$inv['release_status']) === 'RELEASED';
 $extraCss = '';
 if (!$isReleased) {
-    $extraCss = '<style>
-        body { position: relative; }
-        body::before {
-            content: "DRAFT"; position: fixed; z-index: 9999;
-            top: 42%; left: 0; width: 100%;
-            text-align: center; font-size: 110px; font-weight: bold; letter-spacing: 12px;
-            color: rgba(179, 84, 30, 0.28); transform: rotate(-32deg);
-            -webkit-print-color-adjust: exact; print-color-adjust: exact;
-        }
-        body::after {
-            content: "BUKAN DOKUMEN RESMI - TERBITKAN DULUAN (RELEASE) SEBELUM DISERAHKAN KE CLIENT";
-            position: fixed; z-index: 9999; top: 56%; left: 0; width: 100%;
-            text-align: center; font-size: 13px; font-weight: bold; color: rgba(179, 84, 30, 0.28);
-            transform: rotate(-32deg); -webkit-print-color-adjust: exact; print-color-adjust: exact;
-        }
-    </style>';
+    $extraCss = '';
 }
 pr_open('Invoice ' . $inv['inv_no'], 'INVOICE / TAGIHAN', $info, '', true, $extraCss);
 ?>

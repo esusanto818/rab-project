@@ -65,8 +65,8 @@ Ext.onReady(function () {
                 header: 'Status', dataIndex: 'active', width: 100, align: 'center',
                 renderer: function (v) {
                     return (v === true || v === 'true' || v === 't' || v === 1)
-                        ? '<span style="color:#2e9e4f;font-weight:bold;">Aktif</span>'
-                        : '<span style="color:#c0392b;font-weight:bold;">Nonaktif</span>';
+                        ? '<span style="font-weight:bold">Aktif</span>'
+                        : '<span style="font-weight:bold">Nonaktif</span>';
                 }
             }
         ],

@@ -194,25 +194,25 @@ Ext.onReady(function () {
         // [GRID-WRAP 2026-11-17] forceFit dimatikan: forceFit memaksa semua kolom menyusut agar pas lebar panel,
         // sehingga kolom nominal/invoice terpotong "...". Dengan forceFit:false grid memakai lebar kolom
         // sesuai definisi + scroll horizontal bila ruang tidak cukup -> teks selalu utuh (wrap, bukan potong).
-        viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false, emptyText: '<div style="padding:16px;color:#9fc3d1;">Belum ada invoice. Klik Add untuk membuat invoice, lalu Release untuk menerbitkan dokumen tagihan ke client.</div>' },
+        viewConfig: { forceFit: false, scrollOffset: 0, deferEmptyText: false, emptyText: '<div style="padding:16px">Belum ada invoice. Klik Add untuk membuat invoice, lalu Release untuk menerbitkan dokumen tagihan ke client.</div>' },
         columns: [
             { header: 'No. Invoice', dataIndex: 'inv_no', width: 130 },                              // [GRID-WRAP] 110 -> 130 (INV-2611-00057)
             {                                                                                       // [RELEASE-LAYER] kolom dokumen tagihan
                 header: 'Dokumen Tagihan', dataIndex: 'release_no', width: 145,                       // [GRID-WRAP] 150 -> 145 (sudah muat TAG-... + tgl 2 baris)
                 renderer: function (v, meta, r) {
                     if (r.get('release_status') === 'released') {
-                        return '<span style="color:#2e9e4f;font-weight:bold;">' + enc(v || '-') + '</span>' +
-                               (r.get('release_date') ? '<br><span style="color:#6b869a;font-size:11px;">' + enc(r.get('release_date')) + '</span>' : '');
+                        return '<span style="font-weight:bold">' + enc(v || '-') + '</span>' +
+                               (r.get('release_date') ? '<br><span style="font-size:11px">' + enc(r.get('release_date')) + '</span>' : '');
                     }
-                    return '<span style="color:#e6a817;font-weight:bold;">DRAFT</span>';
+                    return '<span style="font-weight:bold">DRAFT</span>';
                 }
             },
             { header: 'Tanggal', dataIndex: 'invoice_date', width: 90, align: 'center' },             // [GRID-WRAP] 82 -> 90 (DD/MM/YYYY)
             {
                 header: 'Jatuh Tempo', dataIndex: 'due_date', width: 120, align: 'center',            // [GRID-WRAP] 105 -> 120 (overdue "+N hr" ikut muat)
                 renderer: function (v, meta, r) {
-                    if (!v) return '<span style="color:#668894;">-</span>';
-                    return r.get('is_overdue') ? '<span style="color:#ff6b5e;font-weight:bold;">' + enc(v) + ' (+' + r.get('days_overdue') + ' hr)</span>' : enc(v);
+                    if (!v) return '<span >-</span>';
+                    return r.get('is_overdue') ? '<span style="font-weight:bold">' + enc(v) + ' (+' + r.get('days_overdue') + ' hr)</span>' : enc(v);
                 }
             },
             { header: 'Client', dataIndex: 'client_name', width: 160, renderer: function (v) { return CellWrap(v || '-'); } },  // [GRID-WRAP] 150 -> 160
@@ -225,7 +225,7 @@ Ext.onReady(function () {
             { header: 'Sisa', dataIndex: 'remaining', width: 130, align: 'right', renderer: function (v) { return v > VEPS ? '<b>' + fmtAmt(v) + '</b>' : '-'; } },  // [GRID-WRAP] 105 -> 130
             {
                 header: 'Status', dataIndex: 'status', width: 105, align: 'center',                   // [GRID-WRAP] 90 -> 105 (Belum Bayar / Sebagian)
-                renderer: function (v) { return '<span style="color:' + statusColor(v) + ' !important;font-weight:bold;">' + enc(v) + '</span>'; }
+                renderer: function (v) { return '<span style="font-weight:bold">' + enc(v) + '</span>'; }
             }
         ],
         listeners: {
@@ -264,13 +264,13 @@ Ext.onReady(function () {
     function loadDetailPanel(id) {
         ajax({ task: 'load_invoice', id: id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail invoice.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail invoice.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
             renderDetailPanel(res.data);
         }, function () {
-            dtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
+            dtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
             dtlDiv.style.display = 'block';
         });
     }
@@ -281,13 +281,13 @@ Ext.onReady(function () {
         // [RELEASE-LAYER] informasi dokumen tagihan di panel detail
         var relLine = (h.release_status === 'released')
             ? 'Dokumen tagihan: <b>' + enc(h.release_no || '-') + '</b> (' + enc(h.release_date || '-') + ')' + (h.released_by_name ? ' oleh ' + enc(h.released_by_name) : '')
-            : '<span style="color:#e6a817;font-weight:bold;">DRAFT</span> <span style="color:#6b869a;">- belum diterbitkan ke client (tidak muncul di Pembayaran Termin)</span>';
-        var html = '<h3 class="detail-title">Invoice: ' + enc(h.inv_no) + ' <span style="color:' + statusColor(st) + ';">(' + st + ')</span></h3>' +
+            : '<span style="font-weight:bold">DRAFT</span> <span >- belum diterbitkan ke client (tidak muncul di Pembayaran Termin)</span>';
+        var html = '<h3 class="detail-title">Invoice: ' + enc(h.inv_no) + ' <span >(' + st + ')</span></h3>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">Client: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
+                   '<div style="padding:4px 2px 10px 2px">Client: <b>' + enc(h.client_name || '-') + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Termin: <b>' + enc(h.termin_name) + '</b>' + (h.percentage > 0 ? ' (' + h.percentage + '% kontrak)' : '') +
                    ' &nbsp;|&nbsp; Tanggal: <b>' + enc(h.invoice_date) + '</b> &nbsp;|&nbsp; Jatuh tempo: <b>' + enc(h.due_date || '-') + '</b>' +
-                   ' &nbsp;|&nbsp; Faktur pajak: <b>' + (h.ppn_amount > 0 ? (h.faktur_pajak_no ? enc(h.faktur_pajak_no) : '<span style="color:#e6a817;">belum diisi</span>') : 'tanpa PPN') + '</b>' +
+                   ' &nbsp;|&nbsp; Faktur pajak: <b>' + (h.ppn_amount > 0 ? (h.faktur_pajak_no ? enc(h.faktur_pajak_no) : '<span >belum diisi</span>') : 'tanpa PPN') + '</b>' +
                    ' &nbsp;|&nbsp; ' + relLine +
                    (h.release_note ? ' &nbsp;|&nbsp; Catatan terbit: <b>' + enc(h.release_note) + '</b>' : '') +
                    (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div>' +
@@ -297,19 +297,19 @@ Ext.onReady(function () {
         if (h.ppn_amount > 0) html += '<tr class="data-row"><td>PPN Keluaran ' + h.ppn_rate + '%</td><td align="right">' + fmtAmt(h.ppn_amount) + '</td></tr>';
         html += '<tr class="data-row"><td><b>Total Tagihan</b></td><td align="right" class="subtotal-val"><b>' + fmtAmt(h.amount) + '</b></td></tr>';
         Ext.each(pays, function (p) {
-            html += '<tr class="data-row"><td style="color:#2e9e4f;">Pembayaran ' + enc(p.payment_no) + ' (' + enc(p.payment_date) + ')</td><td align="right" style="color:#2e9e4f;">- ' + fmtAmt(p.amount_paid) + '</td></tr>';
+            html += '<tr class="data-row"><td >Pembayaran ' + enc(p.payment_no) + ' (' + enc(p.payment_date) + ')</td><td align="right" >- ' + fmtAmt(p.amount_paid) + '</td></tr>';
         });
         html += '<tr class="data-row"><td><b>Sisa Tagihan</b></td><td align="right" class="subtotal-val"><b>' + fmtAmt(h.remaining) + '</b></td></tr></tbody></table>';
 
-        html += '<div style="margin-top:15px; text-align:right;">';
+        html += '<div style="margin-top:15px; text-align:right">';
         // [RELEASE-LAYER] aksi release / batal release juga tersedia di panel detail
         if (h.release_status === 'released' && !(h.paid_amount > VEPS)) {
-            html += '<button type="button" class="tiActBtn" data-act="unrelease" style="margin-left:8px; padding:8px 16px; background:#800020; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Batalkan Release</button>';
+            html += '<button type="button" class="tiActBtn" data-act="unrelease" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Batalkan Release</button>';
         } else if (h.release_status !== 'released') {
-            html += '<button type="button" class="tiActBtn" data-act="release" style="margin-left:8px; padding:8px 16px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Release Tagihan</button>';
+            html += '<button type="button" class="tiActBtn" data-act="release" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Release Tagihan</button>';
         }
-        if (h.ppn_amount > 0) html += '<button type="button" class="tiActBtn" data-act="faktur" style="margin-left:8px; padding:8px 16px; background:#8e6b22; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Faktur Pajak</button>';
-        html += '<button type="button" class="tiActBtn" data-act="print" style="margin-left:8px; padding:8px 16px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Cetak Invoice</button></div>';
+        if (h.ppn_amount > 0) html += '<button type="button" class="tiActBtn" data-act="faktur" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Faktur Pajak</button>';
+        html += '<button type="button" class="tiActBtn" data-act="print" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Cetak Invoice</button></div>';
         dtlDiv.innerHTML = html;
         dtlDiv.style.display = 'block';
 
@@ -370,7 +370,7 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Faktur Pajak - ' + h.inv_no, width: 420, height: 250, modal: true, layout: 'fit',
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 120, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 120, bodyStyle: 'padding:12px',
                 items: [{ xtype: 'displayfield', hideLabel: true,
                           value: 'PPN Keluaran <b>' + fmtAmt(h.ppn_amount) + '</b> (DPP ' + fmtAmt(h.dpp_amount) +
                                  '). Tanggal faktur menentukan masa pajak di Laporan PPN. Kosongkan nomor untuk menghapus.' }, fNo, fDt]
@@ -440,13 +440,13 @@ Ext.onReady(function () {
         var msg = '';
         if (p) {
             var cv = p.get('contract_value'), billed = p.get('billed_dpp') - (editing ? (curRec.dpp_amount || 0) : 0);
-            msg += '<div style="font-size:12px;color:#9fc3d1;">Nilai kontrak <b>' + fmtAmt(cv) + '</b> &nbsp;|&nbsp; sudah ditagih (DPP) <b>' + fmtAmt(billed) +
+            msg += '<div style="font-size:12px">Nilai kontrak <b>' + fmtAmt(cv) + '</b> &nbsp;|&nbsp; sudah ditagih (DPP) <b>' + fmtAmt(billed) +
                    '</b> &nbsp;|&nbsp; sisa kontrak <b>' + fmtAmt(Math.max(cv - billed - dpp, 0)) + '</b>';
-            if (cv > 0 && billed + dpp > cv + VEPS) msg += ' <span style="color:#ff6b5e;">(melebihi nilai kontrak)</span>';
+            if (cv > 0 && billed + dpp > cv + VEPS) msg += ' <span >(melebihi nilai kontrak)</span>';
             msg += '</div>';
         }
-        msg += '<div style="margin-top:4px;"><b>Total Tagihan: ' + fmtAmt(round2(dpp + ppn)) + '</b> ' +
-               '<span style="font-size:12px;font-weight:normal;color:#9fc3d1;">&nbsp;(DPP ' + fmtAmt(dpp) + ' &nbsp;|&nbsp; PPN ' + r + '% ' + fmtAmt(ppn) + ')</span></div>';
+        msg += '<div style="margin-top:4px"><b>Total Tagihan: ' + fmtAmt(round2(dpp + ppn)) + '</b> ' +
+               '<span style="font-size:12px;font-weight:normal">&nbsp;(DPP ' + fmtAmt(dpp) + ' &nbsp;|&nbsp; PPN ' + r + '% ' + fmtAmt(ppn) + ')</span></div>';
         bar.innerHTML = msg;
     }
 
@@ -506,16 +506,16 @@ Ext.onReady(function () {
         fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'tiHdrForm', border: false, layout: 'column',
-            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.34, [fClient, fProject, fName]), col(0.33, [fDate, fTop, fDue]), col(0.33, [fPct, fAmt, fPpnOn, fPpnRate])]
         });
         hdrForm2 = new Ext.form.FormPanel({
             renderTo: 'tiHdrForm2', border: false, layout: 'column',
-            bodyStyle: 'background:transparent; padding:0 2px 4px 2px;',
+            bodyStyle: 'padding:0 2px 4px 2px',
             items: [col(0.34, [fFpNo]), col(0.33, [fFpDate]), col(0.33, [fRemark])]
         });
     }

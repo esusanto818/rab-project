@@ -99,7 +99,7 @@ Ext.onReady(function () {
 
     function loadDetailPanel(id) {
         ajax({ action: 'detail', id: id }, function (res) {
-            if (!res.success) { dtlDiv.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>'; dtlDiv.style.display = 'block'; return; }
+            if (!res.success) { dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>'; dtlDiv.style.display = 'block'; return; }
             renderDetail(res);
         });
     }
@@ -109,24 +109,24 @@ Ext.onReady(function () {
         var counted = 0, withDiff = 0;
         Ext.each(lines, function (l) { if (l.counted_qty !== null && l.counted_qty !== undefined) { counted++; if (Math.abs(parseFloat(l.diff_qty)) > EPS) withDiff++; } });
 
-        var html = '<h3 class="detail-title">Detail Opname: ' + enc(h.ref_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
-                   '<hr class="detail-hr" /><div style="padding:4px 2px 10px 2px;">Gudang: <b>' + enc(h.warehouse_name) + '</b> &nbsp;|&nbsp; Tanggal: <b>' + enc(h.opname_date) +
+        var html = '<h3 class="detail-title">Detail Opname: ' + enc(h.ref_no) + ' <span >(' + enc(h.status) + ')</span></h3>' +
+                   '<hr class="detail-hr" /><div style="padding:4px 2px 10px 2px">Gudang: <b>' + enc(h.warehouse_name) + '</b> &nbsp;|&nbsp; Tanggal: <b>' + enc(h.opname_date) +
                    '</b> &nbsp;|&nbsp; Item: <b>' + lines.length + '</b> &nbsp;|&nbsp; Dihitung: <b>' + counted + '</b> &nbsp;|&nbsp; Ada selisih: <b>' + withDiff + '</b>' +
                    (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + enc(h.remark) : '') + '</div>' +
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                    '<th align="left">Material</th><th align="right">Stok Sistem</th><th align="right">Qty Hitung</th><th align="right">Selisih</th>' +
                    '<th align="right">Biaya Satuan</th><th align="right">Nilai Selisih</th><th align="left">Alasan</th><th align="left">Catatan</th></tr></thead><tbody>';
-        if (!lines.length) { html += '<tr><td colspan="8" style="padding:15px;text-align:center;color:#557982;">Belum ada baris.</td></tr>'; }
+        if (!lines.length) { html += '<tr><td colspan="8" style="padding:15px;text-align:center">Belum ada baris.</td></tr>'; }
         Ext.each(lines, function (l) {
             var has = (l.counted_qty !== null && l.counted_qty !== undefined);
             var diff = parseFloat(l.diff_qty) || 0;
             var col = !has ? '#668894' : (diff > EPS ? '#2e9e4f' : (diff < -EPS ? '#e05353' : '#9fc3d1'));
-            html += '<tr class="data-row"><td align="left">' + enc(l.material_name) + ' <span style="color:#668894;">(' + enc(l.material_code) + ')</span></td>' +
+            html += '<tr class="data-row"><td align="left">' + enc(l.material_name) + ' <span >(' + enc(l.material_code) + ')</span></td>' +
                     '<td align="right">' + fmtQty(l.system_qty) + ' ' + enc(l.unit || '') + '</td>' +
-                    '<td align="right">' + (has ? fmtQty(l.counted_qty) : '<i style="color:#668894;">tidak dihitung</i>') + '</td>' +
-                    '<td align="right" style="color:' + col + ';font-weight:bold;">' + (has ? fmtQty(diff) : '-') + '</td>' +
+                    '<td align="right">' + (has ? fmtQty(l.counted_qty) : '<i >tidak dihitung</i>') + '</td>' +
+                    '<td align="right" style="font-weight:bold">' + (has ? fmtQty(diff) : '-') + '</td>' +
                     '<td align="right">' + fmtAmt(l.unit_cost) + '</td>' +
-                    '<td align="right" style="color:' + col + ';">' + (parseFloat(l.diff_value) ? fmtAmt(l.diff_value) : '-') + '</td>' +
+                    '<td align="right" >' + (parseFloat(l.diff_value) ? fmtAmt(l.diff_value) : '-') + '</td>' +
                     '<td align="left">' + enc(l.reason || '') + '</td><td align="left">' + enc(l.note || '') + '</td></tr>';
         });
         html += '</tbody></table>';
@@ -137,9 +137,9 @@ Ext.onReady(function () {
         if (h.submitted_at) trail.push('Diajukan: <b>' + enc(h.submitted_by_name || '-') + '</b> (' + enc(h.submitted_at) + ')');
         if (h.approved_at) trail.push('Disetujui: <b>' + enc(h.approved_by_name || '-') + '</b> (' + enc(h.approved_at) + ')');
         if (h.cancelled_at) trail.push('Dibatalkan: <b>' + enc(h.cancelled_by_name || '-') + '</b> (' + enc(h.cancelled_at) + ') - ' + enc(h.cancel_reason || ''));
-        html += '<div style="margin-top:12px;color:#9fc3d1;">' + trail.join(' &nbsp;|&nbsp; ') + '</div>';
+        html += '<div style="margin-top:12px">' + trail.join(' &nbsp;|&nbsp; ') + '</div>';
         if (h.status === 'Disetujui') {
-            html += '<div style="margin-top:6px;color:#9fc3d1;">Nilai lebih diposting: <b>' + fmtAmt(h.total_gain) + '</b> &nbsp;|&nbsp; Nilai kurang diposting: <b>' + fmtAmt(h.total_loss) + '</b>';
+            html += '<div style="margin-top:6px">Nilai lebih diposting: <b>' + fmtAmt(h.total_gain) + '</b> &nbsp;|&nbsp; Nilai kurang diposting: <b>' + fmtAmt(h.total_loss) + '</b>';
             if (jr.length) { html += ' &nbsp;|&nbsp; Jurnal: ' + Ext.pluck(jr, 'ref_no').join(', '); }
             html += ' &nbsp;|&nbsp; Pergerakan stok: ' + mov.length + ' baris (lihat Kartu Stok, ref ' + enc(h.ref_no) + ')</div>';
         }
@@ -149,7 +149,7 @@ Ext.onReady(function () {
         if (h.status === 'Draft') btns += uiBtn('soAct', 'Ajukan', '#066b78', 'data-act="submit"') + uiBtn('soAct', 'Refresh Stok Sistem', '#555555', 'data-act="refresh"');
         if (h.status === 'Diajukan') btns += uiBtn('soAct', 'Setujui &amp; Posting', '#066b78', 'data-act="approve"') + uiBtn('soAct', 'Refresh / Kembali ke Draft', '#555555', 'data-act="refresh"');
         if (h.status !== 'Dibatalkan') btns += uiBtn('soAct', h.status === 'Disetujui' ? 'Batalkan (Reverse)' : 'Batalkan', '#800020', 'data-act="cancel"');
-        if (btns) html += '<div style="margin-top:15px;text-align:right;">' + btns + '</div>';
+        if (btns) html += '<div style="margin-top:15px;text-align:right">' + btns + '</div>';
 
         dtlDiv.innerHTML = html;
         dtlDiv.style.display = 'block';
@@ -221,7 +221,7 @@ Ext.onReady(function () {
             { header: 'Nilai Kurang', dataIndex: 'total_loss', width: 110, align: 'right', renderer: fmtAmt },
             { header: 'Dibuat Oleh', dataIndex: 'created_by_name', width: 110 },
             { header: 'Status', dataIndex: 'status', width: 90, align: 'center',
-              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
+              renderer: function (v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; } }
         ],
         // [GRID-WRAP 2026-11-17] forceFit:true -> false agar Gudang/Dibuat Oleh wrap, bukan terpotong "...".
         viewConfig: { forceFit: false, scrollOffset: 0 }, loadMask: true,
@@ -254,7 +254,7 @@ Ext.onReady(function () {
     ];
     var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, itemField) });
 
-    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });
+    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });
     itemDs.on('remove', function () { updateSummary(); });
 
     function hasCount(r) { var v = r.get('counted_qty'); return !(v === null || v === undefined || v === ''); }
@@ -272,7 +272,7 @@ Ext.onReady(function () {
         });
         var el = document.getElementById('soSummary');
         if (el) el.innerHTML = 'Item: <b>' + n + '</b> &nbsp;|&nbsp; Dihitung: <b>' + c + '</b> &nbsp;|&nbsp; Ada selisih: <b>' + d +
-            '</b> &nbsp;|&nbsp; Perkiraan nilai lebih: <b style="color:#2e9e4f;">' + fmtAmt(gain) + '</b> &nbsp;|&nbsp; Perkiraan nilai kurang (FIFO bisa berbeda): <b style="color:#e05353;">' + fmtAmt(loss) + '</b>';
+            '</b> &nbsp;|&nbsp; Perkiraan nilai lebih: <b >' + fmtAmt(gain) + '</b> &nbsp;|&nbsp; Perkiraan nilai kurang (FIFO bisa berbeda): <b >' + fmtAmt(loss) + '</b>';
     }
 
     var itemGrid = new stdGridEditor({
@@ -286,12 +286,12 @@ Ext.onReady(function () {
             { header: 'Stok Sistem', dataIndex: 'system_qty', width: 90, align: 'right', renderer: fmtQty },
             { header: 'Qty Hitung', dataIndex: 'counted_qty', width: 90, align: 'right',
               editor: new myNumberField({ decimalPrecision: 4, allowNegative: false }),
-              renderer: function (v) { return (v === null || v === undefined || v === '') ? '<i style="color:#668894;">isi</i>' : fmtQty(v); } },
+              renderer: function (v) { return (v === null || v === undefined || v === '') ? '<i >isi</i>' : fmtQty(v); } },
             { header: 'Selisih', dataIndex: 'diff_qty', width: 90, align: 'right',
               renderer: function (v, m, r) {
                   if (!hasCount(r)) return '';
                   var c = v > EPS ? '#2e9e4f' : (v < -EPS ? '#e05353' : '#9fc3d1');
-                  return '<span style="color:' + c + ';font-weight:bold;">' + fmtQty(v) + '</span>';
+                  return '<span style="font-weight:bold">' + fmtQty(v) + '</span>';
               } },
             { header: 'Biaya Satuan', dataIndex: 'unit_cost', width: 100, align: 'right',
               editor: new myNumberField({ decimalPrecision: 4, allowNegative: false }), renderer: fmtAmt },
@@ -334,9 +334,9 @@ Ext.onReady(function () {
         });
         fDate = new Ext.form.DateField({ fieldLabel: 'Tanggal Opname', format: 'd/m/Y', value: new Date(), allowBlank: false, width: 130 });
         fRemark = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
-        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, bodyStyle: 'background:transparent;', items: items }; };
+        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 110, items: items }; };
         hdrForm = new Ext.form.FormPanel({
-            renderTo: 'soHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:4px 2px 0 2px;',
+            renderTo: 'soHdrForm', border: false, layout: 'column', bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.34, [fWh]), col(0.22, [fDate]), col(0.44, [fRemark])]
         });
 

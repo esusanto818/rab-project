@@ -70,7 +70,7 @@ Ext.onReady(function () {
             { header: 'Akun Kredit', dataIndex: 'credit_code', width: 180, renderer: function (v, m, r) { return r.get('credit_code') + ' - ' + r.get('credit_name'); } },
             {
                 header: 'Status', dataIndex: 'is_active', width: 80, align: 'center',
-                renderer: function (v) { return v ? '<span style="color:#2e9e4f;font-weight:bold;">Aktif</span>' : '<span style="color:#c0392b !important;font-weight:bold;">Nonaktif</span>'; }
+                renderer: function (v) { return v ? '<span style="font-weight:bold">Aktif</span>' : '<span style="font-weight:bold">Nonaktif</span>'; }
             }
         ],
         stripeRows: true,
@@ -103,21 +103,21 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    fiscalDtlDiv.innerHTML = '<div style="color:yellow;">Gagal memuat detail rule.</div>';
+                    fiscalDtlDiv.innerHTML = '<div >Gagal memuat detail rule.</div>';
                     fiscalDtlDiv.style.display = 'block';
                     return;
                 }
                 renderFiscalDetailView(res.data || {}, ruleCode);
             },
             failure: function () {
-                fiscalDtlDiv.innerHTML = '<div style="color:red;">Gagal terhubung ke server.</div>';
+                fiscalDtlDiv.innerHTML = '<div >Gagal terhubung ke server.</div>';
                 fiscalDtlDiv.style.display = 'block';
             }
         });
     }
 
     function renderFiscalDetailView(data, ruleCode) {
-        var statusText = data.is_active ? '<span style="color:#2e9e4f;font-weight:bold;">Aktif</span>' : '<span style="color:#c0392b;font-weight:bold;">Nonaktif</span>';
+        var statusText = data.is_active ? '<span style="font-weight:bold">Aktif</span>' : '<span style="font-weight:bold">Nonaktif</span>';
 
         var html = '<h3 class="detail-title">Detail Posting Rule: ' + Ext.util.Format.htmlEncode(ruleCode || '') + '</h3>' +
                    '<hr class="detail-hr" />' +
@@ -131,15 +131,15 @@ Ext.onReady(function () {
                    'tbody' +
                    '<tr class="data-row">' +
                    '<td align="left">Nama Rule</td>' +
-                   '<td align="left" style="font-weight:bold;">' + Ext.util.Format.htmlEncode(data.rule_name || '-') + '</td>' +
+                   '<td align="left" style="font-weight:bold">' + Ext.util.Format.htmlEncode(data.rule_name || '-') + '</td>' +
                    '</tr>' +
                    '<tr class="data-row">' +
                    '<td align="left">Posisi Debit (DR)</td>' +
-                   '<td align="left" style="color:#2e9e4f !important; font-weight:bold;">' + Ext.util.Format.htmlEncode(data.debit_code ? (data.debit_code + ' - ' + data.debit_name) : '-') + '</td>' +
+                   '<td align="left" style="font-weight:bold">' + Ext.util.Format.htmlEncode(data.debit_code ? (data.debit_code + ' - ' + data.debit_name) : '-') + '</td>' +
                    '</tr>' +
                    '<tr class="data-row">' +
                    '<td align="left">Posisi Kredit (CR)</td>' +
-                   '<td align="left" style="color:#c0392b !important; font-weight:bold;">' + Ext.util.Format.htmlEncode(data.credit_code ? (data.credit_code + ' - ' + data.credit_name) : '-') + '</td>' +
+                   '<td align="left" style="font-weight:bold">' + Ext.util.Format.htmlEncode(data.credit_code ? (data.credit_code + ' - ' + data.credit_name) : '-') + '</td>' +
                    '</tr>' +
                    '<tr class="data-row">' +
                    '<td align="left">Status Rule</td>' +

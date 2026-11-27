@@ -17,9 +17,7 @@
     <link rel="stylesheet" type="text/css" href="/rab-project/css/header.black.css" />
     <link rel="stylesheet" type="text/css" href="/rab-project/css/grddetail.css" />
     <link rel="stylesheet" type="text/css" href="/rab-project/css/frm.css" />      
-   <style> 
-        #editorForm {top: 50%; width: 98%; height: 90%;} 
-      </style>
+   
       <title id="page-title">Department Name</title>
     </head>
     <body>

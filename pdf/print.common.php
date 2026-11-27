@@ -47,40 +47,13 @@ function pr_open($docTitle, $heading, $lines = [], $status = '', $ok = true, $ex
 <head>
 <meta charset="utf-8">
 <title><?php echo pr_e($docTitle); ?></title>
-<style>
-    @page { size: A4 portrait; margin: 15mm; }
-    body { font-family: Arial, Helvetica, sans-serif; color: #000; background: #fff; font-size: 12px; margin: 0; padding: 16px; }
-    h1 { text-align: center; font-size: 18px; margin: 0 0 4px 0; }
-    .sub { text-align: center; color: #333; margin-bottom: 4px; }
-    .status { text-align: center; font-weight: bold; margin: 6px 0 14px 0; }
-    h3 { font-size: 14px; margin: 16px 0 6px 0; border-bottom: 2px solid #000; padding-bottom: 3px; }
-    table.rpt { width: 100%; border-collapse: collapse; }
-    table.rpt th { text-align: left; border-bottom: 1px solid #000; padding: 4px 6px; }
-    table.rpt td { padding: 4px 6px; }
-    table.rpt tr.z td { background: #f1f1f1; }                         /* zebra, tetap terlihat saat cetak */
-    table.rpt tr.tot td { font-weight: bold; border-top: 1px solid #000; background: #fff; }
-    td.c { width: 70px; } td.r, th.r { text-align: right; white-space: nowrap; }
-    table.rpt th.r { text-align: right; }                               /* [ALIGN] 'table.rpt th' (rata kiri) lebih spesifik dari 'th.r' -> header kolom angka ikut rata kanan */
-    table.fx { table-layout: fixed; }
-    table.rpt td.sec { font-size: 14px; font-weight: bold; border-bottom: 2px solid #000; padding: 16px 6px 3px 6px; background: #fff; }   /* [ALIGN] judul seksi sebagai baris tabel tunggal */
-    table.rpt tr.net td { font-size: 14px; font-weight: bold; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 8px 6px; background: #fff; }                                   /* [ALIGN] lebar kolom tetap agar baris total/laba bersih sejajar dengan kolom di atasnya */
-    .muted { color: #777; font-style: italic; }
-    .grand { margin-top: 14px; padding: 8px 6px; border-top: 2px solid #000; border-bottom: 2px solid #000; font-size: 14px; font-weight: bold; display: flex; justify-content: space-between; }
-    .jv { margin-top: 14px; page-break-inside: avoid; }
-    .jvh { font-weight: bold; background: #e4e4e4; padding: 4px 6px; display: flex; justify-content: space-between; }
-    .foot { margin-top: 16px; font-size: 10px; color: #555; }
-    .noprint { margin-bottom: 12px; text-align: right; }
-    .noprint button { padding: 6px 14px; cursor: pointer; }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    @media print { .noprint { display: none; } body { padding: 0; } }
-    <?php echo $extraCss; ?>
-</style>
+
 </head>
 <body>
 <div class="noprint"><button onclick="window.print()">Cetak / Simpan PDF</button></div>
 <h1><?php echo pr_e($heading); ?></h1>
 <?php foreach ($lines as $l) { echo '<div class="sub">' . $l . '</div>'; } ?>
-<?php if ($status !== '') { echo '<div class="status" style="color:' . ($ok ? '#1b7a3a' : '#b00020') . ';">' . pr_e($status) . '</div>'; } ?>
+<?php if ($status !== '') { echo '<div class="status" >' . pr_e($status) . '</div>'; } ?>
 <?php
 }
 

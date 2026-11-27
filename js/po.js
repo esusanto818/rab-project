@@ -166,13 +166,13 @@ dtlDiv.style.overflowY = 'auto';
     function loadDetailPanel(id) {
         ajax({ task: 'load_po', id: id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail PO.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail PO.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
             renderDetailPanel(res.data);
         }, function () {
-            dtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
+            dtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
             dtlDiv.style.display = 'block';
         });
     }
@@ -186,9 +186,9 @@ dtlDiv.style.overflowY = 'auto';
         var extraTd = sameCur ? '' : '<td></td>';
 
         var html = '<h3 class="detail-title">Detail PO: ' + enc(h.po_number) +
-                   ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3>' +
+                   ' <span >(' + enc(h.status) + ')</span></h3>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">Tanggal: <b>' + enc(h.po_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
+                   '<div style="padding:4px 2px 10px 2px">Tanggal: <b>' + enc(h.po_date) + '</b> &nbsp;|&nbsp; Proyek: <b>' + enc(h.project_name) +
                    '</b> &nbsp;|&nbsp; Supplier: <b>' + enc(h.supplier_name || '-') + '</b> &nbsp;|&nbsp; Mata uang PO: <b>' + enc(cur) +
                    '</b> (kurs ' + fmtAmt(h.exch_rate) + ')' +
                    (sameCur ? '' : ' &nbsp;|&nbsp; Mata uang anggaran: <b>' + enc(bud) + '</b> (kurs ' + fmtAmt(h.budget_exch_rate) + ')') +
@@ -205,19 +205,19 @@ dtlDiv.style.overflowY = 'auto';
                    '</tr></thead><tbody>';
 
         if (!items.length) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#557982;">Belum ada item.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center">Belum ada item.</td></tr>';
         }
         Ext.each(items, function (i) {
             var sub = (parseFloat(i.qty) || 0) * (parseFloat(i.unit_price) || 0);
             grand += sub;
             var recvColor = i.qty_received >= i.qty - EPS ? '#2e9e4f' : (i.qty_received > 0 ? '#e6a817' : '#668894');
             html += '<tr class="data-row">' +
-                    '<td align="left" style="white-space:normal !important; overflow-wrap:break-word; word-wrap:break-word;">' + enc(i.description) + ' <span style="color:#668894;">(' + enc(i.material_code || '') + ')</span></td>' +
+                    '<td align="left" style="white-space:normal !important; overflow-wrap:break-word; word-wrap:break-word">' + enc(i.description) + ' <span >(' + enc(i.material_code || '') + ')</span></td>' +
                     '<td align="right">' + fmtQty(i.qty) + ' ' + enc(i.unit || '') + '</td>' +
-                    '<td align="right" style="color:' + recvColor + ';">' + fmtQty(i.qty_received) + '</td>' +
+                    '<td align="right" >' + fmtQty(i.qty_received) + '</td>' +
                     '<td align="right">' + fmtAmt(i.unit_price) + '</td>' +
                     '<td align="right" class="subtotal-val">' + fmtAmt(sub) + '</td>' +
-                    (sameCur ? '' : '<td align="right" style="color:#9fc3d1;">' + fmtAmt(i.amount_budget) + '</td>') +
+                    (sameCur ? '' : '<td align="right" >' + fmtAmt(i.amount_budget) + '</td>') +
                     '</tr>';
         });
         html += '<tr class="data-row"><td colspan="4" align="right"><b>' + (hasPpn ? 'Jumlah harga item' + (h.ppn_mode === 'INCL' ? ' (sudah termasuk PPN)' : '') : 'Total') + ' (' + enc(cur) + ')</b></td>' +
@@ -228,7 +228,7 @@ dtlDiv.style.overflowY = 'auto';
                     '<tr class="data-row"><td colspan="4" align="right">PPN ' + enc(h.ppn_rate) + '% (' + enc(cur) + ')</td><td align="right" class="subtotal-val">' + fmtAmt(h.ppn_amount) + '</td>' + extraTd + '</tr>' +
                     '<tr class="data-row"><td colspan="4" align="right"><b>Total + PPN (' + enc(cur) + ')</b></td><td align="right" class="subtotal-val"><b>' + fmtAmt(h.grand_total) + '</b></td>' + extraTd + '</tr>';
             if (cur !== 'IDR') {
-                html += '<tr class="data-row"><td colspan="4" align="right" style="color:#9fc3d1;">PPN setara IDR (kurs PO ' + fmtAmt(h.exch_rate) + ')</td><td align="right" style="color:#9fc3d1;">' + fmtAmt(h.ppn_idr) + '</td>' + extraTd + '</tr>';
+                html += '<tr class="data-row"><td colspan="4" align="right" >PPN setara IDR (kurs PO ' + fmtAmt(h.exch_rate) + ')</td><td align="right" >' + fmtAmt(h.ppn_idr) + '</td>' + extraTd + '</tr>';
             }
         }
         html += '</tbody></table>' + csBanner;
@@ -241,7 +241,7 @@ dtlDiv.style.overflowY = 'auto';
             if (String(i.material_source || '').toUpperCase() === 'CLIENT_SUPPLIED') { csItems.push(i.description || i.item_name || ''); }
         });
         if (csItems.length) {
-            csBanner = '<div style="margin-top:10px; padding:8px 12px; background:#12283b; border:1px solid #1f6f9f; border-radius:4px; color:#7fc4e0; font-size:12px;">' +
+            csBanner = '<div style="margin-top:10px; padding:8px 12px; ; ; font-size:12px">' +
                        '&#9432; ' + csItems.length + ' item <b>Titipan Klien</b> (' + enc(csItems.slice(0, 3).join(', ')) + (csItems.length > 3 ? ', …' : '') +
                        '): harga beli Rp 0, tidak ada pembelian; penerimaan fisik & mutasi stok Rp 0 tanpa jurnal.</div>';
         }
@@ -261,7 +261,7 @@ dtlDiv.style.overflowY = 'auto';
                 }
             });
             if (warn.length) {
-                html += '<div style="margin-top:10px; padding:8px 12px; background:#3b2f0b; border:1px solid #8a6d1c; border-radius:4px; color:#f5c542; font-size:12px;">' +
+                html += '<div style="margin-top:10px; padding:8px 12px; ; ; font-size:12px">' +
                         '&#9888; Validasi release akan membaca ulang stok & kuota RAB. Baris berikut melebihi kebutuhan bersih:<br/>' +
                         warn.join('<br/>') + '</div>';
             }
@@ -270,7 +270,7 @@ dtlDiv.style.overflowY = 'auto';
         // Tombol aksi status
         var actions = d.allowed_actions || [];
         if (actions.length) {
-            html += '<div style="margin-top:15px; text-align:right;">';
+            html += '<div style="margin-top:15px; text-align:right">';
             Ext.each(actions, function (to) {
                 var bg = to === 'Dibatalkan' ? '#8e2b22' : (to === 'Draft' ? '#555555' : '#03615e');
                 html += '<button type="button" class="poActionBtn" data-to="' + enc(to) + '" style="margin-left:8px; padding:8px 16px; background:' + bg +
@@ -404,7 +404,7 @@ dtlDiv.style.overflowY = 'auto';
             {
                 header: 'Status', dataIndex: 'status', width: 105, align: 'center',                                                               // [GRID-WRAP] 95 -> 105
                 renderer: function (v) {
-                    return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>';
+                    return '<span style="font-weight:bold">' + enc(v || '-') + '</span>';
                 }
             }
         ],
@@ -439,7 +439,7 @@ dtlDiv.style.overflowY = 'auto';
     // ------------------------------------------------------------
     // [CHANGED] kolom hapus baris memakai ItemDeleter template (ikon trash, sama dengan Purchase Invoice);
     // kolom custom '&#10005;' sebelumnya terpotong (ellipsis) oleh lebar kolom fixed 32px pada tema gelap.
-    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });   // [CHANGED] ikon trash di header kolom hapus (seperti Pembayaran Termin)
+    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });   // [CHANGED] ikon trash di header kolom hapus (seperti Pembayaran Termin)
     itemDs.on('remove', function () { recalcAll(); });                 // [CHANGED] hitung ulang total setelah baris dihapus
     var itemGrid = new stdGridEditor({
         selModel: editorDeleter,                                       // [CHANGED]
@@ -475,7 +475,7 @@ dtlDiv.style.overflowY = 'auto';
                 }),
                 renderer: function (v, meta, record) {
                     if (record && record.get('material_name')) {
-                        return enc(record.get('material_name')) + ' <span style="color:#668894;">(' + enc(record.get('material_code')) + ')</span>';
+                        return enc(record.get('material_name')) + ' <span >(' + enc(record.get('material_code')) + ')</span>';
                     }
                     return '<i>-- pilih material --</i>';
                 }
@@ -500,7 +500,7 @@ dtlDiv.style.overflowY = 'auto';
                 renderer: function (v, meta, record) {
                     if (!record.get('budget_item_id')) { return ''; }
                     var cs = String(v || '').toUpperCase() === 'CLIENT_SUPPLIED';
-                    return cs ? '<span style="color:#f5c542;font-weight:bold;" title="Material titipan klien: tidak dibeli via PO (qty_to_buy = 0, Rp 0)">&#9679; Titipan Klien</span>'
+                    return cs ? '<span style="font-weight:bold" title="Material titipan klien: tidak dibeli via PO (qty_to_buy = 0, Rp 0)">&#9679; Titipan Klien</span>'
                               : 'Perusahaan';
                 }
             },
@@ -524,13 +524,13 @@ dtlDiv.style.overflowY = 'auto';
             },
             {
                 header: 'Setara Anggaran', dataIndex: 'amount_budget', width: 130, align: 'right',
-                renderer: function (v) { return '<span style="color:#9fc3d1;">' + fmtAmt(v) + '</span>'; }
+                renderer: function (v) { return '<span >' + fmtAmt(v) + '</span>'; }
             },
             {
                 header: 'Status', dataIndex: 'flag', width: 85, align: 'center',
                 renderer: function (v) {
                     if (!v) return '';
-                    return '<span style="color:' + (v === 'OK' ? '#00ff4c' : '#c0392b') + ' !important;font-weight:bold;">' + enc(v) + '</span>';
+                    return '<span style="font-weight:bold">' + enc(v) + '</span>';
                 }
             },
             editorDeleter                                                  // [CHANGED] kolom ikon trash
@@ -573,9 +573,9 @@ dtlDiv.style.overflowY = 'auto';
 
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
-            totalsDiv.innerHTML = '<div>Total PO: <span id="lblPoTotal" style="color:#ffffff !important;">0.00</span></div>' +
-                                  '<div id="lblPoPpn" style="font-size:12px; font-weight:normal; margin-top:4px; color:#9fc3d1 !important;"></div>' +      // [PPN]
-                                  '<div id="lblPoBudget" style="font-size:12px; font-weight:normal; margin-top:4px;"></div>';
+            totalsDiv.innerHTML = '<div>Total PO: <span id="lblPoTotal" >0.00</span></div>' +
+                                  '<div id="lblPoPpn" style="font-size:12px; font-weight:normal; margin-top:4px"></div>' +      // [PPN]
+                                  '<div id="lblPoBudget" style="font-size:12px; font-weight:normal; margin-top:4px"></div>';
             g.parentNode.insertBefore(totalsDiv, g.nextSibling);
         }
     })();
@@ -614,13 +614,13 @@ dtlDiv.style.overflowY = 'auto';
         fNotes = new myTextField({ fieldLabel: 'Catatan', anchor: '95%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 100, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 100, items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'poHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.34, [fDate, fProject]), col(0.34, [fSupplier, fCurrency]), col(0.32, [fRate, fRateInfo, fNotes])]
         });
 
@@ -634,7 +634,7 @@ dtlDiv.style.overflowY = 'auto';
             renderTo: 'poBudForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:0 2px 4px 2px;',
+            bodyStyle: 'padding:0 2px 4px 2px',
             items: [col(0.34, [fBudRate]), col(0.66, [fBudInfo])]
         });
         setBudRateVisible(false);
@@ -655,7 +655,7 @@ dtlDiv.style.overflowY = 'auto';
             renderTo: 'poPpnForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:0 2px 0 2px;',
+            bodyStyle: 'padding:0 2px 0 2px',
             items: [col(0.34, [fPpnMode]), col(0.22, [fPpnRate]), col(0.44, [fPpnInfo])]
         });
     }
@@ -720,10 +720,10 @@ dtlDiv.style.overflowY = 'auto';
         if (!budgetInfo.id) { fBudInfo.setValue(''); return; }
         var poCode = currencyCode(poCurId()), budCode = budgetInfo.code;
         if (poCurId() === budgetInfo.id) {
-            fBudInfo.setValue('<span style="color:#668894;">Anggaran proyek dalam <b>' + enc(budCode) + '</b> - sama dengan mata uang PO, tanpa konversi.</span>');
+            fBudInfo.setValue('<span >Anggaran proyek dalam <b>' + enc(budCode) + '</b> - sama dengan mata uang PO, tanpa konversi.</span>');
         } else {
             var f = factor();
-            fBudInfo.setValue('<span style="color:#9fc3d1;">Anggaran proyek dalam <b>' + enc(budCode) + '</b>. Nilai PO dikonversi: 1 ' + enc(poCode) + ' = ' +
+            fBudInfo.setValue('<span >Anggaran proyek dalam <b>' + enc(budCode) + '</b>. Nilai PO dikonversi: 1 ' + enc(poCode) + ' = ' +
                               (f > 0 ? Ext.util.Format.number(f, '0,000.000000') : '?') + ' ' + enc(budCode) + '</span>');
         }
     }
@@ -733,25 +733,25 @@ dtlDiv.style.overflowY = 'auto';
         var cur = poCurId(), dt = fDate.getValue();
         if (!cur || !dt) return;
         var token = ++rateReq;
-        fRateInfo.setValue('<span style="color:#668894;">memuat kurs...</span>');
+        fRateInfo.setValue('<span >memuat kurs...</span>');
         ajax({ task: 'get_exchange_rate', currency_id: cur, date: dt.format('Y-m-d') }, function (res) {
             if (token !== rateReq) return;                       // sudah ada permintaan yang lebih baru
             if (!res.success) {
-                fRateInfo.setValue('<span style="color:#c0392b;">' + enc(res.message || 'Gagal memuat kurs.') + '</span>');
+                fRateInfo.setValue('<span >' + enc(res.message || 'Gagal memuat kurs.') + '</span>');
                 return;
             }
             var d = res.data || {};
             fRate.setReadOnly(d.source === 'BASE');
             if (d.rate) fRate.setValue(d.rate);
             if (d.source === 'BASE') {
-                fRateInfo.setValue('<span style="color:#668894;">Mata uang dasar (' + enc(d.base_code || '') + ', kurs 1)</span>');
+                fRateInfo.setValue('<span >Mata uang dasar (' + enc(d.base_code || '') + ', kurs 1)</span>');
             } else if (d.source === 'periode') {
-                fRateInfo.setValue('<span style="color:#2e9e4f;">KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
+                fRateInfo.setValue('<span >KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
             } else if (d.source === 'terakhir') {
-                fRateInfo.setValue('<span style="color:#e6a817;">Belum ada kurs untuk tanggal PO, memakai kurs terakhir: KMK ' +
+                fRateInfo.setValue('<span >Belum ada kurs untuk tanggal PO, memakai kurs terakhir: KMK ' +
                                    enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
             } else {
-                fRateInfo.setValue('<span style="color:#e6a817;">Data kurs mata uang ini belum tersedia, isi manual.</span>');
+                fRateInfo.setValue('<span >Data kurs mata uang ini belum tersedia, isi manual.</span>');
             }
             onRatesChanged();
         });
@@ -767,16 +767,16 @@ dtlDiv.style.overflowY = 'auto';
         var dt = fDate.getValue();
         if (!dt) return;
         var token = ++budRateReq;
-        fBudInfo.setValue('<span style="color:#668894;">memuat kurs ' + enc(budgetInfo.code) + '...</span>');
+        fBudInfo.setValue('<span >memuat kurs ' + enc(budgetInfo.code) + '...</span>');
         ajax({ task: 'get_exchange_rate', currency_id: budgetInfo.id, date: dt.format('Y-m-d') }, function (res) {
             if (token !== budRateReq) return;
             var d = (res && res.data) || {};
             if (res.success && d.rate) fBudRate.setValue(d.rate);
             describeConversion();
             if (res.success && d.source === 'terakhir') {
-                fBudInfo.setValue(fBudInfo.getValue() + ' <span style="color:#e6a817;">(kurs terakhir KMK ' + enc(d.kmk_no) + ')</span>');
+                fBudInfo.setValue(fBudInfo.getValue() + ' <span >(kurs terakhir KMK ' + enc(d.kmk_no) + ')</span>');
             } else if (!res.success || !d.rate) {
-                fBudInfo.setValue(fBudInfo.getValue() + ' <span style="color:#e6a817;">Kurs ' + enc(budgetInfo.code) + ' belum tersedia, isi manual.</span>');
+                fBudInfo.setValue(fBudInfo.getValue() + ' <span >Kurs ' + enc(budgetInfo.code) + ' belum tersedia, isi manual.</span>');
             }
             onRatesChanged();
         });
@@ -834,11 +834,11 @@ dtlDiv.style.overflowY = 'auto';
         if (!fPpnInfo) return;
         var sid = fSupplier && fSupplier.getValue(), m = ppnMode(), msg = '';
         if (m !== 'NONE' && sid && !supplierIsPkp(sid)) {
-            msg = '<span style="color:#e6a817;">Supplier belum berstatus PKP di master supplier - pastikan PPN memang dikenakan.</span>';
+            msg = '<span >Supplier belum berstatus PKP di master supplier - pastikan PPN memang dikenakan.</span>';
         } else if (m === 'NONE' && sid && supplierIsPkp(sid)) {
-            msg = '<span style="color:#668894;">Supplier berstatus PKP. Pilih mode PPN bila transaksi ini kena PPN.</span>';
+            msg = '<span >Supplier berstatus PKP. Pilih mode PPN bila transaksi ini kena PPN.</span>';
         } else if (m === 'INCL') {
-            msg = '<span style="color:#668894;">Harga satuan sudah termasuk PPN; kontrol anggaran RAB memakai DPP.</span>';
+            msg = '<span >Harga satuan sudah termasuk PPN; kontrol anggaran RAB memakai DPP.</span>';
         }
         fPpnInfo.setValue(msg);
     }
@@ -952,7 +952,7 @@ dtlDiv.style.overflowY = 'auto';
         if (el) {
             var html = fmtAmt(pc.total) + ' ' + enc(poCode);      // [PPN] total sudah termasuk PPN
             if (budgetInfo.id && poCurId() !== budgetInfo.id) {
-                html += ' <span style="color:#9fc3d1; font-weight:normal;">&asymp; ' + fmtAmt(totalBud) + ' ' + enc(budgetInfo.code) + '</span>';
+                html += ' <span style="font-weight:normal">&asymp; ' + fmtAmt(totalBud) + ' ' + enc(budgetInfo.code) + '</span>';
             }
             el.innerHTML = html;
         }
@@ -976,7 +976,7 @@ dtlDiv.style.overflowY = 'auto';
         if (!el) return;
         if (!budgetInfo.id || !fProject || !fProject.getValue()) { el.innerHTML = ''; return; }
         if (!(factor() > 0)) {
-            el.innerHTML = '<span style="color:#e6a817;">Isi kurs ' + enc(budgetInfo.code) + ' agar nilai PO dapat dibandingkan dengan anggaran.</span>';
+            el.innerHTML = '<span >Isi kurs ' + enc(budgetInfo.code) + ' agar nilai PO dapat dibandingkan dengan anggaran.</span>';
             return;
         }
         var code = enc(budgetInfo.code);
@@ -985,7 +985,7 @@ dtlDiv.style.overflowY = 'auto';
         var overRab = remain < -VEPS;
         var overCeil = budgetInfo.ceiling !== null && after > budgetInfo.ceiling + VEPS;
         var color = (overRab || overCeil) ? '#ff6b5e' : '#7fe0a0';
-        el.innerHTML = '<span style="color:' + color + ';">Anggaran RAB (' + code + '): batas ' + fmtAmt(budgetInfo.totalLimit) +
+        el.innerHTML = '<span >Anggaran RAB (' + code + '): batas ' + fmtAmt(budgetInfo.totalLimit) +
                        ' &nbsp;|&nbsp; PO lain ' + fmtAmt(budgetInfo.totalCommitted) +
                        ' &nbsp;|&nbsp; PO ini ' + fmtAmt(totalBud) +
                        ' &nbsp;|&nbsp; sisa ' + fmtAmt(remain) + (overRab ? ' (MELEBIHI RAB)' : '') +
@@ -1079,7 +1079,7 @@ dtlDiv.style.overflowY = 'auto';
             fBudRate.setValue(h.budget_exch_rate || 1);
             rateManual = true;                                   // kurs tersimpan di PO tidak ditimpa otomatis
             budRateManual = true;
-            fRateInfo.setValue('<span style="color:#668894;">Kurs tersimpan pada PO (ganti mata uang untuk ambil ulang)</span>');
+            fRateInfo.setValue('<span >Kurs tersimpan pada PO (ganti mata uang untuk ambil ulang)</span>');
             fNotes.setValue(h.notes || '');
             ppnManual = true;                                    // [PPN] mode tersimpan tidak ditimpa default supplier
             fPpnMode.setValue(h.ppn_mode || 'NONE');

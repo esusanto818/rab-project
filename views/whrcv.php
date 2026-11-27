@@ -10,9 +10,7 @@
 ?>
 <html>
     <head>
-         <style>
-            .layerBackGround {background: linear-gradient(135deg, #0077be 0%, #004080 50%, #001a33 100%);} //Vibrant Ocean
-        </style>
+         
         <title id="page-title">W/H RCV</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />

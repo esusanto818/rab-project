@@ -15,9 +15,7 @@
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />
-        <style>
-            .fr-table td { padding: 4px 6px; font-size: 13px; }
-        </style>
+        
     </head>
     <body>
     </body>

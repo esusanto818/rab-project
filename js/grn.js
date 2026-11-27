@@ -154,17 +154,17 @@ Ext.onReady(function () {
             {
                 header: 'Status', dataIndex: 'status', width: 110, align: 'center',
                 renderer: function (v) {
-                    if (v === 'draft') return '<span style="color:#e08e0b;font-weight:bold;">Draft</span>';
-                    if (v === 'cancelled') return '<span style="color:#c0392b;font-weight:bold;">Cancelled</span>';
-                    return '<span style="color:#2e9e4f;font-weight:bold;">Confirmed</span>';
+                    if (v === 'draft') return '<span style="font-weight:bold">Draft</span>';
+                    if (v === 'cancelled') return '<span style="font-weight:bold">Cancelled</span>';
+                    return '<span style="font-weight:bold">Confirmed</span>';
                 }
             },
             {
                 header: 'Approval', dataIndex: 'approval_status', width: 100, align: 'center',  // [GAP #7] GRN Approval Gate
                 renderer: function (v) {
-                    if (v === 'APPROVED') return '<span style="color:#2e9e4f;font-weight:bold;">APPROVED</span>';
-                    if (v === 'REJECTED') return '<span style="color:#c0392b;font-weight:bold;">REJECTED</span>';
-                    return '<span style="color:#e08e0b;font-weight:bold;">PENDING</span>';
+                    if (v === 'APPROVED') return '<span style="font-weight:bold">APPROVED</span>';
+                    if (v === 'REJECTED') return '<span style="font-weight:bold">REJECTED</span>';
+                    return '<span style="font-weight:bold">PENDING</span>';
                 }
             },
             { header: 'Keterangan', dataIndex: 'remark', width: 160, renderer: CellWrap }
@@ -195,14 +195,14 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    grnDtlDiv.innerHTML = '<div style="color:yellow;">Gagal memuat detail GRN.</div>';
+                    grnDtlDiv.innerHTML = '<div >Gagal memuat detail GRN.</div>';
                     grnDtlDiv.style.display = 'block';
                     return;
                 }
                 renderGrnDetailView(res.data || [], grnNo, res.currency);
             },
             failure: function () {
-                grnDtlDiv.innerHTML = '<div style="color:red;">Gagal terhubung ke server.</div>';
+                grnDtlDiv.innerHTML = '<div >Gagal terhubung ke server.</div>';
                 grnDtlDiv.style.display = 'block';
             }
         });
@@ -216,19 +216,19 @@ Ext.onReady(function () {
         var diff = code !== baseCode;
         var html = '<h3 class="detail-title">Detail Item GRN: ' + Ext.util.Format.htmlEncode(grnNo || '') + '</h3>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">No. DO Supplier: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.supplier_do_no) || '-') + '</b>' +
+                   '<div style="padding:4px 2px 10px 2px">No. DO Supplier: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.supplier_do_no) || '-') + '</b>' +
                    ' &nbsp;|&nbsp; Plat No.: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.vehicle_plate_no) || '-') + '</b>' +
                    ' &nbsp;|&nbsp; Driver: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.driver_name) || '-') + '</b>' +
-                   '<button type="button" id="btnPrintGrn" style="float:right; padding:5px 14px; background:#2e6da4; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold;">Cetak Tanda Terima</button>' +
+                   '<button type="button" id="btnPrintGrn" style="float:right; padding:5px 14px; ; ; cursor:pointer; font-weight:bold">Cetak Tanda Terima</button>' +
                    '</div>' +      // [NEW] info DO / kendaraan / driver + tombol cetak
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0">' +
                    '<thead>' +
                    '<tr class="header-row">' +
                    '<th align="left">Nama Item</th>' +
-                    '<th style="text-align:right;">Qty Diterima</th>' +
-                    '<th style="text-align:right;">Harga Satuan (' + Ext.util.Format.htmlEncode(code) + ')</th>' +
-                    '<th style="text-align:right;">Subtotal (' + Ext.util.Format.htmlEncode(code) + ')</th>' +
-                    (diff ? '<th style="text-align:right;">Subtotal Dasar (' + Ext.util.Format.htmlEncode(baseCode) + ')</th>' : '') +
+                    '<th style="text-align:right">Qty Diterima</th>' +
+                    '<th style="text-align:right">Harga Satuan (' + Ext.util.Format.htmlEncode(code) + ')</th>' +
+                    '<th style="text-align:right">Subtotal (' + Ext.util.Format.htmlEncode(code) + ')</th>' +
+                    (diff ? '<th style="text-align:right">Subtotal Dasar (' + Ext.util.Format.htmlEncode(baseCode) + ')</th>' : '') +
                    '</tr>' +
                    '</thead>' +
                    '<tbody>';
@@ -248,10 +248,10 @@ Ext.onReady(function () {
 
                 html += '<tr class="data-row">' +
                         '<td align="left">' + Ext.util.Format.htmlEncode(r.item_name || '-') + '</td>' +
-                        '<td align="right" style="color:#4ade80; font-weight:bold;">' + fmtQty(qty) + '</td>' +
+                        '<td align="right" style="font-weight:bold">' + fmtQty(qty) + '</td>' +
                         '<td align="right">' + fmtAmt(cost) + '</td>' +
                         '<td align="right" class="subtotal-val">' + fmtAmt(subtotal) + '</td>' +
-                        (diff ? '<td align="right" style="color:#9fc3d1;">' + fmtAmt(subBase) + '</td>' : '') +
+                        (diff ? '<td align="right" >' + fmtAmt(subBase) + '</td>' : '') +
                         '</tr>';
             });
         }
@@ -295,7 +295,7 @@ Ext.onReady(function () {
         var w = window.open('', '_blank', 'width=900,height=700');
         if (!w) { Ext.Msg.alert('Popup Diblokir', 'Izinkan popup untuk situs ini, lalu klik Cetak Tanda Terima lagi.'); return; }
         w.document.open('text/html','replace');
-        w.document.write('<html><body style="font-family:Arial,sans-serif;padding:20px;">Memuat Tanda Terima GRN...</body></html>');
+        w.document.write('<html><body style="padding:20px">Memuat Tanda Terima GRN...</body></html>');
         w.document.close();
         Ext.Ajax.request({
             url: '../dev/php-crud/grnCRD.php',
@@ -332,8 +332,8 @@ Ext.onReady(function () {
                   '.items th,.items td{border:1px solid #000;padding:5px 6px;}.items th{background:#eee;}' +
                   '.c{text-align:center;}.r{text-align:right;}.sign td{width:33%;text-align:center;padding-top:6px;}' +
                   '.sign .box{height:70px;}hr{border:0;border-top:2px solid #000;margin:8px 0;}';
-        return '<html><head><meta charset="utf-8"><title>Tanda Terima GRN ' + grnEnc(h.ref_no) + '</title><style>' + css + '</style></head><body>' +
-               (COMPANY_NAME ? '<div style="font-size:15px;font-weight:bold;text-align:center;">' + grnEnc(COMPANY_NAME) + '</div>' : '') +
+        return '<html><head><meta charset="utf-8"><title>Tanda Terima GRN ' + grnEnc(h.ref_no) + '</title></head><body>' +
+               (COMPANY_NAME ? '<div style="font-size:15px;font-weight:bold;text-align:center">' + grnEnc(COMPANY_NAME) + '</div>' : '') +
                (COMPANY_ADDR ? '<div class="sub">' + grnEnc(COMPANY_ADDR) + '</div>' : '') +
                '<hr/><h1>TANDA TERIMA BARANG (GRN)</h1><div class="sub">Bukti penerimaan barang dari supplier</div>' +
                '<table class="meta"><tr>' +
@@ -347,19 +347,19 @@ Ext.onReady(function () {
                '<td>Driver</td><td>: ' + (h.driver_name ? grnEnc(h.driver_name) : BLANK) + '</td></tr></table>' +
                '<br/><table class="items"><thead><tr><th width="4%">No</th><th width="11%">Kode</th><th>Material</th><th width="9%">Qty PO</th>' +
                '<th width="10%">Diterima</th><th width="10%">Akumulasi</th><th width="8%">Sisa</th><th width="6%">Sat</th><th width="14%">Keterangan</th></tr></thead><tbody>' + rows +
-               '</tbody></table><div style="margin-top:6px;">Total item: <b>' + no + '</b>' +
+               '</tbody></table><div style="margin-top:6px">Total item: <b>' + no + '</b>' +
                (h.remark ? ' &nbsp;|&nbsp; Catatan: ' + grnEnc(h.remark) : '') + '</div><br/>' +
                '<table class="sign"><tr><td>Diterima oleh<br/>(Gudang)</td><td>Pengirim / Driver</td><td>Dibuat oleh<br/>(Admin)</td></tr>' +
                '<tr><td class="box"></td><td class="box"></td><td class="box"></td></tr>' +
                '<tr><td>(................................)</td><td>(' + (h.driver_name ? grnEnc(h.driver_name) : '................................') + ')</td>' +
                '<td>(' + (h.created_by_name ? grnEnc(h.created_by_name) : '................................') + ')</td></tr></table>' +
-               '<div style="margin-top:14px;font-size:10px;color:#444;">Dicetak: ' + grnNow() + '</div></body></html>';
+               '<div style="margin-top:14px;font-size:10px">Dicetak: ' + grnNow() + '</div></body></html>';
     }
 
     // [GAP #7] Toolbar Approval
     var toolbarApp = new Ext.Toolbar({
         renderTo: 'editorFormGrid',
-        style: 'margin-top:10px; padding:5px;',
+        style: 'margin-top:10px; padding:5px',
         items: [
             { text: 'Approve GRN', iconCls: 'btn-approve', handler: function() { approveGrn(false); } },
             { text: 'Reject GRN', iconCls: 'btn-reject', handler: function() { approveGrn(true); } },
@@ -427,8 +427,8 @@ Ext.onReady(function () {
         } else if (qtyInput > qtyMax) {
             color = '#c0392b';
         }
-        return '<b style="color:' + color + ';">' + Ext.util.Format.number(qtyInput, '0,000.0000') +
-               '</b> <span style="color:#888;font-size:11px;">(' + pctOfOrdered.toFixed(0) + '% dari PO)</span>';
+        return '<b >' + Ext.util.Format.number(qtyInput, '0,000.0000') +
+               '</b> <span style="font-size:11px">(' + pctOfOrdered.toFixed(0) + '% dari PO)</span>';
     }
 
     var itemGrid = new stdGridEditor({
@@ -444,7 +444,7 @@ Ext.onReady(function () {
             },
             {
                 header: 'Sisa Qty PO', dataIndex: 'sisa_qty_po', width: 90, align: 'right',
-                renderer: function (v) { return '<b style="color:#38bdf8;">' + Ext.util.Format.number(v || 0, '0,000.0000') + '</b>'; }
+                renderer: function (v) { return '<b >' + Ext.util.Format.number(v || 0, '0,000.0000') + '</b>'; }
             },
             {
                 header: 'Batas +10%', dataIndex: 'qty_max_allowed', width: 90, align: 'right',
@@ -471,7 +471,7 @@ Ext.onReady(function () {
                 header: 'Subtotal Dasar', dataIndex: 'unit_cost', width: 130, align: 'right', hidden: true,
                 renderer: function (v, meta, record) {
                     var base = (parseFloat(record.get('qty_input')) || 0) * (parseFloat(record.get('unit_cost')) || 0) * grnCur.rate;
-                    return '<span style="color:#9fc3d1;">' + Ext.util.Format.number(base, '0,000.00') + '</span>';
+                    return '<span >' + Ext.util.Format.number(base, '0,000.00') + '</span>';
                 }
             }
         ],
@@ -525,7 +525,7 @@ Ext.onReady(function () {
         if (el) {
             var html = Ext.util.Format.number(total, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(grnCur.code);
             if (grnCur.code !== grnCur.base) {
-                html += ' <span style="color:#9fc3d1; font-weight:normal;">&asymp; ' + Ext.util.Format.number(total * grnCur.rate, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(grnCur.base) + '</span>';
+                html += ' <span style="font-weight:normal">&asymp; ' + Ext.util.Format.number(total * grnCur.rate, '0,000.00') + ' ' + Ext.util.Format.htmlEncode(grnCur.base) + '</span>';
             }
             el.innerHTML = html;
         }

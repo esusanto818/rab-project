@@ -13,18 +13,7 @@
 ?>
 </html>
     <head>
-      <style>
-        #editorWdw {height: auto !important; min-height: 420px !important; max-height: 85vh !important; overflow-y: auto !important;}
-        #editorForm {top: 50%; width: 70%; height: auto !important; min-height: 380px !important; max-height: 80vh !important; overflow-y: auto !important;}
-        #editorFormMain {padding-bottom: 35px; overflow: visible !important;}
-        #AddActive {
-          margin-top: -32px !important;
-          position: relative !important;
-          margin-left: 60px !important;        
-        }
-        #addForm {top: 50%; width: 70%;}
-        #addFormHeaderMenu, #addFormHeaderSearch, #addFormHeaderText {width: 32%;}
-      </style>
+      
       <title id="page-title">Form Group</title>
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />

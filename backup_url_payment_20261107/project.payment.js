@@ -86,47 +86,47 @@ Ext.onReady(function () {
         var recHtml = '';
         if (d.recommendations && d.recommendations.length) {
             Ext.each(d.recommendations, function (r) {
-                recHtml += '<li style="margin-bottom:6px;">' + enc(r) + '</li>';
+                recHtml += '<li style="margin-bottom:6px">' + enc(r) + '</li>';
             });
         } else {
             recHtml = '<li>Tidak ada rekomendasi khusus.</li>';
         }
         var qHtml = '';
-        Ext.each(d.questions || [], function (q) { qHtml += '<li style="margin-bottom:4px;">' + enc(q) + '</li>'; });
+        Ext.each(d.questions || [], function (q) { qHtml += '<li style="margin-bottom:4px">' + enc(q) + '</li>'; });
         var findHtml = '';
         var sevColor = { high: '#e05353', medium: '#e6a817', low: '#2bc1e2' };
         Ext.each(d.findings || [], function (f) {
-            findHtml += '<div style="border-left:4px solid ' + (sevColor[f.sev] || '#2bc1e2') + '; background:#0b141b; padding:4px 8px; margin-bottom:4px;">' +
-                        '<div style="font-size:12px; font-weight:bold;">' + enc(f.title) + '</div>' +
-                        '<div style="font-size:11px; color:#b7c6cc;">' + enc(f.evidence) + '</div></div>';
+            findHtml += '<div style="border-left:4px solid ' + (sevColor[f.sev] || '#2bc1e2') + '; padding:4px 8px; margin-bottom:4px">' +
+                        '<div style="font-size:12px; font-weight:bold">' + enc(f.title) + '</div>' +
+                        '<div style="font-size:11px">' + enc(f.evidence) + '</div></div>';
         });
         var m = d.metrics || {};
         var metricLine = (m.budget !== undefined && m.budget !== null)
-            ? '<div style="font-size:12px; color:#b7c6cc; margin-bottom:10px;">Budget <b>' + Ext.util.Format.number(m.budget, '0,000') + '</b> &nbsp;|&nbsp; Biaya riil <b>' +
+            ? '<div style="font-size:12px; margin-bottom:10px">Budget <b>' + Ext.util.Format.number(m.budget, '0,000') + '</b> &nbsp;|&nbsp; Biaya riil <b>' +
               Ext.util.Format.number(m.cost_total, '0,000') + '</b> (material ' + Ext.util.Format.number(m.cost_material, '0,000') + ', pengeluaran ' + Ext.util.Format.number(m.cost_expense, '0,000') +
               ', subkon ' + Ext.util.Format.number(m.cost_subcon, '0,000') + ') &nbsp;|&nbsp; Progres <b>' + enc(m.progress) + '%</b>' +
               (m.usage_pct !== null && m.usage_pct !== undefined ? ' &nbsp;|&nbsp; Pemakaian <b>' + enc(m.usage_pct) + '%</b>' : '') + '</div>'
             : '';
         var srcChip = d.legacy ? 'Format lama (jalankan Analisis Varian AI untuk memperbarui)' : (d.ai_used ? 'Gemini' : 'Analisis sistem') + (d.source ? ' &bull; dari ' + enc(d.source) : '');
 
-        var html = '<div class="pp-ai-project" style="margin-top:15px; margin-bottom:20px; background:#111b24; border:1px solid #00bcd4; border-radius:6px; padding:18px; color:#ffffff !important;">' +
-                   (projectName ? '<div style="font-weight:bold; color:#b7dce2; margin-bottom:8px;">Proyek: ' + enc(projectName) + '</div>' : '') +
-                   '<div style="font-weight:bold; font-size:15px; color:#00bcd4; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">' +
-                   '<span>&#9881; AI Cost &amp; Schedule Variance Analysis <span style="font-size:11px; color:#b7c6cc; font-weight:normal;">(' + srcChip + ')</span></span>' +
-                   '<span style="background:' + riskColor + '; color:#fff; padding:3px 10px; border-radius:3px; font-size:13px;">RISK: ' + enc(risk) + '</span>' +
+        var html = '<div class="pp-ai-project" style="margin-top:15px; margin-bottom:20px; ; padding:18px">' +
+                   (projectName ? '<div style="font-weight:bold; margin-bottom:8px">Proyek: ' + enc(projectName) + '</div>' : '') +
+                   '<div style="font-weight:bold; font-size:15px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center">' +
+                   '<span>&#9881; AI Cost &amp; Schedule Variance Analysis <span style="font-size:11px; font-weight:normal">(' + srcChip + ')</span></span>' +
+                   '<span style="padding:3px 10px; font-size:13px">RISK: ' + enc(risk) + '</span>' +
                    '</div>' +
-                   (d.headline ? '<div style="font-size:15px; font-style:italic; color:' + riskColor + '; margin-bottom:8px;">' + enc(d.headline) + '</div>' : '') +
+                   (d.headline ? '<div style="font-size:15px; font-style:italic; margin-bottom:8px">' + enc(d.headline) + '</div>' : '') +
                    metricLine +
-                   '<div style="font-size:14px; line-height:22px; margin-bottom:12px; color:#ffffff !important;">' +
-                   '<b style="color:#00bcd4;">Ringkasan Eksekutif:</b> ' + enc(d.ai_summary || '-') +
+                   '<div style="font-size:14px; line-height:22px; margin-bottom:12px">' +
+                   '<b >Ringkasan Eksekutif:</b> ' + enc(d.ai_summary || '-') +
                    '</div>' +
-                   '<div style="font-size:14px; line-height:22px; color:#ffffff !important;">' +
-                   '<b style="color:#00bcd4;">Rekomendasi Mitigasi:</b>' +
-                   '<ul style="margin:6px 0 0 18px; padding:0; color:#ffffff !important;">' + recHtml + '</ul>' +
-                   (qHtml ? '<div style="margin-top:10px;"><b style="color:#e6a817;">Perlu dikonfirmasi:</b><ul style="margin:6px 0 0 18px; padding:0; color:#ffffff !important;">' + qHtml + '</ul></div>' : '') +
-                   (findHtml ? '<div style="margin-top:12px;"><b style="color:#b7c6cc;">Temuan sistem (' + (d.findings || []).length + '):</b><div style="margin-top:6px;">' + findHtml + '</div></div>' : '') +
-                   (d.ai_note ? '<div style="font-size:11px; color:#e6a817; margin-top:8px;">' + enc(d.ai_note) + '</div>' : '') +
-                   (d.created_at ? '<div style="font-size:11px; color:#b7c6cc; margin-top:10px;">Analisis terakhir: ' + enc(d.created_at) + '</div>' : '') +
+                   '<div style="font-size:14px; line-height:22px">' +
+                   '<b >Rekomendasi Mitigasi:</b>' +
+                   '<ul style="margin:6px 0 0 18px; padding:0">' + recHtml + '</ul>' +
+                   (qHtml ? '<div style="margin-top:10px"><b >Perlu dikonfirmasi:</b><ul style="margin:6px 0 0 18px; padding:0">' + qHtml + '</ul></div>' : '') +
+                   (findHtml ? '<div style="margin-top:12px"><b >Temuan sistem (' + (d.findings || []).length + '):</b><div style="margin-top:6px">' + findHtml + '</div></div>' : '') +
+                   (d.ai_note ? '<div style="font-size:11px; margin-top:8px">' + enc(d.ai_note) + '</div>' : '') +
+                   (d.created_at ? '<div style="font-size:11px; margin-top:10px">Analisis terakhir: ' + enc(d.created_at) + '</div>' : '') +
                    '</div></div>';
 
         var aiContainer = document.getElementById('ppAiResultContainer');
@@ -156,11 +156,11 @@ Ext.onReady(function () {
         var target = document.getElementById('ppAiResultContainer');
         if (!target) return;
         if (!ids.length) {
-            target.innerHTML = '<div style="margin-top:12px;padding:10px;border:1px solid #45616b;color:#b7c6cc;">Tidak ada proyek pada detail pembayaran ini untuk memuat hasil analisis AI.</div>';
+            target.innerHTML = '<div style="margin-top:12px;padding:10px;">Tidak ada proyek pada detail pembayaran ini untuk memuat hasil analisis AI.</div>';
             return;
         }
 
-        target.innerHTML = '<div style="padding:10px;color:#b7dce2;">Memuat hasil analisis AI tersimpan...</div>';
+        target.innerHTML = '<div style="padding:10px">Memuat hasil analisis AI tersimpan...</div>';
         var completed = 0;
         var savedResults = [];
         var failedCount = 0;
@@ -178,9 +178,9 @@ Ext.onReady(function () {
                     renderAiResultPanel(saved.data, saved.projectName, index > 0);
                 });
             } else if (failedCount) {
-                currentTarget.innerHTML = '<div style="margin-top:12px;padding:10px;color:#ffcc80;">Tidak berhasil memuat hasil analisis tersimpan. Periksa koneksi/server, lalu muat ulang detail.</div>';
+                currentTarget.innerHTML = '<div style="margin-top:12px;padding:10px">Tidak berhasil memuat hasil analisis tersimpan. Periksa koneksi/server, lalu muat ulang detail.</div>';
             } else {
-                currentTarget.innerHTML = '<div style="margin-top:12px;padding:10px;border:1px solid #45616b;color:#b7c6cc;">Belum ada hasil analisis AI tersimpan untuk proyek pada pembayaran ini. Klik "Analisis Varian AI" untuk menjalankan analisis.</div>';
+                currentTarget.innerHTML = '<div style="margin-top:12px;padding:10px;">Belum ada hasil analisis AI tersimpan untuk proyek pada pembayaran ini. Klik "Analisis Varian AI" untuk menjalankan analisis.</div>';
             }
         }
 
@@ -310,13 +310,13 @@ Ext.onReady(function () {
     function loadDetailPanel(id) {
         ajax({ task: 'load_payment', id: id }, function (res) {
             if (!res.success) {
-                dtlDiv.innerHTML = '<div style="color:yellow; padding:10px;">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
+                dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail.') + '</div>';
                 dtlDiv.style.display = 'block';
                 return;
             }
             renderDetailPanel(res.data);
         }, function () {
-            dtlDiv.innerHTML = '<div style="color:red; padding:10px;">Gagal terhubung ke server.</div>';
+            dtlDiv.innerHTML = '<div style="padding:10px">Gagal terhubung ke server.</div>';
             dtlDiv.style.display = 'block';
         });
     }
@@ -325,15 +325,15 @@ Ext.onReady(function () {
         var h = d.header, items = d.items || [];
         var cur = h.currency_code || 'IDR', foreign = (cur !== 'IDR'), allocCur = 0;
         
-        var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">' +
-                   '<h3 class="detail-title" style="margin:0;">Detail Pembayaran: ' + enc(h.payment_no) + '</h3>' +
+        var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px">' +
+                   '<h3 class="detail-title" style="margin:0">Detail Pembayaran: ' + enc(h.payment_no) + '</h3>' +
                    '<div>' +
-                   '<button type="button" id="ppBtnAi" style="margin-left:8px; padding:6px 14px; background:#00796b; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px;">Analisis Varian AI</button>' +
-                   '<button type="button" id="ppBtnPrint" style="margin-left:8px; padding:6px 14px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px;">Cetak Tanda Terima</button>' +
+                   '<button type="button" id="ppBtnAi" style="margin-left:8px; padding:6px 14px; ; ; cursor:pointer; font-weight:bold; font-size:12px">Analisis Varian AI</button>' +
+                   '<button type="button" id="ppBtnPrint" style="margin-left:8px; padding:6px 14px; ; ; cursor:pointer; font-weight:bold; font-size:12px">Cetak Tanda Terima</button>' +
                    '</div>' +
                    '</div>' +
                    '<hr class="detail-hr" />' +
-                   '<div style="padding:4px 2px 10px 2px;">Tanggal: <b>' + enc(h.payment_date) + '</b> &nbsp;|&nbsp; Client: <b>' + enc(h.client_name) +
+                   '<div style="padding:4px 2px 10px 2px">Tanggal: <b>' + enc(h.payment_date) + '</b> &nbsp;|&nbsp; Client: <b>' + enc(h.client_name) +
                    '</b> &nbsp;|&nbsp; Metode: <b>' + enc(methodLabel(h.payment_method)) + '</b>' +
                    ' &nbsp;|&nbsp; Mata uang: <b>' + enc(cur) + '</b>' + (foreign ? ' (kurs ' + fmtRate(h.exch_rate) + ')' : '') +
                    (h.account_name ? ' &nbsp;|&nbsp; Akun: <b>' + enc(h.account_code + ' - ' + h.account_name) + '</b>' : '') +
@@ -351,18 +351,18 @@ Ext.onReady(function () {
                    '</tr></thead><tbody>';
 
         if (!items.length) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#557982;">Tidak ada alokasi termin.</td></tr>';
+            html += '<tr><td colspan="6" style="padding:15px; text-align:center">Tidak ada alokasi termin.</td></tr>';
         }
         Ext.each(items, function (i) {
             var sisaColor = i.sisa_after <= VEPS ? '#2e9e4f' : '#e6a817';
             allocCur += parseFloat(i.amount_cur) || 0;
             html += '<tr class="data-row">' +
                     '<td align="left">' + enc(i.project_name) + '</td>' +
-                    '<td align="left">' + enc(i.termin_name) + (i.percentage !== null ? ' <span style="color:#668894;">(' + fmtAmt(i.percentage) + '%)</span>' : '') + '</td>' +
+                    '<td align="left">' + enc(i.termin_name) + (i.percentage !== null ? ' <span >(' + fmtAmt(i.percentage) + '%)</span>' : '') + '</td>' +
                     '<td align="left">' + enc(i.inv_no) + '</td>' +
                     '<td align="right">' + fmtAmt(i.invoice_amount) + '</td>' +
                     '<td align="right" class="subtotal-val">' + fmtAmt(i.amount_paid) + '</td>' +
-                    '<td align="right" style="color:' + sisaColor + ';">' + fmtAmt(i.sisa_after) + '</td>' +
+                    '<td align="right" >' + fmtAmt(i.sisa_after) + '</td>' +
                     (foreign ? '<td align="right">' + fmtAmt(i.amount_cur) + '</td>' : '') +
                     '</tr>';
         });
@@ -370,11 +370,11 @@ Ext.onReady(function () {
                 '<td align="right" class="subtotal-val"><b>' + fmtAmt(h.allocated_amount) + '</b></td><td></td>' + (foreign ? '<td align="right"><b>' + fmtAmt(allocCur) + '</b></td>' : '') + '</tr>';
         if (h.excess_amount > VEPS) {
             html += '<tr class="data-row"><td colspan="4" align="right"><b>Lebih Bayar</b></td>' +
-                    '<td align="right" style="color:#e6a817;"><b>' + fmtAmt(h.excess_amount) + '</b></td><td></td>' + (foreign ? '<td align="right" style="color:#e6a817;"><b>' + fmtAmt(round2(h.total_amount_cur - allocCur)) + '</b></td>' : '') + '</tr>';
+                    '<td align="right" ><b>' + fmtAmt(h.excess_amount) + '</b></td><td></td>' + (foreign ? '<td align="right" ><b>' + fmtAmt(round2(h.total_amount_cur - allocCur)) + '</b></td>' : '') + '</tr>';
         }
         if (h.deposit_applied > VEPS) {                                                       // [DEPOSIT] bagian deposit dari total dana
             html += '<tr class="data-row"><td colspan="4" align="right">Termasuk deposit dipakai</td>' +
-                    '<td align="right" style="color:#2bc1e2;">' + fmtAmt(h.deposit_applied) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>' +
+                    '<td align="right" >' + fmtAmt(h.deposit_applied) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>' +
                     '<tr class="data-row"><td colspan="4" align="right">Kas / bank diterima</td>' +
                     '<td align="right">' + fmtAmt(round2(h.total_amount - h.deposit_applied)) + '</td><td></td>' + (foreign ? '<td></td>' : '') + '</tr>';
         }
@@ -524,10 +524,10 @@ Ext.onReady(function () {
             { header: 'Teralokasi (IDR)', dataIndex: 'allocated_amount', width: 120, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             {
                 header: 'Lebih Bayar (IDR)', dataIndex: 'excess_amount', width: 100, align: 'right',
-                renderer: function (v) { return v > VEPS ? '<span style="color:#e6a817;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; }
+                renderer: function (v) { return v > VEPS ? '<span style="font-weight:bold">' + fmtAmt(v) + '</span>' : '-'; }
             },
             { header: 'Deposit Dipakai (IDR)', dataIndex: 'deposit_applied', width: 110, align: 'right',          // [DEPOSIT]
-              renderer: function (v) { return v > VEPS ? '<span style="color:#2bc1e2;font-weight:bold;">' + fmtAmt(v) + '</span>' : '-'; } },
+              renderer: function (v) { return v > VEPS ? '<span style="font-weight:bold">' + fmtAmt(v) + '</span>' : '-'; } },
             { header: 'Referensi', dataIndex: 'reference_no', width: 120, renderer: function (v) { return CellWrap(v || ''); } }
         ],
         viewConfig: { forceFit: true },
@@ -584,16 +584,16 @@ Ext.onReady(function () {
             },
             {
                 header: 'Setara IDR', dataIndex: 'pay_idr', width: 110, align: 'right',
-                renderer: function (v) { return '<span style="color:#9fc3d1;">' + fmtAmt(v) + '</span>'; }
+                renderer: function (v) { return '<span >' + fmtAmt(v) + '</span>'; }
             },
             {
                 id: 'ppDeleteCol', dataIndex: 'invoice_id', width: 32, align: 'center', fixed: true,
-                header: '<span title="Hapus termin" style="display:inline-block;line-height:0;">' +
+                header: '<span title="Hapus termin" style="display:inline-block;line-height:0">' +
                         '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
                         '<polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>' +
                         '<path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span>',
                 renderer: function () {
-                    return '<span style="color:#e05353;cursor:pointer;font-weight:bold;font-size:14px;" title="Hapus termin ini">&#10005;</span>';
+                    return '<span style="cursor:pointer;font-weight:bold;font-size:14px" title="Hapus termin ini">&#10005;</span>';
                 }
             }
         ],
@@ -640,9 +640,9 @@ Ext.onReady(function () {
 
             var totalsDiv = document.createElement('div');
             totalsDiv.style.cssText = 'padding:10px 14px; margin-top:8px; font-weight:bold; font-size:14px; font-family:arial; text-align:right; background:#1f2d3a; color:#ffffff !important; border-radius:4px;';
-            totalsDiv.innerHTML = '<div>Total Dialokasikan: <span id="lblPpAlloc" style="color:#ffffff !important;">0.00</span></div>' +
-                                  '<div id="lblPpSplit" style="font-size:14px; font-family:arial; line-height:22px; font-weight:normal; margin-top:4px; color:#c8dde6;"></div>' +
-                                  '<div id="lblPpExcess" style="font-size:14px; font-family:arial; line-height:22px; font-weight:normal; margin-top:4px;"></div>';
+            totalsDiv.innerHTML = '<div>Total Dialokasikan: <span id="lblPpAlloc" >0.00</span></div>' +
+                                  '<div id="lblPpSplit" style="font-size:14px; line-height:22px; font-weight:normal; margin-top:4px"></div>' +
+                                  '<div id="lblPpExcess" style="font-size:14px; line-height:22px; font-weight:normal; margin-top:4px"></div>';
             g.parentNode.insertBefore(totalsDiv, g.nextSibling);
         }
     })();
@@ -679,12 +679,12 @@ Ext.onReady(function () {
             if (fClient.getValue() !== cid) return;                 // client sudah diganti
             depBalance = round2(parseFloat(res.balance) || 0);
             if (depBalance > VEPS) {
-                fDepInfo.setValue('<span style="color:#e6a817;">Deposit client tersedia: <b>' + fmtAmt(depBalance) + ' IDR</b></span> ' +
-                                  '&nbsp;<a href="#" style="color:#2bc1e2;" onclick="window.ppUseDeposit(); return false;">pakai maksimal</a>' +
-                                  ' &nbsp;|&nbsp; <a href="#" style="color:#2bc1e2;" onclick="window.ppDepositHistory(); return false;">riwayat</a>');
+                fDepInfo.setValue('<span >Deposit client tersedia: <b>' + fmtAmt(depBalance) + ' IDR</b></span> ' +
+                                  '&nbsp;<a href="#"  onclick="window.ppUseDeposit(); return false;">pakai maksimal</a>' +
+                                  ' &nbsp;|&nbsp; <a href="#"  onclick="window.ppDepositHistory(); return false;">riwayat</a>');
             } else {
-                fDepInfo.setValue('<span style="color:#668894;">Deposit client: 0 IDR</span> ' +
-                                  '&nbsp;<a href="#" style="color:#2bc1e2;" onclick="window.ppDepositHistory(); return false;">riwayat</a>');
+                fDepInfo.setValue('<span >Deposit client: 0 IDR</span> ' +
+                                  '&nbsp;<a href="#"  onclick="window.ppDepositHistory(); return false;">riwayat</a>');
             }
             recalcAll();
         });
@@ -705,7 +705,7 @@ Ext.onReady(function () {
         new Ext.Window({
             title: 'Riwayat Deposit - ' + enc(fClient.getRawValue()), width: 760, height: 380, modal: true, layout: 'fit',
             items: new Ext.grid.GridPanel({
-                store: ds, stripeRows: true, viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:12px;">Belum ada deposit.</div>' },
+                store: ds, stripeRows: true, viewConfig: { forceFit: true, deferEmptyText: false, emptyText: '<div style="padding:12px">Belum ada deposit.</div>' },
                 columns: [
                     { header: 'Tanggal', dataIndex: 'payment_date', width: 90, align: 'center' },
                     { header: 'No. Pembayaran', dataIndex: 'payment_no', width: 130 },
@@ -779,19 +779,19 @@ Ext.onReady(function () {
         fInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 105, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 105, , items: items };
         };
         hdrForm = new Ext.form.FormPanel({
             renderTo: 'ppHdrForm',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:4px 2px 0 2px;',
+            bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.34, [fDate, fClient, fCurrency]), col(0.34, [fAccount, fMethod, fRef]), col(0.32, [fTotal, fDeposit, fRate, fNotes])]
         });
         new Ext.form.FormPanel({
             renderTo: 'ppHdrForm',
             border: false,
-            bodyStyle: 'background:transparent; padding:0 2px 4px 2px;',
+            bodyStyle: 'padding:0 2px 4px 2px',
             items: [fRateInfo, fDepInfo, fInfo]
         });
     }
@@ -804,7 +804,7 @@ Ext.onReady(function () {
         fRate.setValue(1);
         fRate.setReadOnly(true);
         rateManual = false;
-        fRateInfo.setValue('<span style="color:#668894;">Mata uang dasar (IDR, kurs 1)</span>');
+        fRateInfo.setValue('<span >Mata uang dasar (IDR, kurs 1)</span>');
         applyCurrencyLabels();
         fAccount.clearValue();
         fMethod.setValue('BANK_TRANSFER');
@@ -827,18 +827,18 @@ Ext.onReady(function () {
         Ext.each(projSummary, function (p) {
             var bel = Math.max(p.contract_value - p.total_dpp, 0);      // [PPN] kontrak dibanding DPP termin, bukan tagihan incl. PPN
             cv += p.contract_value; tt += p.total_termin; tp += p.total_paid; bt += bel;
-            lines += '<div style="font-size:14px; font-family: arial;line-height:22px; color:#c8dde6;">&bull; <b>' + enc(p.project_name) + '</b>' +
+            lines += '<div style="font-size:14px;line-height:22px">&bull; <b>' + enc(p.project_name) + '</b>' +
                      ' &nbsp;&ndash;&nbsp; kontrak <b>' + fmtAmt(p.contract_value) + '</b>' +
                      ' &nbsp;|&nbsp; termin (incl. PPN) <b>' + fmtAmt(p.total_termin) + '</b>' +
                      ' &nbsp;|&nbsp; dibayar <b>' + fmtAmt(p.total_paid) + '</b>' +
                      ' &nbsp;|&nbsp; belum ditagihkan <b>' + fmtAmt(bel) + '</b></div>';
         });
         var multi = projSummary.length > 1;
-        fInfo.setValue('<div style="padding:6px 2px 2px 2px;">' +
-                       '<div style="font-size:14px; line-height:24px; color:#ffffff;">' + (multi ? ('Total ' + projSummary.length + ' proyek &nbsp;&ndash;&nbsp; ') : '') +
+        fInfo.setValue('<div style="padding:6px 2px 2px 2px">' +
+                       '<div style="font-size:14px; line-height:24px">' + (multi ? ('Total ' + projSummary.length + ' proyek &nbsp;&ndash;&nbsp; ') : '') +
                        'Nilai kontrak: <b>' + fmtAmt(cv) + '</b> &nbsp;|&nbsp; Total termin: <b>' + fmtAmt(tt) +
                        '</b> &nbsp;|&nbsp; Sudah dibayar: <b>' + fmtAmt(tp) + '</b> &nbsp;|&nbsp; Belum ditagihkan: <b>' + fmtAmt(bt) + '</b></div>' +
-                       (multi ? ('<div style="margin-top:4px;">' + lines + '</div>') : '') + '</div>');
+                       (multi ? ('<div style="margin-top:4px">' + lines + '</div>') : '') + '</div>');
         setTimeout(fitGrid, 0);
     }
 
@@ -903,28 +903,28 @@ Ext.onReady(function () {
         if (isBaseCur(cid)) {
             fRate.setValue(1);
             fRate.setReadOnly(true);
-            fRateInfo.setValue('<span style="color:#668894;">Mata uang dasar (IDR, kurs 1)</span>');
+            fRateInfo.setValue('<span >Mata uang dasar (IDR, kurs 1)</span>');
             recalcAll();
             return;
         }
         fRate.setReadOnly(false);
         var token = ++rateReq;
-        fRateInfo.setValue('<span style="color:#668894;">memuat kurs...</span>');
+        fRateInfo.setValue('<span >memuat kurs...</span>');
         ajax({ task: 'get_exchange_rate', currency_id: cid, date: dt.dateFormat('Y-m-d') }, function (res) {
             if (token !== rateReq) return;
             if (!res.success) {
-                fRateInfo.setValue('<span style="color:#c0392b;">' + enc(res.message || 'Gagal memuat kurs.') + '</span>');
+                fRateInfo.setValue('<span >' + enc(res.message || 'Gagal memuat kurs.') + '</span>');
                 return;
             }
             var d = res.data || {};
             if (d.rate) fRate.setValue(d.rate);
             if (d.source === 'periode') {
-                fRateInfo.setValue('<span style="color:#2e9e4f;">KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
+                fRateInfo.setValue('<span >KMK ' + enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
             } else if (d.source === 'terakhir') {
-                fRateInfo.setValue('<span style="color:#e6a817;">Belum ada kurs untuk tanggal bayar, memakai kurs terakhir: KMK ' +
+                fRateInfo.setValue('<span >Belum ada kurs untuk tanggal bayar, memakai kurs terakhir: KMK ' +
                                    enc(d.kmk_no) + ' (' + enc(d.start_date) + ' - ' + enc(d.end_date) + ')</span>');
             } else {
-                fRateInfo.setValue('<span style="color:#e6a817;">Data kurs belum tersedia, isi manual.</span>');
+                fRateInfo.setValue('<span >Data kurs belum tersedia, isi manual.</span>');
             }
             recalcAll();
         });
@@ -964,13 +964,13 @@ Ext.onReady(function () {
         var el = document.getElementById('lblPpAlloc');
         if (el) {
             el.innerHTML = fmtAmt(alloc) + ' ' + enc(code) +
-                           (foreign ? ' <span style="color:#9fc3d1; font-weight:normal;">&asymp; ' + fmtAmt(allocIdr) + ' IDR</span>' : '');
+                           (foreign ? ' <span style="font-weight:normal">&asymp; ' + fmtAmt(allocIdr) + ' IDR</span>' : '');
         }
         var ex = document.getElementById('lblPpExcess');
         if (ex) {
-            if (foreign && !(rate > 0)) ex.innerHTML = '<span style="color:#e6a817;">Isi kurs ' + enc(code) + ' agar nilai setara IDR dapat dihitung.</span>';
-            else if (excess < -VEPS) ex.innerHTML = '<span style="color:#ff6b5e;">Jumlah diterima kurang ' + fmtAmt(-excess) + ' ' + enc(code) + ' dari total alokasi.</span>';
-            else if (excess > VEPS) ex.innerHTML = '<span style="color:#e6a817;">Lebih bayar ' + fmtAmt(excess) + ' ' + enc(code) + ' (dicatat sebagai excess).</span>';
+            if (foreign && !(rate > 0)) ex.innerHTML = '<span >Isi kurs ' + enc(code) + ' agar nilai setara IDR dapat dihitung.</span>';
+            else if (excess < -VEPS) ex.innerHTML = '<span >Jumlah diterima kurang ' + fmtAmt(-excess) + ' ' + enc(code) + ' dari total alokasi.</span>';
+            else if (excess > VEPS) ex.innerHTML = '<span >Lebih bayar ' + fmtAmt(excess) + ' ' + enc(code) + ' (dicatat sebagai excess).</span>';
             else ex.innerHTML = '';
         }
         var sp = document.getElementById('lblPpSplit');
@@ -992,7 +992,7 @@ Ext.onReady(function () {
             } else {
                 sp.innerHTML = '';
             }
-            if (allocNote) sp.innerHTML += (sp.innerHTML ? '<br/>' : '') + '<span style="color:#e6c36a;">' + allocNote + '</span>';
+            if (allocNote) sp.innerHTML += (sp.innerHTML ? '<br/>' : '') + '<span >' + allocNote + '</span>';
         }
         fitGrid();
     }
@@ -1118,7 +1118,7 @@ Ext.onReady(function () {
         var win = new Ext.Window({
             title: 'Faktur Pajak - ' + rec.get('inv_no'), width: 420, height: 230, modal: true, layout: 'fit',
             items: new Ext.form.FormPanel({
-                border: false, labelWidth: 120, bodyStyle: 'padding:12px;',
+                border: false, labelWidth: 120, bodyStyle: 'padding:12px',
                 items: [{ xtype: 'displayfield', hideLabel: true,
                           value: 'PPN Keluaran <b>' + fmtAmt(rec.get('ppn_amount')) + '</b> (DPP ' + fmtAmt(rec.get('dpp_amount')) +
                                  '). Tanggal faktur menentukan masa pajak di Laporan PPN. Kosongkan nomor untuk menghapus.' }, fNo, fDt]
@@ -1211,8 +1211,8 @@ Ext.onReady(function () {
         function refreshContractInfo() {
             // [PPN] ringkasan DPP / PPN / total tagihan (rumus sama dengan backend: PPN = DPP x tarif, dibulatkan 2 desimal)
             var dpp = round2(parseFloat(tAmt.getValue()) || 0), rt = curPpnRate(), ppn = round2(dpp * rt / 100);
-            tInfo.setValue('<span style="color:#9fc3d1;">Nilai kontrak (DPP): <b>' + fmtAmt(contract) + '</b>.</span><br/>' +
-                           '<span style="color:#9fc3d1;">DPP <b>' + fmtAmt(dpp) + '</b> &nbsp;|&nbsp; PPN ' + rt + '% <b>' + fmtAmt(ppn) +
+            tInfo.setValue('<span >Nilai kontrak (DPP): <b>' + fmtAmt(contract) + '</b>.</span><br/>' +
+                           '<span >DPP <b>' + fmtAmt(dpp) + '</b> &nbsp;|&nbsp; PPN ' + rt + '% <b>' + fmtAmt(ppn) +
                            '</b> &nbsp;|&nbsp; Total tagihan <b>' + fmtAmt(round2(dpp + ppn)) + '</b></span>');
         }
         refreshContractInfo();
@@ -1223,17 +1223,17 @@ Ext.onReady(function () {
             title: 'Tambah Termin - ' + enc(fClient.getRawValue()),
             width: 460, height: 500, modal: true, closeAction: 'close', resizable: false,
             layout: 'fit',
-            bodyStyle: 'background:#0f1d29;',
+            ,
             items: [new Ext.form.FormPanel({
                 border: false, labelWidth: 120, labelStyle: lblStyle, autoScroll: true,
-                bodyStyle: 'background:#0f1d29; padding:14px;',
+                bodyStyle: 'padding:14px',
                 defaults: { labelStyle: lblStyle },
                 items: [
                     tProject, tName, tDate, tPct, tAmt, tPpnOn, tPpnRate, tFpNo, tFpDate, tInfo,
                     {
-                        xtype: 'panel', border: false, bodyStyle: 'background:transparent; text-align:right; padding-top:10px;',
-                        html: '<button type="button" id="ppTerminSave" style="' + btnCss + 'background:#03615e;">Simpan</button>' +
-                              '<button type="button" id="ppTerminCancel" style="' + btnCss + 'background:#555555;">Batal</button>',
+                        xtype: 'panel', border: false, bodyStyle: 'text-align:right; padding-top:10px',
+                        html: '<button type="button" id="ppTerminSave" style="' + btnCss + '">Simpan</button>' +
+                              '<button type="button" id="ppTerminCancel" style="' + btnCss + '">Batal</button>',
                         listeners: {
                             afterrender: function () {
                                 document.getElementById('ppTerminCancel').onclick = function () { win.close(); };

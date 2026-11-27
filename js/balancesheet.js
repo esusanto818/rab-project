@@ -65,11 +65,11 @@ Ext.onReady(function () {
         renderTo: 'bsFilterBar',
         layout: 'column',
         border: false,
-        bodyStyle: 'background:transparent; padding:8px 0;',
-        defaults: { border: false, bodyStyle: 'background:transparent;' },
+        bodyStyle: 'padding:8px 0',
+        defaults: { border: false,  },
         items: [
             { columnWidth: 0.35, layout: 'form', labelWidth: 60, items: fldPeriod },
-            { columnWidth: 0.15, style: 'padding-top:2px;', items: btnShow }
+            { columnWidth: 0.15, style: 'padding-top:2px', items: btnShow }
         ]
     });
 
@@ -96,7 +96,7 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    reportDiv.innerHTML = '<div style="color:yellow;">' + (res.message || 'Gagal memuat data.') + '</div>';
+                    reportDiv.innerHTML = '<div >' + (res.message || 'Gagal memuat data.') + '</div>';
                     return;
                 }
                 renderBSView(res);
@@ -119,21 +119,21 @@ Ext.onReady(function () {
         var selisih = (parseFloat(res.total_asset) || 0) - (parseFloat(res.total_liability_equity) || 0);
         if (!res.is_balanced) { balanceText += ' &nbsp;(selisih ' + fmt(selisih) + ')'; }
 
-        var html = '<h2 style="text-align:center; margin-bottom:4px; font-weight:normal;">NERACA KEUANGAN</h2>' +
-                   '<h4 style="text-align:center; color:#bbb; margin-top:0; font-weight:normal;">Per Tanggal: ' + res.as_of_date + ' (' + res.period_name + ')</h4>' +
-                   '<div style="text-align:center; margin-bottom:15px;"><b style="color:' + balanceColor + '; font-size:14px;">[ STATUS: ' + balanceText + ' ]</b></div>' +
-                   '<hr style="border:0; border-top:1px solid rgba(255,255,255,0.15); margin:15px 0;" />';
+        var html = '<h2 style="text-align:center; margin-bottom:4px; font-weight:normal">NERACA KEUANGAN</h2>' +
+                   '<h4 style="text-align:center; margin-top:0; font-weight:normal">Per Tanggal: ' + res.as_of_date + ' (' + res.period_name + ')</h4>' +
+                   '<div style="text-align:center; margin-bottom:15px"><b style="font-size:14px">[ STATUS: ' + balanceText + ' ]</b></div>' +
+                   '<hr style="border-top:1px solid rgba(255,255,255,0.15); margin:15px 0" />';
 
-        html += '<table width="100%" style="border-collapse:collapse; font-size:13px;" cellpadding="6">' +     // [ZEBRA] atribut tag dirapikan
-                '<tr style="vertical-align:top;">' +
+        html += '<table width="100%" style="border-collapse:collapse; font-size:13px" cellpadding="6">' +     // [ZEBRA] atribut tag dirapikan
+                '<tr style="vertical-align:top">' +
 
                 // KOLOM KIRI: ASET
-                '<td width="50%" style="border-right:1px solid rgb(138, 0, 0); padding-right:15px;">' +
-                    '<h3 style="color:#98db34; margin-bottom:8px; font-size:18px;">ASET (AKTIVA)</h3>' +
-                    '<table width="100%" style="border-collapse:collapse;">';
+                '<td width="50%" style="border-right:1px solid rgb(138, 0, 0); padding-right:15px">' +
+                    '<h3 style="margin-bottom:8px; font-size:18px">ASET (AKTIVA)</h3>' +
+                    '<table width="100%" style="border-collapse:collapse">';
         
         Ext.each(res.assets, function (a, i) {     // [ZEBRA] index baris untuk warna selang-seling
-            html += '<tr style="' + zebra(i) + ' color:#ffeb3b;">' +
+            html += '<tr style="' + zebra(i) + '">' +
                     '<td style="' + cellPad + '">' + a.account_code + '</td>' +
                     '<td style="' + cellPad + '">' + a.account_name + '</td>' +
                     '<td align="right" style="' + cellPad + '">' + fmt(a.balance) + '</td>' +
@@ -141,16 +141,16 @@ Ext.onReady(function () {
         });
 
         html += '</table>' +
-                '<div style="margin-top:20px; padding:10px; background:rgba(234, 0, 255, 0.05);color: #98db34; font-weight:bold; font-size:18px; display:flex; justify-content:space-between;">' +     // [FONT18]
+                '<div style="margin-top:20px; padding:10px;; font-weight:bold; font-size:18px; display:flex; justify-content:space-between">' +     // [FONT18]
                 '<span>TOTAL ASET</span>' +
-                '<span style="color:#98db34; font-size:18px;">' + fmt(res.total_asset) + '</span>' +
+                '<span style="font-size:18px">' + fmt(res.total_asset) + '</span>' +
                 '</div>' +
                 '</td>' +
 
                 // KOLOM KANAN: LIABILITAS & EKUITAS
-                '<td width="50%" style="padding-left:15px;">' +
-                    '<h3 style="color:#f39c12; margin-bottom:8px; font-size:18px;">LIABILITAS (KEWAJIBAN)</h3>' +
-                    '<table width="100%" style="border-collapse:collapse; margin-bottom:15px;color: #f39c12;">';
+                '<td width="50%" style="padding-left:15px">' +
+                    '<h3 style="margin-bottom:8px; font-size:18px">LIABILITAS (KEWAJIBAN)</h3>' +
+                    '<table width="100%" style="border-collapse:collapse; margin-bottom:15px">';
         
         Ext.each(res.liabilities, function (l, i) {     // [ZEBRA]
             html += '<tr style="' + zebra(i) + '">' +
@@ -160,13 +160,13 @@ Ext.onReady(function () {
                     '</tr>';
         });
 
-        html += '<tr style="font-weight:bold; background:rgba(255,255,255,0.03); border-top:1px solid rgba(255,255,255,0.25);">' +     // [ZEBRA] garis atas pada baris total
+        html += '<tr style="font-weight:bold; border-top:1px solid rgba(255,255,255,0.25)">' +     // [ZEBRA] garis atas pada baris total
                 '<td colspan="2" style="' + cellPad + '">TOTAL LIABILITAS</td>' +
                 '<td align="right" style="' + cellPad + '">' + fmt(res.total_liability) + '</td>' +
                 '</tr></table>' +
 
-                '<h3 style="color:#f39c12; margin-bottom:8px; font-size:18px;">EKUITAS (MODAL)</h3>' +
-                '<table width="100%" style="border-collapse:collapse;color: #f39c12;">';
+                '<h3 style="margin-bottom:8px; font-size:18px">EKUITAS (MODAL)</h3>' +
+                '<table width="100%" style="border-collapse:collapse">';
 
         Ext.each(res.equities, function (eq, i) {     // [ZEBRA]
             html += '<tr style="' + zebra(i) + '">' +
@@ -176,14 +176,14 @@ Ext.onReady(function () {
                     '</tr>';
         });
 
-        html += '<tr style="font-weight:bold; background:rgba(255,255,255,0.03); border-top:1px solid rgba(255,255,255,0.25);">' +     // [ZEBRA]
+        html += '<tr style="font-weight:bold; border-top:1px solid rgba(255,255,255,0.25)">' +     // [ZEBRA]
                 '<td colspan="2" style="' + cellPad + '">TOTAL EKUITAS</td>' +
                 '<td align="right" style="' + cellPad + '">' + fmt(res.total_equity) + '</td>' +
                 '</tr></table>' +
 
-                '<div style="margin-top:20px; padding:10px; background:rgba(255,255,255,0.05); font-weight:bold; font-size:18px; display:flex; justify-content:space-between;color: #f39c12;">' +     // [FONT18]
+                '<div style="margin-top:20px; padding:10px; font-weight:bold; font-size:18px; display:flex; justify-content:space-between">' +     // [FONT18]
                 '<span>TOTAL LIABILITAS & EKUITAS</span>' +
-                '<span style="color:#f39c12; font-size:18px;">' + fmt(res.total_liability_equity) + '</span>' +
+                '<span style="font-size:18px">' + fmt(res.total_liability_equity) + '</span>' +
                 '</div>' +
 
                 '</td>' +

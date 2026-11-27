@@ -328,7 +328,7 @@ function renderResult(data, note) {
     var html = '';
 
     if (note) {
-        html += '<div class="card" style="border-left:4px solid #d9822b;font-size:13px;">📴 ' + esc(note) + '</div>';
+        html += '<div class="card" style="border-left:4px solid #d9822b;font-size:13px">📴 ' + esc(note) + '</div>';
     }
 
     html += '<div class="summary-grid">';
@@ -513,7 +513,7 @@ function refreshSyncList() {
             var stale = ageHours(m.generated_at) > 24;
             return '• <b>' + esc(m.warehouse_name) + '</b>: ' + (m.items || []).length + ' material, ' + m.rows + ' mutasi sejak ' +
                    fmtDate(m.date_from) + '<br/>&nbsp;&nbsp;disinkronkan ' + fmtStamp(m.generated_at) + ' (' + ageText(m.generated_at) + ')' +
-                   (stale ? ' <span style="color:#d9822b;">⚠ usang</span>' : '');
+                   (stale ? ' <span >⚠ usang</span>' : '');
         }).join('<br/>');
     });
 }
@@ -557,18 +557,18 @@ function buildOfflinePanel() {
     var p = document.createElement('div');
     p.id = 'offlinePanel'; p.className = 'card';
     p.innerHTML =
-        '<div style="font-weight:bold;margin-bottom:6px;">📴 Mode Offline</div>' +
-        '<div id="swStatus" style="font-size:12px;margin-bottom:8px;">Memeriksa...</div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">' +
-        '<select id="fSyncDays" style="padding:9px;"><option value="30">30 hari</option><option value="90" selected>90 hari</option><option value="180">180 hari</option></select>' +
+        '<div style="font-weight:bold;margin-bottom:6px">📴 Mode Offline</div>' +
+        '<div id="swStatus" style="font-size:12px;margin-bottom:8px">Memeriksa...</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
+        '<select id="fSyncDays" style="padding:9px"><option value="30">30 hari</option><option value="90" selected>90 hari</option><option value="180">180 hari</option></select>' +
         '<button id="btnSyncOne" type="button" style="' + BTN + '">Sinkron gudang ini</button>' +
         '<button id="btnSyncAll" type="button" style="' + BTN + '">Sinkron semua</button>' +
         '</div>' +
-        '<div id="syncProgress" style="font-size:12px;margin:6px 0;"></div>' +
-        '<div id="syncList" style="font-size:12px;margin:6px 0;"></div>' +
-        '<button id="btnClearOffline" type="button" style="' + BTN + 'background:#a33;">Hapus data offline</button>' +
-        '<details style="margin-top:8px;font-size:11px;"><summary>Diagnostik koneksi</summary>' +
-        '<pre id="diagText" style="white-space:pre-wrap;word-break:break-all;"></pre></details>';
+        '<div id="syncProgress" style="font-size:12px;margin:6px 0"></div>' +
+        '<div id="syncList" style="font-size:12px;margin:6px 0"></div>' +
+        '<button id="btnClearOffline" type="button" style="' + BTN + '">Hapus data offline</button>' +
+        '<details style="margin-top:8px;font-size:11px"><summary>Diagnostik koneksi</summary>' +
+        '<pre id="diagText" style="white-space:pre-wrap;word-break:break-all"></pre></details>';
     box.parentNode.insertBefore(p, box);
 
     $('btnSyncOne').addEventListener('click', function () {

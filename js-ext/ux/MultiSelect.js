@@ -171,7 +171,7 @@ Ext.ux.form.MultiSelect = Ext.extend(Ext.form.Field,  {
             title: this.legend,
             height: this.height,
             width: this.width,
-            style: "padding:0;",
+            style: "padding:0",
             tbar: this.tbar
         });
         fs.body.addClass('ux-mselect');

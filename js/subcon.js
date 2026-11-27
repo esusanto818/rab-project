@@ -91,7 +91,7 @@ Ext.onReady(function () {
     
     function loadDetailPanel(id) {
         ajax({ task: 'load_contract', id: id }, function (res) {
-            if (!res.success) { dtlDiv.innerHTML = '<div style="color:yellow;padding:10px;">' + enc(res.message || 'Gagal memuat detail SPK.') + '</div>'; dtlDiv.style.display = 'block'; return; }
+            if (!res.success) { dtlDiv.innerHTML = '<div style="padding:10px">' + enc(res.message || 'Gagal memuat detail SPK.') + '</div>'; dtlDiv.style.display = 'block'; return; }
             curDetail = res.data;
             renderDetail(res.data);
         });
@@ -102,13 +102,13 @@ Ext.onReady(function () {
     
     function renderDetail(d) {
         var h = d.header, t = d.totals, tasks = d.tasks || [], prog = d.progress || [], pays = d.payments || [], jr = d.journals || [];
-        var html = '<h3 class="detail-title">SPK: ' + enc(h.spk_no) + ' <span style="color:' + statusColor(h.status) + ';">(' + enc(h.status) + ')</span></h3><hr class="detail-hr" />' +
-            '<div style="padding:4px 2px 10px 2px;">Proyek: <b>' + enc(h.project_name) + '</b> &nbsp;|&nbsp; Subkon: <b>' + enc(h.subcontractor_name) + '</b>' +
+        var html = '<h3 class="detail-title">SPK: ' + enc(h.spk_no) + ' <span >(' + enc(h.status) + ')</span></h3><hr class="detail-hr" />' +
+            '<div style="padding:4px 2px 10px 2px">Proyek: <b>' + enc(h.project_name) + '</b> &nbsp;|&nbsp; Subkon: <b>' + enc(h.subcontractor_name) + '</b>' +
             (h.npwp_no ? ' (NPWP ' + enc(h.npwp_no) + ')' : '') + ' &nbsp;|&nbsp; Pekerjaan: <b>' + enc(h.title) + '</b>' +
             (h.budget_item_name ? ' &nbsp;|&nbsp; RAB: <b>' + enc(h.budget_item_name) + '</b>' : '') +
             ' &nbsp;|&nbsp; Jadwal: ' + enc(h.start_date || '-') + ' s/d ' + enc(h.end_date || '-') +
-            (h.linked_spk_no ? ' &nbsp;|&nbsp; SPK Subkon: <b>' + enc(h.linked_spk_no) + '</b> (' + enc(h.linked_spk_status || '-') + ')' : ' &nbsp;|&nbsp; <span style="color:#e6a817;">SPK Subkon: belum ditautkan</span> <span style="color:#668894;font-size:11px;">(Edit kontrak &rarr; pilih SPK di field "Tautan SPK Subkon")</span>') + '</div>' +
-            '<div style="padding:0 2px 10px 2px;color:#9fc3d1;">PPN ' + h.ppn_rate + '% &nbsp;|&nbsp; PPh final ' + h.pph_rate + '% &nbsp;|&nbsp; Retensi ' + h.retention_pct + '% &nbsp;|&nbsp; Uang muka ' + h.dp_pct + '%' +
+            (h.linked_spk_no ? ' &nbsp;|&nbsp; SPK Subkon: <b>' + enc(h.linked_spk_no) + '</b> (' + enc(h.linked_spk_status || '-') + ')' : ' &nbsp;|&nbsp; <span >SPK Subkon: belum ditautkan</span> <span style="font-size:11px">(Edit kontrak &rarr; pilih SPK di field "Tautan SPK Subkon")</span>') + '</div>' +
+            '<div style="padding:0 2px 10px 2px">PPN ' + h.ppn_rate + '% &nbsp;|&nbsp; PPh final ' + h.pph_rate + '% &nbsp;|&nbsp; Retensi ' + h.retention_pct + '% &nbsp;|&nbsp; Uang muka ' + h.dp_pct + '%' +
             (h.scope ? ' &nbsp;|&nbsp; Lingkup: ' + enc(h.scope) : '') + '</div>';
         
         html += '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
@@ -119,18 +119,18 @@ Ext.onReady(function () {
             td(fmtAmt(t.dp_paid) + ' / ' + fmtAmt(t.dp_recovered) + ' / <b>' + fmtAmt(t.dp_balance) + '</b>', 'right') +
             td(fmtAmt(t.retention) + ' / <b>' + fmtAmt(t.retention_balance) + '</b>', 'right') + '</tr></tbody></table>';
         
-        html += '<h4 style="margin:14px 0 4px 0;">Pembagian Pekerjaan per Task</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
+        html += '<h4 style="margin:14px 0 4px 0">Pembagian Pekerjaan per Task</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('Task') + th('Jadwal task') + th('Nilai Task (DPP)', 'right') + th('Progres Disetujui', 'right') + th('Nilai Tertagih', 'right') + '</tr></thead><tbody>';
         Ext.each(tasks, function (x) {
-            html += '<tr class="data-row">' + td(enc(x.task_name) + (x.work_item_id ? '<br/><span style="color:#8fb3c0;font-size:11px;">' + fmtQ(x.accepted_qty) + ' / ' + fmtQ(x.contract_qty) + ' ' + enc(x.unit) + ' diterima</span>' : '')) + td(x.start_date ? enc(x.start_date) + ' s/d ' + enc(x.end_date || '-') : '-') +
+            html += '<tr class="data-row">' + td(enc(x.task_name) + (x.work_item_id ? '<br/><span style="font-size:11px">' + fmtQ(x.accepted_qty) + ' / ' + fmtQ(x.contract_qty) + ' ' + enc(x.unit) + ' diterima</span>' : '')) + td(x.start_date ? enc(x.start_date) + ' s/d ' + enc(x.end_date || '-') : '-') +
                     td(fmtAmt(x.task_value), 'right') + td(fmtPct(x.cum_pct), 'right') + td(fmtAmt(x.billed_amount), 'right') + '</tr>';
         });
         html += '</tbody></table>';
         
-        html += '<h4 style="margin:14px 0 4px 0;">Prestasi</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
+        html += '<h4 style="margin:14px 0 4px 0">Prestasi</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('No.') + th('Tanggal') + th('Progres Kum.', 'right') + th('Nilai (DPP)', 'right') + th('PPN', 'right') + th('PPh', 'right') + th('Retensi', 'right') + th('Pot. Uang Muka', 'right') +
             th('Nilai Bayar', 'right') + th('Dibayar', 'right') + th('Status') + th('Jejak') + th('') + '</tr></thead><tbody>';
-        if (!prog.length) html += '<tr><td colspan="13" style="padding:12px;text-align:center;color:#557982;">Belum ada prestasi.</td></tr>';
+        if (!prog.length) html += '<tr><td colspan="13" style="padding:12px;text-align:center">Belum ada prestasi.</td></tr>';
         Ext.each(prog, function (p) {
             var acts = '';
             if (p.status === 'Draft') {
@@ -143,48 +143,48 @@ Ext.onReady(function () {
             html += '<tr class="data-row">' + td(enc(p.ref_no)) + td(enc(p.progress_date)) + td(fmtPct(p.cum_pct), 'right') + td(fmtAmt(p.gross_amount), 'right') +
                 td(fmtAmt(p.ppn_amount), 'right') + td(fmtAmt(p.pph_amount), 'right') + td(fmtAmt(p.retention_amount), 'right') + td(fmtAmt(p.dp_recovery), 'right') +
                 td('<b>' + fmtAmt(p.net_payable) + '</b>', 'right') + td(fmtAmt(p.paid_amount), 'right') +
-                td('<span style="color:' + statusColor(p.status) + ';font-weight:bold;">' + enc(p.status) + '</span>' +
-                   (p.qty_lines > 0 && p.status === 'Draft' ? '<br/>' + (p.insp_status === 'APPROVED' ? '<span style="font-size:11px;background:#1a4d2e;color:#7fe0a0;padding:1px 5px;border-radius:3px;">&#10003; Inspeksi disetujui &#8212; klik &#8220;Setujui&#8221; di baris ini</span>' : (p.insp_status === 'DRAFT' ? '<span style="font-size:11px;background:#4d3800;color:#e6a817;padding:1px 5px;border-radius:3px;">Inspeksi masih Draft &#8212; setujui inspeksi dulu di tabel bawah</span>' : '<span style="font-size:11px;background:#4d1a1a;color:#e05353;padding:1px 5px;border-radius:3px;">Belum diinspeksi &#8212; klik &#8220;Inspeksi&#8221; untuk membuat inspeksi</span>')) : '')) +
-                td('<span style="color:#668894;font-size:11px;">' + enc(p.created_by_name || '-') + (p.approved_by_name ? ' &rarr; ' + enc(p.approved_by_name) : '') +
+                td('<span style="font-weight:bold">' + enc(p.status) + '</span>' +
+                   (p.qty_lines > 0 && p.status === 'Draft' ? '<br/>' + (p.insp_status === 'APPROVED' ? '<span style="font-size:11px;;padding:1px 5px">&#10003; Inspeksi disetujui &#8212; klik &#8220;Setujui&#8221; di baris ini</span>' : (p.insp_status === 'DRAFT' ? '<span style="font-size:11px;;padding:1px 5px">Inspeksi masih Draft &#8212; setujui inspeksi dulu di tabel bawah</span>' : '<span style="font-size:11px;;padding:1px 5px">Belum diinspeksi &#8212; klik &#8220;Inspeksi&#8221; untuk membuat inspeksi</span>')) : '')) +
+                td('<span style="font-size:11px">' + enc(p.created_by_name || '-') + (p.approved_by_name ? ' &rarr; ' + enc(p.approved_by_name) : '') +
                    (p.cancel_reason ? '<br/>batal: ' + enc(p.cancel_reason) : '') + '</span>') + td(acts, 'right') + '</tr>';
         });
         html += '</tbody></table>';
         
         var insp = d.inspections || [];
         if (insp.length) {
-            html += '<h4 style="margin:14px 0 4px 0;">Inspeksi Kuantitas</h4>' +
-                '<p style="margin:2px 0 6px 0;color:#668894;font-size:11px;">Hanya kuantitas yang lolos inspeksi (qty_passed) yang dihitung sebagai dasar pembayaran. Setujui inspeksi terlebih dahulu sebelum menyetujui prestasi.</p>' +
+            html += '<h4 style="margin:14px 0 4px 0">Inspeksi Kuantitas</h4>' +
+                '<p style="margin:2px 0 6px 0;font-size:11px">Hanya kuantitas yang lolos inspeksi (qty_passed) yang dihitung sebagai dasar pembayaran. Setujui inspeksi terlebih dahulu sebelum menyetujui prestasi.</p>' +
                 '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
                 th('No. Inspeksi') + th('Prestasi') + th('Tanggal') + th('Hasil per baris') + th('Status') + th('Jejak') + th('') + '</tr></thead><tbody>';
             Ext.each(insp, function (i) {
                 var lines = '', pr = null, acts = '';
                 Ext.each(i.items || [], function (it) {
                     lines += enc(it.description) + ': diperiksa ' + fmtQ(it.qty_inspected) + ' dari klaim ' + fmtQ(it.qty_claimed) + ' ' + enc(it.unit) +
-                        ' &rarr; <b style="color:#7fe0a0;">lolos ' + fmtQ(it.qty_passed) + '</b>' +
-                        (it.qty_rejected > 0 ? ', <span style="color:#e05353;">ditolak ' + fmtQ(it.qty_rejected) + '</span>' : '') +
-                        (it.qty_rework > 0 ? ', <span style="color:#e6a817;">perbaikan ' + fmtQ(it.qty_rework) + '</span>' : '') + '<br/>';
+                        ' &rarr; <b >lolos ' + fmtQ(it.qty_passed) + '</b>' +
+                        (it.qty_rejected > 0 ? ', <span >ditolak ' + fmtQ(it.qty_rejected) + '</span>' : '') +
+                        (it.qty_rework > 0 ? ', <span >perbaikan ' + fmtQ(it.qty_rework) + '</span>' : '') + '<br/>';
                 });
                 Ext.each(prog, function (p) { if (parseInt(p.id, 10) === i.progress_id) pr = p; });
                 if (i.status === 'DRAFT') acts += uiBtn('scAct', 'Edit', GREY, 'data-act="edit_inspection" data-id="' + i.progress_id + '"') + uiBtn('scAct', 'Setujui', TEAL, 'data-act="approve_inspection" data-id="' + i.id + '"');
                 if ((i.status === 'DRAFT' || i.status === 'APPROVED') && pr && pr.status === 'Draft') acts += uiBtn('scAct', 'Batal', BURG, 'data-act="cancel_inspection" data-id="' + i.id + '"');
                 var col = i.status === 'APPROVED' ? '#7fe0a0' : (i.status === 'DRAFT' ? '#e6a817' : '#c46a6a');
                 html += '<tr class="data-row">' + td(enc(i.inspection_no)) + td(enc(i.progress_ref)) + td(enc(i.inspection_date)) + td(lines || '-') +
-                    td('<span style="color:' + col + ';font-weight:bold;">' + enc(i.status) + '</span>' + (i.general_result ? '<br/><span style="font-size:11px;color:#668894;">' + enc(i.general_result) + '</span>' : '')) +
-                    td('<span style="color:#668894;font-size:11px;">' + enc(i.created_by_name || '-') + (i.approved_by_name ? ' &rarr; ' + enc(i.approved_by_name) : '') +
+                    td('<span style="font-weight:bold">' + enc(i.status) + '</span>' + (i.general_result ? '<br/><span style="font-size:11px">' + enc(i.general_result) + '</span>' : '')) +
+                    td('<span style="font-size:11px">' + enc(i.created_by_name || '-') + (i.approved_by_name ? ' &rarr; ' + enc(i.approved_by_name) : '') +
                        (i.cancel_reason ? '<br/>batal: ' + enc(i.cancel_reason) : '') + '</span>') + td(acts, 'right') + '</tr>';
             });
             html += '</tbody></table>';
         }
         
-        html += '<h4 style="margin:14px 0 4px 0;">Pembayaran</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
+        html += '<h4 style="margin:14px 0 4px 0">Pembayaran</h4><table class="detail-table" width="100%" cellSpacing="0" cellPadding="0"><thead><tr class="header-row">' +
             th('No.') + th('Tanggal') + th('Jenis') + th('Prestasi') + th('Akun Kas/Bank') + th('Referensi') + th('Jumlah', 'right') + th('Status') + th('Jejak') + th('') + '</tr></thead><tbody>';
-        if (!pays.length) html += '<tr><td colspan="10" style="padding:12px;text-align:center;color:#557982;">Belum ada pembayaran.</td></tr>';
+        if (!pays.length) html += '<tr><td colspan="10" style="padding:12px;text-align:center">Belum ada pembayaran.</td></tr>';
         Ext.each(pays, function (y) {
             var typ = y.pay_type === 'DP' ? 'Uang Muka' : (y.pay_type === 'RETENSI' ? 'Lepas Retensi' : 'Prestasi');
             html += '<tr class="data-row">' + td(enc(y.payment_no)) + td(enc(y.payment_date)) + td(typ) + td(enc(y.progress_ref || '-')) +
                 td(enc(y.account_code + ' ' + y.account_name)) + td(enc(y.reference_no || '')) + td(fmtAmt(y.amount), 'right') +
-                td('<span style="color:' + statusColor(y.status) + ';font-weight:bold;">' + enc(y.status) + '</span>') +
-                td('<span style="color:#668894;font-size:11px;">' + enc(y.created_by_name || '-') + (y.cancel_reason ? '<br/>batal: ' + enc(y.cancel_reason) : '') + '</span>') +
+                td('<span style="font-weight:bold">' + enc(y.status) + '</span>') +
+                td('<span style="font-size:11px">' + enc(y.created_by_name || '-') + (y.cancel_reason ? '<br/>batal: ' + enc(y.cancel_reason) : '') + '</span>') +
                 td(y.status === 'Posted' ? uiBtn('scAct', 'Batal', BURG, 'data-act="cancel_payment" data-id="' + y.id + '"') : '', 'right') + '</tr>';
         });
         html += '</tbody></table>';
@@ -193,8 +193,8 @@ Ext.onReady(function () {
         if (h.approved_at) trail.push('Disetujui: <b>' + enc(h.approved_by_name || '-') + '</b> (' + enc(h.approved_at) + ')');
         if (h.closed_at) trail.push('Ditutup: <b>' + enc(h.closed_by_name || '-') + '</b> (' + enc(h.closed_at) + ')');
         if (h.cancelled_at) trail.push('Dibatalkan: <b>' + enc(h.cancelled_by_name || '-') + '</b> (' + enc(h.cancelled_at) + ') - ' + enc(h.cancel_reason || ''));
-        html += '<div style="margin-top:12px;color:#9fc3d1;">' + trail.join(' &nbsp;|&nbsp; ') + '</div>';
-        if (jr.length) html += '<div style="margin-top:6px;color:#9fc3d1;">Jurnal terkait: ' + Ext.pluck(jr, 'ref_no').join(', ') + '</div>';
+        html += '<div style="margin-top:12px">' + trail.join(' &nbsp;|&nbsp; ') + '</div>';
+        if (jr.length) html += '<div style="margin-top:6px">Jurnal terkait: ' + Ext.pluck(jr, 'ref_no').join(', ') + '</div>';
         
         var btns = '';
         Ext.each(d.allowed_actions || [], function (to) {
@@ -205,7 +205,7 @@ Ext.onReady(function () {
         if (h.status === 'Disetujui' && t.dp_planned > 0 && t.dp_paid < t.dp_planned - VEPS) btns += uiBtn('scAct', 'Bayar Uang Muka', GREY, 'data-act="pay_dp"');
         if ((h.status === 'Disetujui' || h.status === 'Selesai') && t.payable_balance > VEPS) btns += uiBtn('scAct', 'Bayar Prestasi', GREY, 'data-act="pay_progress"');
         if (h.status === 'Selesai' && t.retention_balance > VEPS) btns += uiBtn('scAct', 'Lepas Retensi', GREY, 'data-act="pay_retention"');
-        if (btns) html += '<div style="margin-top:15px;text-align:right;">' + btns + '</div>';
+        if (btns) html += '<div style="margin-top:15px;text-align:right">' + btns + '</div>';
         
         dtlDiv.innerHTML = html;
         dtlDiv.style.display = 'block';
@@ -311,7 +311,7 @@ Ext.onReady(function () {
             { header: 'Sisa Hutang', dataIndex: 'payable_balance', width: 110, align: 'right', renderer: fmtAmt },
             { header: 'Retensi Ditahan', dataIndex: 'retention_held', width: 110, align: 'right', renderer: fmtAmt },
             { header: 'Status', dataIndex: 'status', width: 85, align: 'center',
-              renderer: function (v) { return '<span style="color:' + statusColor(v) + ';font-weight:bold;">' + enc(v || '-') + '</span>'; } }
+              renderer: function (v) { return '<span style="font-weight:bold">' + enc(v || '-') + '</span>'; } }
         ],
         viewConfig: { forceFit: true }, loadMask: true,
         listeners: {
@@ -338,7 +338,7 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     var taskField = [{ name: 'task_id' }, { name: 'task_name' }, { name: 'task_value', type: 'float' }, { name: 'jadwal' }, { name: 'notes' }, { name: 'work_item_id' }, { name: 'wi_label' }];
     var itemDs = new Ext.data.Store({ reader: new Ext.data.JsonReader({ root: 'data' }, taskField) });
-    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });
+    var editorDeleter = new Extensive.grid.ItemDeleter({ header: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e05353" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>' });
     itemDs.on('remove', function () { updateSummary(); });
     var itemGrid = new stdGridEditor({
         selModel: editorDeleter, store: itemDs, renderTo: 'editorFormGrid',
@@ -353,7 +353,7 @@ Ext.onReady(function () {
                         if (row) { row.set('task_id', record.get('id')); row.set('task_name', record.get('task_name')); row.set('jadwal', (record.get('start_date') || '-') + ' s/d ' + (record.get('end_date') || '-')); }
                     } }
                 }),
-                renderer: function (v, m, rec) { return rec.get('task_name') ? enc(rec.get('task_name')) : '<i style="color:#668894;">(seluruh pekerjaan)</i>'; }
+                renderer: function (v, m, rec) { return rec.get('task_name') ? enc(rec.get('task_name')) : '<i >(seluruh pekerjaan)</i>'; }
             },
             {
                 header: 'Item Lingkup SPK (klaim qty + inspeksi)', dataIndex: 'work_item_id', width: 290,
@@ -371,7 +371,7 @@ Ext.onReady(function () {
                         updateSummary();
                     } }
                 }),
-                renderer: function (v, m, rec) { return rec.get('work_item_id') ? enc(rec.get('wi_label')) : '<i style="color:#668894;">(tanpa lingkup: progres dalam %)</i>'; }
+                renderer: function (v, m, rec) { return rec.get('work_item_id') ? enc(rec.get('wi_label')) : '<i >(tanpa lingkup: progres dalam %)</i>'; }
             },
             { header: 'Jadwal Task', dataIndex: 'jadwal', width: 170 },
             { header: 'Nilai Task (DPP)', dataIndex: 'task_value', width: 130, align: 'right', editor: new myNumberField({ decimalPrecision: 2, allowNegative: false }), renderer: fmtAmt },
@@ -406,7 +406,7 @@ Ext.onReady(function () {
         var val = parseFloat(fValue.getValue()) || 0, diff = round2(val - sum), ok = Math.abs(diff) <= VEPS;
         var ppn = round2(val * (parseFloat(fPpn.getValue()) || 0) / 100);
         el.innerHTML = 'Nilai kontrak (DPP) <b>' + fmtAmt(val) + '</b> &nbsp;|&nbsp; PPN <b>' + fmtAmt(ppn) + '</b> &nbsp;|&nbsp; Total + PPN <b>' + fmtAmt(val + ppn) + '</b> &nbsp;|&nbsp; ' +
-            'Terbagi ke task <b>' + fmtAmt(sum) + '</b> &nbsp;|&nbsp; Selisih <b style="color:' + (ok ? '#7fe0a0' : '#ff6b5e') + ';">' + fmtAmt(diff) + (ok ? ' (OK)' : ' (harus 0)') + '</b>';
+            'Terbagi ke task <b>' + fmtAmt(sum) + '</b> &nbsp;|&nbsp; Selisih <b >' + fmtAmt(diff) + (ok ? ' (OK)' : ' (harus 0)') + '</b>';
     }
     
     // SPK bertipe Subkon yang proyek & subkontraktornya sama dan belum punya kontrak (untuk tautan kontrak -> SPK)
@@ -493,10 +493,10 @@ Ext.onReady(function () {
         fSpk = new myComboField({ fieldLabel: 'Tautan SPK Subkon', store: spkDs, displayField: 'label', valueField: 'id', mode: 'local', triggerAction: 'all',
             forceSelection: true, allowBlank: true, anchor: '95%', emptyText: 'Pilih SPK Subkon (diperlukan untuk klaim qty & inspeksi lapangan)...',
             listeners: { select: function () { unmapRows(); loadWorkItems(); } } });
-        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 120, bodyStyle: 'background:transparent;', items: items }; };
-        hdrForm = new Ext.form.FormPanel({ renderTo: 'scHdrForm', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:4px 2px 0 2px;',
+        var col = function (w, items) { return { columnWidth: w, layout: 'form', border: false, labelWidth: 120, items: items }; };
+        hdrForm = new Ext.form.FormPanel({ renderTo: 'scHdrForm', border: false, layout: 'column', bodyStyle: 'padding:4px 2px 0 2px',
             items: [col(0.36, [fProject, fSub, fTitle, fBud]), col(0.30, [fValue, fPpn, fPph]), col(0.34, [fRet, fDp, fStart, fEnd])] });
-        hdrForm2 = new Ext.form.FormPanel({ renderTo: 'scHdrForm2', border: false, layout: 'column', bodyStyle: 'background:transparent;padding:0 2px 4px 2px;',
+        hdrForm2 = new Ext.form.FormPanel({ renderTo: 'scHdrForm2', border: false, layout: 'column', bodyStyle: 'padding:0 2px 4px 2px',
             items: [col(0.5, [fScope, fSpk]), col(0.5, [fNotes])] });
         // inject SPK hint below hdrForm2
         var spkHint = document.createElement('div');
@@ -558,7 +558,7 @@ Ext.onReady(function () {
         
         var win = new Ext.Window({
             title: 'Subkontraktor Baru', width: 460, height: 380, modal: true, layout: 'fit',
-            items: new Ext.form.FormPanel({ border: false, labelWidth: 130, bodyStyle: 'padding:12px;', items: [fN, fNp, fPk, fPh, fBn, fBa, fPp] }),
+            items: new Ext.form.FormPanel({ border: false, labelWidth: 130, bodyStyle: 'padding:12px', items: [fN, fNp, fPk, fPh, fBn, fBa, fPp] }),
             bbar: ['->', { xtype: 'tbtext', text: uiBtn('scSubSave', 'Simpan', TEAL) + uiBtn('scSubCancel', 'Batal', BURG) }]
         });
         win.show();
@@ -681,21 +681,21 @@ Ext.onReady(function () {
                 var el = document.getElementById('scPrInfo');
                 if (el) el.innerHTML = 'Progres kumulatif kontrak <b>' + fmtPct(cumPct) + '</b> &nbsp;|&nbsp; Nilai periode (DPP) <b>' + fmtAmt(gross) + '</b> &nbsp;|&nbsp; + PPN ' + P.ppn_rate + '% <b>' + fmtAmt(c.ppn) +
                     '</b> &nbsp;|&nbsp; - PPh ' + P.pph_rate + '% <b>' + fmtAmt(c.pph) + '</b> &nbsp;|&nbsp; - Retensi ' + P.retention_pct + '% <b>' + fmtAmt(c.ret) +
-                    '</b> &nbsp;|&nbsp; - Pot. Uang Muka <b>' + fmtAmt(c.dp) + '</b> (sisa UM ' + fmtAmt(P.dp_balance) + ') &nbsp;|&nbsp; <b style="color:#7fe0a0;">Nilai Bayar ' + fmtAmt(c.net) + '</b>' +
-                    (hasQty ? '<br/><span style="color:#e6a817;">Klaim kuantitas: nilai di atas masih sementara (dari qty klaim). Nilai akhir mengikuti qty yang LOLOS inspeksi.</span>' : '');
+                    '</b> &nbsp;|&nbsp; - Pot. Uang Muka <b>' + fmtAmt(c.dp) + '</b> (sisa UM ' + fmtAmt(P.dp_balance) + ') &nbsp;|&nbsp; <b >Nilai Bayar ' + fmtAmt(c.net) + '</b>' +
+                    (hasQty ? '<br/><span >Klaim kuantitas: nilai di atas masih sementara (dari qty klaim). Nilai akhir mengikuti qty yang LOLOS inspeksi.</span>' : '');
             }
             var grid = new Ext.grid.EditorGridPanel({
                 region: 'center', store: pds, clicksToEdit: 1, stripeRows: true, viewConfig: { forceFit: true },
                 columns: [
                     { header: 'Task', dataIndex: 'task_name', width: 280,
                       renderer: function (v, m, r) {
-                          return r.get('qty_mode') ? enc(v) + '<br/><span style="color:#8fb3c0;font-size:11px;">Qty kontrak ' + fmtQ(r.get('contract_qty')) + ' ' + enc(r.get('unit')) +
+                          return r.get('qty_mode') ? enc(v) + '<br/><span style="font-size:11px">Qty kontrak ' + fmtQ(r.get('contract_qty')) + ' ' + enc(r.get('unit')) +
                               ' | diterima ' + fmtQ(r.get('accepted_qty')) + ' | sisa ' + fmtQ(r.get('remaining_qty')) + '</span>' : enc(v);
                       } },
                     { header: 'Nilai Task (DPP)', dataIndex: 'task_value', width: 120, align: 'right', renderer: fmtAmt },
                     { header: 'Progres Lalu', dataIndex: 'prev_pct', width: 90, align: 'right', renderer: fmtPct },
                     { header: 'Qty Klaim', dataIndex: 'qty_claimed', width: 110, align: 'right',
-                      renderer: function (v, m, r) { return r.get('qty_mode') ? '<b>' + fmtQ(v) + '</b> ' + enc(r.get('unit')) : '<span style="color:#668894;">-</span>'; },
+                      renderer: function (v, m, r) { return r.get('qty_mode') ? '<b>' + fmtQ(v) + '</b> ' + enc(r.get('unit')) : '<span >-</span>'; },
                       editor: new Ext.form.NumberField({ decimalPrecision: 4, allowNegative: false }) },
                     { header: 'Progres Kumulatif (%)', dataIndex: 'cum_pct', width: 130, align: 'right', renderer: fmtPct,
                       editor: new Ext.form.NumberField({ decimalPrecision: 3, allowNegative: false, maxValue: 100 }) },
@@ -724,10 +724,10 @@ Ext.onReady(function () {
                 title: (progressId ? 'Ubah Prestasi ' + (existing ? existing.ref_no : '') : 'Prestasi Baru') + ' - ' + (curDetail ? curDetail.header.spk_no : ''),
                 width: 1060, height: 580, modal: true, layout: 'border',
                 items: [
-                    new Ext.form.FormPanel({ region: 'north', height: 110, border: false, labelWidth: 170, bodyStyle: 'padding:8px 10px;', items: [fDt, fEv, fRm] }),
+                    new Ext.form.FormPanel({ region: 'north', height: 110, border: false, labelWidth: 170, bodyStyle: 'padding:8px 10px', items: [fDt, fEv, fRm] }),
                     grid,
-                    { region: 'south', height: 125, border: false, bodyStyle: 'padding:8px 10px;',
-                      html: '<div id="scPrInfo" style="margin-bottom:10px;"></div><div style="text-align:right;">' + uiBtn('scPrSave', 'Simpan (Draft)', TEAL) + uiBtn('scPrCancel', 'Batal', BURG) + '</div>' }
+                    { region: 'south', height: 125, border: false, bodyStyle: 'padding:8px 10px',
+                      html: '<div id="scPrInfo" style="margin-bottom:10px"></div><div style="text-align:right">' + uiBtn('scPrSave', 'Simpan (Draft)', TEAL) + uiBtn('scPrCancel', 'Batal', BURG) + '</div>' }
                 ]
             });
             win.show();
@@ -771,19 +771,19 @@ Ext.onReady(function () {
                 var cl = 0, ps = 0, rj = 0, rw = 0;
                 ds.each(function (r) { cl += r.get('qty_claimed'); ps += r.get('qty_passed'); rj += r.get('qty_rejected'); rw += r.get('qty_rework'); });
                 var el = document.getElementById('scInInfo');
-                if (el) el.innerHTML = 'Total klaim <b>' + fmtQ(cl) + '</b> &nbsp;|&nbsp; <b style="color:#7fe0a0;">Lolos ' + fmtQ(ps) + '</b> &nbsp;|&nbsp; <span style="color:#e05353;">Ditolak ' + fmtQ(rj) +
-                    '</span> &nbsp;|&nbsp; <span style="color:#e6a817;">Perbaikan ' + fmtQ(rw) + '</span> &nbsp;&mdash;&nbsp; hanya qty LOLOS yang menjadi nilai prestasi, jurnal, dan hutang.';
+                if (el) el.innerHTML = 'Total klaim <b>' + fmtQ(cl) + '</b> &nbsp;|&nbsp; <b >Lolos ' + fmtQ(ps) + '</b> &nbsp;|&nbsp; <span >Ditolak ' + fmtQ(rj) +
+                    '</span> &nbsp;|&nbsp; <span >Perbaikan ' + fmtQ(rw) + '</span> &nbsp;&mdash;&nbsp; hanya qty LOLOS yang menjadi nilai prestasi, jurnal, dan hutang.';
             }
             var num = function () { return new Ext.form.NumberField({ decimalPrecision: 4, allowNegative: false }); };
             var grid = new Ext.grid.EditorGridPanel({
                 region: 'center', store: ds, clicksToEdit: 1, stripeRows: true, viewConfig: { forceFit: true },
                 columns: [
                     { header: 'Pekerjaan', dataIndex: 'description', width: 280,
-                      renderer: function (v, m, r) { return enc(v) + '<br/><span style="color:#8fb3c0;font-size:11px;">' + enc(r.get('task_name')) + '</span>'; } },
+                      renderer: function (v, m, r) { return enc(v) + '<br/><span style="font-size:11px">' + enc(r.get('task_name')) + '</span>'; } },
                     { header: 'Sat.', dataIndex: 'unit', width: 55 },
                     { header: 'Qty Klaim', dataIndex: 'qty_claimed', width: 95, align: 'right', renderer: fmtQ },
                     { header: 'Qty Diperiksa', dataIndex: 'qty_inspected', width: 105, align: 'right', renderer: fmtQ, editor: num() },
-                    { header: 'Qty Lolos', dataIndex: 'qty_passed', width: 95, align: 'right', renderer: function (v) { return '<b style="color:#7fe0a0;">' + fmtQ(v) + '</b>'; }, editor: num() },
+                    { header: 'Qty Lolos', dataIndex: 'qty_passed', width: 95, align: 'right', renderer: function (v) { return '<b >' + fmtQ(v) + '</b>'; }, editor: num() },
                     { header: 'Qty Ditolak', dataIndex: 'qty_rejected', width: 95, align: 'right', renderer: fmtQ, editor: num() },
                     { header: 'Qty Perbaikan', dataIndex: 'qty_rework', width: 105, align: 'right', renderer: fmtQ, editor: num() },
                     { header: 'Catatan', dataIndex: 'notes', width: 180, editor: new Ext.form.TextField() }
@@ -801,10 +801,10 @@ Ext.onReady(function () {
                 title: (ins ? 'Ubah Inspeksi ' + ins.inspection_no : 'Inspeksi Baru') + ' - Prestasi ' + prg.ref_no,
                 width: 1080, height: 520, modal: true, layout: 'border',
                 items: [
-                    new Ext.form.FormPanel({ region: 'north', height: 110, border: false, labelWidth: 170, bodyStyle: 'padding:8px 10px;', items: [fDt, fEv, fGen] }),
+                    new Ext.form.FormPanel({ region: 'north', height: 110, border: false, labelWidth: 170, bodyStyle: 'padding:8px 10px', items: [fDt, fEv, fGen] }),
                     grid,
-                    { region: 'south', height: 95, border: false, bodyStyle: 'padding:8px 10px;',
-                      html: '<div id="scInInfo" style="margin-bottom:10px;"></div><div style="text-align:right;">' + uiBtn('scInSave', 'Simpan Inspeksi (Draft)', TEAL) + uiBtn('scInCancel', 'Batal', BURG) + '</div>' }
+                    { region: 'south', height: 95, border: false, bodyStyle: 'padding:8px 10px',
+                      html: '<div id="scInInfo" style="margin-bottom:10px"></div><div style="text-align:right">' + uiBtn('scInSave', 'Simpan Inspeksi (Draft)', TEAL) + uiBtn('scInCancel', 'Batal', BURG) + '</div>' }
                 ]
             });
             win.show();
@@ -853,7 +853,7 @@ Ext.onReady(function () {
         var fNt = new Ext.form.TextField({ fieldLabel: 'Catatan', anchor: '95%' });
         var win = new Ext.Window({
             title: titles[type] + ' - ' + h.spk_no, width: 520, height: 330, modal: true, layout: 'fit',
-            items: new Ext.form.FormPanel({ border: false, labelWidth: 150, bodyStyle: 'padding:12px;',
+            items: new Ext.form.FormPanel({ border: false, labelWidth: 150, bodyStyle: 'padding:12px',
                 items: [{ xtype: 'displayfield', hideLabel: true, value: type === 'DP' ? 'Uang muka dipotong proporsional dari prestasi berikutnya.' :
                           (type === 'RETENSI' ? 'Retensi ditahan <b>' + fmtAmt(t.retention_balance) + '</b>.' : 'Sisa hutang prestasi <b>' + fmtAmt(t.payable_balance) + '</b>.') },
                         fDt, fAc, fPr, fAm, fRf, fNt] }),

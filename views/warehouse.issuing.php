@@ -16,42 +16,7 @@
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />
-        <style>
-            #editorForm { top: 50%; width: 90%; height: 85%; }
-            #addForm { top: 50%; width: 85%; height: 70%; }
-            #whMatBar .x-btn, 
-            #whMatBar .x-btn button,
-            #whMatBar button {
-                background: #0e842040 !important;          /* Warna Emerald Green */
-                background-image: none !important;        /* Hilangkan gradient bawaan ExtJS */
-                border: 1px solid #0e8420 !important;     /* Border Emerald lebih gelap */
-                color: #ffffff !important;                /* Warna teks Hitam */
-                font-weight: 800 !important;              /* Teks Bold */
-                border-radius: 6px !important;            /* Sudut melengkung */
-                padding: 3px 10px !important;
-                cursor: pointer !important;
-                transition: background-color 0.2s ease !important;
-            }
-
-            /* Efek saat mouse di-hover di atas tombol */
-            #whMatBar .x-btn:hover, 
-            #whMatBar .x-btn button:hover,
-            #whMatBar button:hover {
-                background: #34d399 !important;          /* Emerald lebih terang saat hover */
-                color: #000000 !important;
-            }
-            /* Menghilangkan garis border/outline di dalam teks tombol */
-            #whMatBar .x-btn button,
-            #whMatBar button,
-            #whMatBar .x-btn * {
-                border: none !important;
-                outline: none !important;
-                box-shadow: none !important;
-                background: transparent !important;
-                background-color: transparent !important;
-                background-image: none !important;
-            }
-        </style>
+        
     </head>
     <body>
     </body>

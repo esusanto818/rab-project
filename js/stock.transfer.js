@@ -33,7 +33,7 @@ Ext.onReady(function () {
         });
     }
     function statusRenderer(v) {
-        return '<span style="color:' + (v === 'posted' ? '#2e9e4f' : '#c0392b') + ';font-weight:bold;">' + enc(v) + '</span>';
+        return '<span style="font-weight:bold">' + enc(v) + '</span>';
     }
 
     // ---------------- grid utama ----------------
@@ -129,7 +129,7 @@ Ext.onReady(function () {
 
     function openEditor() {
         gridAddEditorDs.removeAll();
-        var wtpl = '<tpl for="."><div class="x-combo-list-item">{name} <span style="color:#888;">[{project_name}]</span></div></tpl>';
+        var wtpl = '<tpl for="."><div class="x-combo-list-item">{name} <span >[{project_name}]</span></div></tpl>';
         var fFrom = new Ext.form.ComboBox({ fieldLabel: 'Gudang Asal', store: whDs, displayField: 'name', valueField: 'id',
             mode: 'local', triggerAction: 'all', forceSelection: true, allowBlank: false, anchor: '95%', tpl: wtpl });
         var fTo = new Ext.form.ComboBox({ fieldLabel: 'Gudang Tujuan', store: whDs, displayField: 'name', valueField: 'id',
@@ -174,7 +174,7 @@ Ext.onReady(function () {
                 { header: 'Qty Transfer', dataIndex: 'qty', width: 100, align: 'right', renderer: fmtQty,
                   editor: new Ext.form.NumberField({ allowNegative: false, decimalPrecision: 4 }) },
                 { header: '', dataIndex: 'item_id', width: 30, align: 'center', fixed: true,
-                  renderer: function () { return '<span style="color:#e05353;cursor:pointer;font-weight:bold;">&#10005;</span>'; } }
+                  renderer: function () { return '<span style="cursor:pointer;font-weight:bold">&#10005;</span>'; } }
             ],
             listeners: {
                 validateedit: function (e) {
@@ -188,7 +188,7 @@ Ext.onReady(function () {
         });
 
         var form = new Ext.form.FormPanel({
-            region: 'north', height: 110, border: false, layout: 'column', bodyStyle: 'padding:8px 6px 0 6px;',
+            region: 'north', height: 110, border: false, layout: 'column', bodyStyle: 'padding:8px 6px 0 6px',
             items: [
                 { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 110, items: [fFrom, fTo] },
                 { columnWidth: 0.5, layout: 'form', border: false, labelWidth: 90, items: [fDate, fRemark] }

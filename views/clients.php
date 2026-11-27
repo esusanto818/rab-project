@@ -10,9 +10,7 @@
 ?>
 <html>
     <head>
-        <style>
-            #editorForm {top: 30%; width: 80%; }
-        </style>
+        
         <title id="page-title">Client</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
         <script type="text/javascript">
@@ -21,7 +19,7 @@
     </head>
     <body>
         <div id="divMainGrid"></div>
-        <div id="editorWdw" style="display:none;">
+        <div id="editorWdw" style="display:none">
         <div id="editorFormHeaderText"></div>
         <div id="editorFormMain"></div>
         </div>

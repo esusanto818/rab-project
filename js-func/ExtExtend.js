@@ -459,7 +459,7 @@ let stdForm = Ext.extend(Ext.FormPanel, {
   labelWidth: 80,
   labelAlign: 'top',
   monitorValid: true,
-  bodyStyle: 'background-color: transparent;',
+  ,
   layout: 'column',
   scrollOffset      : 10,
   //autoScroll: 'true',

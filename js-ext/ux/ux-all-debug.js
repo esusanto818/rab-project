@@ -879,7 +879,7 @@ Ext.ux.tree.ColumnTree = Ext.extend(Ext.tree.TreePanel, {
                      cls:'x-tree-hd-text',
                      html: c.header
                  },
-                 style:'width:'+(c.width-this.borderWidth)+'px;'
+                 style: 'width:'+(c.width-this.borderWidth)+'px;'
              });
         }
         this.headers.createChild({cls:'x-clear'});
@@ -912,7 +912,7 @@ Ext.ux.tree.ColumnNodeUI = Ext.extend(Ext.tree.TreeNodeUI, {
 
         var buf = [
              '<li class="x-tree-node"><div ext:tree-node-id="',n.id,'" class="x-tree-node-el x-tree-node-leaf ', a.cls,'">',
-                '<div class="x-tree-col" style="width:',c.width-bw,'px;">',
+                '<div class="x-tree-col" style="width:',c.width-bw,'px">',
                     '<span class="x-tree-node-indent">',this.indentMarkup,"</span>",
                     '<img src="', this.emptyIcon, '" class="x-tree-ec-icon x-tree-elbow">',
                     '<img src="', a.icon || this.emptyIcon, '" class="x-tree-node-icon',(a.icon ? " x-tree-node-inline-icon" : ""),(a.iconCls ? " "+a.iconCls : ""),'" unselectable="on">',
@@ -923,13 +923,13 @@ Ext.ux.tree.ColumnNodeUI = Ext.extend(Ext.tree.TreeNodeUI, {
          for(var i = 1, len = cols.length; i < len; i++){
              c = cols[i];
 
-             buf.push('<div class="x-tree-col ',(c.cls?c.cls:''),'" style="width:',c.width-bw,'px;">',
+             buf.push('<div class="x-tree-col ',(c.cls?c.cls:''),'" style="width:',c.width-bw,'px">',
                         '<div class="x-tree-col-text">',(c.renderer ? c.renderer(a[c.dataIndex], n, a) : a[c.dataIndex]),"</div>",
                       "</div>");
          }
          buf.push(
             '<div class="x-clear"></div></div>',
-            '<ul class="x-tree-node-ct" style="display:none;"></ul>',
+            '<ul class="x-tree-node-ct" style="display:none"></ul>',
             "</li>");
 
         if(bulkRender !== true && n.nextSibling && n.nextSibling.ui.getEl()){
@@ -5391,8 +5391,8 @@ Ext.ux.grid.LockingGridView = Ext.extend(Ext.grid.GridView, {
                 cb[cb.length] = ct.apply(p);
             }
         }
-        return [ts.header.apply({cells: cb.join(''), tstyle:'width:'+this.getTotalWidth()+';'}),
-                ts.header.apply({cells: lcb.join(''), tstyle:'width:'+this.getLockedWidth()+';'})];
+        return [ts.header.apply({cells: cb.join(''), tstyle: 'width:'+this.getTotalWidth()+';'}),
+                ts.header.apply({cells: lcb.join(''), tstyle: 'width:'+this.getLockedWidth()+';'})];
     },
 
     updateHeaders : function(){
@@ -5945,7 +5945,7 @@ Ext.ux.form.MultiSelect = Ext.extend(Ext.form.Field,  {
             title: this.legend,
             height: this.height,
             width: this.width,
-            style: "padding:0;",
+            style: "padding:0",
             tbar: this.tbar
         });
         fs.body.addClass('ux-mselect');
@@ -8175,7 +8175,7 @@ Ext.ux.Spinner = Ext.extend(Ext.util.Observable, {
         this.splitter = this.wrap.createChild({
             tag: 'div',
             cls: this.splitterClass,
-            style: 'width:13px; height:2px;'
+            style: 'width:13px; height:2px'
         });
         this.splitter.setRight((Ext.isIE) ? 1 : 2).setTop(10).show();
 
@@ -9899,7 +9899,7 @@ Ext.ux.tree.TreeGridNodeUI = Ext.extend(Ext.tree.TreeNodeUI, {
             c = cols[i];
             buf.push(
                     '<td class="x-treegrid-col ', (c.cls ? c.cls : ''), '">',
-                        '<div unselectable="on" class="x-treegrid-text"', (c.align ? ' style="text-align: ' + c.align + ';"' : ''), '>',
+                        '<div unselectable="on" class="x-treegrid-text"', (c.align ? ' style="text-align: ' + c.align + '"' : ''), '>',
                             (c.tpl ? c.tpl.apply(a) : a[c.dataIndex]),
                         '</div>',
                     '</td>'
@@ -9908,10 +9908,10 @@ Ext.ux.tree.TreeGridNodeUI = Ext.extend(Ext.tree.TreeNodeUI, {
 
         buf.push(
             '</tr><tr class="x-tree-node-ct"><td colspan="', cols.length, '">',
-            '<table class="x-treegrid-node-ct-table" cellpadding="0" cellspacing="0" style="table-layout: fixed; display: none; width: ', t.innerCt.getWidth() ,'px;"><colgroup>'
+            '<table class="x-treegrid-node-ct-table" cellpadding="0" cellspacing="0" style="table-layout: fixed; display: none; width: ', t.innerCt.getWidth() ,'px"><colgroup>'
         );
         for(i = 0, len = cols.length; i<len; i++) {
-            buf.push('<col style="width: ', (cols[i].hidden ? 0 : cols[i].width) ,'px;" />');
+            buf.push('<col style="width: ', (cols[i].hidden ? 0 : cols[i].width) ,'px" />');
         }
         buf.push('</colgroup></table></td></tr></tbody>');
 
@@ -10277,10 +10277,10 @@ Ext.ux.tree.TreeGrid = Ext.extend(Ext.tree.TreePanel, {
                 '<div class="x-grid3-header">',
                     '<div class="x-treegrid-header-inner">',
                         '<div class="x-grid3-header-offset">',
-                            '<table style="table-layout: fixed;" cellspacing="0" cellpadding="0" border="0"><colgroup><tpl for="columns"><col /></tpl></colgroup>',
+                            '<table style="table-layout: fixed" cellspacing="0" cellpadding="0" border="0"><colgroup><tpl for="columns"><col /></tpl></colgroup>',
                             '<thead><tr class="x-grid3-hd-row">',
                             '<tpl for="columns">',
-                            '<td class="x-grid3-hd x-grid3-cell x-treegrid-hd" style="text-align: {align};" id="', this.id, '-xlhd-{#}">',
+                            '<td class="x-grid3-hd x-grid3-cell x-treegrid-hd" style="text-align: {align}" id="', this.id, '-xlhd-{#}">',
                                 '<div class="x-grid3-hd-inner x-treegrid-hd-inner" unselectable="on">',
                                      this.enableHdMenu ? '<a class="x-grid3-hd-btn" href="#"></a>' : '',
                                      '{header}<img class="x-grid3-sort-icon" src="', Ext.BLANK_IMAGE_URL, '" />',
@@ -10291,7 +10291,7 @@ Ext.ux.tree.TreeGrid = Ext.extend(Ext.tree.TreePanel, {
                     '</div></div>',
                 '</div>',
                 '<div class="x-treegrid-root-node">',
-                    '<table class="x-treegrid-root-table" cellpadding="0" cellspacing="0" style="table-layout: fixed;"></table>',
+                    '<table class="x-treegrid-root-table" cellpadding="0" cellspacing="0" style="table-layout: fixed"></table>',
                 '</div>'
             );
         }

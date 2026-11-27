@@ -542,8 +542,8 @@ Ext.ux.grid.LockingGridView = Ext.extend(Ext.grid.GridView, {
                 cb[cb.length] = ct.apply(p);
             }
         }
-        return [ts.header.apply({cells: cb.join(''), tstyle:'width:'+this.getTotalWidth()+';'}),
-                ts.header.apply({cells: lcb.join(''), tstyle:'width:'+this.getLockedWidth()+';'})];
+        return [ts.header.apply({cells: cb.join(''), tstyle: 'width:'+this.getTotalWidth()+';'}),
+                ts.header.apply({cells: lcb.join(''), tstyle: 'width:'+this.getLockedWidth()+';'})];
     },
 
     updateHeaders : function(){

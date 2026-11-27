@@ -38,70 +38,7 @@ try {
 <link rel="stylesheet" href="../assets/css/dashboard.tailwind.css?v=<?= @filemtime(__DIR__ . '/../assets/css/dashboard.tailwind.css') ?: date('YmdHis') ?>">
 <script src="../assets/js/chart.umd.js?v=<?= @filemtime(__DIR__ . '/../assets/js/chart.umd.js') ?: date('YmdHis') ?>"></script>
 <link rel="stylesheet" href="../assets/css/fonts.css?v=<?= @filemtime(__DIR__ . '/../assets/css/fonts.css') ?: date('YmdHis') ?>">
-<style>
-body { font-family: 'Inter', sans-serif; background-color: #000000; color: #e2e8f0; }
-.font-orbitron { font-family: 'Orbitron', sans-serif; }
-.font-rajdhani { font-family: 'Rajdhani', sans-serif; }
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-/* [REVISI 2026-10-30] Mega menu: dropdown dikaitkan ke <header> (selebar layar), BUKAN ke <li> yang sempit.
-   Kolom grup tersusun ke SAMPING; baru turun ke baris berikutnya bila tidak muat. Lebar maksimum = lebar layar. */
-.nav-item { position: static; }
-.nav-item:hover .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
-.dropdown-menu {
-    position: absolute; top: 100%; left: 0;
-    width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
-    max-height: calc(100vh - 80px); overflow-y: auto;
-    opacity: 0; visibility: hidden; transform: translateY(-6px); transition: all 0.2s ease-in-out;
-}
-.dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
 
-/* [FIX] Menu Horizontal Layout */
-/* Menu Horizontal */
-.menu-column {
-    flex: 0 0 auto;
-    min-width: 180px;
-    max-width: 220px;
-    margin-bottom: 1rem;
-}
-.menu-column h3 {
-    font-size: 20px;
-    font-weight: 500;
-    color: #22d3ee;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid #008afb;
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-.menu-column ul { list-style: none; padding: 0; margin: 0; }
-.menu-column ul li { margin-bottom: 0.25rem; }
-
-.menu-column ul li a {
-    display: block;
-    padding: 0.2rem 0.4rem;
-    color: #ffffff;
-    text-decoration: none;
-    font-size: 0.8rem;
-    transition: all 0.2s;
-    border-radius: 0.25rem;
-    font-size:16px;
-    font-weight: 300;
-}
-.menu-column ul li a:hover {
-    color: #ee2222;
-    background: rgba(252, 253, 253, 0.61);
-    transform: translateX(2px);
-}
-
-/* [BARU 2026-11-06 TAB] Tab dashboard. Tombol mengikuti template "Print Task"; aktif = teal #066b78 */
-.tab-btn { background:#1f2d3a; color:#ffffff; font-weight:700; font-size:15px; padding:8px 20px; border:none; border-radius:4px; cursor:pointer; transition:background .15s; }
-.tab-btn:hover { background:#2b3f52; }
-.tab-btn.active { background:#066b78; }
-.tab-btn:focus-visible { outline:2px solid #22d3ee; outline-offset:2px; }
-.tab-panel { display:none; }
-.tab-panel.active { display:block; }
-</style>
 </head>
 <?php $favVer = date('YmdHis'); ?>
 <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">

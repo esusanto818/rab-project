@@ -1,4 +1,4 @@
-<div id="burger-menu" class="clear-menu-btn" style="display:none;">
+<div id="burger-menu" class="clear-menu-btn" style="display:none">
   <input type="checkbox" id="menucheckbox">
   <span class="top"></span>
   <span class="middle"></span>

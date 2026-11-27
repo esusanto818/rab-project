@@ -409,7 +409,7 @@ Ext.onReady(function() {
     baseParams:{task: 'addreq'},
     reader: new Ext.data.JsonReader({root: 'data', fields : itemField})
   });
-  let addCheckColumn = new Ext.grid.CheckColumn({id:'addCheckColumn',header:'<div style="text-align:center;"> <i class="material-icons md-20">playlist_add_check</i></div>',dataIndex:'active',width: 40, fixed: true, align: 'center'});
+  let addCheckColumn = new Ext.grid.CheckColumn({id:'addCheckColumn',header:'<div style="text-align:center"> <i class="material-icons md-20">playlist_add_check</i></div>',dataIndex:'active',width: 40, fixed: true, align: 'center'});
   let gridAddEditor = new stdGrid({
     store  : gridAddEditorDs,
     renderTo: 'addFormGrid',

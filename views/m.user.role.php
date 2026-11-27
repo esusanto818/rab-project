@@ -13,11 +13,7 @@ include __DIR__ . "/../includes/many-template-icn.php";
 <!DOCTYPE html>
 <html>
     <head>
-      <style>
-        #editorForm {top: 50%; width: 95%; height: 85%;}
-        #addForm {top: 50%; width: 70%; height: 75%;}
-        #matrixWdw {position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 96%; height: 90%; background: #fff; z-index: 9999; display: none; border-radius: 6px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); overflow: hidden;}
-      </style>
+      
       <title id="page-title">User Role & Access Matrix</title>
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
       <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />

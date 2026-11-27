@@ -421,7 +421,7 @@ function getRadioGroupValue(radioId){
   }
 }
 function gridIconHeader(color,size,icn){
-  return '<div style="text-align:center; color:'+color+';"> <i class="material-icons md-'+size+'">'+icn+'</i></div>';
+  return '<div style="text-align:center"> <i class="material-icons md-'+size+'">'+icn+'</i></div>';
 }
 /*************************************************/
 /* Grid Combo renderer */
@@ -429,7 +429,7 @@ function gridIconHeader(color,size,icn){
 Ext.util.Format.comboRenderer = function(comboGrid){
   return function(value){
     let recordCombo = comboGrid.findRecord(comboGrid.valueField, value);
-    return recordCombo ? '<div style="white-space:normal !important;">'+ recordCombo.get(comboGrid.displayField) +'</div>': comboGrid.valueNotFoundText;
+    return recordCombo ? '<div style="white-space:normal !important">'+ recordCombo.get(comboGrid.displayField) +'</div>': comboGrid.valueNotFoundText;
   };
 };
 
@@ -483,8 +483,8 @@ function format_value(value){if ($N(value,0)==0) {return '<b>-</b>';} else {retu
 
 function DetailHeight(PercentHeight){return ((window.innerHeight*PercentHeight)/100);}
 function CellWrap(value){
-  if (value === null || value === undefined || value==='' || value==='0') return '<div style="white-space:normal !important;">-</div>';
-  return '<div style="white-space:normal !important;">'+ value +'</div>';
+  if (value === null || value === undefined || value==='' || value==='0') return '<div style="white-space:normal !important">-</div>';
+  return '<div style="white-space:normal !important">'+ value +'</div>';
 }
 function rendererLogVolume(value, store) {
   return roundNumber(((.7854*store.data.length*(roundNumber(((store.data.dia_1+store.data.dia_2+store.data.dia_3+store.data.dia_4)/4),0))*(roundNumber(((store.data.dia_1+store.data.dia_2+store.data.dia_3+store.data.dia_4)/4),0)))/1000000),4);

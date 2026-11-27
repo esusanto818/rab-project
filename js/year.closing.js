@@ -104,7 +104,7 @@ Ext.onReady(function () {
             { header: 'Total Beban', dataIndex: 'expense_total', width: 140, align: 'right', renderer: function (v) { return fmtAmt(v); } },
             {
                 header: 'Laba / (Rugi) Bersih', dataIndex: 'net_income', width: 150, align: 'right',
-                renderer: function (v) { return '<b style="color:' + (v >= 0 ? '#4ade80' : '#f87171') + ' !important;">' + fmtAmt(v) + '</b>'; }
+                renderer: function (v) { return '<b >' + fmtAmt(v) + '</b>'; }
             },
             { header: 'Akun Laba Ditahan', dataIndex: 'retained_account', width: 200, renderer: function (v) { return CellWrap(v || '-'); } },
             { header: 'Periode Dikunci', dataIndex: 'locked_count', width: 100, align: 'center' },
@@ -151,15 +151,15 @@ Ext.onReady(function () {
         fInfo = new Ext.form.DisplayField({ hideLabel: true, value: '', anchor: '98%' });
 
         var col = function (w, items) {
-            return { columnWidth: w, layout: 'form', border: false, labelWidth: 130, bodyStyle: 'background:transparent;', items: items };
+            return { columnWidth: w, layout: 'form', border: false, labelWidth: 130, items: items };
         };
         frm = new Ext.form.FormPanel({
             renderTo: 'editorFormGrid',
             border: false,
             layout: 'column',
-            bodyStyle: 'background:transparent; padding:6px 4px 0 4px;',
+            bodyStyle: 'padding:6px 4px 0 4px',
             items: [col(0.45, [fYear, fAcc]), col(0.55, [fRemark, fLock]),
-                    { columnWidth: 1, layout: 'form', border: false, bodyStyle: 'background:transparent;', items: [fInfo] }]
+                    { columnWidth: 1, layout: 'form', border: false, items: [fInfo] }]
         });
     }
 
@@ -176,7 +176,7 @@ Ext.onReady(function () {
         selected = {}; lastPreview = null; lastYear = null;      // [PILIH AKUN]
         fLock.setValue(true);
         fRemark.setValue('');
-        fInfo.setValue('<span style="color:#668894;">Pilih tahun buku untuk melihat pratinjau jurnal penutup.</span>');
+        fInfo.setValue('<span >Pilih tahun buku untuk melihat pratinjau jurnal penutup.</span>');
         previewOk = false;
         previewNotEnded = false;
         // tahun default: tahun terlama yang belum ditutup (penutupan harus berurutan)
@@ -186,7 +186,7 @@ Ext.onReady(function () {
     }
 
     function listHtml(items, color) {
-        var h = '<ul style="margin:4px 0 8px 18px; padding:0; color:' + color + ';">';
+        var h = '<ul style="margin:4px 0 8px 18px; padding:0">';
         Ext.each(items, function (m) { h += '<li>' + enc(m) + '</li>'; });
         return h + '</ul>';
     }
@@ -195,21 +195,21 @@ Ext.onReady(function () {
     function accTable(title, secKey, items) {
         var allOn = items.length > 0;
         Ext.each(items, function (a) { if (!selected[a.account_id]) allOn = false; });
-        var h = '<div style="margin-top:10px; font-weight:bold; font-size:14px;">' + title + '</div>' +
-                '<table width="100%" style="border-collapse:collapse; font-size:13px;">' +
-                '<tr style="background:rgba(255,255,255,0.10); font-weight:bold;">' +
-                '<td style="padding:3px 6px;" width="34"><input type="checkbox" class="ycSec" data-sec="' + secKey + '"' + (allOn ? ' checked' : '') + (items.length ? '' : ' disabled') + ' title="Pilih semua ' + title.toLowerCase() + '"/></td>' +
-                '<td style="padding:3px 6px;" width="90">Kode</td><td style="padding:3px 6px;">Nama Akun</td>' +
-                '<td align="right" style="padding:3px 6px;" width="150">Saldo</td><td align="right" style="padding:3px 6px;" width="170">Jurnal Penutup</td></tr>';
+        var h = '<div style="margin-top:10px; font-weight:bold; font-size:14px">' + title + '</div>' +
+                '<table width="100%" style="border-collapse:collapse; font-size:13px">' +
+                '<tr style="font-weight:bold">' +
+                '<td style="padding:3px 6px" width="34"><input type="checkbox" class="ycSec" data-sec="' + secKey + '"' + (allOn ? ' checked' : '') + (items.length ? '' : ' disabled') + ' title="Pilih semua ' + title.toLowerCase() + '"/></td>' +
+                '<td style="padding:3px 6px" width="90">Kode</td><td style="padding:3px 6px">Nama Akun</td>' +
+                '<td align="right" style="padding:3px 6px" width="150">Saldo</td><td align="right" style="padding:3px 6px" width="170">Jurnal Penutup</td></tr>';
         Ext.each(items, function (a, i) {
-            h += '<tr style="' + (i % 2 ? 'background:rgba(15,113,194,0.2);' : '') + '">' +
-                 '<td style="padding:3px 6px;"><input type="checkbox" class="ycChk" data-id="' + a.account_id + '" data-sec="' + secKey + '"' + (selected[a.account_id] ? ' checked' : '') + '/></td>' +
-                 '<td style="padding:3px 6px;">' + enc(a.account_code) + '</td>' +
-                 '<td style="padding:3px 6px;">' + enc(a.account_name) + '</td>' +
-                 '<td align="right" style="padding:3px 6px;">' + fmtAmt(a.balance) + '</td>' +
-                 '<td align="right" style="padding:3px 6px;">' + (a.debit > 0 ? 'Dr ' + fmtAmt(a.debit) : 'Cr ' + fmtAmt(a.credit)) + '</td></tr>';
+            h += '<tr style="' + (i % 2 ? ';' : '') + '">' +
+                 '<td style="padding:3px 6px"><input type="checkbox" class="ycChk" data-id="' + a.account_id + '" data-sec="' + secKey + '"' + (selected[a.account_id] ? ' checked' : '') + '/></td>' +
+                 '<td style="padding:3px 6px">' + enc(a.account_code) + '</td>' +
+                 '<td style="padding:3px 6px">' + enc(a.account_name) + '</td>' +
+                 '<td align="right" style="padding:3px 6px">' + fmtAmt(a.balance) + '</td>' +
+                 '<td align="right" style="padding:3px 6px">' + (a.debit > 0 ? 'Dr ' + fmtAmt(a.debit) : 'Cr ' + fmtAmt(a.credit)) + '</td></tr>';
         });
-        if (!items.length) h += '<tr><td colspan="5" style="padding:6px; color:#668894;">Tidak ada saldo.</td></tr>';
+        if (!items.length) h += '<tr><td colspan="5" style="padding:6px">Tidak ada saldo.</td></tr>';
         return h + '</table>';
     }
 
@@ -279,10 +279,10 @@ Ext.onReady(function () {
         previewOk = false;
         if (!y) { fInfo.setValue(''); return; }
         var token = ++previewReq;
-        fInfo.setValue('<span style="color:#668894;">menghitung...</span>');
+        fInfo.setValue('<span >menghitung...</span>');
         ajax({ task: 'preview', year: y, retained_account_id: fAcc.getValue() || 0 }, function (res) {
             if (token !== previewReq) return;
-            if (!res.success) { fInfo.setValue('<span style="color:#e6a817;">' + enc(res.message || 'Gagal menghitung.') + '</span>'); return; }
+            if (!res.success) { fInfo.setValue('<span >' + enc(res.message || 'Gagal menghitung.') + '</span>'); return; }
             var d = res.data;
             previewOk = (d.blockers.length === 0);
             previewNotEnded = !!d.not_ended;
@@ -292,19 +292,19 @@ Ext.onReady(function () {
             Ext.each(all, function (a) { next[a.account_id] = (lastYear === y && selected[a.account_id] !== undefined) ? selected[a.account_id] : true; });
             selected = next; lastYear = y; lastPreview = d;
 
-            var html = '<div style="padding:8px 10px; background:#1f2d3a; border-radius:4px; line-height:1.6; max-height:340px; overflow-y:auto;">' +
+            var html = '<div style="padding:8px 10px; ; line-height:1.6; max-height:340px; overflow-y:auto">' +
                        'Jurnal penutup tanggal <b>' + enc(d.closing_date) + '</b>, laba/rugi dipindah ke <b>' + enc(d.retained_account || '-') + '</b>';
-            if (d.blockers.length) html += '<div style="color:#ff6b5e; margin-top:6px;"><b>Tidak dapat diproses:</b>' + listHtml(d.blockers, '#ff6b5e') + '</div>';
-            if (d.warnings.length) html += '<div style="color:#e6a817; margin-top:6px;">' + listHtml(d.warnings, '#e6a817') + '</div>';
-            html += '<div style="margin-top:8px;"><button type="button" class="ycAllBtn" style="' + btnCss + '">Pilih Semua</button>' +
+            if (d.blockers.length) html += '<div style="margin-top:6px"><b>Tidak dapat diproses:</b>' + listHtml(d.blockers, '#ff6b5e') + '</div>';
+            if (d.warnings.length) html += '<div style="margin-top:6px">' + listHtml(d.warnings, '#e6a817') + '</div>';
+            html += '<div style="margin-top:8px"><button type="button" class="ycAllBtn" style="' + btnCss + '">Pilih Semua</button>' +
                     '<button type="button" class="ycNoneBtn" style="' + btnCss + '">Kosongkan</button>' +
-                    '<span id="ycCnt" style="font-weight:bold;"></span></div>';
+                    '<span id="ycCnt" style="font-weight:bold"></span></div>';
             html += accTable('PENDAPATAN', 'rev', d.revenue) + accTable('BEBAN', 'exp', d.expense);
-            html += '<div style="margin-top:10px;">Total pendapatan dipilih: <b id="ycRev"></b> &nbsp;|&nbsp; Total beban dipilih: <b id="ycExp"></b></div>' +
-                    '<div id="ycNet" style="margin-top:4px; font-size:15px; font-weight:bold;"></div>' +
-                    '<div id="ycPartial" style="margin-top:4px; color:#e6a817;"></div>';
+            html += '<div style="margin-top:10px">Total pendapatan dipilih: <b id="ycRev"></b> &nbsp;|&nbsp; Total beban dipilih: <b id="ycExp"></b></div>' +
+                    '<div id="ycNet" style="margin-top:4px; font-size:15px; font-weight:bold"></div>' +
+                    '<div id="ycPartial" style="margin-top:4px"></div>';
             var open = 0; Ext.each(d.periods, function (p) { if (!p.is_closed) open++; });
-            html += '<div style="margin-top:6px; color:#9fc3d1;">Periode tahun ini: ' + d.periods.length + ' (terbuka ' + open + ').</div></div>';
+            html += '<div style="margin-top:6px">Periode tahun ini: ' + d.periods.length + ' (terbuka ' + open + ').</div></div>';
             fInfo.setValue(html);
             wireSelection();
             updateSelectionUI();
@@ -353,8 +353,8 @@ Ext.onReady(function () {
         var msg = 'Proses tutup buku tahun <b>' + year + '</b>?<br/>Jurnal penutup dibuat tanggal 31 Desember ' + year +
                   (fLock.getValue() ? ' dan <b>seluruh periode tahun ' + year + ' akan dikunci</b>.' : '.') +
                   '<br/>Penutupan dapat dibuka kembali selama belum ada tahun yang lebih baru ditutup.';
-        if (ids.length < totalAcc) msg = '<span style="color:#e6a817;">Hanya ' + ids.length + ' dari ' + totalAcc + ' akun yang ditutup; sisanya tetap bersaldo.</span><br/>' + msg;
-        if (previewNotEnded) msg = '<span style="color:#e6a817;">Tahun ' + year + ' belum berakhir (uji coba).</span><br/>' + msg;
+        if (ids.length < totalAcc) msg = '<span >Hanya ' + ids.length + ' dari ' + totalAcc + ' akun yang ditutup; sisanya tetap bersaldo.</span><br/>' + msg;
+        if (previewNotEnded) msg = '<span >Tahun ' + year + ' belum berakhir (uji coba).</span><br/>' + msg;
 
         Ext.Msg.confirm('Tutup Buku', msg, function (btn) {
             if (btn !== 'yes') return;

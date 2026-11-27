@@ -18,10 +18,7 @@
         <<link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-        <style>
-            #editorForm {top: 50%; width: 80%; height: auto !important; min-height: 420px !important; max-height: 80vh !important; overflow-y: auto !important;}
-            #addFormHeaderText, #editorFormHeaderText{font-size: 1.3rem;text-align: center;}
-        </style>
+        
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />
 

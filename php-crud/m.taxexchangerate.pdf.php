@@ -49,72 +49,12 @@ if ($hdrId) {
 <head>
     <meta charset="utf-8">
     <title>Daftar Kurs Pajak Kemenkeu</title>
-    <style>
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            font-size: 12px;
-            color: #333;
-            margin: 20px;
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #333;
-            padding-bottom: 10px;
-        }
-        .header h2 {
-            margin: 0 0 5px 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .header p {
-            margin: 3px 0;
-            font-size: 13px;
-        }
-        .info-table {
-            width: 100%;
-            margin-bottom: 15px;
-            font-size: 12px;
-        }
-        .info-table td {
-            padding: 3px 0;
-        }
-        table.data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        table.data-table th, table.data-table td {
-            border: 1px solid #ccc;
-            padding: 8px 10px;
-        }
-        table.data-table th {
-            background-color: #f2f2f2;
-            font-weight: bold;
-            text-align: center;
-        }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-left { text-align: left; }
-        .up { color: #2e9e4f; font-weight: bold; }
-        .down { color: #c0392b; font-weight: bold; }
-        .flat { color: #555; }
-        .footer {
-            margin-top: 30px;
-            text-align: right;
-            font-size: 10px;
-            color: #777;
-        }
-        @media print {
-            .no-print { display: none; }
-            body { margin: 0; }
-        }
-    </style>
+    
 </head>
 <body>
 
-    <div class="no-print" style="margin-bottom: 15px;">
-        <button onclick="window.print();" style="padding: 8px 16px; font-weight: bold; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px;">🖨️ Cetak / Print PDF</button>
+    <div class="no-print" style="margin-bottom: 15px">
+        <button onclick="window.print();" style="padding: 8px 16px; font-weight: bold; cursor: pointer; ;">🖨️ Cetak / Print PDF</button>
     </div>
 
     <div class="header">
@@ -171,7 +111,7 @@ if ($hdrId) {
             </tbody>
         </table>
     <?php else: ?>
-        <p style="text-align: center; color: red;">Data Kurs Pajak tidak ditemukan.</p>
+        <p style="text-align: center">Data Kurs Pajak tidak ditemukan.</p>
     <?php endif; ?>
 
     <div class="footer">

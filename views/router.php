@@ -79,7 +79,7 @@ try {
               <img src="../assets/favicon.ico" alt="Logo" class="h-8 w-auto object-contain">
             <?php else: ?>
               <span class="text-lg font-normal tracking-wider">[XYZ]SYS</span>
-              <span class="text-xs px-1.5 py-0.5 rounded border" style="background: var(--bg-deep); color: var(--accent); border-color: var(--border-strong);">v1.0</span>
+              <span class="text-xs px-1.5 py-0.5 rounded border" >v1.0</span>
             <?php endif; ?>
           </a>
           <span class="text-sm font-medium"><?= htmlspecialchars($form['group_name']) ?></span>

@@ -132,7 +132,7 @@ Ext.onReady(function () {
             header: 'Status', dataIndex: 'active', width: 80, align: 'center',
             renderer: function (v) {
                 var isAct = (v === true || v === 'true' || v === 't' || v === 1 || v === '1');
-                return isAct ? '<span style="color:#4ade80;font-weight:bold;">Aktif</span>' : '<span style="color:#888;">Nonaktif</span>';
+                return isAct ? '<span style="font-weight:bold">Aktif</span>' : '<span >Nonaktif</span>';
             }
         }
         ],
@@ -164,14 +164,14 @@ Ext.onReady(function () {
             success: function (response) {
                 var res = Ext.util.JSON.decode(response.responseText);
                 if (!res.success) {
-                    binDtlDiv.innerHTML = '<div style="padding:15px; color:yellow;">Gagal memuat detail stok Bin Location.</div>';
+                    binDtlDiv.innerHTML = '<div style="padding:15px">Gagal memuat detail stok Bin Location.</div>';
                     binDtlDiv.style.display = 'block';
                     return;
                 }
                 renderBinDetailView(res.data || [], binCode, warehouseName);
             },
             failure: function () {
-                binDtlDiv.innerHTML = '<div style="padding:15px; color:red;">Gagal terhubung ke server.</div>';
+                binDtlDiv.innerHTML = '<div style="padding:15px">Gagal terhubung ke server.</div>';
                 binDtlDiv.style.display = 'block';
             }
         });
@@ -179,30 +179,30 @@ Ext.onReady(function () {
 
     function renderBinDetailView(rows, binCode, warehouseName) {
         var fmtQty = function (v) { return Ext.util.Format.number(v || 0, '0,000.0000'); };
-        var html = '<div style="position:sticky; top:0; background:#1e222d; z-index:10; padding:12px 15px 0 15px; border-bottom:1px solid rgba(255,255,255,0.2);">' +
-                   '  <h3 style="margin:0 0 10px 0; color:#ffffff !important; font-size:14px;">' +
+        var html = '<div style="position:sticky; top:0; z-index:10; padding:12px 15px 0 15px; border-bottom:1px solid rgba(255,255,255,0.2)">' +
+                   '  <h3 style="margin:0 0 10px 0; font-size:14px">' +
                    '    Rincian Stok Barang pada Bin: ' + Ext.util.Format.htmlEncode(binCode || '') + ' (' + Ext.util.Format.htmlEncode(warehouseName || '') + ')' +
                    '  </h3>' +
-                   '  <table width="100%" style="border-collapse:collapse; font-size:12.5px;">' +
+                   '  <table width="100%" style="border-collapse:collapse; font-size:12.5px">' +
                    '    <thead><tr>' +
-                   '      <th align="left" style="width:20%; padding:8px 6px; color:#cccccc !important;">Kode Item</th>' +
-                   '      <th align="left" style="width:45%; padding:8px 6px; color:#cccccc !important;">Nama Barang / Item</th>' +
-                   '      <th align="left" style="width:15%; padding:8px 6px; color:#cccccc !important;">Grade</th>' +
-                   '      <th align="right" style="width:20%; padding:8px 6px; color:#cccccc !important;text-align: right !important;">Qty Stok</th>' +
+                   '      <th align="left" style="width:20%; padding:8px 6px">Kode Item</th>' +
+                   '      <th align="left" style="width:45%; padding:8px 6px">Nama Barang / Item</th>' +
+                   '      <th align="left" style="width:15%; padding:8px 6px">Grade</th>' +
+                   '      <th align="right" style="width:20%; padding:8px 6px;text-align: right !important">Qty Stok</th>' +
                    '    </tr></thead>' +
                    '  </table></div>';
 
-        html += '<div style="padding:0 15px 12px 15px;"><table width="100%" style="border-collapse:collapse; font-size:12.5px;"><tbody>';
+        html += '<div style="padding:0 15px 12px 15px"><table width="100%" style="border-collapse:collapse; font-size:12.5px"><tbody>';
         if (!rows || rows.length === 0) {
-            html += '<tr><td colspan="4" style="padding:20px; text-align:center; color:#aaaaaa !important;">Tidak ada barang tersimpan di lokasi rak/bin ini.</td></tr>';
+            html += '<tr><td colspan="4" style="padding:20px; text-align:center">Tidak ada barang tersimpan di lokasi rak/bin ini.</td></tr>';
         } else {
             Ext.each(rows, function (r) {
                 var qty = parseFloat(r.qty) || 0;
-                html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.08);">' +
-                        '  <td style="width:20%; padding:7px 6px; color:#ffffff !important; font-family:monospace;">' + Ext.util.Format.htmlEncode(r.item_code || '-') + '</td>' +
-                        '  <td style="width:45%; padding:7px 6px; color:#ffffff !important;">' + Ext.util.Format.htmlEncode(r.item_name || '-') + '</td>' +
-                        '  <td style="width:15%; padding:7px 6px; color:#ffffff !important;">' + Ext.util.Format.htmlEncode(r.grade_name || '-') + '</td>' +
-                        '  <td style="width:20%; padding:7px 6px; color:#4ade80 !important; font-weight:bold;" align="right">' + fmtQty(qty) + '</td>' +
+                html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.08)">' +
+                        '  <td style="width:20%; padding:7px 6px;">' + Ext.util.Format.htmlEncode(r.item_code || '-') + '</td>' +
+                        '  <td style="width:45%; padding:7px 6px">' + Ext.util.Format.htmlEncode(r.item_name || '-') + '</td>' +
+                        '  <td style="width:15%; padding:7px 6px">' + Ext.util.Format.htmlEncode(r.grade_name || '-') + '</td>' +
+                        '  <td style="width:20%; padding:7px 6px; font-weight:bold" align="right">' + fmtQty(qty) + '</td>' +
                         '</tr>';
             });
         }

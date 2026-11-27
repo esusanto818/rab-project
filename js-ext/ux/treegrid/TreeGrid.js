@@ -75,10 +75,10 @@ Ext.ux.tree.TreeGrid = Ext.extend(Ext.tree.TreePanel, {
                 '<div class="x-grid3-header">',
                     '<div class="x-treegrid-header-inner">',
                         '<div class="x-grid3-header-offset">',
-                            '<table style="table-layout: fixed;" cellspacing="0" cellpadding="0" border="0"><colgroup><tpl for="columns"><col /></tpl></colgroup>',
+                            '<table style="table-layout: fixed" cellspacing="0" cellpadding="0" border="0"><colgroup><tpl for="columns"><col /></tpl></colgroup>',
                             '<thead><tr class="x-grid3-hd-row">',
                             '<tpl for="columns">',
-                            '<td class="x-grid3-hd x-grid3-cell x-treegrid-hd" style="text-align: {align};" id="', this.id, '-xlhd-{#}">',
+                            '<td class="x-grid3-hd x-grid3-cell x-treegrid-hd" style="text-align: {align}" id="', this.id, '-xlhd-{#}">',
                                 '<div class="x-grid3-hd-inner x-treegrid-hd-inner" unselectable="on">',
                                      this.enableHdMenu ? '<a class="x-grid3-hd-btn" href="#"></a>' : '',
                                      '{header}<img class="x-grid3-sort-icon" src="', Ext.BLANK_IMAGE_URL, '" />',
@@ -89,7 +89,7 @@ Ext.ux.tree.TreeGrid = Ext.extend(Ext.tree.TreePanel, {
                     '</div></div>',
                 '</div>',
                 '<div class="x-treegrid-root-node">',
-                    '<table class="x-treegrid-root-table" cellpadding="0" cellspacing="0" style="table-layout: fixed;"></table>',
+                    '<table class="x-treegrid-root-table" cellpadding="0" cellspacing="0" style="table-layout: fixed"></table>',
                 '</div>'
             );
         }

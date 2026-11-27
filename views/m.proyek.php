@@ -14,9 +14,7 @@
 ?>
 <html>
     <head>
-        <style>
-            #editorForm {top: 30%; width: 90%; }
-        </style>
+        
         <title id="page-title">PROYEK</title>
         <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/ext-3.4.1/resources/css/ext-all.css" />
         <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/mainCSS.css" />

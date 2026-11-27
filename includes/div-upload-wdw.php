@@ -1,4 +1,4 @@
-<div id="uploadWdw" class="clsModalWdw" style="z-index:300; display:none;">
+<div id="uploadWdw" class="clsModalWdw" style="z-index:300; display:none">
   <div id="black_overlay"></div>
   <div id="uploadForm">
     <div id="uploadFormHeader">

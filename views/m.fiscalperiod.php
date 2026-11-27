@@ -14,19 +14,7 @@
 ?>
 <html>
     <head>
-        <style>
-            #editorForm {top: 30%; width: 50%;}
-            #editorFormHeaderMenu {
-                position: relative;
-                float: right;
-                width: 30%; 
-            }
-             #editorFormHeaderText {
-                position: relative;
-                float: right;
-                width: 50%; 
-            }
-        </style>
+        
         <title id="page-title">Fiscal Period</title>
         <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
     </head>

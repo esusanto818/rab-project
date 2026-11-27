@@ -30,204 +30,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Dashboard Mobile</title>
 <link rel="shortcut icon" href="<?php echo $B; ?>/../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
-<style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #020b14;
-    color: #e2e8f0;
-    padding: 12px;
-    padding-bottom: 80px;
-}
-.header {
-    background: linear-gradient(135deg, #066b78 0%, #0b1d2b 100%);
-    padding: 16px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-}
-.header h1 {
-    font-size: 20px;
-    color: #22d3ee;
-    font-weight: 700;
-    margin-bottom: 4px;
-}
-.header p {
-    font-size: 12px;
-    color: #94a3b8;
-}
-.status-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    font-size: 11px;
-}
-.pill {
-    padding: 4px 10px;
-    border-radius: 12px;
-    background: #1e3a52;
-    color: #22d3ee;
-    font-weight: 600;
-}
-.pill.off { background: #3b1212; color: #ff6b5e; }
 
-/* Project Selector */
-.project-selector {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 16px;
-}
-.project-selector label {
-    display: block;
-    font-size: 12px;
-    color: #94a3b8;
-    margin-bottom: 6px;
-    font-weight: 600;
-}
-.project-selector select {
-    width: 100%;
-    padding: 10px 12px;
-    background: #061522;
-    color: #fff;
-    border: 1px solid #1e3a52;
-    border-radius: 6px;
-    font-size: 14px;
-    -webkit-appearance: none;
-}
-
-/* KPI Cards */
-.kpi-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-bottom: 16px;
-}
-.kpi-card {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    padding: 14px;
-    text-align: center;
-}
-.kpi-card .kpi-icon { font-size: 24px; margin-bottom: 6px; }
-.kpi-card .kpi-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.kpi-card .kpi-value { font-size: 18px; font-weight: 700; color: #fff; font-family: 'Courier New', monospace; }
-.kpi-card .kpi-sub { font-size: 10px; color: #64748b; margin-top: 4px; }
-
-/* Section */
-.section {
-    background: #0d2137;
-    border: 1px solid #1e3a52;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 16px;
-}
-.section-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #22d3ee;
-    margin-bottom: 10px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #1e3a52;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-/* Project Health Cards */
-.health-card {
-    background: #0a1929;
-    border: 1px solid #1e3a52;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    transition: border-color 0.2s;
-}
-.health-card:active { border-color: #22d3ee; }
-.health-card .hc-name { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 6px; }
-.health-card .hc-stats { display: flex; gap: 12px; font-size: 12px; color: #94a3b8; flex-wrap: wrap; }
-.health-card .hc-stats b { color: #fff; }
-.health-badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 700;
-    margin-left: auto;
-}
-.badge-normal { background: #0f2f22; color: #2e9e4f; border: 1px solid #2e9e4f; }
-.badge-waspada { background: #3a2c08; color: #e6a817; border: 1px solid #e6a817; }
-.badge-kritis { background: #3b1212; color: #ff6b5e; border: 1px solid #ff6b5e; }
-
-/* Action Items */
-.action-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 12px;
-    background: #0a1929;
-    border-radius: 8px;
-    margin-bottom: 6px;
-    border-left: 4px solid;
-}
-.action-item.danger { border-left-color: #f43f5e; }
-.action-item.warn { border-left-color: #f59e0b; }
-.action-item.info { border-left-color: #22d3ee; }
-.action-item .ai-label { font-size: 13px; color: #e2e8f0; flex: 1; }
-.action-item .ai-label small { display: block; font-size: 10px; color: #64748b; margin-top: 2px; }
-.action-item .ai-count { font-size: 18px; font-weight: 700; font-family: 'Courier New', monospace; }
-
-/* Loading */
-.loading { text-align: center; padding: 20px; color: #64748b; font-size: 13px; }
-.loading .spinner {
-    display: inline-block;
-    width: 20px; height: 20px;
-    border: 2px solid #1e3a52;
-    border-top-color: #22d3ee;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Empty */
-.empty { text-align: center; padding: 20px; color: #64748b; font-size: 13px; }
-
-/* Bottom Navigation */
-.bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: #0b1d2b;
-    border-top: 1px solid #1e3a52;
-    padding: 10px;
-    display: flex;
-    justify-content: space-around;
-    z-index: 100;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
-}
-.bottom-nav a {
-    color: #94a3b8;
-    text-decoration: none;
-    font-size: 11px;
-    text-align: center;
-    flex: 1;
-    padding: 6px 0;
-    border-radius: 6px;
-    transition: all 0.2s;
-}
-.bottom-nav a:active { background: rgba(34, 211, 238, 0.1); }
-.bottom-nav a.active { color: #22d3ee; font-weight: 700; }
-
-/* Responsive */
-@media (min-width: 768px) { body { max-width: 600px; margin: 0 auto; } }
-</style>
 </head>
 <body>
 
@@ -238,7 +41,7 @@ body {
 
 <div class="status-bar">
     <span class="pill" id="pillNet">online</span>
-    <span style="font-size:11px;color:#64748b;">Dashboard Mobile v1.0</span>
+    <span style="font-size:11px">Dashboard Mobile v1.0</span>
 </div>
 
 <!-- Project Selector -->
@@ -266,7 +69,7 @@ body {
     <div class="kpi-card">
         <div class="kpi-icon">⚡</div>
         <div class="kpi-label">Butuh Tindakan</div>
-        <div class="kpi-value" id="kpiActions" style="color:#f43f5e;">-</div>
+        <div class="kpi-value" id="kpiActions" >-</div>
         <div class="kpi-sub">Item urgent</div>
     </div>
     <div class="kpi-card">
@@ -401,7 +204,7 @@ function loadActions() {
         items.forEach(function (i) {
             h += '<div class="action-item ' + (i.level || 'info') + '">' +
                  '<div class="ai-label">' + esc(i.label) + '<small>' + esc(i.hint || '') + '</small></div>' +
-                 '<div class="ai-count" style="color:' + (i.level === 'danger' ? '#f43f5e' : (i.level === 'warn' ? '#f59e0b' : '#22d3ee')) + ';">' + i.count + '</div>' +
+                 '<div class="ai-count" >' + i.count + '</div>' +
                  '</div>';
         });
         $('actionList').innerHTML = h;
