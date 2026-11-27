@@ -8,69 +8,7 @@
                    Qty retur dibatasi qty issue bersih proyek; reverse hanya bila stok hasil retur belum terpakai.
   Backend       : /proyek/php-crud/material.leftoverCRD.php
 */
-Ext.onReady(function () {
-    Ext.QuickTips.init();
-    document.getElementById("mainHeaderText").innerHTML = "Material <em>Left Over</em>";
-
-    var CRD = main_url + '/php-crud/material.leftoverCRD.php';
-    var ACCESS_ADD = 2;                 // buat retur sisa
-    var ACCESS_EDIT = 3;                // reverse
-    var EPS = 0.00005;
-    var BTN_CLS = 'field-button grey-field-button';     // gaya tombol template (tombol Ext bawaan tidak terbaca di tema gelap)
-    var dataRecord = null;              // dokumen terpilih (tab 1)
-    var activeKey = 'docs';
-
-    function getFormAccess() { return (typeof formAccess !== 'undefined') ? formAccess : (window.formAccess || 0); }
-    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
-    function fmtQty(v) { return Ext.util.Format.number(v || 0, '0,000.0000'); }
-    function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
-    function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
-    function ymd(d) { return d ? d.dateFormat('Y-m-d') : ''; }      // Date.format('Y-m-d') pernah salah di browser (lihat catatan), pakai dateFormat
-
-    function ajax(params, onOk, onFail) {
-        Ext.Ajax.request({
-            url: CRD, method: 'POST', params: params,
-            success: function (r) {
-                var o;
-                try { o = Ext.decode(r.responseText); } catch (e) { showErr('Respons server tidak valid (cek error_log PHP).'); return; }
-                onOk(o);
-            },
-            failure: function () { if (onFail) onFail(); else showErr('Gagal menghubungi server.'); }
-        });
-    }
-    function storeError(proxy, type, action, opt, res) {
-        var m = 'Gagal memuat data dari server.';
-        if (res && res.message) { m = res.message; } else if (res && res.status) { m += ' (HTTP ' + res.status + ')'; }
-        showErr(m);
-    }
-    function jsonStore(task, fields) {
-        return new Ext.data.JsonStore({ url: CRD, baseParams: { task: task }, root: 'data', totalProperty: 'totalCount', fields: fields,
-                                         listeners: { exception: storeError } });
-    }
-    var fl = function (n) { return { name: n, type: 'float' }; };
-
-    // ------------------------------------------------------------
-    // 0. Gaya & kerangka (tab seperti Pengaturan Sistem, tema gelap)
-    // ------------------------------------------------------------
-    (function injectCss() {
-        var css = [
-            '.lo-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}',
-            '.lo-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}',
-            '.lo-tab:hover{background:rgba(43,193,226,.06);}',
-            '.lo-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}',
-            '.lo-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;} .lo-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}',
-            '.lo-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}',
-            '.lo-tab.active svg{stroke:#2bc1e2;} .lo-tab.active .tt{color:#2bc1e2;} .lo-tab.active .st{color:#7fa3b8;}',
-            '.lo-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}',
-            '.lo-filter select{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;min-width:240px;}',
-            '.lo-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}',
-            '.lo-panel{padding:0 8px 8px 8px;}'
-        ].join('\n');
-        var st = document.createElement('style');
-        st.type = 'text/css';
-        st.appendChild(document.createTextNode(css));
-        document.head.appendChild(st);
-    })();
+Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
 
     var ICON = {
         docs: '<svg viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>',

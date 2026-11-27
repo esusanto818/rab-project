@@ -31,6 +31,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 <title>Dashboard Mobile</title>
 <link rel="shortcut icon" href="<?php echo $B; ?>/../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
 

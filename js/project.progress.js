@@ -14,53 +14,10 @@
                   muncul di baris klaim berstatus Diajukan. Edit / Hapus sengaja dinonaktifkan (klaim tidak boleh diubah: jejak audit).
 */
 
-Ext.onReady(function () {
-    Ext.QuickTips.init();
-    // [NEW] gaya dialog gelap (sama dengan dialog Konfirmasi Dikirim di Warehouse Issuing) agar tombol & field terbaca
-    (function () {
-        if (document.getElementById('whDarkWinCss')) { return; }
-        var st = document.createElement('style');
-        st.id = 'whDarkWinCss';
-        st.innerHTML = '.whDarkWin .x-window-body, .whDarkWin .x-panel-body { background:#0d2233 !important; color:#e6f1f5 !important; }' +
-                       '.whDarkWin .x-form-item label { color:#9fc3d1 !important; }' +
-                       '.whDarkWin .x-form-field { background:#14324a !important; color:#ffffff !important; border-color:#2b5d7a !important; }' +
-                       '.whDarkWin .x-form-display-field{color:#e2e8f0 !important;}' +
-                       '.whDarkWin .x-btn button{color:#ffffff !important;font-weight:bold !important;opacity:1 !important;}' +
-                       '.whDarkWin .x-btn-tl,.whDarkWin .x-btn-tr,.whDarkWin .x-btn-tc,.whDarkWin .x-btn-ml,.whDarkWin .x-btn-mr,' +
-                       '.whDarkWin .x-btn-bl,.whDarkWin .x-btn-br,.whDarkWin .x-btn-bc{background:none !important;background-image:none !important;}' +
-                       '.whDarkWin .x-btn-mc{background-color:#2e7dd1 !important;background-image:none !important;border-radius:4px;}' +
-                       '.whDarkWin .x-btn-over .x-btn-mc{background-color:#4695e6 !important;}' +
-                       '.whDarkWin .x-btn-mc button{padding:7px 18px !important;height:auto !important;line-height:18px !important;font-size:13px !important;}';
-        document.getElementsByTagName('head')[0].appendChild(st);
-    })();
+Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
 
     // CSS Tombol Ikon Aksi Satu Baris
-    (function () {
-        if (document.getElementById('pgActBtnCss')) { return; }
-        var st = document.createElement('style');
-        st.id = 'pgActBtnCss';
-        st.innerHTML = 
-            '.btn-act-icon {' +
-            '   display: inline-flex !important;' +
-            '   align-items: center !important;' +
-            '   justify-content: center !important;' +
-            '   width: 28px !important;' +
-            '   height: 28px !important;' +
-            '   padding: 0 !important;' +
-            '   border: none !important;' +
-            '   border-radius: 4px !important;' +
-            '   cursor: pointer !important;' +
-            '   transition: all 0.2s ease !important;' +
-            '}' +
-            '.btn-act-icon svg { display: block; }' +
-            '.btn-verify { background-color: #03615e !important; color: #ffffff !important; }' +
-            '.btn-verify:hover { background-color: #048a86 !important; transform: scale(1.08); }' +
-            '.btn-reject { background-color: #8e2b22 !important; color: #ffffff !important; }' +
-            '.btn-reject:hover { background-color: #b8382c !important; transform: scale(1.08); }' +
-            '.btn-cancel { background-color: #4a5568 !important; color: #ffffff !important; }' +
-            '.btn-cancel:hover { background-color: #718096 !important; transform: scale(1.08); }';
-        document.getElementsByTagName('head')[0].appendChild(st);
-    })();
+    /* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
 
     document.getElementById("mainHeaderText").innerHTML = "Progress <em>Proyek</em>";
 

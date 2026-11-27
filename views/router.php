@@ -67,6 +67,7 @@ try {
   <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
   <link rel="icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">
   <link rel="apple-touch-icon" href="../favicon.ico?v=<?=$favVer?>">
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body class="min-h-screen bg-[var(--background-color)] text-[var(--text-color)]">
   <!-- HEADER -->

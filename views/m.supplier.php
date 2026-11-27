@@ -16,8 +16,8 @@
 	<head>
 		
 		<title id="page-title">Supplier List</title>
-    <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-	</head>
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
 	<body>
 	</body>
   <script type="text/javascript" src="/rab-project/js-ext/ux/CheckColumn.js"></script>

@@ -15,11 +15,8 @@
       
       <title id="page-title">Warehouse</title>
       <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/ext-3.4.1/resources/css/ext-all.css" />
-      <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/mainCSS.css" />
-      <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/header.black.css" />
-      <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/grddetail.css" />
-      <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/frm.css" />
-    </head>
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
     <body>
     <script type="text/javascript" src="../js/m.warehouse.js"></script>
     <script type="text/javascript">

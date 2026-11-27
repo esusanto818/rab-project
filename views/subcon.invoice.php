@@ -13,11 +13,7 @@ $B = rtrim(dirname($_SERVER["SCRIPT_NAME"]), "/");
 <head>
 <title id="page-title">Invoice Subkontraktor</title>
 <link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/ext-3.4.1/resources/css/ext-all.css" />
-<link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/mainCSS.css" />
-<link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/header.black.css" />
-<link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/grddetail.css" />
-<link rel="stylesheet" type="text/css" href="<?php echo $B; ?>/css/frm.css" />
-
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
 </body>

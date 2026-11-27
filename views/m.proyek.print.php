@@ -12,6 +12,7 @@ require_once __DIR__ . '/../php-func/user.valid.php';
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cetak Proyek</title>
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
 <div class="toolbar"><button class="print" id="btnPrint" type="button">Cetak / Simpan PDF</button><button class="close" id="btnClose" type="button">Tutup</button></div>

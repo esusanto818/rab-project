@@ -12,13 +12,11 @@
     <head>
         
         <title id="page-title">Purchase Invoice</title>
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-        <script type="text/javascript">
+<script type="text/javascript">
             window.formAccess = <?php echo json_encode(intval($_SESSION["FormAccess"] ?? 0)); ?>;
         </script>
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />
-    </head>
+<link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
     <body>
     </body>
     <script type="text/javascript" src="../js-ext/ux/CheckColumn.js"></script>

@@ -12,10 +12,9 @@
 ?>
 <html>
   <head>
-    <link rel="stylesheet" type="text/css" href="../css/header.black.css"/>
-    
-    <title id="page-title">Location Name</title>
-  </head>
+<title id="page-title">Location Name</title>
+      <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
   <script type="text/javascript" src="../js-ext/ux/CheckColumn.js"></script>
   <script type="text/javascript" src="../js/m.location.js"></script>
   <script type="text/javascript">

@@ -22,6 +22,7 @@ $materials->execute();
     <title>Input RAB Material</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" type="text/css" href="../css/menu.css" />
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body class="bg-slate-900 text-slate-100 p-6">
     

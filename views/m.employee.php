@@ -16,9 +16,8 @@
 <html>
   <head>
     <title id="page-title">Employee List</title>
-    <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-    
-  </head>
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
   <body>
     <script type="text/javascript" src="/rab-project/js-ext/ux/CheckColumn.js"></script>
     <script type="text/javascript" src="/rab-project/js-ext/ux/RowExpander.js"></script>

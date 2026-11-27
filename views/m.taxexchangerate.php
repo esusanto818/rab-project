@@ -11,11 +11,9 @@
 ?>
 <html>
     <head>
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
-        
-        <title id="page-title">Kurs Pajak (KMK)</title>
-    </head>
+<title id="page-title">Kurs Pajak (KMK)</title>
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
     <body>
     </body>
     <script type="text/javascript" src="/rab-project/dev/js/m.taxexchangerate.js"></script>

@@ -29,6 +29,7 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <?php $favVer = date('YmdHis'); ?>
 <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">

@@ -35,6 +35,7 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 <script src="../assets/js/chart.umd.js?v=<?= @filemtime(__DIR__ . '/../assets/js/chart.umd.js') ?: date('YmdHis') ?>"></script>
 <link rel="stylesheet" href="../assets/css/fonts.css?v=<?= @filemtime(__DIR__ . '/../assets/css/fonts.css') ?: date('YmdHis') ?>">
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <?php $favVer = date('YmdHis'); ?>
 <link rel="shortcut icon" href="../favicon.ico?v=<?=$favVer?>" type="image/x-icon">

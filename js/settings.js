@@ -43,41 +43,7 @@ Ext.onReady(function () {
 
     // Gaya ringan agar label & teks bantuan terbaca di tema gelap
     if (!document.getElementById('settingsStyle')) {
-        var st = document.createElement('style');
-        st.id = 'settingsStyle';
-        st.innerHTML =
-            '#divMainGrid .x-form-item label { color: #9fc3d1 !important; }' +
-            '#divMainGrid textarea.x-form-textarea { background: #041426 !important; color: #cbd5e1 !important; border: 1px solid #1a3a52 !important; border-radius: 4px; padding: 6px 8px !important; line-height: 1.5; font-family: inherit; resize: vertical; }' +
-            '#divMainGrid textarea.x-form-textarea.x-form-focus { border-color: #38bdf8 !important; }' +
-            '.st-nav { position: relative; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; border-bottom: 1px solid #1a3a52; margin-bottom: 14px; }' +
-            '.st-tab { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #7f9fb0; cursor: pointer; padding: 10px 20px 12px 14px; border-radius: 8px 8px 0 0; transition: color .2s, background .2s; font-family: inherit; text-align: left; }' +
-            '.st-tab:hover { background: rgba(56,189,248,.06); color: #bfe3f5; }' +
-            '.st-tab.on { color: #38bdf8; background: linear-gradient(180deg, rgba(56,189,248,.12), rgba(56,189,248,0)); }' +
-            '.st-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }' +
-            '.st-txt b { display: block; font-size: 13px; font-weight: 600; letter-spacing: .2px; }' +
-            '.st-txt small { display: block; font-size: 10.5px; opacity: .75; margin-top: 1px; }' +
-            '.st-bar { position: absolute; left: 0; bottom: -1px; height: 3px; width: 0; border-radius: 3px 3px 0 0; background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc); box-shadow: 0 0 10px rgba(56,189,248,.55); transition: transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1); }' +
-            '@keyframes stIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }' +
-            '.st-in { animation: stIn .22s ease-out; }' +
-            '.set-note { margin: 4px 0 14px 0; padding: 10px 14px; border-radius: 4px; background: #0b2236; border: 1px solid #1a3a52; color: #9fc3d1; font-size: 12px; line-height: 1.6; }' +
-            '.set-note b { color: #38bdf8; }' +
-            '.set-warn { background: #3b2f0b; border-color: #8a6d1c; color: #f5c542; }' +
-            '.logo-card { display: inline-block; vertical-align: top; width: 420px; margin: 0 20px 20px 0; padding: 14px; border: 1px solid #1a3a52; border-radius: 6px; background: #0b2236; }' +
-            '.logo-card h4 { margin: 0 0 4px 0; color: #38bdf8; font-size: 14px; }' +
-            '.logo-card .hint { color: #7f9fb0; font-size: 11px; margin-bottom: 10px; line-height: 1.5; }' +
-            '.logo-box { height: 130px; display: flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 4px; margin-bottom: 10px; overflow: hidden; }' +
-            '.logo-box img { max-width: 100%; max-height: 120px; }' +
-            '.logo-box .none { color: #888; font-size: 12px; }' +
-            '.logo-card button { padding: 6px 14px; margin-right: 6px; border: none; border-radius: 3px; cursor: pointer; color: #fff; font-weight: bold; }' +
-            '.logo-card .btn-up { background: #03615e; } .logo-card .btn-del { background: #8e2b22; }' +
-            '.logo-card button[disabled] { opacity: .45; cursor: not-allowed; }' +
-            '.doc-preview { background: #ffffff; color: #222; padding: 18px 22px; border-radius: 4px; max-width: 760px; font-family: Arial, sans-serif; }' +
-            '.doc-preview .head { display: flex; align-items: center; border-bottom: 2px solid #222; padding-bottom: 10px; }' +
-            '.doc-preview .head img { max-height: 70px; max-width: 160px; margin-right: 16px; }' +
-            '.doc-preview .co { font-size: 17px; font-weight: bold; } .doc-preview .ad { font-size: 11px; line-height: 1.5; color: #444; }' +
-            '.doc-preview .body { padding: 26px 0; color: #999; font-size: 12px; text-align: center; }' +
-            '.doc-preview .sign { text-align: right; font-size: 12px; margin-top: 10px; } .doc-preview .foot { border-top: 1px solid #bbb; margin-top: 16px; padding-top: 6px; font-size: 10px; color: #666; }';
-        document.head.appendChild(st);
+        /* [CSS-UNIFIED] Style node dipindahkan ke css/app-theme.css */
     }
 
     // ------------------------------------------------------------

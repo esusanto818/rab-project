@@ -57,6 +57,7 @@ function methodLabel($v) {
 <meta charset="UTF-8">
 <title>Daftar Pembayaran Supplier</title>
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
 

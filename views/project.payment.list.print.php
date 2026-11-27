@@ -9,6 +9,7 @@ include "../php-func/user.valid.php";
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Daftar Pembayaran - RAB-Monitor</title>
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
 <div class="toolbar">

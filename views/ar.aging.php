@@ -13,11 +13,8 @@
     <head>
         <title id="page-title">Kartu Piutang &amp; Aging</title>
         <link rel="stylesheet" type="text/css" href="../ext-3.4.1/resources/css/ext-all.css" />
-        <link rel="stylesheet" type="text/css" href="../css/mainCSS.css" />
-        <link rel="stylesheet" type="text/css" href="../css/header.black.css" />
-        <link rel="stylesheet" type="text/css" href="../css/grddetail.css" />
-        <link rel="stylesheet" type="text/css" href="../css/frm.css" />
-    </head>
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
     <body>
     </body>
     <script type="text/javascript">

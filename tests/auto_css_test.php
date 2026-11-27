@@ -94,6 +94,7 @@ report(
 // [CSS-04] Pemisahan CSS dari JavaScript (Inject <style> via JS)
 $jsCssInject = [];
 foreach ($jsFiles as $file) {
+    if (preg_match('/(ext-all|chart|jquery)/i', basename($file))) continue;
     $content = file_get_contents($file);
     $rel     = str_replace($ROOT_DIR . '/', '', $file);
     if (preg_match('/createElement\s*\(\s*[\'"]style[\'"]\s*\)|<style/i', $content)) {

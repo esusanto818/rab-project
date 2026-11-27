@@ -16,12 +16,9 @@
 	  <head>
 		
 		<title id="page-title">User List</title>
-      <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
-      <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />
-      <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-      p<link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
-    <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />
-	</head>
+      <link rel="stylesheet" type="text/css" href="../ext-3.4.1/resources/css/ext-all.css" />
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
 	<body>
   <script type="text/javascript" src="../dev/js-ext/ux/CheckColumn.js"></script>
   <script type="text/javascript" src="../dev/js/m.user.system.js"></script>

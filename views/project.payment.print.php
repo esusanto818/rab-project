@@ -14,6 +14,7 @@ $paymentId = intval($_GET['id'] ?? 0);
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Tanda Terima Pembayaran Proyek</title>
     
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
     <div class="toolbar">

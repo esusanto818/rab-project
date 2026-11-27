@@ -61,6 +61,7 @@ $mainMenus = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         }
     </script>
     
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body class="font-body text-slate-200 antialiased select-none">
 

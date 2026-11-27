@@ -9,74 +9,7 @@
                    PPN Kurang(+) / Lebih(-) Bayar = PPN Keluaran - PPN Masukan.
   Backend       : /proyek/php-crud/ppn.reportCRD.php
 */
-Ext.onReady(function () {
-    Ext.QuickTips.init();
-    document.getElementById("mainHeaderText").innerHTML = "Laporan <em>PPN</em>";
-
-     var CRD = main_url + '/php-crud/ppn.reportCRD.php';
-    var MONTHS = [[1, 'Januari'], [2, 'Februari'], [3, 'Maret'], [4, 'April'], [5, 'Mei'], [6, 'Juni'],
-                  [7, 'Juli'], [8, 'Agustus'], [9, 'September'], [10, 'Oktober'], [11, 'November'], [12, 'Desember']];
-
-    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? '' : v); }
-    function fmtAmt(v) { return Ext.util.Format.number(v || 0, '0,000.00'); }
-    function showErr(msg) { Ext.Msg.show({ title: 'Peringatan', msg: msg, buttons: Ext.Msg.OK, icon: Ext.Msg.WARNING }); }
-
-    // Exception store: pesan backend / HTTP ditampilkan eksplisit
-    function storeError(proxy, type, action, opt, res) {
-        var m = 'Gagal memuat data dari server.';
-        if (res && res.message) { m = res.message; }
-        else if (res && res.status) { m += ' (HTTP ' + res.status + ')'; }
-        showErr(m);
-    }
-    function jsonStore(task, fields, extra) {
-        var cfg = {
-            url: CRD, baseParams: { task: task }, root: 'data', totalProperty: 'totalCount', fields: fields,
-            listeners: { exception: storeError }
-        };
-        return new Ext.data.JsonStore(Ext.apply(cfg, extra || {}));
-    }
-
-    var floatF = function (n) { return { name: n, type: 'float' }; };
-
-    // PENTING: assignment polos (bukan var/let) -- konvensi search box global. Store ringkasan = mainDs.
-    mainDs = jsonStore('list_summary', ['project_id', 'project_name', floatF('keluaran_dpp'), floatF('keluaran_ppn'),
-                                         floatF('masukan_dpp'), floatF('masukan_ppn'), floatF('net_ppn')]);
-    var kelDs = jsonStore('list_keluaran', ['id', 'tax_date', 'inv_no', 'termin_name', 'project_name', 'counterparty', 'faktur_pajak_no',
-                                             floatF('dpp_amount'), floatF('ppn_rate'), floatF('ppn_amount'), floatF('total_amount')]);
-    var masDs = jsonStore('list_masukan', ['id', 'tax_date', 'inv_no', 'supplier_invoice_no', 'project_name', 'counterparty', 'npwp_no', 'faktur_pajak_no',
-                                            floatF('dpp_amount'), floatF('ppn_rate'), floatF('ppn_amount'), floatF('total_amount')]);
-    var projectDs = jsonStore('list_projects', ['id', 'name']);
-
-    // ------------------------------------------------------------
-    // Gaya tab & filter (tema gelap, mengikuti tab Pengaturan Sistem)
-    // ------------------------------------------------------------
-    (function injectCss() {
-        var css = [
-            '.ppn-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}',
-            '.ppn-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}',
-            '.ppn-tab:hover{background:rgba(43,193,226,.06);}',
-            '.ppn-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}',
-            '.ppn-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;}',
-            '.ppn-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}',
-            '.ppn-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}',
-            '.ppn-tab.active svg{stroke:#2bc1e2;}',
-            '.ppn-tab.active .tt{color:#2bc1e2;}',
-            '.ppn-tab.active .st{color:#7fa3b8;}',
-            '.ppn-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}',
-            '.ppn-filter select,.ppn-filter input{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;}',
-            '.ppn-filter input[type=number]{width:80px;}',
-            '.ppn-filter select#ppnProject{min-width:240px;}',
-            '.ppn-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;}',
-            '.ppn-filter .btn.go{background:#03615e;}',
-            '.ppn-filter .btn.exp{background:#2e6da4;margin-left:auto;}',
-            '.ppn-totals{padding:8px 10px;font:13px arial;color:#9fc3d1;background:#031126;border:1px solid #123049;border-radius:3px;margin:0 8px 8px 8px;}',
-            '.ppn-panel{padding:0 8px 8px 8px;}'
-        ].join('\n');
-        var st = document.createElement('style');
-        st.type = 'text/css';
-        st.appendChild(document.createTextNode(css));
-        document.head.appendChild(st);
-    })();
+Ext.onReady/* [CSS-UNIFIED] Styling dipindahkan ke css/app-theme.css */
 
     var ICON = {
         summary: '<svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>',

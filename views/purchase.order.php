@@ -14,9 +14,8 @@
   <!DOCTYPE html>
 	<head>
 		<title id="page-title">Puchase Order</title>
-    <link rel="stylesheet" type="text/css" href="../css/header.black.css" />
-    
-	</head>
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
 	<body>
 	</body>
   <script type="text/javascript" src="../js-ext/ux/CheckColumn.js"></script>

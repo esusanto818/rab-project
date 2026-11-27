@@ -10,12 +10,9 @@
 <html>
     <head>
         <title id="page-title">Deposit Monitoring</title>
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/ext-3.4.1/resources/css/ext-all.css" />
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/mainCSS.css" />
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/header.black.css" />
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
-        <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/frm.css" />
-    <body>
+        <link rel="stylesheet" type="text/css" href="../ext-3.4.1/resources/css/ext-all.css" />
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+<body>
     </body>
     <script type="text/javascript">
         window.formAccess = <?php echo json_encode(intval($_SESSION["FormAccess"] ?? 0)); ?>;

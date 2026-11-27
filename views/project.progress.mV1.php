@@ -23,6 +23,7 @@ header('ngrok-skip-browser-warning: 1');
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
     <header>

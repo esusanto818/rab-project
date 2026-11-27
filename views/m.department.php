@@ -12,13 +12,9 @@
 ?>
 </html>
     <head>
-    <link rel="stylesheet" type="text/css" href="/rab-project/ext-3.4.1/resources/css/ext-all.css" />
-    <link rel="stylesheet" type="text/css" href="/rab-project/css/mainCSS.css" />
-    <link rel="stylesheet" type="text/css" href="/rab-project/css/header.black.css" />
-    <link rel="stylesheet" type="text/css" href="/rab-project/css/grddetail.css" />
-    <link rel="stylesheet" type="text/css" href="/rab-project/css/frm.css" />      
-   
-      <title id="page-title">Department Name</title>
+    <link rel="stylesheet" type="text/css" href="../ext-3.4.1/resources/css/ext-all.css" />
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+<title id="page-title">Department Name</title>
     </head>
     <body>
     <script type="text/javascript" src="../js-ext/ux/CheckColumn.js"></script>

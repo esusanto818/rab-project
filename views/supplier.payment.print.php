@@ -88,6 +88,7 @@ $h = $header;
 <meta charset="UTF-8">
 <title>Bukti Pembayaran Supplier - <?= esc($h['payment_no']) ?></title>
 
+    <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
 </head>
 <body>
 

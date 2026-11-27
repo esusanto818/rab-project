@@ -15,10 +15,9 @@
 ?>
 </html>
   <head>
-    <link rel="stylesheet" type="text/css" href="../css/header.black.css"/>
-    
-    <title id="page-title">Color</title>
-  </head>
+<title id="page-title">Color</title>
+      <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
   <body>
     <script type="text/javascript" src="../js/m.color.js"></script>
     <script type="text/javascript">

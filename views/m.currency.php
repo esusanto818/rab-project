@@ -13,11 +13,9 @@
 
 </html>
     <head>
-      <link rel="stylesheet" type="text/css" href="../css/header.black.css" />
-      
-      <link rel="stylesheet" type="text/css" href="/rab-project/dev/css/grddetail.css" />
-      <title id="page-title">Currency</title>
-    </head>
+<title id="page-title">Currency</title>
+        <link rel="stylesheet" type="text/css" href="../css/app-theme.css" />
+</head>
     <script type="text/javascript" src="../js/m.currency.js"></script>
     <script type="text/javascript">
       document.getElementById('menu').innerHTML='<?php echo $_SESSION["linkMenu"] ?>';

@@ -1518,3 +1518,756 @@ html[data-theme="light"] .x-grid3-row-selected td,
 html[data-theme="light"] .x-grid3-row-selected .x-grid3-cell-inner {
   color: var(--grid-selected-text) !important;
 }
+
+
+/* ==========================================================
+   UNIFIED EXTRACTED STYLES (FROM DASHBOARD & MODULE JS)
+   ========================================================== */
+
+/* --- From views/dashboard.php --- */
+/* ===== PALETTE DEFINITION (DARK - TIDAK DIUBAH) ===== */
+:root {
+--bg-deep: #373647;
+--bg-card: #3f3e52;
+--bg-inner: #4a4960;
+--bg-deeper: #2e2d3d;
+--accent: #728E7E;
+--accent-2: #949C8B;
+--text-main: #C2B8AD;
+--text-sub: #B1A8A8;
+--border-soft: rgba(114, 142, 126, 0.25);
+--border-strong: rgba(114, 142, 126, 0.5);
+--hover-bg: #4a4960;
+--hover-bg-strong: #5a5970;
+--hover-text: #ffffff;
+}
+/* ===== [FIX] LIGHT THEME - Warm Cream, hindari #ffffff silau ===== */
+[data-theme="light"] {
+--bg-deep: #f4f1ea;
+--bg-card: #fbf8f1;
+--bg-inner: #ece7dc;
+--bg-deeper: #e6e0d3;
+--accent: #5f7d6b;
+--accent-2: #8a9482;
+--text-main: #2d2b26;
+--text-sub: #5c564c;
+--border-soft: rgba(95, 125, 107, 0.28);
+--border-strong: rgba(95, 125, 107, 0.55);
+--hover-bg: #e5dfd6;
+--hover-bg-strong: #ddd6c9;
+--hover-text: #2d2b26;
+}
+/* ===== OVERRIDE app-theme.css ===== */
+html, body {
+background-color: var(--bg-deep) !important;
+color: var(--text-main) !important;
+font-family: 'Inter', sans-serif !important;
+overflow-x: hidden !important;
+max-width: 100vw !important;
+transition: background-color .3s ease, color .3s ease;
+}
+body.dashboard-scope { background-color: var(--bg-deep) !important; }
+/* ===== BASE ===== */
+.font-orbitron { font-family: 'Orbitron', sans-serif; }
+.font-rajdhani { font-family: 'Rajdhani', sans-serif; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* ===== HEADER ===== */
+.dash-header {
+background-color: var(--bg-deeper) !important;
+border-bottom: 1px solid var(--border-strong) !important;
+transition: background-color .3s ease, border-color .3s ease;
+}
+/* ===== NAV ===== */
+.nav-item { position: relative; }
+.nav-link {
+color: var(--text-main) !important;
+text-decoration: none !important;
+transition: all 0.2s;
+}
+.nav-link:hover {
+color: var(--hover-text) !important;
+background-color: var(--hover-bg) !important;
+}
+/* ===== DROPDOWN MEGA MENU ===== */
+.dropdown-menu {
+position: absolute; top: 100%; left: 0; z-index: 60;
+width: max-content; max-width: calc(100vw - 16px); box-sizing: border-box;
+max-height: calc(100vh - 90px); overflow-y: auto;
+opacity: 0; visibility: hidden; transform: translateY(-6px);
+pointer-events: none;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-strong) !important;
+transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+.dropdown-menu.open { opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto; }
+.dropdown-menu .menu-wrap { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 2rem; }
+.menu-column { flex: 0 0 auto; min-width: 180px; max-width: 220px; margin-bottom: 1rem; }
+.menu-column h3 {
+font-size: 20px; font-weight: 500;
+color: var(--accent) !important;
+text-transform: uppercase; letter-spacing: 0.05em;
+border-bottom: 1px solid var(--accent);
+padding-bottom: 0.5rem; margin-bottom: 0.5rem;
+}
+.menu-column ul { list-style: none; padding: 0; margin: 0; }
+.menu-column ul li { margin-bottom: 0.25rem; }
+.menu-column ul li a {
+display: block; padding: 0.2rem 0.4rem;
+color: var(--text-main) !important;
+text-decoration: none; font-size: 16px; font-weight: 300;
+transition: all 0.2s; border-radius: 0.25rem;
+}
+.menu-column ul li a:hover {
+color: var(--hover-text) !important;
+background: var(--hover-bg) !important;
+transform: translateX(2px);
+}
+/* ===== MOBILE ===== */
+#hamburger_btn { display: none; }
+#mobile_dropdown {
+min-width: 220px;
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-strong) !important;
+}
+#mobile_dropdown a {
+color: var(--text-main) !important;
+border-bottom: 1px solid var(--border-soft);
+}
+#mobile_dropdown a:hover {
+background-color: var(--hover-bg) !important;
+color: var(--hover-text) !important;
+}
+/* ===== CARDS / PANELS ===== */
+.dash-card {
+background-color: var(--bg-card) !important;
+border: 1px solid var(--border-soft) !important;
+border-radius: 0.75rem;
+transition: background-color .3s ease, border-color .3s ease;
+}
+.dash-card-inner { background-color: var(--bg-inner) !important; }
+/* ===== TABS ===== */
+.tab-btn {
+background-color: var(--bg-inner) !important;
+color: var(--text-main) !important;
+font-weight: 700; font-size: 15px;
+padding: 8px 20px; border: none; border-radius: 4px;
+cursor: pointer; transition: all 0.15s;
+}
+.tab-btn:hover {
+background-color: var(--hover-bg-strong) !important;
+color: var(--hover-text) !important;
+}
+.tab-btn.active {
+background-color: var(--accent) !important;
+color: #ffffff !important;
+}
+.tab-btn:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+/* ===== SELECT / INPUT ===== */
+.dash-select, .dash-input {
+background-color: var(--bg-inner) !important;
+border: 1px solid var(--border-strong) !important;
+color: var(--text-main) !important;
+}
+.dash-select:focus, .dash-input:focus { border-color: var(--accent) !important; outline: none; }
+/* ===== BUTTONS ===== */
+.btn-accent { background-color: var(--accent) !important; color: #ffffff !important; }
+.btn-accent:hover { background-color: #5a7264 !important; }
+.btn-ghost {
+background-color: var(--bg-inner) !important;
+color: var(--text-main) !important;
+border: 1px solid var(--accent-2) !important;
+}
+.btn-ghost:hover {
+background-color: var(--hover-bg-strong) !important;
+color: var(--hover-text) !important;
+}
+/* ===== KPI CARDS ===== */
+.kpi-card { background-color: var(--bg-inner) !important; border-radius: 0.75rem; padding: 1rem; transition: background-color .3s ease; }
+/* ===== TABLE ===== */
+.dash-table thead { background-color: var(--bg-inner) !important; color: var(--text-main) !important; }
+.dash-table tbody tr:hover { background-color: var(--hover-bg) !important; }
+/* ===== BADGES (pakai var -> otomatis ikut theme) ===== */
+.badge-kritis { background-color: rgba(177, 168, 168, 0.15) !important; color: var(--text-sub) !important; border: 1px solid rgba(177, 168, 168, 0.5) !important; }
+.badge-waspada { background-color: rgba(194, 184, 173, 0.15) !important; color: var(--text-main) !important; border: 1px solid rgba(194, 184, 173, 0.5) !important; }
+.badge-normal { background-color: rgba(114, 142, 126, 0.15) !important; color: var(--accent) !important; border: 1px solid rgba(114, 142, 126, 0.5) !important; }
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+.desktop-menu { display: none !important; }
+#header_logout { display: none !important; }
+#hamburger_btn { display: flex !important; }
+section h2 { font-size: 1.25rem !important; }
+.tab-btn { padding: 6px 12px; font-size: 13px; }
+}
+.is-mobile-hw .desktop-menu { display: none !important; }
+.is-mobile-hw #header_logout { display: none !important; }
+.is-mobile-hw #hamburger_btn { display: flex !important; }
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-deep); }
+::-webkit-scrollbar-thumb { background: var(--bg-inner); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent-2); }
+
+/* ===== THEME TOGGLE BUTTON (Style Profesional) ===== */
+.theme-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border: 1px solid #4b5563 !important;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+.theme-toggle-btn:hover {
+  background-color: #4b5563 !important;
+  border-color: #6b7280 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+.theme-toggle-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+[data-theme="light"] .theme-toggle-btn {
+  background-color: #1f2937 !important;
+  border-color: #374151 !important;
+}
+[data-theme="light"] .theme-toggle-btn:hover {
+  background-color: #111827 !important;
+  border-color: #4b5563 !important;
+}
+#theme_icon { font-size: 16px; line-height: 1; }
+#theme_lbl { white-space: nowrap; }
+
+/* ===== LOGOUT BUTTON - MERAH TUA TRANSPARAN ===== */
+.btn-logout {
+  background-color: rgba(139, 0, 0, 0.12) !important;
+  color: #8B0000 !important;
+  border: 1px solid rgba(139, 0, 0, 0.35) !important;
+  transition: all 0.2s ease;
+}
+.btn-logout:hover {
+  background-color: rgba(139, 0, 0, 0.22) !important;
+  color: #660000 !important;
+  border-color: rgba(139, 0, 0, 0.55) !important;
+}
+[data-theme="light"] .btn-logout {
+  background-color: rgba(139, 0, 0, 0.08) !important;
+  color: #8B0000 !important;
+  border-color: rgba(139, 0, 0, 0.3) !important;
+}
+[data-theme="light"] .btn-logout:hover {
+  background-color: rgba(139, 0, 0, 0.15) !important;
+  color: #660000 !important;
+}
+
+#hamburger_btn { background: rgba(114,142,126,0.2); border-color: var(--border-strong); color: var(--text-main); }
+
+.btn-toolbar-print { display:inline-flex; align-items:center; gap:6px; background:transparent; color:#ffffff; font-family:inherit; font-size:13px; border:1px solid rgba(255,255,255,0.35); border-radius:3px; padding:4px 14px; cursor:pointer; }
+.btn-toolbar-print:hover { background:rgba(255,255,255,0.12); }
+
+.lbl-termin-info { color:#9fc3d1; }
+.btn-termin-action { margin-left:8px; padding:7px 18px; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; }
+
+/* --- Extracted from js/ap.aging.js --- */
+;
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid Kartu Hutang/Aging (#divMainGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Supplier, Proyek, Termin) terpotong 
+#divMainGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted from js/ap.aging.js --- */
+.ap-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}
+.ap-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}
+.ap-tab:hover{background:rgba(43,193,226,.06);}
+.ap-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.ap-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;}
+.ap-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}
+.ap-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}
+.ap-tab.active svg{stroke:#2bc1e2;}
+.ap-tab.active .tt{color:#2bc1e2;}
+.ap-tab.active .st{color:#7fa3b8;}
+.ap-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}
+.ap-filter select,.ap-filter input{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;}
+.ap-filter input[type=number]{width:80px;}
+.ap-filter select#apSupplier{min-width:240px;}
+.ap-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;}
+.ap-filter .btn.go{background:#03615e;}
+.ap-filter .btn.exp{background:#2e6da4;margin-left:auto;}
+.ap-totals{padding:8px 10px;font:13px arial;color:#9fc3d1;background:#031126;border:1px solid #123049;border-radius:3px;margin:0 8px 8px 8px;}
+.ap-panel{padding:0 8px 8px 8px;}
+.x-grid3-row-ap-zero .x-grid3-cell-inner{color:#5d7488;}
+#divMainGrid .x-grid3-row-ap-old .x-grid3-cell-inner{color:#ff8d7e;}
+
+/* --- Extracted from js/ar.aging.js --- */
+;
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid Kartu Piutang/Aging (#divMainGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Klien, Proyek, Termin) terpotong 
+#divMainGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted from js/ar.aging.js --- */
+.ar-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}
+.ar-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}
+.ar-tab:hover{background:rgba(43,193,226,.06);}
+.ar-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.ar-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;}
+.ar-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}
+.ar-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}
+.ar-tab.active svg{stroke:#2bc1e2;}
+.ar-tab.active .tt{color:#2bc1e2;}
+.ar-tab.active .st{color:#7fa3b8;}
+.ar-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}
+.ar-filter select,.ar-filter input{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;}
+.ar-filter input[type=number]{width:80px;}
+.ar-filter select#arClient{min-width:240px;}
+.ar-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;}
+.ar-filter .btn.go{background:#03615e;}
+.ar-filter .btn.exp{background:#2e6da4;margin-left:auto;}
+.ar-totals{padding:8px 10px;font:13px arial;color:#9fc3d1;background:#031126;border:1px solid #123049;border-radius:3px;margin:0 8px 8px 8px;}
+.ar-panel{padding:0 8px 8px 8px;}
+.x-grid3-row-ar-zero .x-grid3-cell-inner{color:#5d7488;}
+#divMainGrid .x-grid3-row-ar-old .x-grid3-cell-inner{color:#ff8d7e;}
+
+/* --- Extracted from js/bin.location.js --- */
+;
+    }
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid halaman Bin Location (#divMainGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang terpotong 
+#divMainGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted inline from js/inventory.recon.js --- */
+#irPanes .x-grid3-cell-inner { font-size:15px !important; } #irPanes .x-grid3-hd-inner { font-size:14px !important; }
+
+/* --- Extracted from js/m.user.system.js --- */
+.x-grid3-gridEditor .x-grid3-hd, .x-grid3-gridAddItem .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#gridEditor .x-grid3-row td, #addFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#gridEditor .x-grid3-header-offset, #addFormGrid .x-grid3-header-offset { height:auto !important; }
+#editorForm .x-form-item.fsa-label, .fsa-label .x-form-label { background:transparent !important; border:none !important; box-shadow:none !important; }
+
+/* --- Extracted from js/material.leftover.js --- */
+, params: params,
+            success: function (r) {
+                var o;
+                try { o = Ext.decode(r.responseText); } catch (e) { showErr(
+;
+        if (res && res.message) { m = res.message; } else if (res && res.status) { m += 
+; }
+        showErr(m);
+    }
+    function jsonStore(task, fields) {
+        return new Ext.data.JsonStore({ url: CRD, baseParams: { task: task }, root: 
+, fields: fields,
+                                         listeners: { exception: storeError } });
+    }
+    var fl = function (n) { return { name: n, type: 
+.lo-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}
+.lo-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}
+.lo-tab:hover{background:rgba(43,193,226,.06);}
+.lo-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.lo-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;} .lo-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}
+.lo-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}
+.lo-tab.active svg{stroke:#2bc1e2;} .lo-tab.active .tt{color:#2bc1e2;} .lo-tab.active .st{color:#7fa3b8;}
+.lo-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}
+.lo-filter select{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;min-width:240px;}
+.lo-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}
+.lo-panel{padding:0 8px 8px 8px;}
+
+/* --- Extracted from js/po.js --- */
+); }
+    function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
+    function round3(v) { return Math.round((parseFloat(v) || 0) * 1000) / 1000; }
+
+    // [PPN] helper -----------------------------------------------------------
+    function ppnMode() { return (fPpnMode && fPpnMode.getValue()) || 
+ || !(rate > 0)) return { subtotal: subtotal, dpp: subtotal, ppn: 0, total: subtotal };
+        if (mode === 
+) {
+            var dpp = round2(subtotal / (1 + rate / 100));
+            return { subtotal: subtotal, dpp: dpp, ppn: round2(subtotal - dpp), total: subtotal };
+        }
+        var ppn = round2(subtotal * rate / 100);
+        return { subtotal: subtotal, dpp: subtotal, ppn: ppn, total: round2(subtotal + ppn) };
+    }
+    // Nilai satu baris tanpa PPN (dasar kontrol anggaran RAB): INCL -> dibagi (1 + tarif)
+    function ppnRowDpp(sub) {
+        return ppnMode() === 
+,
+            params: params,
+            success: function (response) {
+                var res;
+                try { res = Ext.util.JSON.decode(response.responseText); }
+                catch (e) { Ext.Msg.alert(
+);
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk seluruh grid di halaman PO (#divMainGrid = daftar PO,
+    // #editorFormGrid = item PO) — tidak menyentuh CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang terpotong 
+#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted from js/ppn.report.js --- */
+;
+        if (res && res.message) { m = res.message; }
+        else if (res && res.status) { m += 
+; }
+        showErr(m);
+    }
+    function jsonStore(task, fields, extra) {
+        var cfg = {
+            url: CRD, baseParams: { task: task }, root: 
+, fields: fields,
+            listeners: { exception: storeError }
+        };
+        return new Ext.data.JsonStore(Ext.apply(cfg, extra || {}));
+    }
+
+    var floatF = function (n) { return { name: n, type: 
+.ppn-tabs{display:flex;gap:4px;border-bottom:1px solid #123049;padding:0 4px;background:#020d1f;}
+.ppn-tab{display:flex;align-items:center;gap:10px;padding:10px 20px 9px 14px;cursor:pointer;border-bottom:3px solid transparent;color:#6b869a;user-select:none;}
+.ppn-tab:hover{background:rgba(43,193,226,.06);}
+.ppn-tab svg{width:24px;height:24px;stroke:#6b869a;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none;}
+.ppn-tab .tt{display:block;font:bold 13px arial;color:#aebfcc;}
+.ppn-tab .st{display:block;font:11px arial;color:#6b869a;margin-top:1px;}
+.ppn-tab.active{background:linear-gradient(180deg,rgba(43,193,226,.04),rgba(43,193,226,.16));border-bottom-color:#2bc1e2;}
+.ppn-tab.active svg{stroke:#2bc1e2;}
+.ppn-tab.active .tt{color:#2bc1e2;}
+.ppn-tab.active .st{color:#7fa3b8;}
+.ppn-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 8px;color:#9fc3d1;font:13px arial;}
+.ppn-filter select,.ppn-filter input{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;}
+.ppn-filter input[type=number]{width:80px;}
+.ppn-filter select#ppnProject{min-width:240px;}
+.ppn-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;}
+.ppn-filter .btn.go{background:#03615e;}
+.ppn-filter .btn.exp{background:#2e6da4;margin-left:auto;}
+.ppn-totals{padding:8px 10px;font:13px arial;color:#9fc3d1;background:#031126;border:1px solid #123049;border-radius:3px;margin:0 8px 8px 8px;}
+.ppn-panel{padding:0 8px 8px 8px;}
+
+/* --- Extracted from js/project.invoice.js --- */
+); }
+    function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
+    function showErr(msg) { Ext.Msg.show({ title: 
+, params: params,
+            success: function (response) {
+                var res;
+                try { res = Ext.util.JSON.decode(response.responseText); }
+                catch (e) { showErr(
+;
+        if (res && res.message) { m = res.message; }
+        else if (res && res.status) { m += 
+.ti-cards{display:flex;gap:10px;flex-wrap:wrap;padding:8px 10px 4px 10px;}
+.ti-card{flex:1 1 150px;background:#031126;border:1px solid #123049;border-radius:4px;padding:8px 12px;min-width:150px;}
+.ti-card .lb{font:11px arial;color:#6b869a;text-transform:uppercase;letter-spacing:.4px;}
+.ti-card .vl{font:bold 16px arial;color:#e6f1f8;margin-top:3px;}
+.ti-card.warn .vl{color:#ff6b5e;} .ti-card.soon .vl{color:#e6a817;} .ti-card.ok .vl{color:#7fe0a0;}
+.ti-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 10px 8px 10px;color:#9fc3d1;font:13px arial;}
+.ti-filter select{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;min-width:170px;}
+.ti-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}
+.ti-filter .btn.warn{background:#8a6d1f;} .ti-filter .btn.danger{background:#800020;}
+#divMainGrid .x-grid3-hd-inner{vertical-align:middle !important;padding:4px 5px !important;}
+#divMainGrid .x-grid3-cell-inner{padding:3px 5px !important;}
+
+/* --- Extracted from js/project.payment.js --- */
+;
+    var ACCESS_ADD = 2;      // level akses minimal: input pembayaran / termin
+    var ACCESS_EDIT = 3;     // level akses minimal: hapus pembayaran
+    var VEPS = 0.01;         // toleransi nilai
+    var TERMIN_RULE_PCT = { 1: 30, 2: 20 };   
+    var DP_PCT = 30;                          
+    var allocNote = 
+, project_id: projectId }, function (res) {
+            Ext.MessageBox.hide();
+            if (res.success) {
+                renderAiResultPanel(res.data);
+            } else {
+                Ext.Msg.show({
+                    title: 
+;
+        });
+        var m = d.metrics || {};
+        var metricLine = (m.budget !== undefined && m.budget !== null)
+            ? 
+;
+    }
+
+    function loadSavedAiResults(items) {
+        var byProject = {};
+        Ext.each(items || [], function (item) {
+            var projectId = item && item.project_id ? String(item.project_id) : 
+ + projectId);
+            }
+        });
+        var ids = [];
+        for (var id in byProject) {
+            if (Object.prototype.hasOwnProperty.call(byProject, id)) ids.push(id);
+        }
+
+        var target = document.getElementById(
+;
+            if (savedResults.length) {
+                // Keep the original project order from the payment detail.
+                savedResults.sort(function (a, b) { return a.order - b.order; });
+                Ext.each(savedResults, function (saved, index) {
+                    renderAiResultPanel(saved.data, saved.projectName, index > 0);
+                });
+            } else if (failedCount) {
+                currentTarget.innerHTML = 
+, project_id: projectId }, function (res) {
+                if (res && res.success && res.data) {
+                    savedResults.push({
+                        order: index,
+                        projectId: projectId,
+                        projectName: byProject[projectId],
+                        data: res.data
+                    });
+                } else if (res && res.message && String(res.message).toLowerCase().indexOf(
+) === -1) {
+                    failedCount++;
+                }
+                finishOne();
+            }, function () {
+                failedCount++;
+                finishOne();
+            });
+        });
+    }
+
+    function enc(v) { return Ext.util.Format.htmlEncode(v == null ? 
+); }
+    function round2(v) { return Math.round((parseFloat(v) || 0) * 100) / 100; }
+
+    var METHOD_LABEL = { BANK_TRANSFER: 
+,
+            params: params,
+            success: function (response) {
+                var res;
+                try { res = Ext.util.JSON.decode(response.responseText); }
+                catch (e) { Ext.Msg.alert(
+); });
+        return id;
+    }
+    function curId() { return Number((fCurrency && fCurrency.getValue()) || baseCurrencyId()) || null; }
+    function isBaseCur(id) { var r = id ? currencyDs.getById(id) : null; return !r || r.get(
+) === true; }
+    function curCode() { return currencyCode(curId()); }
+    function curRate() { return isBaseCur(curId()) ? 1 : (parseFloat(fRate.getValue()) || 0); }
+    function rateTol() { return 0.005 * curRate() + VEPS; }
+    function toIdr(pay, remaining) {
+        var idr = round2(pay * curRate());
+        if (Math.abs(idr - remaining) <= rateTol()) idr = round2(remaining);
+        return idr;
+    }
+    function maxPay(remaining) { var r = curRate(); return r > 0 ? round2(remaining / r) : 0; }
+
+    // ------------------------------------------------------------
+    // 0. Panel Detail Dinamis Berbasis Persentase Tinggi Layanan
+    // ------------------------------------------------------------
+    var gridContainer = document.getElementById(
+;
+        st.appendChild(document.createTextNode(
+            // [GRID-WRAP 2026-11-17] Override SCOPED ke grid Pembayaran Termin (.ppMainGrid / #editorFormGrid /
+            // .ppDepGrid) — tidak menyentuh CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
+            //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            // sehingga header & sel panjang terpotong 
+.ppMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd, .ppDepGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+.ppMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td, .ppDepGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+.ppMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset, .ppDepGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted from js/project.payment.print.js --- */
+);
+    }
+    function num(value) {
+        var n = parseFloat(value);
+        return isFinite(n) ? n : 0;
+    }
+    function money(value) {
+        return num(value).toLocaleString(
+, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function dateId(value) {
+        if (!value) return 
+);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState !== 4) return;
+            var response;
+            try { response = JSON.parse(xhr.responseText); }
+            catch (e) { callback(new Error(
+.ai-project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;color:#075e58;font-size:14px}
+.ai-risk{font-weight:bold;border:1px solid currentColor;padding:3px 8px;border-radius:3px;white-space:nowrap}
+.ai-summary{font-size:12px;line-height:1.55;margin-bottom:12px}
+.ai-summary p{margin:5px 0 0;white-space:pre-wrap}
+.ai-mitigations{font-size:12px;line-height:1.5}
+.ai-recommendations{margin:6px 0 0 18px;padding:0}
+.ai-recommendations li{margin-bottom:6px}
+.ai-project{margin:12px 0;padding:10px 0;border-bottom:1px solid #d8e0e3}
+
+/* --- Extracted from js/project.progress.js --- */
+)) { return; }
+        var st = document.createElement(
+.whDarkWin .x-window-body, .whDarkWin .x-panel-body { background:#0d2233 !important; color:#e6f1f5 !important; }
+.whDarkWin .x-form-item label { color:#9fc3d1 !important; }
+.whDarkWin .x-form-field { background:#14324a !important; color:#ffffff !important; border-color:#2b5d7a !important; }
+.whDarkWin .x-form-display-field{color:#e2e8f0 !important;}
+.whDarkWin .x-btn button{color:#ffffff !important;font-weight:bold !important;opacity:1 !important;}
+.whDarkWin .x-btn-bl,.whDarkWin .x-btn-br,.whDarkWin .x-btn-bc{background:none !important;background-image:none !important;}
+.whDarkWin .x-btn-mc{background-color:#2e7dd1 !important;background-image:none !important;border-radius:4px;}
+.whDarkWin .x-btn-over .x-btn-mc{background-color:#4695e6 !important;}
+.whDarkWin .x-btn-mc button{padding:7px 18px !important;height:auto !important;line-height:18px !important;font-size:13px !important;}
+
+/* --- Extracted from js/project.progress.js --- */
+)) { return; }
+        var st = document.createElement(
+.btn-act-icon svg { display: block; }
+.btn-verify { background-color: #03615e !important; color: #ffffff !important; }
+.btn-verify:hover { background-color: #048a86 !important; transform: scale(1.08); }
+.btn-reject { background-color: #8e2b22 !important; color: #ffffff !important; }
+.btn-reject:hover { background-color: #b8382c !important; transform: scale(1.08); }
+.btn-cancel { background-color: #4a5568 !important; color: #ffffff !important; }
+.btn-cancel:hover { background-color: #718096 !important; transform: scale(1.08); }
+
+/* --- Extracted from js/purchase.order.js --- */
+;
+  let gridEditorHeight=0, gridItemHeight=0;
+  // [GRID-WRAP 2026-11-17] Override SCOPED untuk seluruh grid di halaman Purchase Order:
+  // #divMainGrid (daftar PO), #editorFormGrid (item PO & costs), #addFormGrid (pilih item),
+  // #divDetailGrid (detail PO), #logFormMain (history). Tidak menyentuh CSS global maupun
+  // js-func/ExtExtend.js. ExtJS 3.4.1 (css/ext-all.css) memasang
+  //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  // sehingga header & sel panjang terpotong 
+#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd, #addFormGrid .x-grid3-hd, #divDetailGrid .x-grid3-hd, #logFormMain .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td, #addFormGrid .x-grid3-row td, #divDetailGrid .x-grid3-row td, #logFormMain .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset, #addFormGrid .x-grid3-header-offset, #divDetailGrid .x-grid3-header-offset, #logFormMain .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted inline from js/purchase.planning.js --- */
+#planDtlScroll { overflow-y: auto !important; overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #1f6f9f #061522; }
+#planDtlScroll::-webkit-scrollbar { width: 10px; height: 10px; }
+#planDtlScroll::-webkit-scrollbar-track { background: #061522; border-radius: 5px; }
+#planDtlScroll::-webkit-scrollbar-thumb { background: #1f6f9f; border-radius: 5px; }
+#planDtlScroll::-webkit-scrollbar-thumb:hover { background: #2b8fc7; }
+#planDtlScroll thead th { position: sticky; top: 0; z-index: 2; background: #0d2838 !important; }
+
+/* --- Extracted from js/purchase.return.js --- */
+.x-grid3-hd-row td.x-grid3-hd:last-child{border-right:none !important;}
+img.x-grid3-sort-icon{display:none !important;}
+.rtDarkWin .x-form-item label{color:#9fc3d1 !important;}
+.rtDarkWin .x-form-display-field{color:#e2e8f0 !important;}
+.rtDarkWin .x-form-empty-field{color:#9fb4c7 !important;}
+.rtDarkWin .x-btn button{color:#ffffff !important;font-weight:bold !important;opacity:1 !important;}
+.rtDarkWin .x-btn-bl,.rtDarkWin .x-btn-br,.rtDarkWin .x-btn-bc{background:none !important;background-image:none !important;}
+.rtDarkWin .x-btn-mc{background-color:#2e7dd1 !important;background-image:none !important;border-radius:4px;}
+.rtDarkWin .x-btn-over .x-btn-mc{background-color:#4695e6 !important;}
+.rtDarkWin .x-btn-mc button{padding:2px 8px;}
+
+/* --- Extracted inline from js/settings.js --- */
+#divMainGrid .x-form-item label { color: #9fc3d1 !important; }
+#divMainGrid textarea.x-form-textarea { background: #041426 !important; color: #cbd5e1 !important; border: 1px solid #1a3a52 !important; border-radius: 4px; padding: 6px 8px !important; line-height: 1.5; font-family: inherit; resize: vertical; }
+#divMainGrid textarea.x-form-textarea.x-form-focus { border-color: #38bdf8 !important; }
+.st-nav { position: relative; display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; border-bottom: 1px solid #1a3a52; margin-bottom: 14px; }
+.st-tab { display: flex; align-items: center; gap: 10px; background: transparent; border: none; color: #7f9fb0; cursor: pointer; padding: 10px 20px 12px 14px; border-radius: 8px 8px 0 0; transition: color .2s, background .2s; font-family: inherit; text-align: left; }
+.st-tab:hover { background: rgba(56,189,248,.06); color: #bfe3f5; }
+.st-tab.on { color: #38bdf8; background: linear-gradient(180deg, rgba(56,189,248,.12), rgba(56,189,248,0)); }
+.st-ico svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; display: block; }
+.st-txt b { display: block; font-size: 13px; font-weight: 600; letter-spacing: .2px; }
+.st-txt small { display: block; font-size: 10.5px; opacity: .75; margin-top: 1px; }
+.st-bar { position: absolute; left: 0; bottom: -1px; height: 3px; width: 0; border-radius: 3px 3px 0 0; background: linear-gradient(90deg, #0ea5e9, #38bdf8, #7dd3fc); box-shadow: 0 0 10px rgba(56,189,248,.55); transition: transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1); }
+@keyframes stIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.st-in { animation: stIn .22s ease-out; }
+.set-note { margin: 4px 0 14px 0; padding: 10px 14px; border-radius: 4px; background: #0b2236; border: 1px solid #1a3a52; color: #9fc3d1; font-size: 12px; line-height: 1.6; }
+.set-note b { color: #38bdf8; }
+.set-warn { background: #3b2f0b; border-color: #8a6d1c; color: #f5c542; }
+.logo-card { display: inline-block; vertical-align: top; width: 420px; margin: 0 20px 20px 0; padding: 14px; border: 1px solid #1a3a52; border-radius: 6px; background: #0b2236; }
+.logo-card h4 { margin: 0 0 4px 0; color: #38bdf8; font-size: 14px; }
+.logo-card .hint { color: #7f9fb0; font-size: 11px; margin-bottom: 10px; line-height: 1.5; }
+.logo-box { height: 130px; display: flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 4px; margin-bottom: 10px; overflow: hidden; }
+.logo-box img { max-width: 100%; max-height: 120px; }
+.logo-box .none { color: #888; font-size: 12px; }
+.logo-card button { padding: 6px 14px; margin-right: 6px; border: none; border-radius: 3px; cursor: pointer; color: #fff; font-weight: bold; }
+.logo-card .btn-up { background: #03615e; } .logo-card .btn-del { background: #8e2b22; }
+.logo-card button[disabled] { opacity: .45; cursor: not-allowed; }
+.doc-preview { background: #ffffff; color: #222; padding: 18px 22px; border-radius: 4px; max-width: 760px; font-family: Arial, sans-serif; }
+.doc-preview .head { display: flex; align-items: center; border-bottom: 2px solid #222; padding-bottom: 10px; }
+.doc-preview .head img { max-height: 70px; max-width: 160px; margin-right: 16px; }
+.doc-preview .co { font-size: 17px; font-weight: bold; } .doc-preview .ad { font-size: 11px; line-height: 1.5; color: #444; }
+.doc-preview .body { padding: 26px 0; color: #999; font-size: 12px; text-align: center; }
+.doc-preview .sign { text-align: right; font-size: 12px; margin-top: 10px; } .doc-preview .foot { border-top: 1px solid #bbb; margin-top: 16px; padding-top: 6px; font-size: 10px; color: #666; }
+
+/* --- Extracted from js/stock.card.js --- */
+;
+    }
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid Kartu Stok (#divMainGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Gudang, Keterangan, No. Dokumen) terpotong 
+#divMainGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted from js/stock.opname.js --- */
+;
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid halaman Stock Opname (#divMainGrid & #editorFormGrid) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang terpotong 
+#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted inline from js/subcon.invoice.js --- */
+.x-window-header .x-window-header-text { font-size: 16px !important; font-weight: normal !important; color: #22d3ee !important; }
+.x-window-header { background: #0d2137 !important; }
+.scInvActBtn { font-weight: bold !important; }
+
+/* --- Extracted from js/warehouse.issuing.js --- */
+)) { return; }
+        var st = document.createElement(
+.whDarkWin .x-window-body, .whDarkWin .x-panel-body { background:#0d2233 !important; color:#e6f1f5 !important; }
+.whDarkWin .x-form-item label { color:#9fc3d1 !important; }
+.whDarkWin .x-form-field { background:#14324a !important; color:#ffffff !important; border-color:#2b5d7a !important; }
+.whDarkWin .x-form-display-field{color:#e2e8f0 !important;}
+.whDarkWin .x-btn button{color:#ffffff !important;font-weight:bold !important;opacity:1 !important;}
+.whDarkWin .x-btn-bl,.whDarkWin .x-btn-br,.whDarkWin .x-btn-bc{background:none !important;background-image:none !important;}
+.whDarkWin .x-btn-mc{background-color:#2e7dd1 !important;background-image:none !important;border-radius:4px;}
+.whDarkWin .x-btn-over .x-btn-mc{background-color:#4695e6 !important;}
+.whDarkWin .x-btn-mc button{padding:7px 18px !important;height:auto !important;line-height:18px !important;font-size:13px !important;}
+
+/* --- Extracted from js/warehouse.issuing.js --- */
+#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }
+
+/* --- Extracted from js/whrcv.js --- */
+;
+
+    // [GRID-WRAP 2026-11-17] Override SCOPED untuk grid halaman W/H Rcv:
+    // #divMainGrid (daftar WH Rcv) & #editorFormGrid (item) — tidak menyentuh CSS global.
+    // ExtJS 3.4.1 (css/ext-all.css) memasang
+    //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    // sehingga header & sel panjang (Supplier, Gudang, Item, No. DO) terpotong 
+#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }
+#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }
+#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }

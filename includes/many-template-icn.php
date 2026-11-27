@@ -20,7 +20,6 @@ $favVer = date('YmdHis');
 <!-- <link rel="stylesheet" type="text/css" href="<?=$B?>/css/ext-all.css"> -->
 <link rel="stylesheet" type="text/css" href="<?=$B?>/css/ButtonColumn.css">
 <link rel="stylesheet" type="text/css" href="<?=$B?>/css/myFonts.css">
-<link rel="stylesheet" type="text/css" href="<?=$B?>/css/mainCSS.css">
 <link rel="stylesheet" type="text/css" href="<?=$B?>/css/popUp.css">
 <link rel="stylesheet" type="text/css" href="<?=$B?>/css/logWdw.css">
 <!-- <link rel="stylesheet" type="text/css" href="<?=$B?>/css/app-theme.css"> -->
