@@ -146,6 +146,11 @@ if ($formAccess === null) {
         'dashboardQ.php'                    => array('dashboard.php'),
         'm.user.roleCRD.php'     => array('m.user.role.php'),
         'm.user.systemCRD.php'   => array('m.user.system.php'),
+        'leftoverCRD.php'        => array('material.leftover.php', 'leftover.php', 'spk.php'),
+        'spkCRD.php'             => array('spk.php'),
+        'subconCRD.php'          => array('subcon.php', 'subcontractor.php', 'subcon.contract.php'),
+        'subcon.progressCRD.php' => array('subcon.progress.php', 'subcon.php'),
+        'inventory.status.php'   => array('inventory.recon.php', 'stock.card.php'),
     );
     $endpointCandidates = array_values(array_unique(array_merge(
         array($urlFile, $cleanUrlFile),
@@ -246,3 +251,20 @@ if (($isDirectViewFile || $isLegacyMenuRouter)
     $_SESSION['linkMenu'] = $linkMenu;
 }
 ?>
+
+
+if (!function_exists('app_require_form_access')) {
+    function app_require_form_access(int $minLevel = 1): void {
+        $lvl = intval($_SESSION['FormAccess'] ?? 0);
+        if ($lvl < $minLevel) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'success' => false,
+                'status'  => 'Error',
+                'message' => "Akses ditolak: hak akses level $minLevel diperlukan (level Anda: $lvl)."
+            ]);
+            exit;
+        }
+    }
+}

@@ -122,6 +122,20 @@ else
 fi
 
 # ============================================================
+
+# ============================================================
+# [TAHAP 4/4] E2E, RBAC & FINANCIAL RECONCILIATION SUITE
+# ============================================================
+echo ""
+echo "============================================================"
+echo " [TAHAP 4/4] E2E, RBAC & FINANCIAL RECONCILIATION SUITE"
+echo "============================================================"
+E2E_FAIL=0
+if [ -f "$ROOT/tests/e2e_erp_suite.php" ]; then
+  php "$ROOT/tests/e2e_erp_suite.php"
+  [ $? -ne 0 ] && E2E_FAIL=1
+fi
+
 # RINGKASAN & KEPUTUSAN DEPLOY GATE
 # ============================================================
 echo ""
@@ -130,10 +144,11 @@ echo " RINGKASAN DEPLOY GATE"
 echo "============================================================"
 echo " - Kelengkapan File : $([ $FILE_FAIL -eq 0 ] && echo 'PASS' || echo 'FAIL')"
 echo " - Risk Regression  : $([ $RISK_FAIL -eq 0 ] && echo 'PASS' || echo 'FAIL (BLOCKER)')"
+echo " - E2E & DB Recon   : $([ $E2E_FAIL -eq 0 ] && echo 'PASS' || echo 'FAIL (BLOCKER)')"
 echo " - CSS Unification  : $([ $CSS_FAIL -eq 0 ] && echo 'PASS' || echo 'WARN (lihat docs/CSS_UNIFICATION_TEST_REPORT.md)')"
 echo "============================================================"
 
-if [ $FILE_FAIL -ne 0 ] || [ $RISK_FAIL -ne 0 ]; then
+if [ $FILE_FAIL -ne 0 ] || [ $RISK_FAIL -ne 0 ] || [ $E2E_FAIL -ne 0 ]; then
   echo "[BLOCKED] Deploy ditahan karena ada kegagalan pada kelengkapan file atau Risk Regression."
   exit 1
 fi

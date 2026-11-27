@@ -1,4 +1,7 @@
 <?php
+// [SEC-01 PATCH] Validasi sesi & otorisasi menu terpusat
+if (session_status() === PHP_SESSION_NONE) { session_start(); }
+if (empty($_SESSION['user_id']) || intval($_SESSION['user_id']) <= 0) { http_response_code(401); header('Content-Type: application/json'); echo json_encode(['success'=>false,'message'=>'Sesi berakhir']); exit; }
 // php-crud/dashboardCRD.php
 // Versi diperbaiki: menggunakan nama tabel/kolom yang sesuai skema DB Anda
 // [REVISI 2026-10-30] disesuaikan dengan alur proyek:

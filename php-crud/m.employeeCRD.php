@@ -71,9 +71,15 @@ switch ($task) {
   // ==========================================
   // 1. CREATE
   // ==========================================
-  case ("create"):
-    $NikNO = CreateNikNo($_POST["department_id"], $_POST["status_id"], $_POST["from_date"]);
-    $queryC = '';
+    case ("create"):
+    global $conn;
+    $deptId   = intval($_POST["department_id"] ?? 0);
+    $statusId = intval($_POST["status_id"] ?? 0);
+    $secId    = intval($_POST["section_id"] ?? 0);
+    $fromDate = date('Y-m-d', strtotime($_POST["from_date"] ?? 'now'));
+    $birthDate = date('Y-m-d', strtotime($_POST["birth_date"] ?? 'now'));
+    $NikNO = CreateNikNo($deptId, $statusId, $fromDate);
+
     if ($updateFoto == 1) {
       if (!is_dir($photoFsDir) || !is_writable($photoFsDir)
           || file_put_contents($photoFsDir . $photoName, $foto, LOCK_EX) === false) {
@@ -81,89 +87,64 @@ switch ($task) {
         echo json_encode(['success' => false, 'status' => 'Error', 'message' => 'Foto gagal disimpan. Periksa folder foto karyawan.']);
         exit;
       }
-      $table = "m_employee";
-      $data = array(
-        "nik"                => $NikNO,
-        "employee_name"     => checksinglequote($_POST["employee_name"]),
-        "address"           => checksinglequote($_POST["address"]),
-        "id_number"         => checksinglequote($_POST["id_number"]),
-        "id_address"        => checksinglequote($_POST["id_address"]),
-        "npwp_no"           => checksinglequote($_POST["npwp_no"]),
-        "bank_account_no"   => checksinglequote($_POST["bank_account_no"]),
-        "place_birth"       => checksinglequote($_POST["place_birth"]),
-        "phone_number"      => checksinglequote($_POST["phone_number"]),
-        "birth_date"        => date('Y-m-d', strtotime($_POST["birth_date"])),
-        "gender"            => checksinglequote($_POST["genderValue"]),
-        "martial_status"    => checksinglequote($_POST["martialValue"]),
-        "emergency_name"    => checksinglequote($_POST["emergency_name"]),
-        "emergency_phone"   => checksinglequote($_POST["emergency_phone"]),
-        "emergency_relation"=> checksinglequote($_POST["emergency_relation"]),
-        "emergency_address" => checksinglequote($_POST["emergency_address"]),
-        "from_date"          => date('Y-m-d', strtotime($_POST["from_date"])),
-        "remark"            => checksinglequote($_POST["remark"]),
-        "email"             => checksinglequote($_POST["email"]),
-        "active"            => true,
-        "photo"             => $photoData,
-        "photo_url"         => $dirPhoto.$photoName
-      );
-      $queryC .= insertQ($table, $data) . ";";
-    } else {
-      $table = "m_employee";
-      $data = array(
-        "nik"                => $NikNO,
-        "employee_name"     => checksinglequote($_POST["employee_name"]),
-        "address"           => checksinglequote($_POST["address"]),
-        "id_number"         => checksinglequote($_POST["id_number"]),
-        "id_address"        => checksinglequote($_POST["id_address"]),
-        "npwp_no"           => checksinglequote($_POST["npwp_no"]),
-        "bank_account_no"   => checksinglequote($_POST["bank_account_no"]),
-        "place_birth"       => checksinglequote($_POST["place_birth"]),
-        "phone_number"      => checksinglequote($_POST["phone_number"]),
-        "birth_date"        => date('Y-m-d', strtotime($_POST["birth_date"])),
-        "gender"            => checksinglequote($_POST["genderValue"]),
-        "martial_status"    => checksinglequote($_POST["martialValue"]),
-        "emergency_name"    => checksinglequote($_POST["emergency_name"]),
-        "emergency_phone"   => checksinglequote($_POST["emergency_phone"]),
-        "emergency_relation"=> checksinglequote($_POST["emergency_relation"]),
-        "emergency_address" => checksinglequote($_POST["emergency_address"]),
-        "from_date"          => date('Y-m-d', strtotime($_POST["from_date"])),
-        "active"            => true,
-        "remark"            => checksinglequote($_POST["remark"]),
-        "email"             => checksinglequote($_POST["email"])
-      );
-      $queryC .= insertQ($table, $data) . ";";
     }
 
-    $table = "employee_department";
-    $data = array(
-      "employee_id"   => "currval('m_employee_id_seq')",
-      "department_id" => $_POST["department_id"],
-      "from_date"     => date('Y-m-d', strtotime($_POST["from_date"]))
-    );
-    $queryC .= insertQ($table, $data) . ";";
+    pg_query($conn, "BEGIN");
+    try {
+      $empCols = "nik, employee_name, address, id_number, id_address, npwp_no, bank_account_no, place_birth, phone_number, birth_date, gender, martial_status, emergency_name, emergency_phone, emergency_relation, emergency_address, from_date, active, remark, email";
+      $empPlaceholders = "$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, TRUE, $18, $19";
+      $empParams = [
+        $NikNO,
+        (string)($_POST["employee_name"] ?? ''),
+        (string)($_POST["address"] ?? ''),
+        (string)($_POST["id_number"] ?? ''),
+        (string)($_POST["id_address"] ?? ''),
+        (string)($_POST["npwp_no"] ?? ''),
+        (string)($_POST["bank_account_no"] ?? ''),
+        (string)($_POST["place_birth"] ?? ''),
+        (string)($_POST["phone_number"] ?? ''),
+        $birthDate,
+        (string)($_POST["genderValue"] ?? ''),
+        (string)($_POST["martialValue"] ?? ''),
+        (string)($_POST["emergency_name"] ?? ''),
+        (string)($_POST["emergency_phone"] ?? ''),
+        (string)($_POST["emergency_relation"] ?? ''),
+        (string)($_POST["emergency_address"] ?? ''),
+        $fromDate,
+        (string)($_POST["remark"] ?? ''),
+        (string)($_POST["email"] ?? '')
+      ];
+      if ($updateFoto == 1) {
+        $empCols .= ", photo, photo_url";
+        $empPlaceholders .= ", $20, $21";
+        $empParams[] = $photoData;
+        $empParams[] = $dirPhoto . $photoName;
+      }
+      $resEmp = pg_query_params($conn, "INSERT INTO m_employee ($empCols) VALUES ($empPlaceholders) RETURNING id", $empParams);
+      if (!$resEmp) throw new Exception(pg_last_error($conn));
+      $newEmpId = intval(pg_fetch_result($resEmp, 0, 'id'));
 
-    if (!empty($_POST["section_id"])) {
-      $table = "employee_section";
-      $data = array(
-        "employee_id" => "currval('m_employee_id_seq')",
-        "section_id"  => $_POST["section_id"],
-        "from_date"   => date('Y-m-d', strtotime($_POST["from_date"]))
-      );
-      $queryC .= insertQ($table, $data) . ";";
+      $rDept = pg_query_params($conn, "INSERT INTO employee_department (employee_id, department_id, from_date) VALUES ($1, $2, $3)", [$newEmpId, $deptId, $fromDate]);
+      if (!$rDept) throw new Exception(pg_last_error($conn));
+
+      if ($secId > 0) {
+        $rSec = pg_query_params($conn, "INSERT INTO employee_section (employee_id, section_id, from_date) VALUES ($1, $2, $3)", [$newEmpId, $secId, $fromDate]);
+        if (!$rSec) throw new Exception(pg_last_error($conn));
+      }
+
+      $rStat = pg_query_params($conn, "INSERT INTO employee_status (employee_id, status_id, from_date) VALUES ($1, $2, $3)", [$newEmpId, $statusId, $fromDate]);
+      if (!$rStat) throw new Exception(pg_last_error($conn));
+
+      pg_query($conn, "COMMIT");
+      echo json_encode(["success" => true, "status" => "Success", "message" => "Data karyawan berhasil disimpan."]);
+    } catch (Throwable $e) {
+      pg_query($conn, "ROLLBACK");
+      http_response_code(500);
+      echo json_encode(["success" => false, "status" => "Error", "message" => "Gagal menyimpan karyawan: " . $e->getMessage()]);
     }
-
-    $table = "employee_status";
-    $data = array(
-      "employee_id" => "currval('m_employee_id_seq')",
-      "status_id"   => $_POST["status_id"],
-      "from_date"   => date('Y-m-d', strtotime($_POST["from_date"]))
-    );
-    $queryC .= insertQ($table, $data) . ";";
-
-    $db = new crud();
-    $db->cmdQ($queryC);
-    echo $db->getResult();
   break;
+
+
 
   // ==========================================
   // 2. READ (Grid Utama Karyawan)
@@ -299,108 +280,91 @@ switch ($task) {
   // ==========================================
   // 5. UPDATE
   // ==========================================
-  case ('update'):
-    $queryC = '';
-    $table = "m_employee";
-    $data = array(
-      "employee_name"     => checksinglequote($_POST["employee_name"]),
-      "address"           => checksinglequote($_POST["address"]),
-      "id_number"         => checksinglequote($_POST["id_number"]),
-      "id_address"        => checksinglequote($_POST["id_address"]),
-      "npwp_no"           => checksinglequote($_POST["npwp_no"]),
-      "bank_account_no"   => checksinglequote($_POST["bank_account_no"]),
-      "place_birth"       => checksinglequote($_POST["place_birth"]),
-      "phone_number"      => checksinglequote($_POST["phone_number"]),
-      "birth_date"        => date('Y-m-d', strtotime($_POST["birth_date"])),
-      "gender"            => checksinglequote($_POST["genderValue"]),
-      "martial_status"    => checksinglequote($_POST["martialValue"]),
-      "emergency_name"    => checksinglequote($_POST["emergency_name"]),
-      "emergency_phone"   => checksinglequote($_POST["emergency_phone"]),
-      "emergency_relation"=> checksinglequote($_POST["emergency_relation"]),
-      "emergency_address" => checksinglequote($_POST["emergency_address"]),
-      "from_date"          => date('Y-m-d', strtotime($_POST["from_date"])),
-      "remark"            => checksinglequote($_POST["remark"]),
-      "email"             => checksinglequote($_POST["email"])
-    );
-    $where = "id = " . intval($_POST['id']);
-    $queryC .= updateQ($table, $data, $where) . ";";
+    case ('update'):
+    global $conn;
+    $empId     = intval($_POST['id'] ?? 0);
+    $birthDate = date('Y-m-d', strtotime($_POST["birth_date"] ?? 'now'));
+    $fromDate  = date('Y-m-d', strtotime($_POST["from_date"] ?? 'now'));
 
-    if ($_POST["department_id"] != $_POST["transferDepartTo"]) {
-      $table = "employee_department";
-      $data = array("to_date" => date('Y-m-d', strtotime('-1 day', strtotime($_POST["transferDepartStart"]))));
-      $where = "id = " . intval($_POST["employee_department_id"]);
-      $queryC .= updateQ($table, $data, $where) . ";";
+    pg_query($conn, "BEGIN");
+    try {
+      $updSql = "UPDATE m_employee SET employee_name=$1, address=$2, id_number=$3, id_address=$4, npwp_no=$5, bank_account_no=$6, place_birth=$7, phone_number=$8, birth_date=$9, gender=$10, martial_status=$11, emergency_name=$12, emergency_phone=$13, emergency_relation=$14, emergency_address=$15, from_date=$16, remark=$17, email=$18 WHERE id=$19";
+      $updParams = [
+        (string)($_POST["employee_name"] ?? ''),
+        (string)($_POST["address"] ?? ''),
+        (string)($_POST["id_number"] ?? ''),
+        (string)($_POST["id_address"] ?? ''),
+        (string)($_POST["npwp_no"] ?? ''),
+        (string)($_POST["bank_account_no"] ?? ''),
+        (string)($_POST["place_birth"] ?? ''),
+        (string)($_POST["phone_number"] ?? ''),
+        $birthDate,
+        (string)($_POST["genderValue"] ?? ''),
+        (string)($_POST["martialValue"] ?? ''),
+        (string)($_POST["emergency_name"] ?? ''),
+        (string)($_POST["emergency_phone"] ?? ''),
+        (string)($_POST["emergency_relation"] ?? ''),
+        (string)($_POST["emergency_address"] ?? ''),
+        $fromDate,
+        (string)($_POST["remark"] ?? ''),
+        (string)($_POST["email"] ?? ''),
+        $empId
+      ];
+      if (!pg_query_params($conn, $updSql, $updParams)) throw new Exception(pg_last_error($conn));
 
-      $table = "employee_department";
-      $data = array(
-        "employee_id"   => intval($_POST['id']),
-        "department_id" => intval($_POST["transferDepartTo"]),
-        "from_date"     => date('Y-m-d', strtotime($_POST["transferDepartStart"]))
-      );
-      $queryC .= insertQ($table, $data) . ";";
-    }
-
-    if ($_POST["section_id"] != $_POST["transferSectionTo"]) {
-      if (!empty($_POST["employee_section_id"])) {
-        $table = "employee_section";
-        $data = array("to_date" => date('Y-m-d', strtotime('-1 day', strtotime($_POST["transferDepartStart"]))));
-        $where = "id = " . intval($_POST["employee_section_id"]);
-        $queryC .= updateQ($table, $data, $where) . ";";
+      if (($_POST["department_id"] ?? '') != ($_POST["transferDepartTo"] ?? '')) {
+        $tDeptStart = date('Y-m-d', strtotime($_POST["transferDepartStart"] ?? 'now'));
+        $tDeptPrev  = date('Y-m-d', strtotime('-1 day', strtotime($tDeptStart)));
+        if (!pg_query_params($conn, "UPDATE employee_department SET to_date=$1 WHERE id=$2", [$tDeptPrev, intval($_POST["employee_department_id"] ?? 0)])) throw new Exception(pg_last_error($conn));
+        if (!pg_query_params($conn, "INSERT INTO employee_department (employee_id, department_id, from_date) VALUES ($1, $2, $3)", [$empId, intval($_POST["transferDepartTo"] ?? 0), $tDeptStart])) throw new Exception(pg_last_error($conn));
       }
-      $table = "employee_section";
-      $data = array(
-        "employee_id" => intval($_POST['id']),
-        "section_id"  => intval($_POST["transferSectionTo"]),
-        "from_date"   => date('Y-m-d', strtotime($_POST["transferDepartStart"]))
-      );
-      $queryC .= insertQ($table, $data) . ";";
+
+      if (($_POST["section_id"] ?? '') != ($_POST["transferSectionTo"] ?? '')) {
+        $tSecStart = date('Y-m-d', strtotime($_POST["transferDepartStart"] ?? 'now'));
+        $tSecPrev  = date('Y-m-d', strtotime('-1 day', strtotime($tSecStart)));
+        if (!empty($_POST["employee_section_id"])) {
+          if (!pg_query_params($conn, "UPDATE employee_section SET to_date=$1 WHERE id=$2", [$tSecPrev, intval($_POST["employee_section_id"])])) throw new Exception(pg_last_error($conn));
+        }
+        if (!pg_query_params($conn, "INSERT INTO employee_section (employee_id, section_id, from_date) VALUES ($1, $2, $3)", [$empId, intval($_POST["transferSectionTo"] ?? 0), $tSecStart])) throw new Exception(pg_last_error($conn));
+      }
+
+      if (($_POST["status_id"] ?? '') != ($_POST["changeStatusTo"] ?? '')) {
+        $cStatStart = date('Y-m-d', strtotime($_POST["changeStatusStart"] ?? 'now'));
+        $cStatPrev  = date('Y-m-d', strtotime('-1 day', strtotime($cStatStart)));
+        if (!pg_query_params($conn, "UPDATE employee_status SET to_date=$1 WHERE id=$2", [$cStatPrev, intval($_POST["employee_status_id"] ?? 0)])) throw new Exception(pg_last_error($conn));
+        if (!pg_query_params($conn, "INSERT INTO employee_status (employee_id, status_id, from_date) VALUES ($1, $2, $3)", [$empId, intval($_POST["changeStatusTo"] ?? 0), $cStatStart])) throw new Exception(pg_last_error($conn));
+      }
+
+      if ($updateFoto == 1) {
+        file_put_contents($photoFsDir . $photoName, $foto, LOCK_EX);
+        if (!pg_query_params($conn, "UPDATE m_employee SET photo=$1, photo_url=$2 WHERE id=$3", [$photoData, $dirPhoto . $photoName, $empId])) throw new Exception(pg_last_error($conn));
+      }
+
+      pg_query($conn, "COMMIT");
+      echo json_encode(["success" => true, "status" => "Success", "message" => "Data karyawan berhasil diperbarui."]);
+    } catch (Throwable $e) {
+      pg_query($conn, "ROLLBACK");
+      http_response_code(500);
+      echo json_encode(["success" => false, "status" => "Error", "message" => "Gagal memperbarui karyawan: " . $e->getMessage()]);
     }
-
-    if ($_POST["status_id"] != $_POST["changeStatusTo"]) {
-      $table = "employee_status";
-      $data = array("to_date" => date('Y-m-d', strtotime('-1 day', strtotime($_POST["changeStatusStart"]))));
-      $where = "id = " . intval($_POST["employee_status_id"]);
-      $queryC .= updateQ($table, $data, $where) . ";";
-
-      $table = "employee_status";
-      $data = array(
-        "employee_id" => intval($_POST['id']),
-        "status_id"   => intval($_POST["changeStatusTo"]),
-        "from_date"   => date('Y-m-d', strtotime($_POST["changeStatusStart"]))
-      );
-      $queryC .= insertQ($table, $data) . ";";
-    }
-
-    if ($updateFoto == 1) {
-      file_put_contents($dirPhoto.$photoName, $foto);
-      $table = "m_employee";
-      $data = array(
-        "photo"     => $photoData,
-        "photo_url" => $dirPhoto.$photoName
-      );
-      $where = "id = " . intval($_POST["id"]);
-      $queryC .= updateQ($table, $data, $where) . ";";
-    }
-
-    $db = new crud();
-    $db->cmdQ($queryC);
-    echo $db->getResult();
   break;
 
   // ==========================================
   // 6. DELETE
   // ==========================================
   case ('delete'):
-    $queryC = '';
-    $table = "m_employee";
-    $data = array("active" => 'false');
-    $where = "id = " . intval($_POST["id"]);
-    $queryC .= updateQ($table, $data, $where) . ";";
-
-    $db = new crud();
-    $db->cmdQ($queryC);
-    echo $db->getResult();
+    global $conn;
+    $empId = intval($_POST["id"] ?? 0);
+    $resDel = pg_query_params($conn, "UPDATE m_employee SET active = FALSE WHERE id = $1", [$empId]);
+    if ($resDel) {
+      echo json_encode(["success" => true, "status" => "Success", "message" => "Data karyawan dinonaktifkan."]);
+    } else {
+      http_response_code(500);
+      echo json_encode(["success" => false, "status" => "Error", "message" => pg_last_error($conn)]);
+    }
   break;
+
+
 
   // ==========================================
   // 7. READ EMPLOYEE (Dropdown Combo / Lookup Store)

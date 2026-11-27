@@ -6590,3 +6590,17 @@ img.x-grid3-sort-icon{display:none !important;}
 .x-window-header .x-window-header-text { font-size: 16px !important; font-weight: normal !important; color: #22d3ee !important; }
 .x-window-header { background: #0d2137 !important; }
 .scInvActBtn { font-weight: bold !important; }
+
+/* DASHBOARD LOGOUT BUTTON VISIBILITY */
+body.dashboard-scope .btn-logout, body.dashboard-scope a[href*="logout"] {
+    background-color: #991b1b !important;
+    color: #ffffff !important;
+    border: 1px solid #ef4444 !important;
+    padding: 5px 12px !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+}
+body.dashboard-scope .btn-logout:hover, body.dashboard-scope a[href*="logout"]:hover {
+    background-color: #b91c1c !important;
+}

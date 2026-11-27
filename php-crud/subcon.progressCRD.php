@@ -1,4 +1,6 @@
 <?php
+// [SEC-01 PATCH] Validasi sesi & otorisasi menu terpusat
+require_once __DIR__ . '/../php-func/user.valid.php';
 /**
  * subcon.progressCRD.php
  * [FINAL 2026-11-13] 100% compatible dengan struktur database aktual:
