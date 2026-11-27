@@ -97,7 +97,7 @@ Ext.onReady(function () {
         Ext.each(CATEGORIES, function(cat) {
             var count = byCategory[cat] ? byCategory[cat].length : 0;
             var active = cat === currentCategory ? 'background:#22d3ee; color:#020c1b;' : 'background:#1f2d3a; color:#22d3ee;';
-            tabsHtml += '<button onclick="switchRabCategory(\'' + cat + '\')" style="padding:6px 12px; ; cursor:pointer; font-weight:bold; ' + active + '">' +
+            tabsHtml += '<button onclick="switchRabCategory(\'' + cat + '\')">' +
                 CATEGORY_ICONS[cat] + ' ' + cat + ' (' + count + ')</button>';
         });
         tabsHtml += '</div>';

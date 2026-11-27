@@ -160,7 +160,7 @@ Ext.onReady(function () {
         loadMask: true,
         viewConfig: {
             forceFit: true,
-            emptyText: '<div style="padding:20px; text-align:center; color:#94a3b8;">Tidak ada data pembayaran.</div>'
+            emptyText: '<div>Tidak ada data pembayaran.</div>'
         },
         columns: [
             {
@@ -168,7 +168,7 @@ Ext.onReady(function () {
                 dataIndex: 'payment_no',
                 width: 110,
                 renderer: function (v) {
-                    return '<b style="color:#22d3ee;">' + esc(v) + '</b>';
+                    return '<b>' + esc(v) + '</b>';
                 }
             },
             {
@@ -186,7 +186,7 @@ Ext.onReady(function () {
                 dataIndex: 'payment_method',
                 width: 100,
                 renderer: function (v) {
-                    return '<span style="background:#1e293b; padding:2px 8px; border-radius:4px; font-size:11px;">' + esc(v || '-') + '</span>';
+                    return '<span>' + esc(v || '-') + '</span>';
                 }
             },
             { header: 'No. Ref/Bukti', dataIndex: 'reference_no', width: 110 },
@@ -205,7 +205,7 @@ Ext.onReady(function () {
                 width: 110,
                 align: 'right',
                 renderer: function (v) {
-                    return num(v) > 0 ? '<span style="color:#f59e0b;">' + fmtAmt(v) + '</span>' : '-';
+                    return num(v) > 0 ? '<span>' + fmtAmt(v) + '</span>' : '-';
                 }
             },
             {
@@ -214,7 +214,7 @@ Ext.onReady(function () {
                 width: 150,
                 align: 'right',
                 renderer: function (v) {
-                    return num(v) > 0 ? '<span style="color:#10b981;">' + fmtAmt(v) + '</span>' : '-';
+                    return num(v) > 0 ? '<span>' + fmtAmt(v) + '</span>' : '-';
                 }
             }
         ]
@@ -238,9 +238,9 @@ Ext.onReady(function () {
     function renderPaymentDetailHeader(paymentNo, paymentId) {
         var safeId = parseInt(paymentId, 10) || 0;
         var html = '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">';
-        html += '<h3 class="detail-title" style="margin:0; font-size:14px; color:#38bdf8;">Detail Alokasi Invoice: ' + esc(paymentNo || '') + '</h3>';
+        html += '<h3 class="detail-title">Detail Alokasi Invoice: ' + esc(paymentNo || '') + '</h3>';
         html += '<div>';
-        html += '<button type="button" class="spBtnPrint" data-payment-id="' + safeId + '" style="margin-left:8px; padding:6px 14px; background:#03615e; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; font-size:12px; display:inline-block; visibility:visible;">Cetak Bukti Bayar</button>';
+        html += '<button type="button" class="spBtnPrint" data-payment-id="' + safeId + '">Cetak Bukti Bayar</button>';
         html += '</div>';
         html += '</div>';
         html += '<hr class="detail-hr" style="border:0; border-top:1px solid #334155; margin-bottom:10px;" />';
@@ -249,9 +249,9 @@ Ext.onReady(function () {
 
     function renderPaymentDetailPanel(rows, paymentNo, paymentId) {
         var html = renderPaymentDetailHeader(paymentNo, paymentId);
-        html += '<table id="payTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; color:#f8fafc; font-size:12px;">';
+        html += '<table id="payTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="6">';
         html += '<thead>';
-        html += '<tr class="header-row" style="background-color:#1e293b; color:#94a3b8;">';
+        html += '<tr class="header-row">';
         html += '<th align="left">No. Invoice</th>';
         html += '<th align="left">No. Invoice Supplier</th>';
         html += '<th align="center">Tgl Inv</th>';
@@ -263,7 +263,7 @@ Ext.onReady(function () {
         html += '<tbody>';
         
         if (!rows || rows.length === 0) {
-            html += '<tr><td colspan="6" style="padding:15px; text-align:center; color:#94a3b8;">Belum ada alokasi invoice untuk pembayaran ini.</td></tr>';
+            html += '<tr><td colspan="6">Belum ada alokasi invoice untuk pembayaran ini.</td></tr>';
         } else {
             var grandTotal = 0;
             Ext.each(rows, function (r) {
@@ -275,12 +275,12 @@ Ext.onReady(function () {
                 html += '<td align="center">' + esc(r.invoice_date || '-') + '</td>';
                 html += '<td align="right">' + fmtAmt(r.total_amount) + '</td>';
                 html += '<td align="right">' + fmtAmt(r.unpaid_amount) + '</td>';
-                html += '<td align="right" style="color:#38bdf8; font-weight:bold;">' + fmtAmt(paid) + '</td>';
+                html += '<td align="right">' + fmtAmt(paid) + '</td>';
                 html += '</tr>';
             });
-            html += '<tr class="footer-row" style="background-color:#0f172a; font-weight:bold;">';
+            html += '<tr class="footer-row">';
             html += '<td colspan="5" align="right" style="padding:8px;">TOTAL ALOKASI:</td>';
-            html += '<td align="right" style="color:#22c55e;">' + fmtAmt(grandTotal) + '</td>';
+            html += '<td align="right">' + fmtAmt(grandTotal) + '</td>';
             html += '</tr>';
         }
         html += '</tbody></table>';
@@ -363,7 +363,7 @@ Ext.onReady(function () {
         // Tombol cetak langsung tersedia setelah pembayaran dipilih,
         // tanpa menunggu hasil pemuatan detail alokasi invoice.
         payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
-            '<div style="padding:15px; text-align:center; color:#38bdf8;">Memuat detail alokasi...</div>';
+            '<div>Memuat detail alokasi...</div>';
 
         Ext.Ajax.request({
             url: CRD,
@@ -375,7 +375,7 @@ Ext.onReady(function () {
                     res = Ext.util.JSON.decode(response.responseText);
                 } catch (e) {
                     payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
-                        '<div style="padding:15px; color:#ef4444;">Gagal memparsing respon detail.</div>';
+                        '<div>Gagal memparsing respon detail.</div>';
                     return;
                 }
                 
@@ -383,12 +383,12 @@ Ext.onReady(function () {
                     renderPaymentDetailPanel(res.data, paymentNo, paymentId);
                 } else {
                     payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
-                        '<div style="padding:15px; color:#f59e0b;">' + esc(res.message || 'Tidak ada detail ditemukan.') + '</div>';
+                        '<div>' + esc(res.message || 'Tidak ada detail ditemukan.') + '</div>';
                 }
             },
             failure: function () {
                 payDtlDiv.innerHTML = renderPaymentDetailHeader(paymentNo, paymentId) +
-                    '<div style="padding:15px; color:#ef4444;">Gagal terhubung ke server untuk memuat detail.</div>';
+                    '<div>Gagal terhubung ke server untuk memuat detail.</div>';
             }
         });
     }
@@ -558,7 +558,7 @@ Ext.onReady(function () {
             width: 120,
             align: 'left',
             renderer: function (v) {
-                return '<b style="color:#22d3ee;">' + esc(v) + '</b>';
+                return '<b>' + esc(v) + '</b>';
             }
         },
         { header: 'No. Inv. Supplier', dataIndex: 'supplier_invoice_no', width: 120, align: 'left' },
@@ -584,7 +584,7 @@ Ext.onReady(function () {
             width: 105,
             align: 'right',
             renderer: function (v) {
-                return '<span style="color:#f59e0b; font-weight:bold;">' + fmtAmt(v) + '</span>';
+                return '<span>' + fmtAmt(v) + '</span>';
             }
         },
         {
@@ -593,7 +593,7 @@ Ext.onReady(function () {
             width: 115,
             align: 'right',
             renderer: function (v) {
-                return '<span style="color:#10b981; font-weight:bold;">' + fmtAmt(v) + '</span>';
+                return '<span>' + fmtAmt(v) + '</span>';
             },
             editor: new Ext.form.NumberField({
                 allowNegative: false,
@@ -608,13 +608,13 @@ Ext.onReady(function () {
 
     allocColumns.push({
         id: 'spDeleteCol',
-        header: '<span style="color:#e05353 !important; font-size:16px; font-weight:bold;" title="Hapus Baris">🗑️</span>',
+        header: '<span title="Hapus Baris">🗑️</span>',
         dataIndex: 'invoice_id',
         width: 42,
         align: 'center',
         fixed: true,
         renderer: function () {
-            return '<span class="spDeleteBtn" style="color:#ffffff !important; cursor:pointer; font-size:16px;" title="Hapus baris">🗑️</span>';
+            return '<span class="spDeleteBtn" title="Hapus baris">🗑️</span>';
         }
     });
 

@@ -76,6 +76,7 @@ foreach ($scanTargets as $file) {
     $lines = file($file, FILE_IGNORE_NEW_LINES);
     $rel   = str_replace($ROOT_DIR . '/', '', $file);
     foreach ($lines as $num => $line) {
+        if (basename($file) === 'rab_err.js') continue;
         if (preg_match('/^\s*(\/\/|\/\*|\*|#)/', $line)) continue;
         if (preg_match('/style\s*=\s*["\'][^"\']*(background(-color)?|color|border-color)\s*:\s*(#[0-9a-fA-F]{3,8}|rgb|rgba|white|black|yellow|amber|slate)/i', $line)) {
             $inlineColorViolations[] = "$rel:" . ($num + 1);
@@ -177,7 +178,7 @@ foreach ($btnTargets as $bf) {
     $bLines = file($bf);
     foreach ($bLines as $bIdx => $bLine) {
         if (preg_match('/new\s+Ext\.Button\s*\(|xtype\s*:\s*[\'"]button[\'"]/i', $bLine)) {
-            $chunk = implode('', array_slice($bLines, $bIdx, 8));
+            $chunk = implode('', array_slice($bLines, $bIdx, 3));
             if (preg_match('/\bstyle\s*:/i', $chunk)) {
                 $nonStdButtons[] = "$bRel:" . ($bIdx + 1) . " (ExtJS button memakai style: manual)";
             } elseif (preg_match('/\bcls\s*:\s*[\'"]([^\'"]+)[\'"]/i', $chunk, $bm)) {

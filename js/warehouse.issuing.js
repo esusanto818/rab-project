@@ -25,22 +25,7 @@
 Ext.onReady(function () {
     Ext.QuickTips.init();
     // [NEW] gaya dialog konfirmasi pengiriman agar terbaca di tema gelap
-    (function () {
-        if (document.getElementById('whDarkWinCss')) { return; }
-        var st = document.createElement('style');
-        st.id = 'whDarkWinCss';
-        st.innerHTML = '.whDarkWin .x-window-body, .whDarkWin .x-panel-body { background:#0d2233 !important; color:#e6f1f5 !important; }' +
-                       '.whDarkWin .x-form-item label { color:#9fc3d1 !important; }' +
-                       '.whDarkWin .x-form-field { background:#14324a !important; color:#ffffff !important; border-color:#2b5d7a !important; }' +
-                       '.whDarkWin .x-form-display-field{color:#e2e8f0 !important;}' +
-                       '.whDarkWin .x-btn button{color:#ffffff !important;font-weight:bold !important;opacity:1 !important;}' +
-                       '.whDarkWin .x-btn-tl,.whDarkWin .x-btn-tr,.whDarkWin .x-btn-tc,.whDarkWin .x-btn-ml,.whDarkWin .x-btn-mr,' +
-                       '.whDarkWin .x-btn-bl,.whDarkWin .x-btn-br,.whDarkWin .x-btn-bc{background:none !important;background-image:none !important;}' +
-                       '.whDarkWin .x-btn-mc{background-color:#2e7dd1 !important;background-image:none !important;border-radius:4px;}' +
-                       '.whDarkWin .x-btn-over .x-btn-mc{background-color:#4695e6 !important;}' +
-                       '.whDarkWin .x-btn-mc button{padding:7px 18px !important;height:auto !important;line-height:18px !important;font-size:13px !important;}';      // [CHANGED] tombol lebih tebal
-        document.getElementsByTagName('head')[0].appendChild(st);
-    })();
+    /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
     if (document.getElementById("mainHeaderText")) {
         document.getElementById("mainHeaderText").innerHTML = "Warehouse <em>Issuing</em>";
     }
@@ -53,26 +38,7 @@ Ext.onReady(function () {
     //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     // sehingga header & sel panjang (Proyek, Gudang, Pengiriman) terpotong "...".
     // Paksa wrap + clip + tinggi baris dinamis; angka tetap rata kanan (align ColumnModel dihormati).
-    (function injectGridWrapCss() {
-        var st = document.createElement('style');
-        st.type = 'text/css';
-        st.appendChild(document.createTextNode(
-            '#divMainGrid .x-grid3-hd-inner, #editorFormGrid .x-grid3-hd-inner {' +
-            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
-            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
-            ' line-height:1.3 !important; height:auto !important; min-height:34px !important;' +
-            ' padding:4px 6px !important; box-sizing:border-box; vertical-align:middle !important;' +
-            ' display:flex !important; flex-direction:column; justify-content:center; }' +
-            '#divMainGrid .x-grid3-cell-inner, #editorFormGrid .x-grid3-cell-inner {' +
-            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
-            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
-            ' line-height:1.35 !important; height:auto !important; padding:3px 6px !important; box-sizing:border-box; }' +
-            // Baris & header tinggi dinamis (tidak dikunci): teks membungkus ke 2 baris bila perlu.
-            '#divMainGrid .x-grid3-hd, #editorFormGrid .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
-            '#divMainGrid .x-grid3-row td, #editorFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
-            '#divMainGrid .x-grid3-header-offset, #editorFormGrid .x-grid3-header-offset { height:auto !important; }'));
-        document.getElementsByTagName('head')[0].appendChild(st);
-    })();
+    /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
 
     var ACCESS_ADD = 2;      // level akses minimal: buat issue
     var ACCESS_EDIT = 3;     // level akses minimal: reverse issue
@@ -280,16 +246,16 @@ Ext.onReady(function () {
         var actHtml = '';
         if (h.status === 'posted' && !isReturn) {
             actHtml = '<div style="float:right; margin:2px 4px 0 0">' +
-                      '<button type="button" id="whReverseBtn" style="padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Reverse Issue</button></div>';
+                      '<button type="button" id="whReverseBtn">Reverse Issue</button></div>';
         }
         if (isReturn && (h.status === 'pending' || h.status === 'prepared' || h.status === 'posted')) {
             var bs = 'padding:8px 16px; color:#fff; border:none; border-radius:3px; cursor:pointer; font-weight:bold; margin-left:6px;';
             var rb2 = '';
             if (h.status === 'posted') {
-                rb2 += '<button type="button" id="whPrintBtn" style="' + bs + '">Cetak Ulang Surat Jalan (COPY)</button>';
+                rb2 += '<button type="button" id="whPrintBtn">Cetak Ulang Surat Jalan (COPY)</button>';
             }
             if (h.status === 'pending' || h.status === 'prepared') {
-                rb2 += '<button type="button" id="whRetBtn" style="' + bs + '">' +
+                rb2 += '<button type="button" id="whRetBtn">' +
                        (h.status === 'pending' ? 'Siap Kirim (Barang Sudah Disiapkan)' : 'Konfirmasi Dikirim') + '</button>';
             }
             actHtml = '<div style="float:right; margin:2px 4px 0 0">' + rb2 + '</div>';

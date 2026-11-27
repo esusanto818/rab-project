@@ -177,9 +177,7 @@ Ext.onReady(function () {
     gridContainer.appendChild(holder);
 
     // ukuran font isi tabel di area ini dinaikkan agar terbaca
-    var st = document.createElement('style');
-    st.innerHTML = '#irPanes .x-grid3-cell-inner { font-size:15px !important; } #irPanes .x-grid3-hd-inner { font-size:14px !important; }';
-    document.head.appendChild(st);
+    /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
 
     Ext.each(tabNames, function (name, i) {
         var btn = document.createElement('button');

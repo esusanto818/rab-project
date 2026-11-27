@@ -59,19 +59,7 @@
         root.innerHTML = '<div class="err">' + esc(message) + '</div>';
     }
     // Gaya cetak mengikuti hierarki panel AI pada layar detail pembayaran.
-    (function injectAiPrintStyles() {
-        var style = document.createElement('style');
-        style.textContent =
-            '.ai-project-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px;color:#075e58;font-size:14px}' +
-            '.ai-risk{font-weight:bold;border:1px solid currentColor;padding:3px 8px;border-radius:3px;white-space:nowrap}' +
-            '.ai-summary{font-size:12px;line-height:1.55;margin-bottom:12px}' +
-            '.ai-summary p{margin:5px 0 0;white-space:pre-wrap}' +
-            '.ai-mitigations{font-size:12px;line-height:1.5}' +
-            '.ai-recommendations{margin:6px 0 0 18px;padding:0}' +
-            '.ai-recommendations li{margin-bottom:6px}' +
-            '.ai-project{margin:12px 0;padding:10px 0;border-bottom:1px solid #d8e0e3}';
-        document.head.appendChild(style);
-    })();
+    /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
 
     function renderAiPlaceholder(projects) {
         if (!projects.length) {

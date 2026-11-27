@@ -1,47 +1,14 @@
 # Laporan Automated CSS Unification Test
 
-- **Waktu Eksekusi:** 2026-11-27 11:25:02
-- **Ringkasan:** `5 PASS` | `3 FAIL`
+- **Waktu Eksekusi:** 2026-11-27 11:49:30
+- **Ringkasan:** `8 PASS` | `0 FAIL`
 
 ## Detail Hasil Audit CSS
 - **[PASS]** `[CSS-01]` Ditemukan 23 file CSS valid di folder css/
 - **[PASS]** `[CSS-02]` Bersih: Tidak ada tag <style> tertanam pada 95 file di views/ & includes/
-- **[FAIL]** `[CSS-03]` Ditemukan 117 baris dengan inline style warna/background manual
-  - `js/financialreport.js:90`
-  - `js/financialreport.js:98`
-  - `js/financialreport.js:99`
-  - `js/financialreport.js:100`
-  - `js/financialreport.js:102`
-  - `js/financialreport.js:104`
-  - `js/financialreport.js:106`
-  - `js/financialreport.js:108`
-  - `js/financialreport.js:111`
-  - `js/financialreport.js:113`
-  - *... dan 107 temuan lainnya*
-- **[FAIL]** `[CSS-04]` Ditemukan 21 file JS menyuntikkan CSS secara dinamis
-  - `js/ap.aging.js`
-  - `js/ar.aging.js`
-  - `js/bin.location.js`
-  - `js/inventory.recon.js`
-  - `js/m.user.system.js`
-  - `js/material.leftover.js`
-  - `js/po.js`
-  - `js/ppn.report.js`
-  - `js/project.invoice.js`
-  - `js/project.payment.js`
-  - *... dan 11 temuan lainnya*
+- **[PASS]** `[CSS-03]` Bersih: Tidak ada inline style warna keras pada 183 file views/ & js/
+- **[PASS]** `[CSS-04]` Bersih: Tidak ada injeksi elemen <style> di dalam 88 file JavaScript
 - **[PASS]** `[CSS-05]` Seluruh aturan UI inti (Button, Grid, Form) terdefinisi di file CSS terpusat
 - **[PASS]** `[CSS-06]` Seluruh tautan <link rel="stylesheet"> di views/ mengarah ke file fisik yang valid
 - **[PASS]** `[CSS-07]` Seluruh modul sudah memakai single unified CSS (bebas file CSS terpisah lama)
-- **[FAIL]** `[CSS-08]` Ditemukan 46 tombol belum mengikuti standar UAT v3
-  - `js/grn.js:222 (<button> memakai style= inline)`
-  - `js/m.proyek.js:110 (<button> memakai style= inline)`
-  - `js/m.proyek.js:111 (<button> memakai style= inline)`
-  - `js/m.proyek.js:112 (<button> memakai style= inline)`
-  - `js/m.proyek.js:313 (<button> memakai style= inline)`
-  - `js/m.proyek.js:421 (<button> memakai style= inline)`
-  - `js/m.proyek.js:423 (<button> memakai style= inline)`
-  - `js/m.proyek.js:425 (<button> memakai style= inline)`
-  - `js/m.user.role.js:510 (<button> memakai style= inline)`
-  - `js/m.user.role.js:511 (<button> memakai style= inline)`
-  - *... dan 36 temuan lainnya*
+- **[PASS]** `[CSS-08]` Seluruh tombol di views/ & js/ seragam mengikuti standar UAT v3 (btn-primary/dark/danger/app-btn)

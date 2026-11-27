@@ -88,7 +88,7 @@ Ext.onReady(function () {
     }
 
     function actionBtn(id, label, bg) {
-        return '<button type="button" id="' + id + '" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">' + label + '</button>';
+        return '<button type="button" id="' + id + '">' + label + '</button>';
     }
 
     function renderDetailPanel(d) {
@@ -212,7 +212,7 @@ Ext.onReady(function () {
         if (!rows.length) { rows.push(blank()); }
 
         function btn(id, label, bg) {
-            return '<button type="button" id="' + id + '" style="margin-left:8px;padding:8px 20px;;;cursor:pointer;font-weight:bold;font-size:14px">' + label + '</button>';
+            return '<button type="button" id="' + id + '">' + label + '</button>';
         }
         function taskOpts(sel) {
             var o = '<option value="0">- (tanpa task) -</option>';
@@ -247,7 +247,7 @@ Ext.onReady(function () {
                       '<td><input type="number" min="0" step="any" style="' + INP + '" data-i="' + i + '" data-f="unit_price" value="' + (r.unit_price || '') + '"' + dis + '/></td>' +
                       '<td align="right" id="wiAmt' + i + '"><b>' + fmtAmt(amountOf(r)) + '</b></td>' +
                       '<td><select style="' + INP + '" data-i="' + i + '" data-f="material_supply">' + supplyOpts(r.material_supply) + '</select></td>' +
-                      '<td align="center"><button type="button" data-del="' + i + '" style="padding:6px 10px;;;cursor:pointer;font-weight:bold"' + dis + '>Hapus</button></td></tr>';
+                      '<td align="center"><button type="button" data-del="' + i + '"' + dis + '>Hapus</button></td></tr>';
             });
             h2 += '</tbody><tfoot><tr><td colspan="7" align="right" style="padding-top:10px;font-size:15px"><b>Total lingkup</b></td>' +
                   '<td align="right" style="padding-top:10px;font-size:15px" id="wiTotal"><b>' + fmtAmt(totalOf()) + '</b></td><td colspan="2"></td></tr></tfoot></table>' +
@@ -480,7 +480,7 @@ Ext.onReady(function () {
             var hdr = document.createElement('div'); hdr.id = 'spkHdrForm'; hdr.style.cssText = 'margin-bottom:2px;';
             g.parentNode.insertBefore(hdr, g);
             var taskBox = document.createElement('div'); taskBox.id = 'spkTaskBox'; taskBox.style.cssText = 'margin:8px 4px;padding:10px;background:#172936;border:1px solid #29495b;border-radius:4px;color:#dcebf0;';
-            taskBox.innerHTML = '<b>Task Proyek (wajib)</b><div style="margin:8px 0;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select id="spkTaskSelect" style="min-width:320px;max-width:70%;padding:6px;"><option value="">Pilih proyek terlebih dahulu...</option></select><button type="button" id="spkAddTask" style="padding:6px 12px">+ Tambah Task</button></div><div id="spkTaskList"></div>';
+            taskBox.innerHTML = '<b>Task Proyek (wajib)</b><div><select id="spkTaskSelect"><option value="">Pilih proyek terlebih dahulu...</option></select><button type="button" id="spkAddTask">+ Tambah Task</button></div><div id="spkTaskList"></div>';
             g.parentNode.insertBefore(taskBox, g);
             var q = document.createElement('div'); q.id = 'spkQuotaInfo'; q.style.cssText = 'margin:2px 4px 6px 4px;';
             g.parentNode.insertBefore(q, g);
@@ -508,7 +508,7 @@ Ext.onReady(function () {
         if (!taskListDiv) return;
         if (!selectedTasks.length) { taskListDiv.innerHTML = '<div >Belum ada task dipilih.</div>'; return; }
         var html = '<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;border-bottom:1px solid #365567"><th style="padding:5px">Task</th><th style="padding:5px">Jadwal</th><th style="padding:5px">Status</th><th></th></tr></thead><tbody>';
-        selectedTasks.forEach(function(t, idx) { html += '<tr style="border-bottom:1px solid #29495b"><td style="padding:6px">' + enc(t.task_name) + '</td><td style="padding:6px;white-space:nowrap">' + enc(t.start_date || '-') + ' - ' + enc(t.end_date || '-') + '</td><td style="padding:6px">' + enc(t.status || 'Belum Mulai') + '</td><td><button type="button" data-spk-task-index="' + idx + '" >Hapus</button></td></tr>'; });
+        selectedTasks.forEach(function(t, idx) { html += '<tr><td>' + enc(t.task_name) + '</td><td>' + enc(t.start_date || '-') + ' - ' + enc(t.end_date || '-') + '</td><td>' + enc(t.status || 'Belum Mulai') + '</td><td><button type="button" data-spk-task-index="' + idx + '" >Hapus</button></td></tr>'; });
         taskListDiv.innerHTML = html + '</tbody></table>';
         var buttons = taskListDiv.querySelectorAll('button[data-spk-task-index]');
         for (var i=0;i<buttons.length;i++) buttons[i].onclick = function(){

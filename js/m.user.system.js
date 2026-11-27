@@ -19,32 +19,7 @@ Ext.onReady(function() {
     // Grid editor di halaman ini punya id='gridEditor' dan class 'x-grid3-gridEditor'
     // (BUKAN #editorFormGrid yang tidak ada di DOM)
     // ==========================================
-    (function injectGridWrapCss() {
-        var st = document.createElement('style');
-        st.type = 'text/css';
-        st.appendChild(document.createTextNode(
-            // Target: gridEditor (id) + class x-grid3-gridEditor + addFormGrid (popup)
-            '#gridEditor .x-grid3-hd-inner, #addFormGrid .x-grid3-hd-inner,' +
-            '.x-grid3-gridEditor .x-grid3-hd-inner, .x-grid3-gridAddItem .x-grid3-hd-inner {' +
-            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
-            ' word-wrap:break-word !important; overflow-wrap:break-word !important; word-break:break-word !important;' +
-            ' line-height:1.25 !important; height:auto !important; min-height:34px !important;' +
-            ' padding:4px 4px !important; box-sizing:border-box; vertical-align:middle !important;' +
-            ' display:flex !important; flex-direction:column; justify-content:center; }' +
-            '#gridEditor .x-grid3-cell-inner, #addFormGrid .x-grid3-cell-inner,' +
-            '.x-grid3-gridEditor .x-grid3-cell-inner, .x-grid3-gridAddItem .x-grid3-cell-inner {' +
-            ' white-space:normal !important; overflow:visible !important; text-overflow:clip !important;' +
-            ' word-wrap:break-word !important; line-height:1.35 !important; height:auto !important;' +
-            ' padding:3px 6px !important; box-sizing:border-box; }' +
-            '#gridEditor .x-grid3-hd, #addFormGrid .x-grid3-hd,' +
-            '.x-grid3-gridEditor .x-grid3-hd, .x-grid3-gridAddItem .x-grid3-hd { padding:0 !important; vertical-align:middle !important; height:auto !important; }' +
-            '#gridEditor .x-grid3-row td, #addFormGrid .x-grid3-row td { height:auto !important; vertical-align:middle !important; }' +
-            '#gridEditor .x-grid3-header-offset, #addFormGrid .x-grid3-header-offset { height:auto !important; }' +
-            // Label "Form Access" - hapus background gradient dari my-label-GroupLbl
-            '#editorForm .x-form-item.fsa-label, .fsa-label .x-form-label { background:transparent !important; border:none !important; box-shadow:none !important; }'
-        ));
-        document.getElementsByTagName('head')[0].appendChild(st);
-    })();
+    /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
 
     // ==========================================
     // SVG ICONS (SHOW / HIDE PASSWORD)
@@ -643,7 +618,7 @@ Ext.onReady(function() {
                             text: '➕ Add Form',
                             id: 'btnAddItem',
                             cls: 'btn-dark',
-                            style: 'background:#475569 !important; color:#fff !important; border:1px solid #64748b !important;' +
+ +
                                    ' border-radius:6px !important; padding:6px 14px !important; font-size:12px !important;' +
                                    ' font-weight:600 !important; height:32px !important;',
                             listeners: {
@@ -667,7 +642,7 @@ Ext.onReady(function() {
                             text: '🎭 Apply Role',
                             id: 'btnApplyRole',
                             cls: 'btn-dark',
-                            style: 'background:#10B981 !important; color:#fff !important; border:1px solid #059669 !important;' +
+ +
                                    ' border-radius:6px !important; padding:6px 14px !important; font-size:12px !important;' +
                                    ' font-weight:600 !important; height:32px !important; margin-left:8px !important;',
                             listeners: {

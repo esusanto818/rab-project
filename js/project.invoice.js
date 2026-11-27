@@ -73,37 +73,7 @@ Ext.onReady(function () {
     // ------------------------------------------------------------
     // 0. Gaya & kerangka halaman (ringkasan, filter, panel detail) - tema gelap
     // ------------------------------------------------------------
-    (function injectCss() {
-        var css = [
-            '.ti-cards{display:flex;gap:10px;flex-wrap:wrap;padding:8px 10px 4px 10px;}',
-            '.ti-card{flex:1 1 150px;background:#031126;border:1px solid #123049;border-radius:4px;padding:8px 12px;min-width:150px;}',
-            '.ti-card .lb{font:11px arial;color:#6b869a;text-transform:uppercase;letter-spacing:.4px;}',
-            '.ti-card .vl{font:bold 16px arial;color:#e6f1f8;margin-top:3px;}',
-            '.ti-card.warn .vl{color:#ff6b5e;} .ti-card.soon .vl{color:#e6a817;} .ti-card.ok .vl{color:#7fe0a0;}',
-            '.ti-filter{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:6px 10px 8px 10px;color:#9fc3d1;font:13px arial;}',
-            '.ti-filter select{background:#031126;border:1px solid #1d4a6b;color:#e6f1f8;height:26px;padding:0 8px;font:13px arial;border-radius:2px;min-width:170px;}',
-            '.ti-filter .btn{padding:5px 14px;border:none;border-radius:3px;cursor:pointer;color:#fff;font:bold 12px arial;background:#03615e;}',
-            '.ti-filter .btn.warn{background:#8a6d1f;} .ti-filter .btn.danger{background:#800020;}',
-            // [GRID-WRAP 2026-11-17] Override SCOPED ke grid Tagihan Klien (renderTo #divMainGrid) — TIDAK menyentuh
-            // file CSS global. ExtJS 3.4.1 (css/ext-all.css) memasang
-            //   .x-grid3-cell-inner,.x-grid3-hd-inner{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-            // sehingga header & isi sel yang panjang terpotong "...". Kita paksa wrap + clip + lebar sel 100%.
-            '#divMainGrid .x-grid3-hd-inner,#divMainGrid .x-grid3-cell-inner{white-space:normal !important;overflow:visible !important;' +
-                'text-overflow:clip !important;-o-text-overflow:clip !important;' +
-                'word-wrap:break-word !important;overflow-wrap:break-word !important;word-break:break-word !important;' +
-                'line-height:1.25 !important;vertical-align:middle !important;}',
-            // Header: izinkan 2 baris rapi (bukan ellipsis); text-align TIDAK dipaksa agar mengikuti
-            // align kolom ColumnModel (center untuk tanggal/nominal, kiri untuk teks) seperti semula.
-            '#divMainGrid .x-grid3-hd-inner{vertical-align:middle !important;padding:4px 5px !important;}',
-            // Sel isi: judul kolom rata kiri; sel angka tetap rata kanan (align dari ColumnModel tetap dihormati
-            // karena kita hanya mengubah white-space, bukan text-align sel data).
-            '#divMainGrid .x-grid3-cell-inner{padding:3px 5px !important;}'
-        ].join('\n');
-        var st = document.createElement('style');
-        st.type = 'text/css';
-        st.appendChild(document.createTextNode(css));
-        document.head.appendChild(st);
-    })();
+    /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
 
     var gridContainer = document.getElementById('divMainGrid');
     var topDiv = document.createElement('div');
@@ -304,12 +274,12 @@ Ext.onReady(function () {
         html += '<div style="margin-top:15px; text-align:right">';
         // [RELEASE-LAYER] aksi release / batal release juga tersedia di panel detail
         if (h.release_status === 'released' && !(h.paid_amount > VEPS)) {
-            html += '<button type="button" class="tiActBtn" data-act="unrelease" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Batalkan Release</button>';
+            html += '<button type="button" class="tiActBtn" data-act="unrelease">Batalkan Release</button>';
         } else if (h.release_status !== 'released') {
-            html += '<button type="button" class="tiActBtn" data-act="release" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Release Tagihan</button>';
+            html += '<button type="button" class="tiActBtn" data-act="release">Release Tagihan</button>';
         }
-        if (h.ppn_amount > 0) html += '<button type="button" class="tiActBtn" data-act="faktur" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Faktur Pajak</button>';
-        html += '<button type="button" class="tiActBtn" data-act="print" style="margin-left:8px; padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Cetak Invoice</button></div>';
+        if (h.ppn_amount > 0) html += '<button type="button" class="tiActBtn" data-act="faktur">Faktur Pajak</button>';
+        html += '<button type="button" class="tiActBtn" data-act="print">Cetak Invoice</button></div>';
         dtlDiv.innerHTML = html;
         dtlDiv.style.display = 'block';
 

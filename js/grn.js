@@ -219,7 +219,7 @@ Ext.onReady(function () {
                    '<div style="padding:4px 2px 10px 2px">No. DO Supplier: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.supplier_do_no) || '-') + '</b>' +
                    ' &nbsp;|&nbsp; Plat No.: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.vehicle_plate_no) || '-') + '</b>' +
                    ' &nbsp;|&nbsp; Driver: <b>' + Ext.util.Format.htmlEncode((dataRecord && dataRecord.driver_name) || '-') + '</b>' +
-                   '<button type="button" id="btnPrintGrn" style="float:right; padding:5px 14px; ; ; cursor:pointer; font-weight:bold">Cetak Tanda Terima</button>' +
+                   '<button type="button" id="btnPrintGrn">Cetak Tanda Terima</button>' +
                    '</div>' +      // [NEW] info DO / kendaraan / driver + tombol cetak
                    '<table class="detail-table" width="100%" cellSpacing="0" cellPadding="0">' +
                    '<thead>' +

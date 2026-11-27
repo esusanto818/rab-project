@@ -561,12 +561,12 @@ function buildOfflinePanel() {
         '<div id="swStatus" style="font-size:12px;margin-bottom:8px">Memeriksa...</div>' +
         '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' +
         '<select id="fSyncDays" style="padding:9px"><option value="30">30 hari</option><option value="90" selected>90 hari</option><option value="180">180 hari</option></select>' +
-        '<button id="btnSyncOne" type="button" style="' + BTN + '">Sinkron gudang ini</button>' +
-        '<button id="btnSyncAll" type="button" style="' + BTN + '">Sinkron semua</button>' +
+        '<button id="btnSyncOne" type="button">Sinkron gudang ini</button>' +
+        '<button id="btnSyncAll" type="button">Sinkron semua</button>' +
         '</div>' +
         '<div id="syncProgress" style="font-size:12px;margin:6px 0"></div>' +
         '<div id="syncList" style="font-size:12px;margin:6px 0"></div>' +
-        '<button id="btnClearOffline" type="button" style="' + BTN + '">Hapus data offline</button>' +
+        '<button id="btnClearOffline" type="button">Hapus data offline</button>' +
         '<details style="margin-top:8px;font-size:11px"><summary>Diagnostik koneksi</summary>' +
         '<pre id="diagText" style="white-space:pre-wrap;word-break:break-all"></pre></details>';
     box.parentNode.insertBefore(p, box);

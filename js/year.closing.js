@@ -296,8 +296,8 @@ Ext.onReady(function () {
                        'Jurnal penutup tanggal <b>' + enc(d.closing_date) + '</b>, laba/rugi dipindah ke <b>' + enc(d.retained_account || '-') + '</b>';
             if (d.blockers.length) html += '<div style="margin-top:6px"><b>Tidak dapat diproses:</b>' + listHtml(d.blockers, '#ff6b5e') + '</div>';
             if (d.warnings.length) html += '<div style="margin-top:6px">' + listHtml(d.warnings, '#e6a817') + '</div>';
-            html += '<div style="margin-top:8px"><button type="button" class="ycAllBtn" style="' + btnCss + '">Pilih Semua</button>' +
-                    '<button type="button" class="ycNoneBtn" style="' + btnCss + '">Kosongkan</button>' +
+            html += '<div><button type="button" class="ycAllBtn">Pilih Semua</button>' +
+                    '<button type="button" class="ycNoneBtn">Kosongkan</button>' +
                     '<span id="ycCnt" style="font-weight:bold"></span></div>';
             html += accTable('PENDAPATAN', 'rev', d.revenue) + accTable('BEBAN', 'exp', d.expense);
             html += '<div style="margin-top:10px">Total pendapatan dipilih: <b id="ycRev"></b> &nbsp;|&nbsp; Total beban dipilih: <b id="ycExp"></b></div>' +

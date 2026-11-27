@@ -352,7 +352,7 @@
                      (cur ? '' : ' &middot; ' + esc(it.project_name)) +
                      '<div style="font-size:13px">' +
                      (it.error ? 'DITOLAK: ' + esc(it.error) : 'Menunggu dikirim...') + '</div>' +
-                     (it.error ? '<div class="row" style="margin-top:8px"><button class="sec" data-retry="' + escA(it.uuid) + '">Kirim ulang</button>' +
+                     (it.error ? '<div class="row"><button class="sec" data-retry="' + escA(it.uuid) + '">Kirim ulang</button>' +
                                  '<button class="danger" data-del="' + escA(it.uuid) + '">Hapus</button></div>' : '') + '</div>';
             });
             $('qBox').innerHTML = h ? '<h2>Antrean (belum terkirim)</h2>' + h : '';
@@ -411,7 +411,7 @@
                      (r.verified_at ? '<div class="meta" style="margin-top:6px">' + esc(r.status) + ' oleh ' + esc(r.verifier_name || '-') +
                                       (r.verify_note ? ': ' + esc(r.verify_note) : '') + '</div>' : '');
                 if (r.status === 'Diajukan' && r.reported_by === res.user_id && window.formAccess >= ACCESS_REPORT) {
-                    h += '<div style="margin-top:8px"><button class="danger" data-cancel="' + r.id + '">Batalkan klaim</button></div>';
+                    h += '<div><button class="danger" data-cancel="' + r.id + '">Batalkan klaim</button></div>';
                 }
                 h += '</div>';
             });

@@ -194,8 +194,8 @@ Ext.onReady(function () {
                    '<h3 class="detail-title" style="margin:0">Detail Baris Jurnal: ' + Ext.util.Format.htmlEncode(refNo || '') + '</h3>' +
                    // [PRINT-JV] gaya disamakan dengan tombol toolbar utama: latar transparan, ikon & teks putih (bukan tombol abu-abu terang)
                    '<button id="btnPrintJournalDtl" type="button" ' +
-                   'style="display:inline-flex; align-items:center; gap:6px; background:transparent; color:#ffffff; font-family:inherit; font-size:13px; ' +
-                   'border:1px solid rgba(255,255,255,0.35); border-radius:3px; padding:4px 14px; cursor:pointer;" ' +
+                   'class="btn-toolbar-print" "display:inline-flex; align-items:center; gap:6px; ' +
+                   '" ' +
                    'onmouseover="this.style.background=\'rgba(255,255,255,0.12)\';" onmouseout="this.style.background=\'transparent\';">' +
                    '<i class="material-icons md-22 white">print</i> Print</button>' +
                    '</div>' +

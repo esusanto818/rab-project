@@ -84,47 +84,12 @@ Ext.onReady(function () {
 
     // Inject Style Khusus Checkbox Custom (Mengatasi Override ExtJS)
     if (!document.getElementById('customChkStyle')) {
-        var styleEl = document.createElement('style');
-        styleEl.id = 'customChkStyle';
-        styleEl.innerHTML = 
-            '.planChk {' +
-            '  -webkit-appearance: none !important;' +
-            '  -moz-appearance: none !important;' +
-            '  appearance: none !important;' +
-            '  width: 18px !important;' +
-            '  height: 18px !important;' +
-            '  border: 1.5px solid #2bc1e2 !important;' +
-            '  border-radius: 3px !important;' +
-            '  outline: none !important;' +
-            '  background-color: #0d2133 !important;' +
-            '  cursor: pointer !important;' +
-            '  vertical-align: middle !important;' +
-            '  display: inline-block !important;' +
-            '  position: relative !important;' +
-            '}' +
-            '.planChk:checked {' +
-            '  background-color: #00bef8 !important;' +
-            '  border-color: #00bef8 !important;' +
-            '  background-image: url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%230d2133\' stroke-width=\'3.5\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpolyline points=\'20 6 9 17 4 12\'%3E%3C/polyline%3E%3C/svg%3E") !important;' +
-            '  background-size: 14px 14px !important;' +
-            '  background-position: center !important;' +
-            '  background-repeat: no-repeat !important;' +
-            '}';
-        document.head.appendChild(styleEl);
+        /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
     }
 
     // Slider (scrollbar) untuk tabel rincian + header tabel tetap terlihat saat di-scroll
     if (!document.getElementById('planScrollStyle')) {
-        var scrollStyle = document.createElement('style');
-        scrollStyle.id = 'planScrollStyle';
-        scrollStyle.innerHTML =
-            '#planDtlScroll { overflow-y: auto !important; overflow-x: auto !important; scrollbar-width: thin; scrollbar-color: #1f6f9f #061522; }' +
-            '#planDtlScroll::-webkit-scrollbar { width: 10px; height: 10px; }' +
-            '#planDtlScroll::-webkit-scrollbar-track { background: #061522; border-radius: 5px; }' +
-            '#planDtlScroll::-webkit-scrollbar-thumb { background: #1f6f9f; border-radius: 5px; }' +
-            '#planDtlScroll::-webkit-scrollbar-thumb:hover { background: #2b8fc7; }' +
-            '#planDtlScroll thead th { position: sticky; top: 0; z-index: 2; background: #0d2838 !important; }';
-        document.head.appendChild(scrollStyle);
+        /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
     }
 
     // ------------------------------------------------------------
@@ -279,8 +244,8 @@ Ext.onReady(function () {
         html += '</tbody>' +
                 '</table></div>' +
                 '<div style="margin-top:15px; text-align:right">' +
-                '<button id="btnCheckInventory" type="button" style="padding:8px 16px; ; ; cursor:pointer; font-weight:bold; margin-right:8px">Cek Inventory</button>' +
-                '<button id="btnCreatePoFromPlanning" type="button" style="padding:8px 16px; ; ; cursor:pointer; font-weight:bold">Buat PO dari Terpilih &rarr;</button>' +
+                '<button id="btnCheckInventory" type="button">Cek Inventory</button>' +
+                '<button id="btnCreatePoFromPlanning" type="button">Buat PO dari Terpilih &rarr;</button>' +
                 '</div>';
 
         planDtlDiv.innerHTML = html;

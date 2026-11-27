@@ -507,8 +507,8 @@ Ext.onReady(function() {
                     '<div style="font-weight:bold;font-size:18px">Add Form to Role</div>' +
                     '<div>' +
                         '<input id="roleAddFormSearch" type="text" placeholder="Search form..." autocomplete="off" style="margin-right:12px;padding:6px 10px;width:220px;;"/>' +
-                        '<button id="roleAddFormOk" class="btn-dark" style="margin-right:8px;;padding:6px 16px;cursor:pointer;font-weight:bold">Add Selected</button>' +
-                        '<button id="roleAddFormClose" class="btn-dark" style="padding:6px 14px;cursor:pointer">Close</button>' +
+                        '<button id="roleAddFormOk" class="btn-dark">Add Selected</button>' +
+                        '<button id="roleAddFormClose" class="btn-dark">Close</button>' +
                     '</div>' +
                 '</div>' +
                 '<div id="roleAddFormGrid"></div>';
@@ -813,13 +813,13 @@ Ext.onReady(function() {
         '<div id="matrixHeader" style="height:' + DETAIL_BAR_H + 'px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid #1e3a52">' +
             '<div id="matrixTitle" style="font-weight:bold;font-size:18px"></div>' +
             '<div id="matrixButtons" style="display:none">' +
-                '<button id="matrixEditInfo" class="btn-dark" style="margin-right:8px;padding:6px 14px;cursor:pointer">Edit Info</button>' +
-                '<button id="matrixCopy" class="btn-dark" style="margin-right:8px;padding:6px 14px;cursor:pointer">Copy From...</button>' +
-                '<button id="matrixSelectAll" class="btn-dark" style="margin-right:8px;padding:6px 14px;cursor:pointer">Select All &#9662;</button>' +
-                '<button id="matrixClearAll" class="btn-dark" style="margin-right:8px;padding:6px 14px;cursor:pointer">Clear All</button>' +
-                '<button id="matrixSave" class="btn-dark" style="margin-right:8px;;padding:6px 16px;cursor:pointer;font-weight:bold">Save Matrix</button>' +
-                '<button id="matrixSync" class="btn-dark" style="margin-right:8px;;padding:6px 16px;cursor:pointer;font-weight:bold" title="Sync this role matrix to all assigned users">Sync to Users</button>' +
-                '<button id="matrixExit" class="btn-dark" style="padding:6px 14px;cursor:pointer">Exit Edit</button>' +
+                '<button id="matrixEditInfo" class="btn-dark">Edit Info</button>' +
+                '<button id="matrixCopy" class="btn-dark">Copy From...</button>' +
+                '<button id="matrixSelectAll" class="btn-dark">Select All &#9662;</button>' +
+                '<button id="matrixClearAll" class="btn-dark">Clear All</button>' +
+                '<button id="matrixSave" class="btn-dark">Save Matrix</button>' +
+                '<button id="matrixSync" class="btn-dark" title="Sync this role matrix to all assigned users">Sync to Users</button>' +
+                '<button id="matrixExit" class="btn-dark">Exit Edit</button>' +
             '</div>' +
         '</div>' +
         '<div id="matrixMainPanel"></div>';

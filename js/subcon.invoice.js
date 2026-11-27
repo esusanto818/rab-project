@@ -37,13 +37,7 @@ Ext.onReady(function () {
     
     // [NEW] CSS override untuk judul window ExtJS 3.4
     if (!document.getElementById('scInvWindowStyle')) {
-        var styleEl = document.createElement('style');
-        styleEl.id = 'scInvWindowStyle';
-        styleEl.innerHTML = 
-            '.x-window-header .x-window-header-text { font-size: 16px !important; font-weight: normal !important; color: #22d3ee !important; }' +
-            '.x-window-header { background: #0d2137 !important; }' +
-            '.scInvActBtn { font-weight: bold !important; }';
-        document.head.appendChild(styleEl);
+        /* [CSS-UNIFIED] Style dipindahkan ke css/app-theme.css */
     }
     
     var dataRecord = null;

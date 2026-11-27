@@ -294,7 +294,7 @@ Ext.onReady(function () {
         var html = '<h3 class="detail-title" style="margin:10px 0 5px 0; font-size:14px">Detail Match GRN / Item Invoice: ' +
                    Ext.util.Format.htmlEncode(invoiceNo || '') +
                    // [BARU] tombol cetak tanda terima
-                   '<button type="button" id="btnPrintInvoice" style="float:right; padding:5px 14px; ; ; cursor:pointer; font-weight:bold; font-size:12px">&#128424; Cetak Tanda Terima</button>' +
+                   '<button type="button" id="btnPrintInvoice">&#128424; Cetak Tanda Terima</button>' +
                    '</h3>' +
                    '<hr class="detail-hr" style="border-top:1px solid #334155; margin-bottom:10px" />' +
                    '<table id="payTable" class="detail-table" width="100%" cellSpacing="0" cellPadding="6" style="border-collapse:collapse; font-size:12px">' +

@@ -107,9 +107,9 @@ Ext.onReady(function () {
         var uid = 'planWin' + (++planWinSeq);
         var btnBase = 'padding:11px 28px; color:#fff; border:0; border-radius:5px; cursor:pointer; font-weight:bold; font-size:15px; margin-left:12px;';   // [UI-READABLE] tombol lebih besar
         var btnHtml = '<div style="text-align:right; padding:6px 4px">' +
-            (onYes ? '<button type="button" id="' + uid + 'No" style="' + btnBase + '">Batal</button>' +        // burgundy
-                     '<button type="button" id="' + uid + 'Yes" style="' + btnBase + '">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
-                   : '<button type="button" id="' + uid + 'No" style="' + btnBase + '">Tutup</button>') +
+            (onYes ? '<button type="button" id="' + uid + 'No">Batal</button>' +        // burgundy
+                     '<button type="button" id="' + uid + 'Yes">' + Ext.util.Format.htmlEncode(yesText || 'Ya') + '</button>'   // deep teal
+                   : '<button type="button" id="' + uid + 'No">Tutup</button>') +
             '</div>';
         if (!document.getElementById('aiPlanWinCss')) {      // [UI-READABLE] judul jendela 20px (default Ext 11px terlalu kecil)
             Ext.util.CSS.createStyleSheet('.aiPlanWin .x-window-header-text{font-size:20px !important;font-weight:bold;line-height:30px;} ' +
@@ -310,7 +310,7 @@ Ext.onReady(function () {
                    '<span style="font-size:14px; white-space:nowrap">Poin Kontrak: <b>Rp ' + fmtRp(dataRecord.contract_value) + '</b></span>' +
                    '</div>' +
                    '<div style="text-align:left; margin:0 0 12px 0">' +
-                   '<button type="button" id="btnPrintProjectTasks" style="padding:7px 14px; ; ; cursor:pointer; font-weight:bold">Print Task</button>' +
+                   '<button type="button" id="btnPrintProjectTasks">Print Task</button>' +
                    '</div>' +
                    '<div style="padding:10px; margin-bottom:12px">' +
                    '<b style="font-size:15px">Definisi / Lingkup Proyek:</b>' +
@@ -418,11 +418,11 @@ Ext.onReady(function () {
     var btnAiPanel = new Ext.Panel({
         border: false,
         bodyStyle: 'padding:10px 0',
-        html: '<div style="text-align: left"><button type="button" id="customAiBtn" style="; padding:8px 24px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; transition:all 0.3s">ANALISIS & BAGI TASK (AI)</button>' +
+        html: '<div><button type="button" id="customAiBtn">ANALISIS & BAGI TASK (AI)</button>' +
               // [EDIT-SAVED][NEW] edit task / material yang sudah tersimpan tanpa analisis ulang
-              ' <button type="button" id="customEditBtn" style="; padding:8px 24px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px">EDIT TASK & MATERIAL</button>' +
+              ' <button type="button" id="customEditBtn">EDIT TASK & MATERIAL</button>' +
               // [AUTO-INV][NEW] tombol terbitkan tagihan otomatis (analisis AI + preview + terbitkan)
-              ' <button type="button" id="customInvBtn" style="; padding:8px 24px; font-weight:bold; cursor:pointer; font-size:14px; letter-spacing:1px; margin-left:8px">TERBITKAN TAGIHAN OTOMATIS</button></div>',
+              ' <button type="button" id="customInvBtn">TERBITKAN TAGIHAN OTOMATIS</button></div>',
         listeners: {
             afterrender: function() {
                 // [EDIT-SAVED] Jendela review dipakai bersama: hasil AI (editMode=false) dan edit task TERSIMPAN tanpa AI (editMode=true)
